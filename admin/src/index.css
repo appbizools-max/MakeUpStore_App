@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #FBF9F8;
+  color: #2C1D16;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+}
