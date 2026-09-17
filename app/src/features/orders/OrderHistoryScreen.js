@@ -7,7 +7,9 @@ import { CancelWarningModal } from './CancelWarningModal';
 export const OrderHistoryScreen = () => {
   const {
     orders,
+    userProfile,
     requestCancelOrder,
+    cancelSpecificOrderItem,
     executeCancelOrder,
     showCancelWarningModal,
     setShowCancelWarningModal,
@@ -16,86 +18,10 @@ export const OrderHistoryScreen = () => {
 
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
 
-  // Expanded mock demonstration orders if empty to mirror reference UI
-  const displayOrders = orders.length > 0 ? orders : [
-    {
-      id: 'FG-84773',
-      date: '12 Feb 2026',
-      status: 'delivered',
-      totalAmount: 1299,
-      branch: 'MG Road Branch',
-      items: [
-        { product: { name: 'Matte Passion Lipstick - Crimson', image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300' }, quantity: 1 },
-        { product: { name: 'Sweet Peony Blush Palette', image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300' }, quantity: 1 }
-      ]
-    },
-    {
-      id: 'FG-83210',
-      date: '28 Jan 2026',
-      status: 'processing',
-      totalAmount: 850,
-      branch: 'MG Road Branch',
-      items: [
-        { product: { name: 'Ceramide Intense Cream 50ml', image: 'https://images.unsplash.com/photo-1608248597261-e4d0947c6999?w=300' }, quantity: 1 }
-      ]
-    },
-    {
-      id: 'FG-82194',
-      date: '15 Jan 2026',
-      status: 'cancelled',
-      totalAmount: 450,
-      branch: 'MG Road Branch',
-      items: [
-        { product: { name: 'Nourishing Face Cleanser', image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=300' }, quantity: 1 }
-      ]
-    },
-    {
-      id: 'FG-81055',
-      date: '04 Jan 2026',
-      status: 'delivered',
-      totalAmount: 2150,
-      branch: 'Indiranagar Branch',
-      items: [
-        { product: { name: 'Hyaluronic Acid Radiance Serum 30ml', image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=300' }, quantity: 1 },
-        { product: { name: 'Superstay Matte Ink Lipstick', image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300' }, quantity: 1 },
-        { product: { name: 'Absolute Radiance Compact', image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300' }, quantity: 1 }
-      ]
-    },
-    {
-      id: 'FG-79842',
-      date: '20 Dec 2025',
-      status: 'delivered',
-      totalAmount: 1799,
-      branch: 'Koramangala Branch',
-      items: [
-        { product: { name: 'Studio Fix Powder Foundation', image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300' }, quantity: 1 },
-        { product: { name: 'Velvet Soft Lip Tint', image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300' }, quantity: 1 }
-      ]
-    },
-    {
-      id: 'FG-78510',
-      date: '05 Dec 2025',
-      status: 'cancelled',
-      totalAmount: 620,
-      branch: 'MG Road Branch',
-      items: [
-        { product: { name: 'Rosewater Hydrating Toner 200ml', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300' }, quantity: 1 }
-      ]
-    },
-    {
-      id: 'FG-77120',
-      date: '18 Nov 2025',
-      status: 'delivered',
-      totalAmount: 3499,
-      branch: 'Indiranagar Branch',
-      items: [
-        { product: { name: 'Glamour 12-Shade Eyeshadow Palette', image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300' }, quantity: 1 },
-        { product: { name: 'Waterproof Precision Eyeliner', image: 'https://images.unsplash.com/photo-1631730486784-5456119f69ae?w=300' }, quantity: 1 },
-        { product: { name: 'Volume Express Black Mascara', image: 'https://images.unsplash.com/photo-1591360236480-4ed861025fa1?w=300' }, quantity: 1 },
-        { product: { name: 'Dewy Finish Setting Spray', image: 'https://images.unsplash.com/photo-1608248597261-e4d0947c6999?w=300' }, quantity: 1 }
-      ]
-    }
-  ];
+  // Filter orders so each user ONLY sees their own placed orders
+  const displayOrders = orders.filter(o =>
+    !userProfile ? true : (o.phone === userProfile.phone || o.userName === userProfile.name)
+  );
 
   const getStatusBadgeStyle = (status) => {
     const s = (status || '').toLowerCase();
@@ -106,11 +32,39 @@ export const OrderHistoryScreen = () => {
         label: 'DELIVERED',
       };
     }
+    if (s === 'partially_delivered') {
+      return {
+        container: 'border border-[#00796B] bg-white',
+        text: 'text-[#00796B]',
+        label: 'PARTIALLY DELIVERED',
+      };
+    }
+    if (s === 'partially_delivered_rejected') {
+      return {
+        container: 'border border-[#E65100] bg-white',
+        text: 'text-[#E65100]',
+        label: 'PARTIAL (ITEM REJECTED)',
+      };
+    }
+    if (s === 'partially_delivered_cancelled') {
+      return {
+        container: 'border border-[#6A1B9A] bg-white',
+        text: 'text-[#6A1B9A]',
+        label: 'PARTIAL (CANCELLED)',
+      };
+    }
     if (s === 'cancelled') {
       return {
         container: 'border border-[#8C7078] bg-white',
         text: 'text-[#8C7078]',
         label: 'CANCELLED',
+      };
+    }
+    if (s === 'rejected') {
+      return {
+        container: 'border border-[#C62828] bg-white',
+        text: 'text-[#C62828]',
+        label: 'REJECTED BY STORE',
       };
     }
     if (s === 'shipped' || s === 'out_for_delivery') {
@@ -125,6 +79,40 @@ export const OrderHistoryScreen = () => {
       text: 'text-[#C2477A]',
       label: 'PROCESSING',
     };
+  };
+
+  const getItemStatusBadgeRN = (status) => {
+    const s = (status || 'processing').toLowerCase();
+    if (s === 'delivered' || s === 'completed') {
+      return (
+        <View className="bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex-row items-center">
+          <Ionicons name="checkmark-circle" size={11} color="#15803D" style={{ marginRight: 3 }} />
+          <Text className="text-[10px] font-bold text-emerald-700">Delivered</Text>
+        </View>
+      );
+    }
+    if (s === 'rejected') {
+      return (
+        <View className="bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 flex-row items-center">
+          <Ionicons name="close-circle" size={11} color="#BE123C" style={{ marginRight: 3 }} />
+          <Text className="text-[10px] font-bold text-rose-700">Rejected by Store</Text>
+        </View>
+      );
+    }
+    if (s === 'cancelled') {
+      return (
+        <View className="bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200 flex-row items-center">
+          <Ionicons name="ban-outline" size={11} color="#4B5563" style={{ marginRight: 3 }} />
+          <Text className="text-[10px] font-bold text-gray-600">Cancelled</Text>
+        </View>
+      );
+    }
+    return (
+      <View className="bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 flex-row items-center">
+        <Ionicons name="time-outline" size={11} color="#B45309" style={{ marginRight: 3 }} />
+        <Text className="text-[10px] font-bold text-amber-700">Processing</Text>
+      </View>
+    );
   };
 
   const formatDate = (isoStringOrDateStr) => {
@@ -151,6 +139,9 @@ export const OrderHistoryScreen = () => {
         const formattedOrderNumber = o.id.startsWith('SB-') ? o.id.replace('SB-', 'FG-') : o.id;
         const isSelectedDetails = selectedOrderDetails === o.id;
         const totalItemsCount = (o.items || []).reduce((acc, item) => acc + (item.quantity || 1), 0);
+        const orderTime = new Date(o.date || o.placedAt).getTime();
+        const elapsedMs = Date.now() - orderTime;
+        const isWithinGraceWindow = !isNaN(orderTime) && elapsedMs <= 15 * 60 * 1000;
 
         return (
           <View
@@ -164,7 +155,7 @@ export const OrderHistoryScreen = () => {
                   Order #{formattedOrderNumber}
                 </Text>
                 <Text className="text-xs font-semibold text-[#8C7078] mt-0.5">
-                  {formatDate(o.date)}
+                  {formatDate(o.date || o.placedAt)}
                 </Text>
               </View>
 
@@ -178,13 +169,38 @@ export const OrderHistoryScreen = () => {
             {/* Divider Line */}
             <View className="border-b border-[#FCE4EC] my-3" />
 
-            {/* Product Image Thumbnails Row */}
+            {/* Product Image Thumbnails Row with Per-Item Status Badges */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
               {(o.items || []).map((item, idx) => {
                 const imgUri = item?.product?.image || 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300';
+                const itemSt = (item.status || o.status || 'placed').toLowerCase();
+
+                let iconName = "time-outline";
+                let iconColor = "#B45309";
+                let badgeBg = "bg-amber-100";
+
+                if (itemSt === 'delivered' || itemSt === 'completed') {
+                  iconName = "checkmark-circle";
+                  iconColor = "#15803D";
+                  badgeBg = "bg-emerald-100";
+                } else if (itemSt === 'rejected') {
+                  iconName = "close-circle";
+                  iconColor = "#BE123C";
+                  badgeBg = "bg-rose-100";
+                } else if (itemSt === 'cancelled') {
+                  iconName = "ban-outline";
+                  iconColor = "#4B5563";
+                  badgeBg = "bg-gray-200";
+                }
+
                 return (
-                  <View key={idx} className="w-14 h-14 rounded-2xl overflow-hidden bg-[#FFF5F8] mr-2.5 border border-[#FCE4EC] justify-center items-center">
-                    <Image source={{ uri: imgUri }} className="w-full h-full object-cover" />
+                  <View key={idx} className="relative mr-2.5">
+                    <View className="w-14 h-14 rounded-2xl overflow-hidden bg-[#FFF5F8] border border-[#FCE4EC] justify-center items-center">
+                      <Image source={{ uri: imgUri }} className="w-full h-full object-cover" />
+                    </View>
+                    <View className={`absolute -bottom-1 -right-1 p-0.5 rounded-full ${badgeBg} border border-white`}>
+                      <Ionicons name={iconName} size={11} color={iconColor} />
+                    </View>
                   </View>
                 );
               })}
@@ -216,25 +232,46 @@ export const OrderHistoryScreen = () => {
                 <Text className="text-[11px] text-[#8C7078] mb-2">Payment Method: Cash on Delivery (COD)</Text>
 
                 <View className="pt-2 border-t border-[#FCE4EC]">
-                  <Text className="text-[11px] font-bold text-[#3A2430] mb-1">Items:</Text>
-                  {(o.items || []).map((it, i) => (
-                    <View key={i} className="flex-row justify-between items-center py-0.5">
-                      <Text className="text-[11px] text-[#3A2430] flex-1 mr-2" numberOfLines={1}>
-                        • {it?.product?.name || 'Beauty Product'}
-                      </Text>
-                      <Text className="text-[11px] font-semibold text-[#8C7078]">
-                        x{it?.quantity || 1}
-                      </Text>
-                    </View>
-                  ))}
+                  <Text className="text-[11px] font-extrabold text-[#3A2430] mb-2 uppercase tracking-wide">
+                    Items & Item Status
+                  </Text>
+                  {(o.items || []).map((it, i) => {
+                    const itemStatus = it.status || o.status || 'placed';
+                    const canCancelItem = (itemStatus === 'placed' || itemStatus === 'processing') && isWithinGraceWindow;
+
+                    return (
+                      <View key={i} className="bg-white rounded-2xl p-3 mb-2 border border-[#FCE4EC] flex-row justify-between items-center shadow-2xs">
+                        <View className="flex-1 mr-2">
+                          <Text className="text-[11px] font-bold text-[#3A2430]">
+                            {it?.quantity || 1}x {it?.product?.name || 'Beauty Product'}
+                          </Text>
+                          <Text className="text-[11px] font-extrabold text-[#C2477A] mt-0.5">
+                            ₹{((it.unitPrice || it.price || 0) * (it.quantity || 1)).toLocaleString('en-IN')}
+                          </Text>
+                        </View>
+
+                        <View className="flex-col items-end gap-1">
+                          {getItemStatusBadgeRN(itemStatus)}
+                          {canCancelItem && (
+                            <TouchableOpacity
+                              onPress={() => cancelSpecificOrderItem(o.id, i)}
+                              className="bg-rose-50 px-2 py-0.5 rounded border border-rose-200 mt-1"
+                            >
+                              <Text className="text-[10px] font-bold text-rose-600">Cancel Item</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
 
-                {(o.status === 'placed' || o.status === 'processing') && (
+                {(o.status === 'placed' || o.status === 'processing') && isWithinGraceWindow && (
                   <TouchableOpacity
                     className="mt-3 bg-[#FDEAF1] py-2 rounded-xl items-center border border-[#F5A8C0]"
                     onPress={() => requestCancelOrder(o.id)}
                   >
-                    <Text className="text-xs font-bold text-[#C2477A]">Cancel Order</Text>
+                    <Text className="text-xs font-bold text-[#C2477A]">Cancel Entire Order (15m Window)</Text>
                   </TouchableOpacity>
                 )}
               </View>

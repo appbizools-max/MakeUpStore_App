@@ -1,5 +1,5 @@
 import React from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../context/AppContext.jsx';
 import { Search, ShoppingBag, MapPin, ChevronRight, Star, Tag, Sparkles } from 'lucide-react';
 
 export const HomeScreen = () => {
@@ -14,6 +14,7 @@ export const HomeScreen = () => {
     setSelectedBrand,
     setCurrentScreen,
     cart,
+    addToCart,
     selectedBranch,
     setSelectedBranch
   } = useApp();
@@ -183,6 +184,7 @@ export const HomeScreen = () => {
           {activeProducts.map((product) => {
             const rolePrice = getRolePrice(product, userRole);
             const hasDiscount = userRole !== 'general' && rolePrice < product.mrp;
+            const isOutOfStock = product.stock === 0;
 
             return (
               <div
@@ -195,12 +197,16 @@ export const HomeScreen = () => {
               >
                 <div>
                   <div className="relative aspect-square bg-[#FCE4EC]/40 overflow-hidden">
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                    {hasDiscount && (
+                    <img src={product.image} alt={product.name} className={`w-full h-full object-cover ${isOutOfStock ? 'opacity-40' : ''}`} />
+                    {isOutOfStock ? (
+                      <span className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-[10px] font-black uppercase tracking-wider">
+                        Out of Stock
+                      </span>
+                    ) : hasDiscount ? (
                       <span className="absolute top-2 left-2 bg-[#C2477A] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
                         {Math.round(((product.mrp - rolePrice) / product.mrp) * 100)}% OFF
                       </span>
-                    )}
+                    ) : null}
                     <span className="absolute top-2 right-2 bg-white/90 text-[#3A2430] text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-sm">
                       <Star size={10} className="fill-[#F5A8C0] text-[#C2477A]" /> {product.rating}
                     </span>
@@ -226,10 +232,23 @@ export const HomeScreen = () => {
                     ) : (
                       <span className="text-sm font-bold text-[#3A2430]">₹{product.mrp}</span>
                     )}
-                    <div className="text-[9px] text-[#8C7078]">In Stock ({product.stock})</div>
+                    {isOutOfStock ? (
+                      <div className="text-[9px] text-rose-600 font-bold">Out of Stock</div>
+                    ) : (
+                      <div className="text-[9px] text-[#4C8C5C] font-semibold">In Stock ({product.stock})</div>
+                    )}
                   </div>
 
-                  <button className="w-7 h-7 rounded-full bg-[#FCE4EC] text-[#C2477A] font-bold text-sm">
+                  <button
+                    disabled={isOutOfStock}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isOutOfStock) addToCart(product, 1);
+                    }}
+                    className={`w-7 h-7 rounded-full font-bold text-sm flex items-center justify-center transition-colors ${
+                      isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#FCE4EC] text-[#C2477A] hover:bg-[#C2477A] hover:text-white'
+                    }`}
+                  >
                     +
                   </button>
                 </div>

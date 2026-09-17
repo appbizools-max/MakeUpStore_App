@@ -1,19 +1,19 @@
 import React from 'react';
-import { AppProvider, useApp } from './context/AppContext';
-import { HomeScreen } from '../src/screens/HomeScreen';
-import { SplashScreen } from '../src/screens/SplashScreen';
-import { OnboardingScreen } from '../src/screens/OnboardingScreen';
-import { MobileLoginScreen } from '../src/screens/MobileLoginScreen';
-import { OtpScreen } from '../src/screens/OtpScreen';
-import { ProductDetailScreen } from '../src/screens/ProductDetailScreen';
-import { CartScreen } from '../src/screens/CartScreen';
-import { PlaceOrderScreen } from '../src/screens/PlaceOrderScreen';
-import { OrderConfirmationScreen } from '../src/screens/OrderConfirmationScreen';
-import { OrderHistoryScreen } from '../src/screens/OrderHistoryScreen';
-import { ProfileScreen } from '../src/screens/ProfileScreen';
-import { CategoryScreen } from '../src/screens/CategoryScreen';
-import { BrandScreen } from '../src/screens/BrandScreen';
-import { SearchScreen } from '../src/screens/SearchScreen';
+import { AppProvider, useApp } from './context/AppContext.jsx';
+import { HomeScreen } from './screens/HomeScreen.jsx';
+import { SplashScreen } from './screens/SplashScreen.jsx';
+import { OnboardingScreen } from './screens/OnboardingScreen.jsx';
+import { MobileLoginScreen } from './screens/MobileLoginScreen.jsx';
+import { OtpScreen } from './screens/OtpScreen.jsx';
+import { ProductDetailScreen } from './screens/ProductDetailScreen.jsx';
+import { CartScreen } from './screens/CartScreen.jsx';
+import { PlaceOrderScreen } from './screens/PlaceOrderScreen.jsx';
+import { OrderConfirmationScreen } from './screens/OrderConfirmationScreen.jsx';
+import { OrderHistoryScreen } from './screens/OrderHistoryScreen.jsx';
+import { ProfileScreen } from './screens/ProfileScreen.jsx';
+import { CategoryScreen } from './screens/CategoryScreen.jsx';
+import { BrandScreen } from './screens/BrandScreen.jsx';
+import { SearchScreen } from './screens/SearchScreen.jsx';
 import { Home, Search, ShoppingBag, Package, User } from 'lucide-react';
 
 const AppShell = () => {

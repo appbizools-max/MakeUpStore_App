@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User accounts security rules
+    match /users/{userId} {
+      // Users can read/write their own user profile document
+      // Admin application has full access to query and manage user accounts
+      allow read, write: if true; 
+    }
+
+    // Orders security rules
+    match /orders/{orderId} {
+      // Mobile app clients can place orders and read order status
+      // Admin dashboard listens to all orders in real-time and updates order statuses
+      allow read, write: if true;
+    }
+
+    // Brands security rules
+    match /brands/{brandId} {
+      // Anyone can read brands catalog
+      // Admin dashboard manages brand approvals and statuses
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Products security rules
+    match /products/{productId} {
+      // Anyone can read products catalog
+      // Mobile app updates stock count on order placement; Admin updates product details/prices
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // System settings & policy rules
+    match /system_settings/{settingId} {
+      allow read, write: if true;
+    }
+  }
+}

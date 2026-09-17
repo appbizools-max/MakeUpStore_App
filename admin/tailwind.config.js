@@ -8,16 +8,19 @@ export default {
     extend: {
       colors: {
         salbeau: {
-          bg: '#FBF9F8',
-          card: '#FFFFFF',
-          brown: '#5A3825',
-          brownDark: '#452A1B',
-          brownMuted: '#8C5A3E',
-          surface: '#F4ECE7',
-          border: '#E8DDD7',
-          pink: '#C2477A',
+          bg: '#FFF8FA',
+          pink: '#F5A8C0',
+          pinkDeep: '#C2477A',
           pinkSoft: '#FCE4EC',
+          softCard: '#FDEAF1',
+          text: '#3A2430',
+          muted: '#8C7078',
+          success: '#4C8C5C',
+          border: '#FCE4EC',
         }
+      },
+      fontFamily: {
+        sans: ['Poppins', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       }
     },
   },

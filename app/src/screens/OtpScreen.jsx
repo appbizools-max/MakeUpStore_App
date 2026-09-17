@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../context/AppContext.jsx';
 import { ArrowLeft, Clock, RefreshCw } from 'lucide-react';
 
 export const OtpScreen = () => {

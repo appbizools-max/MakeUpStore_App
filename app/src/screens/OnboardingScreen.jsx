@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../context/AppContext.jsx';
 import { ShoppingBag, Store, Brush, Sparkles, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 
 export const OnboardingScreen = () => {

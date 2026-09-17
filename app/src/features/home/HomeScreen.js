@@ -16,7 +16,10 @@ export const HomeScreen = () => {
     setCurrentScreen,
     addToCart,
     searchQuery,
-    setSearchQuery
+    setSearchQuery,
+    activeProducts,
+    activeBrands,
+    brands
   } = useApp();
   const [wishlist, setWishlist] = useState({});
   const toggleWishlist = (id) => {
@@ -106,6 +109,21 @@ export const HomeScreen = () => {
       beauticianPrice: 539,
     }
   ];
+
+  const displayProducts = (activeProducts && activeProducts.length > 0)
+    ? activeProducts
+    : productsList.filter(p => {
+        const matchingBrand = (brands || []).find(b => b.id === p.brandId || b.name.toLowerCase() === p.brandName.toLowerCase());
+        return matchingBrand ? matchingBrand.enabled : true;
+      });
+
+  const displayBrands = (activeBrands && activeBrands.length > 0)
+    ? activeBrands
+    : topBrands.filter(tb => {
+        const matchingBrand = (brands || []).find(b => b.id === tb.id || b.name.toLowerCase() === tb.name.toLowerCase());
+        return matchingBrand ? matchingBrand.enabled : true;
+      });
+
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 100 }} className="bg-white">
       {/* Header Section */}
@@ -196,7 +214,7 @@ export const HomeScreen = () => {
 
       {/* Product Cards Grid */}
       <View className="px-4 flex-row flex-wrap justify-between gap-y-4 mb-6">
-        {productsList.map((item) => {
+        {displayProducts.map((item) => {
           const rolePrice = getRolePrice(item, userRole);
           const isLiked = wishlist[item.id];
           const originalMrp = item.mrp > rolePrice ? item.mrp : Math.round(item.mrp * 1.25);
@@ -260,7 +278,7 @@ export const HomeScreen = () => {
       {/* Top Brands - Names Only with White BG */}
       <Text className="text-base font-extrabold text-[#3A2430] px-4 mb-3">Top Brands</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pl-4 mb-6">
-        {topBrands.map((brand) => (
+        {displayBrands.map((brand) => (
           <TouchableOpacity
             key={brand.id}
             activeOpacity={0.8}
