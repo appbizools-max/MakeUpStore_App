@@ -4,12 +4,22 @@ import { supabase } from '../config/supabase';
 const AppContext = createContext();
 
 const INITIAL_CATEGORIES = [
-  { id: 'cat1', name: 'Hair Care', icon: '💇‍♀️', image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=300', color: '#FCE4EC' },
-  { id: 'cat2', name: 'Skin Care', icon: '✨', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300', color: '#F8E8EE' },
-  { id: 'cat3', name: 'Lipstick & Gloss', icon: '💄', image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300', color: '#FDEAF1' },
-  { id: 'cat4', name: 'Eye Makeup', icon: '👁️', image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300', color: '#FFF0F5' },
-  { id: 'cat5', name: 'Nail Polish', icon: '💅', image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300', color: '#FCE4EC' },
+  { id: 'cat1', name: 'Hair Care', icon: '💇‍♀️', image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=300', color: '#FCE4EC', sort_order: 1, enabled: true },
+  { id: 'cat2', name: 'Skin Care', icon: '✨', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300', color: '#F8E8EE', sort_order: 2, enabled: true },
+  { id: 'cat3', name: 'Lipstick & Gloss', icon: '💄', image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300', color: '#FDEAF1', sort_order: 3, enabled: true },
+  { id: 'cat4', name: 'Eye Makeup', icon: '👁️', image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300', color: '#FFF0F5', sort_order: 4, enabled: true },
+  { id: 'cat5', name: 'Nail Polish', icon: '💅', image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300', color: '#FCE4EC', sort_order: 5, enabled: true },
 ];
+
+const mapCategoryFromDb = (c) => ({
+  id: c.id,
+  name: c.name,
+  icon: c.icon || '',
+  image: c.image || '',
+  color: c.color || '#FCE4EC',
+  sort_order: Number(c.sort_order || c.sortOrder || 0),
+  enabled: c.enabled !== false && c.enabled !== 'false' && c.enabled !== 0
+});
 
 export const computeOverallOrderStatus = (items, currentOrderStatus = 'placed') => {
   if (!items || items.length === 0) return currentOrderStatus;
@@ -89,10 +99,26 @@ const mapOrderFromDb = (o) => {
   };
 };
 
+const DEFAULT_HOME_SECTIONS = {
+  branchBar: true,
+  pricingRoleBanner: true,
+  heroPromoBanner: true,
+  shopCategories: true,
+  featuredBrands: true,
+  bestSellers: true,
+};
+
 export const AppProvider = ({ children }) => {
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [userRole, setUserRole] = useState('general');
   const [selectedBranch, setSelectedBranch] = useState('MG Road Branch');
+  const [homeSectionVisibility, setHomeSectionVisibility] = useState(() => {
+    try {
+      const saved = localStorage.getItem('salbeau_home_section_visibility');
+      if (saved) return { ...DEFAULT_HOME_SECTIONS, ...JSON.parse(saved) };
+    } catch (e) {}
+    return DEFAULT_HOME_SECTIONS;
+  });
   const [userProfile, setUserProfile] = useState({
     name: 'Bizools',
     phone: '+91 98765 43210',
@@ -138,11 +164,17 @@ export const AppProvider = ({ children }) => {
   };
 
   const [brands, setBrands] = useState([]);
-  const [categories] = useState(INITIAL_CATEGORIES);
+  const [rawCategories, setRawCategories] = useState(INITIAL_CATEGORIES);
   const [products, setProducts] = useState([]);
+
+  const categories = (rawCategories || [])
+    .filter(c => c.enabled !== false)
+    .sort((a, b) => a.sort_order - b.sort_order);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedBrand, setSelectedBrand] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -159,12 +191,50 @@ export const AppProvider = ({ children }) => {
 
         const { data: brandsData } = await supabase.from('brands').select('*');
         if (brandsData) {
-          setBrands(brandsData.map(b => ({
-            id: b.id,
-            name: b.name,
-            enabled: b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0 && b.status !== 'hidden' && b.status !== 'disabled',
-            logo: b.logo
-          })));
+          const configRow = brandsData.find(b => b.id === 'app_category_order_config');
+          if (configRow && configRow.logo) {
+            try {
+              const parsedCatList = JSON.parse(configRow.logo);
+              if (Array.isArray(parsedCatList) && parsedCatList.length > 0) {
+                setRawCategories(parsedCatList);
+              }
+            } catch (e) {
+              console.warn('Error parsing category config in mobile app:', e);
+            }
+          }
+
+          const mapRow = brandsData.find(b => b.id === 'app_brand_category_map');
+          let categoryDict = {};
+          if (mapRow && mapRow.logo) {
+            try {
+              categoryDict = JSON.parse(mapRow.logo);
+            } catch (e) {}
+          }
+
+          const visibilityRow = brandsData.find(b => b.id === 'app_home_section_visibility');
+          if (visibilityRow && visibilityRow.logo) {
+            try {
+              const parsedVisibility = JSON.parse(visibilityRow.logo);
+              if (parsedVisibility && typeof parsedVisibility === 'object') {
+                setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
+                try {
+                  localStorage.setItem('salbeau_home_section_visibility', JSON.stringify(parsedVisibility));
+                } catch (e) {}
+              }
+            } catch (e) {}
+          }
+
+          setBrands(brandsData
+            .filter(b => b.id !== 'app_category_order_config' && b.id !== 'app_brand_category_map' && b.id !== 'app_home_section_visibility')
+            .map(b => ({
+              id: b.id,
+              name: b.name,
+              category: categoryDict[b.name] || b.category || 'General',
+              enabled: b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0 && b.status !== 'hidden' && b.status !== 'disabled',
+              logo: b.logo
+            }))
+            .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }))
+          );
         }
 
         const { data: productsData } = await supabase.from('products').select('*');
@@ -181,6 +251,11 @@ export const AppProvider = ({ children }) => {
           stock: Number(p.stock || 0),
           image: p.image
         })));
+
+        const { data: categoriesData } = await supabase.from('categories').select('*').order('sort_order', { ascending: true });
+        if (categoriesData && categoriesData.length > 0) {
+          setRawCategories(categoriesData.map(mapCategoryFromDb));
+        }
       } catch (err) {
         console.warn('Supabase RN mobile fetch error:', err);
       }
@@ -214,6 +289,34 @@ export const AppProvider = ({ children }) => {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'brands' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          if (payload.new && payload.new.id === 'app_category_order_config' && payload.new.logo) {
+            try {
+              const parsedCatList = JSON.parse(payload.new.logo);
+              if (Array.isArray(parsedCatList)) {
+                setRawCategories(parsedCatList);
+              }
+            } catch (e) {
+              console.warn('Error parsing realtime category config in mobile app:', e);
+            }
+            return;
+          }
+
+          if (payload.new && payload.new.id === 'app_home_section_visibility' && payload.new.logo) {
+            try {
+              const parsedVisibility = JSON.parse(payload.new.logo);
+              if (parsedVisibility && typeof parsedVisibility === 'object') {
+                setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
+                try {
+                  localStorage.setItem('salbeau_home_section_visibility', JSON.stringify(parsedVisibility));
+                } catch (e) {}
+              }
+            } catch (e) {}
+            return;
+          }
+          if (payload.new && payload.new.id === 'app_brand_category_map') {
+            return;
+          }
+
           const b = payload.new;
           const updatedBrand = {
             id: b.id,
@@ -222,14 +325,18 @@ export const AppProvider = ({ children }) => {
             logo: b.logo
           };
           setBrands(prev => {
-            const idx = prev.findIndex(item => item.id === updatedBrand.id);
+            const idx = prev.findIndex(item => item.id === updatedBrand.id || (item.name && b.name && item.name.trim().toLowerCase() === b.name.trim().toLowerCase()));
+            let updatedList;
             if (idx >= 0) {
-              const copy = [...prev];
-              copy[idx] = updatedBrand;
-              return copy;
+              updatedList = [...prev];
+              updatedList[idx] = updatedBrand;
+            } else {
+              updatedList = [...prev, updatedBrand];
             }
-            return [...prev, updatedBrand];
+            return updatedList.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
           });
+        } else if (payload.eventType === 'DELETE') {
+          setBrands(prev => prev.filter(b => b.id !== payload.old.id));
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
@@ -257,6 +364,23 @@ export const AppProvider = ({ children }) => {
             }
             return [...prev, updatedProduct];
           });
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const updatedCat = mapCategoryFromDb(payload.new);
+          setRawCategories(prev => {
+            const idx = prev.findIndex(item => item.id === updatedCat.id);
+            const copy = [...prev];
+            if (idx >= 0) {
+              copy[idx] = updatedCat;
+            } else {
+              copy.push(updatedCat);
+            }
+            return copy.sort((a, b) => a.sort_order - b.sort_order);
+          });
+        } else if (payload.eventType === 'DELETE') {
+          setRawCategories(prev => prev.filter(c => c.id !== payload.old.id));
         }
       })
       .subscribe();
@@ -487,6 +611,10 @@ export const AppProvider = ({ children }) => {
         setSelectedProduct,
         selectedCategory,
         setSelectedCategory,
+        selectedBrand,
+        setSelectedBrand,
+        searchQuery,
+        setSearchQuery,
         cart,
         addToCart,
         updateCartQuantity,
@@ -502,6 +630,7 @@ export const AppProvider = ({ children }) => {
         setShowCancelWarningModal,
         pendingCancelOrderId,
         getRolePrice,
+        homeSectionVisibility,
       }}
     >
       {children}

@@ -89,10 +89,26 @@ const mapOrderFromDb = (o) => {
   };
 };
 
+const DEFAULT_HOME_SECTIONS = {
+  branchBar: true,
+  pricingRoleBanner: true,
+  heroPromoBanner: true,
+  shopCategories: true,
+  featuredBrands: true,
+  bestSellers: true,
+};
+
 export const AppProvider = ({ children }) => {
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [userRole, setUserRole] = useState('general');
   const [selectedBranch, setSelectedBranch] = useState('MG Road Branch');
+  const [homeSectionVisibility, setHomeSectionVisibility] = useState(() => {
+    try {
+      const saved = localStorage.getItem('salbeau_home_section_visibility');
+      if (saved) return { ...DEFAULT_HOME_SECTIONS, ...JSON.parse(saved) };
+    } catch (e) {}
+    return DEFAULT_HOME_SECTIONS;
+  });
   const [userProfile, setUserProfile] = useState({
     name: 'Bizools',
     phone: '+91 98765 43210',
@@ -143,6 +159,8 @@ export const AppProvider = ({ children }) => {
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedBrand, setSelectedBrand] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -159,12 +177,29 @@ export const AppProvider = ({ children }) => {
 
         const { data: brandsData } = await supabase.from('brands').select('*');
         if (brandsData) {
-          setBrands(brandsData.map(b => ({
-            id: b.id,
-            name: b.name,
-            enabled: b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0 && b.status !== 'hidden' && b.status !== 'disabled',
-            logo: b.logo
-          })));
+          const visibilityRow = brandsData.find(b => b.id === 'app_home_section_visibility');
+          if (visibilityRow && visibilityRow.logo) {
+            try {
+              const parsedVisibility = JSON.parse(visibilityRow.logo);
+              if (parsedVisibility && typeof parsedVisibility === 'object') {
+                setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
+                try {
+                  localStorage.setItem('salbeau_home_section_visibility', JSON.stringify(parsedVisibility));
+                } catch (e) {}
+              }
+            } catch (e) {}
+          }
+
+          setBrands(brandsData
+            .filter(b => b.id !== 'app_category_order_config' && b.id !== 'app_brand_category_map' && b.id !== 'app_home_section_visibility')
+            .map(b => ({
+              id: b.id,
+              name: b.name,
+              enabled: b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0 && b.status !== 'hidden' && b.status !== 'disabled',
+              logo: b.logo
+            }))
+            .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }))
+          );
         }
 
         const { data: productsData } = await supabase.from('products').select('*');
@@ -214,6 +249,22 @@ export const AppProvider = ({ children }) => {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'brands' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          if (payload.new && payload.new.id === 'app_home_section_visibility' && payload.new.logo) {
+            try {
+              const parsedVisibility = JSON.parse(payload.new.logo);
+              if (parsedVisibility && typeof parsedVisibility === 'object') {
+                setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
+                try {
+                  localStorage.setItem('salbeau_home_section_visibility', JSON.stringify(parsedVisibility));
+                } catch (e) {}
+              }
+            } catch (e) {}
+            return;
+          }
+          if (payload.new && payload.new.id === 'app_brand_category_map' || payload.new.id === 'app_category_order_config') {
+            return;
+          }
+
           const b = payload.new;
           const updatedBrand = {
             id: b.id,
@@ -222,14 +273,18 @@ export const AppProvider = ({ children }) => {
             logo: b.logo
           };
           setBrands(prev => {
-            const idx = prev.findIndex(item => item.id === updatedBrand.id);
+            const idx = prev.findIndex(item => item.id === updatedBrand.id || (item.name && b.name && item.name.trim().toLowerCase() === b.name.trim().toLowerCase()));
+            let updatedList;
             if (idx >= 0) {
-              const copy = [...prev];
-              copy[idx] = updatedBrand;
-              return copy;
+              updatedList = [...prev];
+              updatedList[idx] = updatedBrand;
+            } else {
+              updatedList = [...prev, updatedBrand];
             }
-            return [...prev, updatedBrand];
+            return updatedList.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
           });
+        } else if (payload.eventType === 'DELETE') {
+          setBrands(prev => prev.filter(b => b.id !== payload.old.id));
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
@@ -487,6 +542,10 @@ export const AppProvider = ({ children }) => {
         setSelectedProduct,
         selectedCategory,
         setSelectedCategory,
+        selectedBrand,
+        setSelectedBrand,
+        searchQuery,
+        setSearchQuery,
         cart,
         addToCart,
         updateCartQuantity,
@@ -502,6 +561,7 @@ export const AppProvider = ({ children }) => {
         setShowCancelWarningModal,
         pendingCancelOrderId,
         getRolePrice,
+        homeSectionVisibility,
       }}
     >
       {children}

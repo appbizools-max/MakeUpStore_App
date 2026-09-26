@@ -57,19 +57,35 @@ CREATE TABLE IF NOT EXISTS public.orders (
   items JSONB
 );
 
+-- 5. Categories Table
+CREATE TABLE IF NOT EXISTS public.categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  icon TEXT,
+  image TEXT,
+  color TEXT,
+  sort_order INT DEFAULT 0,
+  enabled BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Enable Row Level Security (RLS) & Public Policies
 ALTER TABLE public.brands ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read and write on brands" ON public.brands FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read and write on products" ON public.products FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read and write on users" ON public.users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read and write on orders" ON public.orders FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read and write on categories" ON public.categories FOR ALL USING (true) WITH CHECK (true);
 
--- Enable Realtime Broadcast for all 4 tables
+-- Enable Realtime Broadcast for all 5 tables
 ALTER PUBLICATION supabase_realtime ADD TABLE public.brands;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.categories;
+

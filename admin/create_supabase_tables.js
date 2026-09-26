@@ -57,10 +57,22 @@ CREATE TABLE IF NOT EXISTS public.orders (
   items JSONB
 );
 
+CREATE TABLE IF NOT EXISTS public.categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  icon TEXT,
+  image TEXT,
+  color TEXT,
+  sort_order INT DEFAULT 0,
+  enabled BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.brands;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.categories;
 `;
 
 async function createTables() {

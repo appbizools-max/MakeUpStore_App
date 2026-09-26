@@ -121,29 +121,112 @@ const mapProductFromDb = (p) => ({
   image: p.image
 });
 
+const INITIAL_CATEGORIES = [
+  { id: 'cat1', name: 'Hair Care', icon: '💇‍♀️', image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=300', color: '#FCE4EC', sort_order: 1, enabled: true },
+  { id: 'cat2', name: 'Skin Care', icon: '✨', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300', color: '#F8E8EE', sort_order: 2, enabled: true },
+  { id: 'cat3', name: 'Lipstick & Gloss', icon: '💄', image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300', color: '#FDEAF1', sort_order: 3, enabled: true },
+  { id: 'cat4', name: 'Eye Makeup', icon: '👁️', image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300', color: '#FFF0F5', sort_order: 4, enabled: true },
+  { id: 'cat5', name: 'Nail Polish', icon: '💅', image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300', color: '#FCE4EC', sort_order: 5, enabled: true },
+];
+
+const mapCategoryFromDb = (c) => ({
+  id: c.id,
+  name: c.name,
+  icon: c.icon || '',
+  image: c.image || '',
+  color: c.color || '#FCE4EC',
+  sort_order: Number(c.sort_order || c.sortOrder || 0),
+  enabled: c.enabled !== false && c.enabled !== 'false' && c.enabled !== 0
+});
+
+const DEFAULT_HOME_SECTIONS = {
+  branchBar: true,
+  pricingRoleBanner: true,
+  heroPromoBanner: true,
+  shopCategories: true,
+  featuredBrands: true,
+  bestSellers: true,
+};
+
 export const AdminProvider = ({ children }) => {
   const [brands, setBrands] = useState([]);
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
   const [cancelFeeSettings, setCancelFeeSettings] = useState(initialCancelFeeSettings);
   const [cancelledOrdersLog, setCancelledOrdersLog] = useState([]);
+  const [homeSectionVisibility, setHomeSectionVisibility] = useState(() => {
+    try {
+      const saved = localStorage.getItem('salbeau_home_section_visibility');
+      if (saved) return { ...DEFAULT_HOME_SECTIONS, ...JSON.parse(saved) };
+    } catch (e) {}
+    return DEFAULT_HOME_SECTIONS;
+  });
 
   // Fetch initial data and subscribe to real-time updates via Supabase
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [ordersRes, usersRes, brandsRes, productsRes] = await Promise.all([
+        const [ordersRes, usersRes, brandsRes, productsRes, categoriesRes] = await Promise.all([
           supabase.from('orders').select('*').order('date', { ascending: false }),
           supabase.from('users').select('*'),
           supabase.from('brands').select('*'),
-          supabase.from('products').select('*')
+          supabase.from('products').select('*'),
+          supabase.from('categories').select('*').order('sort_order', { ascending: true })
         ]);
 
         if (ordersRes.data) setOrders(ordersRes.data.map(mapOrderFromDb));
         if (usersRes.data) setUsers(usersRes.data.map(mapUserFromDb));
-        if (brandsRes.data) setBrands(brandsRes.data.map(mapBrandFromDb));
+        if (brandsRes.data) {
+          const configRow = brandsRes.data.find(b => b.id === 'app_category_order_config');
+          if (configRow && configRow.logo) {
+            try {
+              const parsedCatList = JSON.parse(configRow.logo);
+              if (Array.isArray(parsedCatList) && parsedCatList.length > 0) {
+                setCategories(parsedCatList);
+              }
+            } catch (e) {
+              console.warn('Error parsing category config from brands:', e);
+            }
+          }
+
+          const mapRow = brandsRes.data.find(b => b.id === 'app_brand_category_map');
+          let categoryDict = {};
+          if (mapRow && mapRow.logo) {
+            try {
+              categoryDict = JSON.parse(mapRow.logo);
+            } catch (e) {}
+          }
+
+          const visibilityRow = brandsRes.data.find(b => b.id === 'app_home_section_visibility');
+          if (visibilityRow && visibilityRow.logo) {
+            try {
+              const parsedVisibility = JSON.parse(visibilityRow.logo);
+              if (parsedVisibility && typeof parsedVisibility === 'object') {
+                setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
+                try {
+                  localStorage.setItem('salbeau_home_section_visibility', JSON.stringify(parsedVisibility));
+                } catch (e) {}
+              }
+            } catch (e) {
+              console.warn('Error parsing home section visibility from brands:', e);
+            }
+          }
+
+          setBrands(brandsRes.data
+            .filter(b => b.id !== 'app_category_order_config' && b.id !== 'app_brand_category_map' && b.id !== 'app_home_section_visibility')
+            .map(b => ({
+              ...mapBrandFromDb(b),
+              category: categoryDict[b.name] || b.category || 'General'
+            }))
+            .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }))
+          );
+        }
         if (productsRes.data) setProducts(productsRes.data.map(mapProductFromDb));
+        if (categoriesRes && categoriesRes.data && categoriesRes.data.length > 0) {
+          setCategories(categoriesRes.data.map(mapCategoryFromDb).sort((a, b) => a.sort_order - b.sort_order));
+        }
       } catch (err) {
         console.warn('Supabase initial fetch error:', err);
       }
@@ -186,15 +269,41 @@ export const AdminProvider = ({ children }) => {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'brands' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          if (payload.new && payload.new.id === 'app_category_order_config' && payload.new.logo) {
+            try {
+              const parsedCatList = JSON.parse(payload.new.logo);
+              if (Array.isArray(parsedCatList)) {
+                setCategories(parsedCatList);
+              }
+            } catch (e) {}
+            return;
+          }
+          if (payload.new && payload.new.id === 'app_home_section_visibility' && payload.new.logo) {
+            try {
+              const parsedVisibility = JSON.parse(payload.new.logo);
+              if (parsedVisibility && typeof parsedVisibility === 'object') {
+                setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
+                try {
+                  localStorage.setItem('salbeau_home_section_visibility', JSON.stringify(parsedVisibility));
+                } catch (e) {}
+              }
+            } catch (e) {}
+            return;
+          }
+          if (payload.new && payload.new.id === 'app_brand_category_map') {
+            return;
+          }
           const updatedBrand = mapBrandFromDb(payload.new);
           setBrands(prev => {
             const index = prev.findIndex(b => b.id === updatedBrand.id);
+            let updatedList;
             if (index >= 0) {
-              const copy = [...prev];
-              copy[index] = updatedBrand;
-              return copy;
+              updatedList = [...prev];
+              updatedList[index] = { ...updatedList[index], ...updatedBrand };
+            } else {
+              updatedList = [...prev, updatedBrand];
             }
-            return [...prev, updatedBrand];
+            return updatedList.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
           });
         }
       })
@@ -210,6 +319,23 @@ export const AdminProvider = ({ children }) => {
             }
             return [...prev, updatedProduct];
           });
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const updatedCat = mapCategoryFromDb(payload.new);
+          setCategories(prev => {
+            const index = prev.findIndex(c => c.id === updatedCat.id);
+            let nextList = [...prev];
+            if (index >= 0) {
+              nextList[index] = updatedCat;
+            } else {
+              nextList.push(updatedCat);
+            }
+            return nextList.sort((a, b) => a.sort_order - b.sort_order);
+          });
+        } else if (payload.eventType === 'DELETE') {
+          setCategories(prev => prev.filter(c => c.id !== payload.old.id));
         }
       })
       .subscribe();
@@ -384,11 +510,149 @@ export const AdminProvider = ({ children }) => {
     );
   };
 
+  const updateCategoriesOrder = async (orderedCategories) => {
+    const updatedList = orderedCategories.map((cat, index) => ({
+      ...cat,
+      sort_order: index + 1
+    }));
+    setCategories(updatedList);
+    try {
+      await supabase.from('brands').upsert({
+        id: 'app_category_order_config',
+        name: 'Category Order Config',
+        logo: JSON.stringify(updatedList),
+        enabled: true
+      });
+      await supabase.from('categories').upsert(updatedList.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon || '',
+        image: cat.image || '',
+        color: cat.color || '#FCE4EC',
+        sort_order: cat.sort_order,
+        enabled: cat.enabled !== false
+      }))).catch(() => {});
+    } catch (e) {
+      console.warn('Error updating categories order in Supabase:', e);
+    }
+  };
+
+  const toggleCategoryStatus = async (categoryId) => {
+    const target = categories.find(c => c.id === categoryId);
+    if (!target) return;
+    const newEnabled = !target.enabled;
+    const updatedList = categories.map(c => c.id === categoryId ? { ...c, enabled: newEnabled } : c);
+    setCategories(updatedList);
+    try {
+      await supabase.from('brands').upsert({
+        id: 'app_category_order_config',
+        name: 'Category Order Config',
+        logo: JSON.stringify(updatedList),
+        enabled: true
+      });
+      await supabase.from('categories').upsert({
+        id: target.id,
+        name: target.name,
+        icon: target.icon || '',
+        image: target.image || '',
+        color: target.color || '#FCE4EC',
+        sort_order: target.sort_order,
+        enabled: newEnabled
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('Error toggling category status in Supabase:', e);
+    }
+  };
+
+  const addCategory = async (newCat) => {
+    const newId = 'cat_' + Date.now();
+    const newCategoryObj = {
+      id: newId,
+      name: newCat.name,
+      icon: newCat.icon || '🛍️',
+      image: newCat.image || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300',
+      color: newCat.color || '#FCE4EC',
+      sort_order: categories.length + 1,
+      enabled: newCat.enabled !== false
+    };
+
+    const updatedList = [...categories, newCategoryObj];
+    setCategories(updatedList);
+
+    try {
+      await supabase.from('brands').upsert({
+        id: 'app_category_order_config',
+        name: 'Category Order Config',
+        logo: JSON.stringify(updatedList),
+        enabled: true
+      });
+      await supabase.from('categories').upsert(newCategoryObj).catch(() => {});
+    } catch (e) {
+      console.warn('Error adding category to Supabase:', e);
+    }
+  };
+
+  const deleteCategory = async (categoryId) => {
+    const updatedList = categories.filter(c => c.id !== categoryId);
+    setCategories(updatedList);
+    try {
+      await supabase.from('brands').upsert({
+        id: 'app_category_order_config',
+        name: 'Category Order Config',
+        logo: JSON.stringify(updatedList),
+        enabled: true
+      });
+      await supabase.from('categories').delete().eq('id', categoryId).catch(() => {});
+    } catch (e) {
+      console.warn('Error deleting category from Supabase:', e);
+    }
+  };
+
+  const toggleHomeSectionVisibility = async (key) => {
+    setHomeSectionVisibility(prev => {
+      const updated = {
+        ...prev,
+        [key]: prev[key] === false ? true : false
+      };
+      try {
+        localStorage.setItem('salbeau_home_section_visibility', JSON.stringify(updated));
+      } catch (e) {}
+
+      supabase.from('brands').upsert({
+        id: 'app_home_section_visibility',
+        name: 'Home Section Visibility Config',
+        logo: JSON.stringify(updated),
+        enabled: true
+      }).catch(err => console.warn('Error saving section visibility to Supabase:', err));
+
+      return updated;
+    });
+  };
+
+  const resetHomeSectionVisibility = async () => {
+    setHomeSectionVisibility(DEFAULT_HOME_SECTIONS);
+    try {
+      localStorage.setItem('salbeau_home_section_visibility', JSON.stringify(DEFAULT_HOME_SECTIONS));
+    } catch (e) {}
+
+    try {
+      await supabase.from('brands').upsert({
+        id: 'app_home_section_visibility',
+        name: 'Home Section Visibility Config',
+        logo: JSON.stringify(DEFAULT_HOME_SECTIONS),
+        enabled: true
+      });
+    } catch (e) {
+      console.warn('Error resetting section visibility in Supabase:', e);
+    }
+  };
+
   return (
     <AdminContext.Provider
       value={{
         brands,
         products,
+        categories,
         orders,
         users,
         cancelFeeSettings,
@@ -403,6 +667,13 @@ export const AdminProvider = ({ children }) => {
         toggleUserVerification,
         updateCancelFeeSettings,
         toggleFeeWaived,
+        homeSectionVisibility,
+        toggleHomeSectionVisibility,
+        resetHomeSectionVisibility,
+        updateCategoriesOrder,
+        toggleCategoryStatus,
+        addCategory,
+        deleteCategory,
       }}
     >
       {children}
@@ -411,4 +682,5 @@ export const AdminProvider = ({ children }) => {
 };
 
 export const useAdmin = () => useContext(AdminContext);
+
 

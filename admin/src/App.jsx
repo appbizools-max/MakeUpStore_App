@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminProvider, useAdmin } from './context/AdminContext';
 import salbeauLogo from './Assets/Logo.png';
 import {
@@ -32,13 +32,25 @@ import {
   Truck,
   Ban,
   Printer,
-  AlertTriangle
+  AlertTriangle,
+  ListOrdered,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Tag,
+  Award,
+  BadgePlus,
+  Building2,
+  FolderPlus,
+  Layers,
+  Trash2
 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const {
     brands,
     products,
+    categories,
     orders,
     users,
     cancelFeeSettings,
@@ -52,7 +64,14 @@ const AdminDashboard = () => {
     updateProductRolePrices,
     toggleUserVerification,
     updateCancelFeeSettings,
-    toggleFeeWaived
+    toggleFeeWaived,
+    homeSectionVisibility,
+    toggleHomeSectionVisibility,
+    resetHomeSectionVisibility,
+    updateCategoriesOrder,
+    toggleCategoryStatus,
+    addCategory,
+    deleteCategory
   } = useAdmin();
 
   const [isAuthenticated, setIsAuthenticated] = useState(true);
@@ -60,7 +79,88 @@ const AdminDashboard = () => {
   const [loginCredentials, setLoginCredentials] = useState({ email: 'admin@salbeau.com', password: '••••••••' });
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [categoryOrderList, setCategoryOrderList] = useState(categories || []);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [showCategoryOrderSuccess, setShowCategoryOrderSuccess] = useState(false);
+
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      setCategoryOrderList(categories);
+    }
+  }, [categories]);
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    const newList = [...categoryOrderList];
+    const item = newList.splice(draggedIndex, 1)[0];
+    newList.splice(index, 0, item);
+    setDraggedIndex(index);
+    setCategoryOrderList(newList);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  const moveCategoryUp = (index) => {
+    if (index <= 0) return;
+    const newList = [...categoryOrderList];
+    const temp = newList[index];
+    newList[index] = newList[index - 1];
+    newList[index - 1] = temp;
+    setCategoryOrderList(newList);
+  };
+
+  const moveCategoryDown = (index) => {
+    if (index >= categoryOrderList.length - 1) return;
+    const newList = [...categoryOrderList];
+    const temp = newList[index];
+    newList[index] = newList[index + 1];
+    newList[index + 1] = temp;
+    setCategoryOrderList(newList);
+  };
+
+  const handleSaveCategoryOrder = () => {
+    updateCategoriesOrder(categoryOrderList);
+    setShowCategoryOrderSuccess(true);
+    setTimeout(() => setShowCategoryOrderSuccess(false), 3500);
+  };
   const [selectedBranch, setSelectedBranch] = useState('All Branches');
+
+  // Form states for Category Items
+  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [newCategory, setNewCategory] = useState({
+    name: '',
+    icon: '🛍️',
+    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300',
+    color: '#FCE4EC',
+    enabled: true
+  });
+  const [showCategorySuccess, setShowCategorySuccess] = useState(false);
+
+  const handleAddCategorySubmit = (e) => {
+    e.preventDefault();
+    if (!newCategory.name.trim()) return;
+    addCategory(newCategory);
+    setNewCategory({
+      name: '',
+      icon: '🛍️',
+      image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300',
+      color: '#FCE4EC',
+      enabled: true
+    });
+    setShowCategorySuccess(true);
+    setIsAddCategoryModalOpen(false);
+    setTimeout(() => setShowCategorySuccess(false), 3000);
+  };
 
   // Form states for Add Brand
   const [isAddBrandModalOpen, setIsAddBrandModalOpen] = useState(false);
@@ -346,24 +446,70 @@ const AdminDashboard = () => {
             {/* 1. Dashboard */}
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center gap-3 transition-all ${
-                activeTab === 'dashboard'
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center gap-3 transition-all ${activeTab === 'dashboard'
                   ? 'bg-[#FDF2F4] text-[#CE4270]'
                   : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
-              }`}
+                }`}
             >
               <LayoutGrid size={18} />
               <span>Dashboard</span>
             </button>
 
+            {/* 2. Dashboard Visibility */}
+            <button
+              onClick={() => setActiveTab('dashboard_visibility')}
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${activeTab === 'dashboard_visibility'
+                  ? 'bg-[#FDF2F4] text-[#CE4270]'
+                  : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <Eye size={18} />
+                <span>Dashboard Visibility</span>
+              </div>
+            </button>
+
+            {/* Manage Category Order / Sort Categories */}
+            <button
+              onClick={() => setActiveTab('categories_order')}
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${activeTab === 'categories_order'
+                  ? 'bg-[#FDF2F4] text-[#CE4270]'
+                  : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <ListOrdered size={18} />
+                <span>Sort Categories</span>
+              </div>
+              <span className="text-[10px] bg-pink-100 text-[#CE4270] font-bold px-2 py-0.5 rounded-full">
+                Order
+              </span>
+            </button>
+
+            {/* Category Items & Brand Categories */}
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${activeTab === 'categories'
+                  ? 'bg-[#FDF2F4] text-[#CE4270]'
+                  : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <FolderPlus size={18} />
+                <span>Category Items</span>
+              </div>
+              <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">
+                {categories.length}
+              </span>
+            </button>
+
             {/* 2. Order Updated */}
             <button
               onClick={() => setActiveTab('order_updated')}
-              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${
-                activeTab === 'order_updated'
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${activeTab === 'order_updated'
                   ? 'bg-[#FDF2F4] text-[#CE4270]'
                   : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
                 <ShoppingBag size={18} />
@@ -374,14 +520,13 @@ const AdminDashboard = () => {
             {/* 3. Brand Visibility */}
             <button
               onClick={() => setActiveTab('brands')}
-              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${
-                activeTab === 'brands'
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${activeTab === 'brands'
                   ? 'bg-[#FDF2F4] text-[#CE4270]'
                   : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
-                <Eye size={18} />
+                <Award size={18} />
                 <span>Brand Visibility</span>
               </div>
             </button>
@@ -389,14 +534,13 @@ const AdminDashboard = () => {
             {/* 4. Add Brand */}
             <button
               onClick={() => setActiveTab('add_brand')}
-              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${
-                activeTab === 'add_brand'
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${activeTab === 'add_brand'
                   ? 'bg-[#FDF2F4] text-[#CE4270]'
                   : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
-                <PlusCircle size={18} />
+                <BadgePlus size={18} />
                 <span>Add Brand</span>
               </div>
             </button>
@@ -404,11 +548,10 @@ const AdminDashboard = () => {
             {/* 5. Products */}
             <button
               onClick={() => setActiveTab('products')}
-              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${
-                activeTab === 'products'
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${activeTab === 'products'
                   ? 'bg-[#FDF2F4] text-[#CE4270]'
                   : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
                 <Package size={18} />
@@ -419,11 +562,10 @@ const AdminDashboard = () => {
             {/* 6. User */}
             <button
               onClick={() => setActiveTab('user')}
-              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${
-                activeTab === 'user'
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${activeTab === 'user'
                   ? 'bg-[#FDF2F4] text-[#CE4270]'
                   : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
                 <User size={18} />
@@ -437,11 +579,10 @@ const AdminDashboard = () => {
             {/* 7. Cancel Fee */}
             <button
               onClick={() => setActiveTab('cancel_fee')}
-              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${
-                activeTab === 'cancel_fee'
+              className={`w-full px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between transition-all ${activeTab === 'cancel_fee'
                   ? 'bg-[#FDF2F4] text-[#CE4270]'
                   : 'text-gray-500 hover:bg-[#FDF2F4]/50 hover:text-[#CE4270]'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
                 <DollarSign size={18} />
@@ -477,8 +618,11 @@ const AdminDashboard = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-              {activeTab === 'dashboard' && 'Dashboard'}
-              {activeTab === 'order_updated' && 'Order Updated'}
+              {activeTab === 'dashboard' && 'Dashboard Overview'}
+              {activeTab === 'dashboard_visibility' && 'Dashboard Visibility & Section Access'}
+              {activeTab === 'categories' && 'Category Items & Brand Categories'}
+              {activeTab === 'categories_order' && 'Sort Categories'}
+              {activeTab === 'order_updated' && 'Order Management'}
               {activeTab === 'brands' && 'Brand Visibility'}
               {activeTab === 'add_brand' && 'Add Brand'}
               {activeTab === 'products' && 'Products'}
@@ -624,9 +768,8 @@ const AdminDashboard = () => {
                     {filteredOrders.map((order, index) => (
                       <tr
                         key={order.id}
-                        className={`transition-colors ${
-                          index % 2 === 1 ? 'bg-[#FFF2F5]/80 hover:bg-[#FDF2F4]' : 'bg-white hover:bg-[#FFF2F5]/40'
-                        }`}
+                        className={`transition-colors ${index % 2 === 1 ? 'bg-[#FFF2F5]/80 hover:bg-[#FDF2F4]' : 'bg-white hover:bg-[#FFF2F5]/40'
+                          }`}
                       >
                         <td className="py-3.5 px-4 rounded-l-xl">
                           <div className="flex items-center gap-3">
@@ -702,6 +845,594 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* 1b. DASHBOARD VISIBILITY PAGE */}
+        {activeTab === 'dashboard_visibility' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Header / Info Banner */}
+            <div className="bg-gradient-to-r from-pink-50 via-rose-50 to-white p-6 rounded-2xl border border-pink-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Eye className="text-[#CE4270]" size={20} />
+                  <h2 className="text-base font-bold text-gray-900">Mobile Home Page Section Access</h2>
+                </div>
+                <p className="text-xs text-gray-600 max-w-2xl leading-relaxed">
+                  Toggle visibility for individual sections on the Customer Mobile App Home Page in real-time. Turning off a section removes it from the customer view immediately.
+                </p>
+              </div>
+              <button
+                onClick={resetHomeSectionVisibility}
+                className="bg-white hover:bg-rose-50 text-[#CE4270] border border-pink-200 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs transition-colors flex items-center gap-2 cursor-pointer shrink-0"
+              >
+                <Sparkles size={14} />
+                <span>Reset All to Visible</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Toggles List */}
+              <div className="lg:col-span-2 space-y-4">
+                {[
+                  {
+                    key: 'branchBar',
+                    title: 'Store Branch Selector Bar',
+                    desc: 'Top sticky bar displaying store location selector, search button, and cart counter.',
+                    icon: MapPin,
+                    tag: 'Header Sticky Bar'
+                  },
+                  {
+                    key: 'pricingRoleBanner',
+                    title: 'Pricing Role Tier Badge',
+                    desc: 'Sub-header displaying current customer role pricing mode (Salon, Artist, Beautician, Retail).',
+                    icon: Sparkles,
+                    tag: 'Customer Role Banner'
+                  },
+                  {
+                    key: 'heroPromoBanner',
+                    title: 'Hero Promotional Perk Banner',
+                    desc: 'Gradient promotional banner offering up to 35% discount perks for professional profiles.',
+                    icon: Star,
+                    tag: 'Promo Card'
+                  },
+                  {
+                    key: 'shopCategories',
+                    title: 'Shop Categories Section',
+                    desc: 'Horizontal scroll strip showing top product category circles (Hair, Skin, Lips, Eyes, Nails).',
+                    icon: LayoutGrid,
+                    tag: 'Categories Strip'
+                  },
+                  {
+                    key: 'featuredBrands',
+                    title: 'Featured Brands Section',
+                    desc: 'Horizontal strip displaying active partner brand logos and brand details.',
+                    icon: Store,
+                    tag: 'Brands Carousel'
+                  },
+                  {
+                    key: 'bestSellers',
+                    title: 'Best Sellers Product Grid',
+                    desc: '2-column product catalog grid with role-sensitive prices and stock indicators.',
+                    icon: Package,
+                    tag: 'Product Catalog Grid'
+                  }
+                ].map((sec) => {
+                  const isVisible = (homeSectionVisibility && homeSectionVisibility[sec.key] !== false) ?? true;
+                  const IconComp = sec.icon;
+
+                  return (
+                    <div
+                      key={sec.key}
+                      className={`bg-white border rounded-2xl p-5 shadow-2xs transition-all flex items-center justify-between gap-4 ${isVisible ? 'border-pink-200 hover:border-pink-300' : 'border-gray-200 opacity-60 bg-gray-50/50'
+                        }`}
+                    >
+                      <div className="flex items-start gap-3.5">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isVisible ? 'bg-[#FDF2F4] text-[#CE4270]' : 'bg-gray-100 text-gray-400'
+                            }`}
+                        >
+                          <IconComp size={20} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xs font-bold text-gray-900">{sec.title}</h3>
+                            <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                              {sec.tag}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">{sec.desc}</p>
+                        </div>
+                      </div>
+
+                      {/* Toggle Switch */}
+                      <button
+                        onClick={() => toggleHomeSectionVisibility && toggleHomeSectionVisibility(sec.key)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isVisible ? 'bg-[#CE4270]' : 'bg-gray-300'
+                          }`}
+                        role="switch"
+                        aria-checked={isVisible}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isVisible ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                        />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Mobile Live Mockup Preview */}
+              <div className="bg-white border border-pink-200/80 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3 border-b border-pink-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Store size={16} className="text-[#CE4270]" />
+                      <h3 className="text-xs font-bold text-gray-900">Mobile Home Page Layout Preview</h3>
+                    </div>
+                    <span className="text-[10px] font-bold text-[#CE4270] bg-[#FDF2F4] px-2 py-0.5 rounded-full">
+                      Live State
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-gray-500 mb-4 leading-relaxed">
+                    Visual simulation of the Customer App Home Screen reflecting your current visibility settings:
+                  </p>
+
+                  <div className="w-full max-w-[260px] mx-auto border-4 border-gray-800 rounded-[28px] overflow-hidden bg-[#FFF8FA] shadow-md text-[10px]">
+                    {/* Simulated Mobile Header */}
+                    {(!homeSectionVisibility || homeSectionVisibility.branchBar !== false) ? (
+                      <div className="bg-white p-2 border-b border-pink-100 flex items-center justify-between text-[#CE4270] font-semibold">
+                        <span className="flex items-center gap-1"><MapPin size={10} /> MG Road Branch</span>
+                        <div className="flex items-center gap-1.5">
+                          <Search size={10} />
+                          <ShoppingBag size={10} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-100 p-1.5 text-center text-gray-400 italic text-[9px]">Branch Bar Hidden</div>
+                    )}
+
+                    {/* Simulated Role Bar */}
+                    {(!homeSectionVisibility || homeSectionVisibility.pricingRoleBanner !== false) && (
+                      <div className="bg-[#FCE4EC] px-2 py-1 flex items-center justify-between text-[#8C7078] text-[9px]">
+                        <span>Role: Salon Owner</span>
+                        <span className="text-[#CE4270] font-bold">Change</span>
+                      </div>
+                    )}
+
+                    {/* Simulated Hero Promo */}
+                    {(!homeSectionVisibility || homeSectionVisibility.heroPromoBanner !== false) ? (
+                      <div className="m-2 bg-gradient-to-r from-[#CE4270] to-[#E25586] p-2.5 rounded-xl text-white">
+                        <div className="font-bold text-[10px]">Salbeau Tier Savings</div>
+                        <div className="text-[8px] text-white/80">Up to 35% discount</div>
+                      </div>
+                    ) : (
+                      <div className="m-2 p-1.5 bg-gray-100 text-center text-gray-400 italic rounded-lg text-[9px]">Promo Banner Hidden</div>
+                    )}
+
+                    {/* Simulated Categories */}
+                    {(!homeSectionVisibility || homeSectionVisibility.shopCategories !== false) ? (
+                      <div className="px-2 py-1">
+                        <div className="font-bold text-[#3A2430] text-[9px] mb-1">Categories</div>
+                        <div className="flex gap-1.5 overflow-hidden">
+                          {['Hair', 'Skin', 'Lips', 'Eyes'].map((c, idx) => (
+                            <div key={idx} className="w-9 h-9 rounded-lg bg-[#FCE4EC] flex flex-col items-center justify-center text-[8px] font-semibold text-[#3A2430]">
+                              {c}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-2 py-1 text-center text-gray-400 italic text-[9px]">Categories Hidden</div>
+                    )}
+
+                    {/* Simulated Brands */}
+                    {(!homeSectionVisibility || homeSectionVisibility.featuredBrands !== false) ? (
+                      <div className="px-2 py-1 border-t border-pink-100/60 mt-1">
+                        <div className="font-bold text-[#3A2430] text-[9px] mb-1">Featured Brands</div>
+                        <div className="flex gap-1 overflow-hidden">
+                          {['Lakmé', 'Maybelline', 'L\'Oréal'].map((b, idx) => (
+                            <div key={idx} className="bg-white border border-pink-100 rounded px-1.5 py-0.5 text-[8px] font-bold text-[#3A2430]">
+                              {b}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-2 py-1 text-center text-gray-400 italic text-[9px]">Brands Hidden</div>
+                    )}
+
+                    {/* Simulated Best Sellers */}
+                    {(!homeSectionVisibility || homeSectionVisibility.bestSellers !== false) ? (
+                      <div className="p-2 border-t border-pink-100/60 mt-1">
+                        <div className="font-bold text-[#3A2430] text-[9px] mb-1">Best Sellers</div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {[1, 2].map((i) => (
+                            <div key={i} className="bg-white p-1 rounded-lg border border-pink-100">
+                              <div className="w-full h-8 bg-pink-50 rounded mb-1"></div>
+                              <div className="font-bold text-[8px] text-[#CE4270]">₹450</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-2 border-t border-pink-100/60 mt-1 text-center text-gray-400 italic text-[9px]">Best Sellers Hidden</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-pink-100 text-[11px] text-gray-500 font-medium text-center">
+                  Changes take effect immediately on Customer App
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CATEGORY ITEMS & BRAND CATEGORIES PAGE */}
+        {activeTab === 'categories' && (
+          <div className="space-y-6 animate-fade-in">
+            {showCategorySuccess && (
+              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl text-xs font-bold flex items-center justify-between border border-emerald-100 shadow-2xs animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={16} />
+                  <span>New Category Item created successfully!</span>
+                </div>
+                <button onClick={() => setShowCategorySuccess(false)} className="text-emerald-500 hover:text-emerald-700">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            {/* Header Banner */}
+            <div className="bg-white p-6 rounded-2xl border border-pink-100/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-2xl bg-[#FDF2F4] border border-pink-100 text-[#CE4270] flex items-center justify-center font-bold shadow-2xs shrink-0">
+                  <FolderPlus size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase">
+                    Category Items & Brand Categories
+                  </h3>
+                  <span className="text-xs text-gray-400 font-medium mt-0.5 block">
+                    Manage store category items, visual themes, and brand-product associations
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsAddCategoryModalOpen(true)}
+                className="bg-[#CE4270] hover:bg-[#b83760] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              >
+                <PlusCircle size={16} />
+                <span>Add Category Item</span>
+              </button>
+            </div>
+
+            {/* Category Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categories.map((cat, idx) => {
+                const categoryProductsCount = products.filter(p => p.category && p.category.toLowerCase() === cat.name.toLowerCase()).length;
+                const associatedBrandNames = Array.from(new Set([
+                  ...products
+                    .filter(p => p.category && p.category.toLowerCase() === cat.name.toLowerCase() && p.brandName)
+                    .map(p => p.brandName),
+                  ...brands
+                    .filter(b => b.category && b.category.toLowerCase() === cat.name.toLowerCase() && b.name)
+                    .map(b => b.name)
+                ]));
+
+                const isEnabled = cat.enabled !== false;
+
+                return (
+                  <div
+                    key={cat.id || idx}
+                    className={`bg-white rounded-2xl border p-5 shadow-2xs transition-all duration-200 hover:shadow-md flex flex-col justify-between ${
+                      isEnabled ? 'border-pink-100/90' : 'border-gray-200 opacity-70 bg-gray-50/50'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Bar: Icon + Position + Status */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl overflow-hidden bg-pink-50 border border-pink-100 flex items-center justify-center shrink-0 shadow-2xs">
+                            {cat.image ? (
+                              <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-2xl">{cat.icon || '🛍️'}</span>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-sm text-gray-900 flex items-center gap-2">
+                              <span>{cat.name}</span>
+                              <span className="text-base">{cat.icon}</span>
+                            </h4>
+                            <span className="text-[10px] font-bold text-gray-400 block mt-0.5">
+                              Position #{idx + 1}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => toggleCategoryStatus(cat.id)}
+                          className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
+                            isEnabled
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+                          }`}
+                        >
+                          {isEnabled ? '✓ Active' : 'Disabled'}
+                        </button>
+                      </div>
+
+                      {/* Stats & Brand List */}
+                      <div className="space-y-2.5 py-3 border-y border-pink-100/60">
+                        <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
+                          <span className="flex items-center gap-1.5 text-gray-500">
+                            <Package size={14} className="text-[#CE4270]" /> Linked Products:
+                          </span>
+                          <span className="font-bold text-gray-900 bg-[#FDF2F4] px-2.5 py-0.5 rounded-lg border border-pink-100">
+                            {categoryProductsCount} Items
+                          </span>
+                        </div>
+
+                        <div className="text-xs">
+                          <span className="flex items-center gap-1.5 text-gray-500 font-semibold mb-1">
+                            <Store size={14} className="text-[#CE4270]" /> Associated Brands:
+                          </span>
+                          {associatedBrandNames.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {associatedBrandNames.slice(0, 4).map((bName, bIdx) => (
+                                <span key={bIdx} className="text-[10px] font-bold bg-[#FDF2F4] text-[#CE4270] px-2 py-0.5 rounded-md border border-pink-100">
+                                  {bName}
+                                </span>
+                              ))}
+                              {associatedBrandNames.length > 4 && (
+                                <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-md">
+                                  +{associatedBrandNames.length - 4} more
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-gray-400 italic">All Brands / General Catalog</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="pt-4 flex items-center justify-between gap-2 mt-2">
+                      <button
+                        onClick={() => {
+                          setActiveTab('categories_order');
+                        }}
+                        className="text-[11px] font-bold text-[#CE4270] hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <ListOrdered size={14} /> Reorder Sequence
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete category "${cat.name}"?`)) {
+                            deleteCategory(cat.id);
+                          }
+                        }}
+                        className="text-gray-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Delete Category"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 1c. MANAGE CATEGORY ORDER PAGE */}
+        {activeTab === 'categories_order' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Success Toast */}
+            {showCategoryOrderSuccess && (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-3.5 rounded-2xl flex items-center justify-between shadow-xs animate-slide-down">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="text-emerald-600" size={20} />
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-900">Sort Order Updated Successfully!</h4>
+                    <p className="text-[11px] text-emerald-700">The mobile app Home Page will now display Shop Categories in this new order automatically.</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowCategoryOrderSuccess(false)} className="text-emerald-500 hover:text-emerald-700 p-1 cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
+            {/* Header / Info Banner */}
+            <div className="bg-gradient-to-r from-pink-50 via-rose-50 to-white p-6 rounded-2xl border border-pink-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <ListOrdered className="text-[#CE4270]" size={20} />
+                  <h2 className="text-base font-bold text-gray-900">Manage Category Order / Sort Categories</h2>
+                </div>
+                <p className="text-xs text-gray-600 max-w-2xl leading-relaxed">
+                  Drag and drop categories or use the position controls to arrange category sequence on the mobile app Home Page. Products belonging to each category will remain unchanged.
+                </p>
+              </div>
+              <button
+                onClick={handleSaveCategoryOrder}
+                className="bg-[#CE4270] hover:bg-[#b83760] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-95"
+              >
+                <Save size={16} />
+                <span>Save New Order</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Category Reordering List (Left 2 cols) */}
+              <div className="lg:col-span-2 space-y-3">
+                <div className="bg-white rounded-2xl border border-pink-100 shadow-2xs p-4 mb-2 flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-gray-800 uppercase tracking-wider">Active Shop Categories ({categoryOrderList.length})</span>
+                  <span className="text-[11px] text-gray-400 font-medium">Drag ☰ or use ▲ ▼ arrows</span>
+                </div>
+
+                {categoryOrderList.map((cat, index) => {
+                  const isEnabled = cat.enabled !== false;
+                  const isDragging = draggedIndex === index;
+
+                  return (
+                    <div
+                      key={cat.id || index}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDrop={handleDragEnd}
+                      onDragEnd={handleDragEnd}
+                      className={`bg-white border rounded-2xl p-4 shadow-2xs transition-all flex items-center justify-between gap-4 ${
+                        isDragging ? 'border-[#CE4270] ring-2 ring-pink-300 shadow-md opacity-80 scale-[1.01]' : 'border-gray-200 hover:border-pink-300'
+                      } ${!isEnabled ? 'opacity-60 bg-gray-50/50' : ''}`}
+                    >
+                      <div className="flex items-center gap-3.5">
+                        {/* Drag Handle */}
+                        <div className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-[#CE4270] transition-colors">
+                          <GripVertical size={20} />
+                        </div>
+
+                        {/* Position Badge */}
+                        <div className="w-8 h-8 rounded-xl bg-[#FDF2F4] border border-pink-100 text-[#CE4270] font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                          {index + 1}
+                        </div>
+
+                        {/* Category Thumbnail / Icon */}
+                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-pink-50 border border-pink-100 flex items-center justify-center shrink-0 relative">
+                          {cat.image ? (
+                            <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xl">{cat.icon || '🛍️'}</span>
+                          )}
+                          {cat.icon && cat.image && (
+                            <span className="absolute bottom-0.5 right-0.5 text-xs bg-white/80 rounded-full px-1">{cat.icon}</span>
+                          )}
+                        </div>
+
+                        {/* Name & Details */}
+                        <div>
+                          <h3 className="text-xs font-bold text-gray-900 flex items-center gap-2">
+                            <span>{cat.name}</span>
+                            {!isEnabled && (
+                              <span className="text-[10px] font-semibold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-md">Disabled</span>
+                            )}
+                          </h3>
+                          <p className="text-[11px] text-gray-400 mt-0.5 font-medium">Position {index + 1} on Home Page</p>
+                        </div>
+                      </div>
+
+                      {/* Action Controls: Move Up/Down + Toggle */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => moveCategoryUp(index)}
+                          disabled={index === 0}
+                          title="Move Up"
+                          className={`p-2 rounded-xl border transition-all ${
+                            index === 0
+                              ? 'border-gray-100 text-gray-300 cursor-not-allowed'
+                              : 'border-pink-100 text-[#CE4270] hover:bg-pink-50 cursor-pointer active:scale-90'
+                          }`}
+                        >
+                          <ArrowUp size={16} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => moveCategoryDown(index)}
+                          disabled={index === categoryOrderList.length - 1}
+                          title="Move Down"
+                          className={`p-2 rounded-xl border transition-all ${
+                            index === categoryOrderList.length - 1
+                              ? 'border-gray-100 text-gray-300 cursor-not-allowed'
+                              : 'border-pink-100 text-[#CE4270] hover:bg-pink-50 cursor-pointer active:scale-90'
+                          }`}
+                        >
+                          <ArrowDown size={16} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleCategoryStatus(cat.id)}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                            isEnabled
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+                          }`}
+                        >
+                          {isEnabled ? 'Active' : 'Disabled'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={handleSaveCategoryOrder}
+                    className="bg-[#CE4270] hover:bg-[#b83760] text-white px-6 py-3 rounded-xl text-xs font-extrabold shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                  >
+                    <Save size={16} />
+                    <span>Save Category Order</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: Live Mobile App Home Page Preview */}
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-pink-200/80 p-5 shadow-xs">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="text-[#CE4270]" size={18} />
+                    <h3 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider">Mobile App Live Preview</h3>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mb-4 leading-relaxed">
+                    Here is how your <strong>Shop Categories</strong> strip will automatically appear to customers on the mobile app home screen:
+                  </p>
+
+                  {/* Mini Mobile Phone Frame */}
+                  <div className="border-4 border-gray-800 rounded-3xl p-3 bg-rose-50/40 shadow-inner">
+                    <div className="w-16 h-1 bg-gray-700 rounded-full mx-auto mb-3" />
+                    
+                    <div className="bg-white rounded-2xl p-3 shadow-xs">
+                      <span className="text-[11px] font-extrabold text-[#3A2430] block mb-2">Shop by Category</span>
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {categoryOrderList.filter(c => c.enabled !== false).map((cat, idx) => (
+                          <div key={cat.id || idx} className="bg-white rounded-xl border border-pink-100 p-2 items-center text-center shrink-0 w-16 shadow-2xs">
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-pink-50 mx-auto mb-1 border border-pink-100">
+                              {cat.image ? (
+                                <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-base flex items-center justify-center h-full">{cat.icon}</span>
+                              )}
+                            </div>
+                            <span className="text-[9px] font-bold text-gray-800 block truncate">{cat.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/70 p-4 rounded-2xl">
+                  <h4 className="text-xs font-bold text-amber-900 mb-1 flex items-center gap-1.5">
+                    <ShieldAlert size={16} className="text-amber-600" />
+                    Important Note
+                  </h4>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Changing category positions only updates the display sequence on the Home Page and Categories screen. Products assigned to categories remain untouched.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 2. ORDER UPDATED PAGE */}
         {activeTab === 'order_updated' && (
           <div className="space-y-6 animate-fade-in">
@@ -745,9 +1476,8 @@ const AdminDashboard = () => {
                   {filteredOrders.map((o, index) => (
                     <tr
                       key={o.id}
-                      className={`transition-colors ${
-                        index % 2 === 1 ? 'bg-[#FFF2F5]/80 hover:bg-[#FDF2F4]' : 'bg-white hover:bg-[#FFF2F5]/40'
-                      }`}
+                      className={`transition-colors ${index % 2 === 1 ? 'bg-[#FFF2F5]/80 hover:bg-[#FDF2F4]' : 'bg-white hover:bg-[#FFF2F5]/40'
+                        }`}
                     >
                       <td className="p-4 font-extrabold text-[#CE4270] text-xs">{o.id}</td>
                       <td className="p-4">
@@ -842,43 +1572,63 @@ const AdminDashboard = () => {
         {activeTab === 'brands' && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-white p-5 rounded-2xl border border-pink-100/70 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="font-bold text-sm text-gray-900">Brand Visibility Directory</h3>
-                <p className="text-xs text-gray-400 font-medium mt-0.5">Toggle brand status to show/hide products across customer apps instantly.</p>
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-2xl bg-[#FDF2F4] border border-pink-100 text-[#CE4270] flex items-center justify-center font-bold shadow-2xs shrink-0">
+                  <Award size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                    <span>Brand Visibility Directory</span>
+                  </h3>
+                  <p className="text-xs text-gray-400 font-medium mt-0.5">Toggle brand status to show/hide products across customer apps instantly.</p>
+                </div>
               </div>
-              <span className="text-xs font-bold text-[#CE4270] bg-[#FDF2F4] px-3.5 py-1.5 rounded-xl border border-pink-100">
-                {brands.filter(b => b.enabled).length} / {brands.length} Active Brands
-              </span>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-2 bg-[#FDF2F4] px-3.5 py-2 rounded-xl border border-pink-100 w-full sm:w-60 focus-within:ring-2 focus-within:ring-[#CE4270]/20 transition-all">
+                  <Search size={14} className="text-[#CE4270]" />
+                  <input
+                    type="text"
+                    placeholder="Search brand visibility..."
+                    value={brandSearch}
+                    onChange={(e) => setBrandSearch(e.target.value)}
+                    className="bg-transparent text-xs outline-none text-gray-900 w-full font-medium placeholder:text-gray-400"
+                  />
+                </div>
+                <span className="text-xs font-bold text-[#CE4270] bg-[#FDF2F4] px-3.5 py-2 rounded-xl border border-pink-100 shrink-0 whitespace-nowrap">
+                  {brands.filter(b => b.enabled).length} / {brands.length} Active
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {brands.map((brand) => (
+              {filteredBrands.map((brand) => (
                 <div
                   key={brand.id}
-                  className={`p-5 bg-white rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-between group ${
-                    brand.enabled ? 'border-pink-100/80' : 'border-gray-200 opacity-60'
-                  }`}
+                  className={`p-5 bg-white rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-between group ${brand.enabled ? 'border-pink-100/80' : 'border-gray-200 opacity-60'
+                    }`}
                 >
                   <div className="flex items-center gap-3.5">
                     <div className="w-12 h-12 rounded-2xl overflow-hidden border border-pink-100 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform flex-shrink-0 bg-gray-50">
                       <img src={brand.logo} alt={brand.name} className="w-full h-full object-cover" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs text-gray-900 group-hover:text-[#CE4270] transition-colors">{brand.name}</h4>
-                      <span className="text-[10px] font-semibold text-[#8C7078] bg-[#FDF2F4] px-2 py-0.5 rounded-md mt-1 inline-block border border-pink-100/50">{brand.category}</span>
+                      <h4 className="font-bold text-xs text-gray-900 group-hover:text-[#CE4270] transition-colors flex items-center gap-1.5">
+                        <Tag size={12} className="text-[#CE4270]" />
+                        <span>{brand.name}</span>
+                      </h4>
+                      <span className="text-[10px] font-semibold text-[#8C7078] bg-[#FDF2F4] px-2 py-0.5 rounded-md mt-1 inline-block border border-pink-100/50">{brand.category || 'Beauty'}</span>
                     </div>
                   </div>
 
                   <button
                     onClick={() => toggleBrandStatus(brand.id)}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      brand.enabled ? 'bg-[#CE4270]' : 'bg-gray-300'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${brand.enabled ? 'bg-[#CE4270]' : 'bg-gray-300'
+                      }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
-                        brand.enabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${brand.enabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                     />
                   </button>
                 </div>
@@ -905,13 +1655,18 @@ const AdminDashboard = () => {
             {/* Partner Brand Directory Table Container */}
             <div className="bg-white p-6 rounded-2xl border border-pink-100/80 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-pink-100/60">
-                <div>
-                  <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase flex items-center gap-2">
-                    <Store size={20} className="text-[#CE4270]" /> Partner Brand Directory
-                  </h3>
-                  <span className="text-xs text-gray-400 font-medium mt-0.5 block">
-                    {filteredBrands.length} partner brands active in store catalog
-                  </span>
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-2xl bg-[#FDF2F4] border border-pink-100 text-[#CE4270] flex items-center justify-center font-bold shadow-2xs shrink-0">
+                    <Store size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase flex items-center gap-2">
+                      <span>Partner Brand Directory</span>
+                    </h3>
+                    <span className="text-xs text-gray-400 font-medium mt-0.5 block">
+                      {filteredBrands.length} partner brands active in store catalog
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -930,7 +1685,7 @@ const AdminDashboard = () => {
                     onClick={() => setIsAddBrandModalOpen(true)}
                     className="bg-[#CE4270] hover:bg-[#b83760] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
                   >
-                    <PlusCircle size={16} />
+                    <BadgePlus size={16} />
                     <span>Add New Brand</span>
                   </button>
                 </div>
@@ -941,11 +1696,36 @@ const AdminDashboard = () => {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-[#FFF2F5] text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100/80">
-                      <th className="py-4 px-4 text-left">BRAND & LOGO</th>
-                      <th className="py-4 px-4 text-left">CATEGORY</th>
-                      <th className="py-4 px-4 text-left">PRODUCTS CATALOG</th>
-                      <th className="py-4 px-4 text-center">STATUS</th>
-                      <th className="py-4 px-4 text-right">ACTION</th>
+                      <th className="py-4 px-4 text-left">
+                        <div className="flex items-center gap-1.5">
+                          <Tag size={13} className="text-[#CE4270]" />
+                          <span>BRAND & LOGO</span>
+                        </div>
+                      </th>
+                      <th className="py-4 px-4 text-left">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles size={13} className="text-[#CE4270]" />
+                          <span>CATEGORY</span>
+                        </div>
+                      </th>
+                      <th className="py-4 px-4 text-left">
+                        <div className="flex items-center gap-1.5">
+                          <Package size={13} className="text-[#CE4270]" />
+                          <span>PRODUCTS CATALOG</span>
+                        </div>
+                      </th>
+                      <th className="py-4 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Eye size={13} className="text-[#CE4270]" />
+                          <span>STATUS</span>
+                        </div>
+                      </th>
+                      <th className="py-4 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Edit size={13} className="text-[#CE4270]" />
+                          <span>ACTION</span>
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100/70">
@@ -954,9 +1734,8 @@ const AdminDashboard = () => {
                       return (
                         <tr
                           key={brand.id}
-                          className={`transition-colors ${
-                            index % 2 === 1 ? 'bg-[#FFF2F5]/60 hover:bg-[#FDF2F4]' : 'bg-white hover:bg-[#FFF2F5]/30'
-                          }`}
+                          className={`transition-colors ${index % 2 === 1 ? 'bg-[#FFF2F5]/60 hover:bg-[#FDF2F4]' : 'bg-white hover:bg-[#FFF2F5]/30'
+                            }`}
                         >
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-3">
@@ -982,11 +1761,10 @@ const AdminDashboard = () => {
                           </td>
                           <td className="py-3.5 px-4 text-center whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold ${
-                                brand.enabled
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold ${brand.enabled
                                   ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                   : 'bg-gray-100 text-gray-400 border border-gray-200'
-                              }`}
+                                }`}
                             >
                               {brand.enabled ? '✓ Enabled' : 'Disabled'}
                             </span>
@@ -994,11 +1772,10 @@ const AdminDashboard = () => {
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
                             <button
                               onClick={() => toggleBrandStatus(brand.id)}
-                              className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer shadow-2xs ${
-                                brand.enabled
+                              className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer shadow-2xs ${brand.enabled
                                   ? 'bg-[#FDF2F4] hover:bg-[#FCE4EC] text-[#CE4270] border-pink-200'
                                   : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200'
-                              }`}
+                                }`}
                             >
                               {brand.enabled ? 'Disable' : 'Enable'}
                             </button>
@@ -1069,9 +1846,8 @@ const AdminDashboard = () => {
                       return (
                         <tr
                           key={p.id}
-                          className={`transition-colors ${
-                            index % 2 === 1 ? 'bg-[#FFF2F5]/60 hover:bg-[#FDF2F4]' : 'bg-white hover:bg-[#FFF2F5]/30'
-                          }`}
+                          className={`transition-colors ${index % 2 === 1 ? 'bg-[#FFF2F5]/60 hover:bg-[#FDF2F4]' : 'bg-white hover:bg-[#FFF2F5]/30'
+                            }`}
                         >
                           <td className="py-3.5 px-4">
                             <div>
@@ -1241,11 +2017,10 @@ const AdminDashboard = () => {
                           ) : (
                             <button
                               onClick={() => toggleUserVerification(u.id)}
-                              className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold border transition-colors flex items-center gap-1.5 cursor-pointer ${
-                                u.verificationStatus === 'verified'
+                              className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold border transition-colors flex items-center gap-1.5 cursor-pointer ${u.verificationStatus === 'verified'
                                   ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                   : 'bg-amber-50 text-amber-700 border-amber-200'
-                              }`}
+                                }`}
                             >
                               <UserCheck size={14} />
                               {u.verificationStatus === 'verified' ? 'Verified Partner' : 'Pending Verification'}
@@ -1360,11 +2135,10 @@ const AdminDashboard = () => {
                         <td className="p-3.5">
                           <button
                             onClick={() => toggleFeeWaived(item.id)}
-                            className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold border transition-colors cursor-pointer ${
-                              item.feeWaived
+                            className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold border transition-colors cursor-pointer ${item.feeWaived
                                 ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                 : 'bg-[#FDF2F4] text-[#CE4270] border-pink-200 hover:bg-[#FDF2F4]'
-                            }`}
+                              }`}
                           >
                             {item.feeWaived ? '✓ Fee Waived' : 'Waive Fee'}
                           </button>
@@ -1386,7 +2160,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between pb-4 mb-5 border-b border-pink-100/70">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-[#FDF2F4] text-[#CE4270] flex items-center justify-center font-bold shadow-2xs">
-                    <PlusCircle size={20} />
+                    <BadgePlus size={20} />
                   </div>
                   <div>
                     <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase">
@@ -1410,6 +2184,7 @@ const AdminDashboard = () => {
               <form onSubmit={handleAddBrandSubmit} className="space-y-4 text-xs">
                 <div>
                   <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
+                    <Tag size={14} className="text-[#CE4270]" />
                     <span>Brand Name</span>
                     <span className="text-[#CE4270]">*</span>
                   </label>
@@ -1426,6 +2201,7 @@ const AdminDashboard = () => {
                 <div>
                   <label className="block text-gray-800 font-bold mb-1.5 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
+                      <ImageIcon size={14} className="text-[#CE4270]" />
                       <span>Brand Logo Image</span>
                       <span className="text-[#CE4270]">*</span>
                     </span>
@@ -1476,9 +2252,8 @@ const AdminDashboard = () => {
                         key={idx}
                         type="button"
                         onClick={() => setNewBrand({ ...newBrand, logo: imgUrl })}
-                        className={`w-7 h-7 rounded-lg overflow-hidden border flex-shrink-0 transition-all ${
-                          newBrand.logo === imgUrl ? 'ring-2 ring-[#CE4270] border-transparent scale-105' : 'border-gray-200 opacity-70 hover:opacity-100'
-                        }`}
+                        className={`w-7 h-7 rounded-lg overflow-hidden border flex-shrink-0 transition-all ${newBrand.logo === imgUrl ? 'ring-2 ring-[#CE4270] border-transparent scale-105' : 'border-gray-200 opacity-70 hover:opacity-100'
+                          }`}
                       >
                         <img src={imgUrl} alt={`Preset ${idx}`} className="w-full h-full object-cover" />
                       </button>
@@ -1487,7 +2262,10 @@ const AdminDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="block text-gray-800 font-bold mb-1.5">Category</label>
+                  <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-[#CE4270]" />
+                    <span>Category</span>
+                  </label>
                   <select
                     value={newBrand.category}
                     onChange={(e) => setNewBrand({ ...newBrand, category: e.target.value })}
@@ -1510,8 +2288,9 @@ const AdminDashboard = () => {
                     onChange={(e) => setNewBrand({ ...newBrand, enabled: e.target.checked })}
                     className="w-4 h-4 text-[#CE4270] accent-[#CE4270] rounded-md cursor-pointer"
                   />
-                  <label htmlFor="enabledCheckBrandModal" className="text-gray-800 font-semibold text-xs cursor-pointer select-none">
-                    Enable Visibility Immediately in App
+                  <label htmlFor="enabledCheckBrandModal" className="text-gray-800 font-semibold text-xs cursor-pointer select-none flex items-center gap-1.5">
+                    <Eye size={14} className="text-[#CE4270]" />
+                    <span>Enable Visibility Immediately in App</span>
                   </label>
                 </div>
 
@@ -1527,7 +2306,117 @@ const AdminDashboard = () => {
                     type="submit"
                     className="w-2/3 bg-gradient-to-r from-[#CE4270] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
                   >
-                    <PlusCircle size={16} /> Save Brand
+                    <BadgePlus size={16} /> Save Brand
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Add Category Popup Modal */}
+        {isAddCategoryModalOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-md p-6 relative overflow-hidden animate-fade-in">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-pink-100/70">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#FDF2F4] text-[#CE4270] flex items-center justify-center font-bold shadow-2xs">
+                    <FolderPlus size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase">
+                      Add New Category Item
+                    </h3>
+                    <span className="text-[11px] text-gray-400 font-medium block">
+                      Create category item for store catalog & app navigation
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddCategoryModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#CE4270] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Modal Form */}
+              <form onSubmit={handleAddCategorySubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
+                    <Tag size={14} className="text-[#CE4270]" />
+                    <span>Category Name</span>
+                    <span className="text-[#CE4270]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Body Care & Lotion"
+                    value={newCategory.name}
+                    onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                    className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#CE4270] focus:ring-2 focus:ring-[#CE4270]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all placeholder:text-gray-400 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-[#CE4270]" />
+                    <span>Category Emoji / Icon</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 🧴 or ✨ or 💄"
+                    value={newCategory.icon}
+                    onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
+                    className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#CE4270] focus:ring-2 focus:ring-[#CE4270]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-800 font-bold mb-1.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ImageIcon size={14} className="text-[#CE4270]" />
+                      <span>Category Image URL</span>
+                    </span>
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/..."
+                    value={newCategory.image}
+                    onChange={(e) => setNewCategory({ ...newCategory, image: e.target.value })}
+                    className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#CE4270] focus:ring-2 focus:ring-[#CE4270]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all text-xs"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-2 p-3 rounded-xl bg-[#FDF2F4]/50 border border-pink-100/60">
+                  <input
+                    type="checkbox"
+                    id="enabledCheckCatModal"
+                    checked={newCategory.enabled}
+                    onChange={(e) => setNewCategory({ ...newCategory, enabled: e.target.checked })}
+                    className="w-4 h-4 text-[#CE4270] accent-[#CE4270] rounded-md cursor-pointer"
+                  />
+                  <label htmlFor="enabledCheckCatModal" className="text-gray-800 font-semibold text-xs cursor-pointer select-none flex items-center gap-1.5">
+                    <Eye size={14} className="text-[#CE4270]" />
+                    <span>Enable Immediately in Customer Mobile App</span>
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddCategoryModalOpen(false)}
+                    className="w-1/3 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-2/3 bg-gradient-to-r from-[#CE4270] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
+                  >
+                    <FolderPlus size={16} /> Save Category Item
                   </button>
                 </div>
               </form>

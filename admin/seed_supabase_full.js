@@ -230,6 +230,14 @@ const orders = [
   }
 ];
 
+const categories = [
+  { id: 'cat1', name: 'Hair Care', icon: '💇‍♀️', image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=300', color: '#FCE4EC', sort_order: 1, enabled: true },
+  { id: 'cat2', name: 'Skin Care', icon: '✨', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300', color: '#F8E8EE', sort_order: 2, enabled: true },
+  { id: 'cat3', name: 'Lipstick & Gloss', icon: '💄', image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300', color: '#FDEAF1', sort_order: 3, enabled: true },
+  { id: 'cat4', name: 'Eye Makeup', icon: '👁️', image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300', color: '#FFF0F5', sort_order: 4, enabled: true },
+  { id: 'cat5', name: 'Nail Polish', icon: '💅', image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300', color: '#FCE4EC', sort_order: 5, enabled: true },
+];
+
 async function seedData() {
   console.log('Seeding Supabase tables with initial data...');
 
@@ -249,8 +257,13 @@ async function seedData() {
   if (oErr) console.warn('Orders seed error:', oErr.message);
   else console.log('Seeded orders successfully!');
 
+  const { error: cErr } = await supabase.from('categories').upsert(categories);
+  if (cErr) console.warn('Categories seed error:', cErr.message);
+  else console.log('Seeded categories successfully!');
+
   console.log('Supabase seeding attempt complete.');
   process.exit(0);
 }
 
 seedData();
+
