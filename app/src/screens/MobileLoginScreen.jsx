@@ -3,8 +3,11 @@ import { useApp } from '../context/AppContext.jsx';
 import { ArrowLeft } from 'lucide-react';
 
 export const MobileLoginScreen = () => {
-  const { userRole, userProfile, setUserProfile, setCurrentScreen } = useApp();
-  const [mobileNumber, setMobileNumber] = useState('98765 43210');
+  const { userRole, userProfile, setUserProfile, setCurrentScreen, prefetchUserProfile } = useApp();
+  const [mobileNumber, setMobileNumber] = useState('');
+
+  const cleanDigits = mobileNumber.replace(/\D/g, '');
+  const isValid = cleanDigits.length === 10;
 
   const getRoleTitle = () => {
     switch (userRole) {
@@ -16,11 +19,25 @@ export const MobileLoginScreen = () => {
     }
   };
 
+  const handleInputChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 10);
+    if (raw.length > 5) {
+      setMobileNumber(`${raw.slice(0, 5)} ${raw.slice(5)}`);
+    } else {
+      setMobileNumber(raw);
+    }
+  };
+
   const handleSendOtp = () => {
-    setUserProfile({
-      ...userProfile,
-      phone: `+91 ${mobileNumber}`,
-    });
+    if (!isValid) return;
+    const fullPhone = `+91 ${cleanDigits.slice(0, 5)} ${cleanDigits.slice(5)}`;
+    setUserProfile(prev => ({
+      ...prev,
+      phone: fullPhone,
+    }));
+    if (prefetchUserProfile) {
+      prefetchUserProfile(fullPhone);
+    }
     setCurrentScreen('otp');
   };
 
@@ -46,11 +63,11 @@ export const MobileLoginScreen = () => {
           Enter your mobile number
         </h2>
         <p className="text-xs font-medium text-[#8C7078] mb-8 leading-relaxed">
-          We'll send you a verification code.
+          We'll send you a 4-digit verification code.
         </p>
 
         {/* Mobile Input Field Box */}
-        <div className="border border-[#FCE4EC] bg-white rounded-full py-3.5 px-5 flex items-center shadow-sm mb-6">
+        <div className={`border rounded-full py-3.5 px-5 flex items-center shadow-sm mb-6 transition-all ${isValid ? 'border-[#C2477A]' : 'border-[#FCE4EC]'}`}>
           {/* Indian Flag Badge Visual */}
           <div className="w-6 h-4 bg-[#FF9933] rounded-xs mr-2 overflow-hidden flex flex-col justify-between border border-[#E8DDD7]">
             <div className="h-1.5 bg-[#FF9933]"></div>
@@ -67,21 +84,27 @@ export const MobileLoginScreen = () => {
 
           <span className="text-sm text-[#8C7078] mr-3">|</span>
 
-          {/* Default Mobile Input */}
+          {/* Clean Mobile Input */}
           <input
             type="tel"
             value={mobileNumber}
-            onChange={(e) => setMobileNumber(e.target.value)}
-            maxLength={13}
+            onChange={handleInputChange}
+            maxLength={11}
             className="flex-1 text-sm font-bold text-[#3A2430] bg-transparent outline-none"
-            placeholder="98765 43210"
+            placeholder="Enter 10-digit number"
+            autoFocus
           />
         </div>
 
         {/* Send OTP Primary Action Button */}
         <button
           onClick={handleSendOtp}
-          className="w-full bg-[#C2477A] text-white py-4 rounded-full font-black text-base tracking-wide shadow-lg hover:bg-[#a83765] active:scale-[0.99] transition-all mb-4"
+          disabled={!isValid}
+          className={`w-full py-4 rounded-full font-black text-base tracking-wide transition-all mb-4 ${
+            isValid
+              ? 'bg-[#C2477A] text-white shadow-lg hover:bg-[#a83765] active:scale-[0.99] cursor-pointer'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
         >
           Send OTP
         </button>

@@ -1,222 +1,318 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Dimensions,
+  SafeAreaView
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
+import {
+  MAIN_CATEGORIES,
+  findCategoryConfig,
+  filterProductsByHierarchy
+} from '../../config/categoriesHierarchy';
+import { getSafeImageUri, getSafeImageSource, DEFAULT_CATEGORY_FALLBACKS } from '../../utils/imageUtils';
+import { CategoryDetailView } from './CategoryDetailView';
+import { SubcategoryView } from './SubcategoryView';
+import { ProductListingView } from './ProductListingView';
 
 export const CategoryScreen = () => {
   const {
-    categories,
+    categories: dbCategories,
+    subcategories: liveSubcategories,
+    leafCategories: liveLeafCategories,
     selectedCategory,
     setSelectedCategory,
     activeProducts,
-    userRole,
-    getRolePrice,
-    setSelectedProduct,
-    setCurrentScreen,
-    addToCart,
-    updateCartQuantity,
-    removeFromCart,
-    cart
+    setCurrentScreen
   } = useApp();
 
-  const [activeCat, setActiveCat] = useState(
-    selectedCategory || (categories && categories.length > 0 ? categories[0] : null)
-  );
+  const [windowDimensions, setWindowDimensions] = useState(Dimensions.get('window'));
 
   useEffect(() => {
-    if (selectedCategory) {
-      setActiveCat(selectedCategory);
-    } else if (categories && categories.length > 0 && !activeCat) {
-      setActiveCat(categories[0]);
-    }
-  }, [selectedCategory, categories]);
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setWindowDimensions(window);
+    });
+    return () => subscription?.remove?.();
+  }, []);
 
+  const screenWidth = windowDimensions.width;
+  const isTablet = screenWidth >= 600;
+  const numColumns = isTablet ? 3 : 2;
+  const cardGap = 12;
+  const horizontalPadding = 16;
+  const cardWidth = (screenWidth - (horizontalPadding * 2) - (cardGap * (numColumns - 1))) / numColumns;
+
+  // ── NAVIGATION LEVELS ───────────────────────────────────────────
+  // level: 1 = Main Categories Grid ("Shop by Category")
+  // level: 2 = Category Detail (Top Banner + Subcategories visual list)
+  // level: 3 = Subcategory Screen (Subcategory Banner + Leaf Categories)
+  // level: 4 = Product Listing Screen (2-column products grid with search & filters)
+  const [navLevel, setNavLevel] = useState(1);
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeSubcategory, setActiveSubcategory] = useState(null);
+  const [activeLeafCategory, setActiveLeafCategory] = useState(null);
+  const [openedFromHome, setOpenedFromHome] = useState(false);
+
+  // Synchronize when coming with selectedCategory from HomeScreen or elsewhere
+  useEffect(() => {
+    if (selectedCategory) {
+      const matched = findCategoryConfig(selectedCategory);
+      setActiveCategory(matched);
+      setNavLevel(2);
+      setOpenedFromHome(true);
+    }
+  }, [selectedCategory]);
+
+  // Combined categories list (using MAIN_CATEGORIES with any custom DB categories preserved)
+  // Combined categories list (using active DB categories as source of truth, matching MAIN_CATEGORIES configs)
+  const displayCategories = useMemo(() => {
+    if (!dbCategories || dbCategories.length === 0) {
+      return MAIN_CATEGORIES.map(c => ({
+        ...c,
+        image: getSafeImageUri(c.image, c.fallbackImage || DEFAULT_CATEGORY_FALLBACKS.default),
+        fallbackImage: getSafeImageUri(c.fallbackImage, DEFAULT_CATEGORY_FALLBACKS.default),
+      }));
+    }
+
+    // Filter active categories from db
+    const activeDbCats = dbCategories.filter(c => c.enabled !== false);
+    if (activeDbCats.length === 0) return [];
+
+    return activeDbCats.map(dbCat => {
+      const c = MAIN_CATEGORIES.find(mc =>
+        mc.id === dbCat.id ||
+        (dbCat.name && mc.name && dbCat.name.trim().toLowerCase() === mc.name.trim().toLowerCase()) ||
+        (dbCat.name && mc.dbKey && dbCat.name.trim().toLowerCase() === mc.dbKey.trim().toLowerCase())
+      );
+
+      const safeImage = getSafeImageUri(dbCat.image || c?.image, c?.fallbackImage || DEFAULT_CATEGORY_FALLBACKS.default);
+      const safeFallback = getSafeImageUri(c?.fallbackImage || dbCat.image, DEFAULT_CATEGORY_FALLBACKS.default);
+
+      return {
+        id: dbCat.id,
+        dbKey: c?.dbKey || dbCat.name.toLowerCase(),
+        name: dbCat.name,
+        image: safeImage,
+        fallbackImage: safeFallback,
+        tagline: c?.tagline || 'Premium Beauty Collection',
+        description: c?.description || 'Explore verified authentic formulations',
+        accent: c?.accent || '#C2477A',
+        bgLight: c?.bgLight || '#FFF0F5',
+        enabled: dbCat.enabled
+      };
+    });
+  }, [dbCategories]);
+
+  // ── NAVIGATION HANDLERS ─────────────────────────────────────────
+
+  // Level 1 -> Level 2
   const handleSelectCategory = (cat) => {
-    setActiveCat(cat);
+    setActiveCategory(cat);
+    setActiveSubcategory(null);
+    setActiveLeafCategory(null);
+    setNavLevel(2);
     if (setSelectedCategory) setSelectedCategory(cat);
   };
 
-  const handleIncrement = (product, currentQty) => {
-    if (product.stock === 0) return;
-    if (currentQty === 0) {
-      addToCart(product, 1);
+  // Level 2 -> Level 3
+  const handleSelectSubcategory = (subcat) => {
+    setActiveSubcategory(subcat);
+    setActiveLeafCategory(null);
+    setNavLevel(3);
+  };
+
+  // Level 3 -> Level 4
+  const handleSelectLeafCategory = (leaf) => {
+    setActiveLeafCategory(leaf);
+    setNavLevel(4);
+  };
+
+  // Direct View All from Level 2 or Level 3
+  const handleViewAllProducts = () => {
+    setActiveLeafCategory(null);
+    setNavLevel(4);
+  };
+
+  // Back Navigation Handler
+  const handleBack = () => {
+    if (navLevel === 4) {
+      if (activeLeafCategory) {
+        setNavLevel(3);
+      } else {
+        setNavLevel(2);
+      }
+    } else if (navLevel === 3) {
+      setNavLevel(2);
+    } else if (navLevel === 2) {
+      if (openedFromHome) {
+        setOpenedFromHome(false);
+        if (setSelectedCategory) setSelectedCategory(null);
+        setCurrentScreen('home');
+      } else {
+        if (setSelectedCategory) setSelectedCategory(null);
+        setNavLevel(1);
+      }
     } else {
-      updateCartQuantity(product.id, currentQty + 1);
+      setCurrentScreen('home');
     }
   };
 
-  const handleDecrement = (productId, currentQty) => {
-    if (currentQty > 1) {
-      updateCartQuantity(productId, currentQty - 1);
-    } else if (currentQty === 1) {
-      removeFromCart(productId);
-    }
-  };
+  // Filtered products for Level 4
+  const currentProducts = useMemo(() => {
+    return filterProductsByHierarchy(
+      activeProducts,
+      activeCategory?.name,
+      activeSubcategory?.name,
+      activeLeafCategory
+    );
+  }, [activeProducts, activeCategory, activeSubcategory, activeLeafCategory]);
 
-  const filteredProducts = activeProducts.filter(p => {
-    if (!activeCat) return true;
-    const pCat = (p.category || '').toLowerCase();
-    const cCat = (activeCat.name || '').toLowerCase();
-    if (cCat.includes('lipstick')) return pCat.includes('lipstick');
-    return pCat.includes(cCat) || cCat.includes(pCat);
-  });
+  // ── RENDER LEVEL 4: PRODUCT LISTING ─────────────────────────────
+  if (navLevel === 4) {
+    return (
+      <ProductListingView
+        category={activeCategory}
+        subcategory={activeSubcategory}
+        leafCategory={activeLeafCategory}
+        products={currentProducts}
+        onBack={handleBack}
+      />
+    );
+  }
 
+  // ── RENDER LEVEL 3: SUBCATEGORY (LEAF CATEGORIES) ───────────────
+  if (navLevel === 3) {
+    return (
+      <SubcategoryView
+        category={activeCategory}
+        subcategory={activeSubcategory}
+        onSelectLeaf={handleSelectLeafCategory}
+        onDirectViewAll={handleViewAllProducts}
+        onBack={handleBack}
+        liveLeafCategories={liveLeafCategories}
+      />
+    );
+  }
+
+  // ── RENDER LEVEL 2: CATEGORY DETAIL ─────────────────────────────
+  if (navLevel === 2 && activeCategory) {
+    return (
+      <CategoryDetailView
+        category={activeCategory}
+        onSelectSubcategory={handleSelectSubcategory}
+        onViewAllProducts={handleViewAllProducts}
+        onBack={handleBack}
+        liveSubcategories={liveSubcategories}
+        liveLeafCategories={liveLeafCategories}
+      />
+    );
+  }
+
+  // ── RENDER LEVEL 1: SHOP BY CATEGORY GRID ───────────────────────
   return (
-    <View className="flex-1 bg-white">
-      {/* Header */}
-      <View className="px-4 py-3 bg-white border-b border-gray-100 flex-row justify-between items-center">
-        <TouchableOpacity onPress={() => setCurrentScreen('home')}>
-          <Text className="text-xs font-bold text-[#C2477A]">← Home</Text>
+    <SafeAreaView className="flex-1 bg-white">
+      {/* ── TOP HEADER ────────────────────────────────────────────── */}
+      <View className="bg-white border-b border-[#FCE4EC] px-4 py-3 flex-row items-center justify-between">
+        <TouchableOpacity
+          onPress={() => setCurrentScreen('home')}
+          activeOpacity={0.7}
+          className="flex-row items-center gap-1 -ml-1 py-1 px-1.5 rounded-lg active:bg-pink-50"
+        >
+          <Ionicons name="chevron-back" size={20} color="#C2477A" />
+          <Text className="text-xs font-bold text-[#C2477A]">Home</Text>
         </TouchableOpacity>
-        <Text className="text-sm font-extrabold text-[#3A2430] uppercase">Categories</Text>
-        <View style={{ width: 24 }} />
+
+        <Text className="text-sm font-extrabold text-[#3A2430] uppercase tracking-wider">
+          Shop by Category
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => setCurrentScreen('search')}
+          activeOpacity={0.7}
+          className="w-8 h-8 rounded-full bg-[#FFF0F5] items-center justify-center border border-[#FCE4EC]"
+        >
+          <Ionicons name="search" size={15} color="#C2477A" />
+        </TouchableOpacity>
       </View>
 
-      {/* Two-Pane Body Container */}
-      <View className="flex-1 flex-row bg-white">
-        {/* Left Rail (Slim 72px column) */}
-        <ScrollView
-          style={{ width: 72, minWidth: 72, maxWidth: 72, flex: 0, flexGrow: 0, flexShrink: 0 }}
-          className="bg-white border-r border-gray-100 py-2"
-        >
-          {(categories || []).map((cat) => {
-            const isSelected = activeCat && (activeCat.id === cat.id || activeCat.name.toLowerCase() === cat.name.toLowerCase());
-            return (
+      {/* ── 2-3 COLUMN RESPONSIVE GRID ────────────────────────────── */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: horizontalPadding,
+          paddingTop: 16,
+          paddingBottom: 95
+        }}
+      >
+        {/* Subtle Sub-heading */}
+        <View className="mb-4">
+          <Text className="text-base font-black text-[#3A2430]">
+            Explore Collections
+          </Text>
+          <Text className="text-xs text-[#8C7078] font-medium mt-0.5">
+            Discover 100% authentic beauty, salon & grooming formulations
+          </Text>
+        </View>
+
+        {/* Categories Grid or Empty State */}
+        {displayCategories.length === 0 ? (
+          <View className="items-center justify-center py-20 px-6">
+            <View className="w-16 h-16 rounded-full bg-[#FFF0F5] items-center justify-center mb-3 border border-[#FCE4EC]">
+              <Ionicons name="grid-outline" size={28} color="#C2477A" />
+            </View>
+            <Text className="text-base font-extrabold text-[#3A2430] mb-1 text-center">
+              No Categories Available
+            </Text>
+            <Text className="text-xs text-[#8C7078] text-center mb-4 leading-4">
+              Please check back shortly or explore our best sellers from the home screen.
+            </Text>
+            <TouchableOpacity
+              onPress={() => setCurrentScreen('home')}
+              className="bg-[#C2477A] px-5 py-2.5 rounded-xl shadow-xs"
+            >
+              <Text className="text-xs font-bold text-white">Go to Home</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View className="flex-row flex-wrap justify-between gap-y-3.5">
+            {displayCategories.map((cat) => (
               <TouchableOpacity
                 key={cat.id || cat.name}
+                activeOpacity={0.88}
                 onPress={() => handleSelectCategory(cat)}
-                className="relative items-center justify-center py-2.5 px-1 mb-2"
+                style={{ width: cardWidth }}
+                className="bg-white rounded-2xl border border-[#FCE4EC] p-2.5 shadow-2xs active:scale-[0.98] transition-transform"
               >
-                {/* Active Indicator Bar on Right Edge */}
-                {isSelected && (
-                  <View style={{ position: 'absolute', right: 0, top: 4, bottom: 4, width: 4, backgroundColor: '#C2477A', borderTopLeftRadius: 4, borderBottomLeftRadius: 4 }} />
-                )}
-
-                {/* Circular Image/Icon Bubble */}
-                <View
-                  className={`w-12 h-12 rounded-full overflow-hidden items-center justify-center ${
-                    isSelected ? 'bg-white border-2 border-[#C2477A]' : 'bg-white border border-gray-100'
-                  }`}
-                >
-                  {cat.image ? (
-                    <Image source={{ uri: cat.image }} className="w-full h-full rounded-full" />
-                  ) : (
-                    <Text className={`text-lg ${isSelected ? 'text-[#C2477A]' : 'text-[#3A2430]'}`}>
-                      {cat.icon || '💄'}
-                    </Text>
-                  )}
+                {/* Category Image - Consistent Aspect Ratio */}
+                <View className="w-full aspect-square rounded-xl overflow-hidden bg-[#FFF5F8] border border-[#FCE4EC] mb-2 relative">
+                  <Image
+                    source={getSafeImageSource(cat.image, cat.fallbackImage)}
+                    className="w-full h-full object-cover"
+                    resizeMode="cover"
+                  />
                 </View>
 
-                {/* Category Label */}
-                <Text
-                  className={`text-[9px] text-center leading-tight mt-1 px-0.5 ${
-                    isSelected ? 'font-black text-[#C2477A]' : 'font-semibold text-[#8C7078]'
-                  }`}
-                  numberOfLines={2}
-                >
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Right Pane (White Background, Product Grid) */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 6, paddingBottom: 90 }}
-          className="bg-white"
-        >
-          {/* 2-Column Product Grid */}
-          <View className="flex-row flex-wrap justify-between">
-            {filteredProducts.length === 0 ? (
-              <View className="w-full p-6 bg-white rounded-2xl border border-gray-100 items-center mt-2">
-                <Text className="text-xs text-[#8C7078] font-medium">No items found in this category.</Text>
-              </View>
-            ) : (
-              filteredProducts.map(p => {
-                const rolePrice = getRolePrice(p, userRole);
-                const displayMrp = p.mrp && p.mrp > rolePrice ? p.mrp : Math.round(rolePrice * 1.25);
-                const discountPercent = Math.round(((displayMrp - rolePrice) / displayMrp) * 100);
-                const isOutOfStock = p.stock === 0;
-                const cartItem = (cart || []).find(c => c.id === p.id || c.product?.id === p.id);
-                const cartQty = cartItem ? cartItem.quantity : 0;
-
-                return (
-                  <View
-                    key={p.id}
-                    style={{ width: '48.5%', height: 204 }}
-                    className="bg-white rounded-xl border border-gray-100 overflow-hidden mb-2 p-1.5 shadow-2xs justify-between relative"
+                {/* Category Name Only - DO NOT show product or category counts */}
+                <View className="items-center py-1">
+                  <Text
+                    className="text-xs font-bold text-[#3A2430] text-center"
+                    numberOfLines={2}
                   >
-                    {/* Image & Title Touchable Area (Opens Product Details) */}
-                    <TouchableOpacity
-                      onPress={() => {
-                        setSelectedProduct(p);
-                        setCurrentScreen('product');
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      {/* Image Box Container */}
-                      <View className="relative w-full h-24 bg-white rounded-lg overflow-hidden mb-1 border border-gray-100">
-                        <Image source={{ uri: p.image || 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400' }} className={`w-full h-full object-cover ${isOutOfStock ? 'opacity-40' : ''}`} />
-                        {discountPercent > 0 && !isOutOfStock && (
-                          <View style={{ position: 'absolute', top: 4, left: 4, backgroundColor: '#C2477A', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                            <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '800' }}>{discountPercent}% OFF</Text>
-                          </View>
-                        )}
-                      </View>
-
-                      {/* Details */}
-                      <Text className="text-[7.5px] font-bold text-[#8C7078] uppercase" numberOfLines={1}>
-                        {p.brandName}
-                      </Text>
-                      <Text className="text-[10px] font-semibold text-[#3A2430] leading-tight" numberOfLines={2}>
-                        {p.name}
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* Bottom Row: Price Block on Left, ADD / Stepper Button on Right */}
-                    <View className="pt-1 flex-row items-center justify-between">
-                      {/* Price Block */}
-                      <View className="flex-row items-baseline gap-1">
-                        <Text className="text-xs font-black text-[#C2477A]">₹{rolePrice}</Text>
-                        <Text className="text-[8.5px] text-[#8C7078] line-through font-semibold">
-                          ₹{displayMrp}
-                        </Text>
-                      </View>
-
-                      {/* ADD / Stepper Button */}
-                      <View>
-                        {isOutOfStock ? (
-                          <View className="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
-                            <Text className="text-gray-400 text-[8px] font-bold">N/A</Text>
-                          </View>
-                        ) : cartQty > 0 ? (
-                          <View className="bg-[#C2477A] rounded-lg px-1.5 py-0.5 flex-row items-center gap-1 shadow-2xs">
-                            <TouchableOpacity onPress={() => handleDecrement(p.id, cartQty)} className="w-4 h-4 items-center justify-center">
-                              <Text className="text-white text-xs font-black">-</Text>
-                            </TouchableOpacity>
-                            <Text className="text-white text-[10px] font-extrabold px-0.5 min-w-[10px] text-center">{cartQty}</Text>
-                            <TouchableOpacity onPress={() => handleIncrement(p, cartQty)} className="w-4 h-4 items-center justify-center">
-                              <Text className="text-white text-xs font-black">+</Text>
-                            </TouchableOpacity>
-                          </View>
-                        ) : (
-                          <TouchableOpacity
-                            onPress={() => handleIncrement(p, 0)}
-                            className="px-2.5 py-0.5 rounded-lg border border-[#C2477A] bg-white shadow-2xs flex-row items-center"
-                          >
-                            <Text className="text-[#C2477A] text-[9.5px] font-extrabold">+ ADD</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </View>
-                  </View>
-                );
-              })
-            )}
+                    {cat.name}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
-        </ScrollView>
-      </View>
-    </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
+
+export default CategoryScreen;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
-import { ShoppingBag, Store, Brush, Sparkles, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, Store, Brush, Sparkles, ChevronDown, ChevronUp, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 export const OnboardingScreen = () => {
   const { userRole, setUserRole, setCurrentScreen } = useApp();
@@ -102,6 +102,20 @@ export const OnboardingScreen = () => {
             </div>
           )}
         </div>
+
+        {selectedRole !== 'general' && (
+          <div className="bg-[#FFF5F8] border border-[#F8BBD0] rounded-2xl p-3.5 flex items-start gap-2.5 shadow-2xs">
+            <ShieldCheck size={18} className="text-[#C2477A] shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-xs font-black text-[#3A2430]">
+                B2B Verification Required
+              </h3>
+              <p className="text-[11px] text-[#8C7078] mt-0.5 leading-snug">
+                Exclusive professional wholesale pricing will be unlocked after admin verification and approval. General users do not require verification.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom Action Button */}

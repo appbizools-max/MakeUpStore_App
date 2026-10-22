@@ -5,14 +5,29 @@ import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
 import { useApp } from '../../context/AppContext';
 
 export const SplashScreen = () => {
-  const { setCurrentScreen } = useApp();
+  const { setCurrentScreen, userProfile } = useApp();
   const [fontsLoaded] = useFonts({
     GreatVibes_400Regular,
   });
 
   const handleProceed = () => {
-    setCurrentScreen('onboarding');
+    if (userProfile?.isProfileComplete) {
+      setCurrentScreen('home');
+    } else {
+      setCurrentScreen('onboarding');
+    }
   };
+
+  React.useEffect(() => {
+    if (userProfile?.isProfileComplete) {
+      setCurrentScreen('home');
+      return;
+    }
+    const timer = setTimeout(() => {
+      handleProceed();
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [userProfile?.isProfileComplete]);
 
   return (
     <ScrollView

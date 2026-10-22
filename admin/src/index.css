@@ -3,12 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --bg-app: #F8FAFC;
-  --primary-pink: #FDEBF0;
-  --deep-pink: #CE4270;
-  --soft-pink: #FDF2F4;
-  --text-main: #1F2937;
-  --text-muted: #6B7280;
+  --bg-app: #FFFFFF;
+  --primary-pink: #FDF2F8;
+  --deep-pink: #C2477A;
+  --soft-pink: #FFF5F8;
+  --text-main: #000000;
+  --text-muted: #1F2937;
+  --border-pink: #FCE4EC;
   --success-green: #059669;
 }
 
@@ -18,11 +19,28 @@
 }
 
 body {
-  background-color: #F8FAFC;
-  color: var(--text-main);
+  background-color: #FFFFFF;
+  color: #000000;
 }
 
-/* Custom pink scrollbars matching mobile */
+/* =========================================================================
+   REMOVE ALL INCREMENT/DECREMENT SPINNER BUTTONS (↑/↓) FROM ALL NUMERIC INPUTS
+   Chrome, Edge, Safari, Opera, and Firefox
+   ========================================================================= */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
+/* Coordinated brand scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -31,11 +49,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #F0C4D3;
+  background: #F8B4CB;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--deep-pink);
+  background: #C2477A;
 }
 
 @keyframes fadeIn {
@@ -45,5 +63,38 @@ body {
 
 .animate-fade-in {
   animation: fadeIn 0.25s ease-out forwards;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Highly visible, high-contrast and smooth scrollbar for high-volume spreadsheet bulk table */
+.spreadsheet-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.spreadsheet-scrollbar::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 8px;
+}
+.spreadsheet-scrollbar::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+}
+.spreadsheet-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+.spreadsheet-scrollbar::-webkit-scrollbar-corner {
+  background: #cbd5e1;
+}
+.spreadsheet-scrollbar {
+  scrollbar-width: auto;
+  scrollbar-color: #64748b #e2e8f0;
 }
 

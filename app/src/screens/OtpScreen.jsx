@@ -1,20 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { ArrowLeft, Clock, RefreshCw } from 'lucide-react';
+import { isB2BRole } from '../utils/b2bVerificationService';
 
 export const OtpScreen = () => {
-  const { userRole, userProfile, setCurrentScreen } = useApp();
-  const [otp, setOtp] = useState(['4', '8', '2', '1']);
+  const { userRole, userProfile, setCurrentScreen, checkUserExistingProfile, prefetchUserProfile } = useApp();
+  const [otp, setOtp] = useState(['', '', '', '']);
   const [timerSeconds, setTimerSeconds] = useState(120);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const inFlightRef = useRef(false);
+  const inputRefs = useRef([]);
+
+  const isOtpComplete = otp.every(d => d.trim().length === 1);
 
   useEffect(() => {
-    if (timerSeconds <= 0) return;
+    if (prefetchUserProfile && userProfile?.phone) {
+      prefetchUserProfile(userProfile.phone);
+    }
+  }, [userProfile?.phone]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      setTimerSeconds(prev => (prev > 0 ? prev - 1 : 0));
+      setTimerSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timerSeconds]);
+  }, []);
 
   const formatTimer = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -34,13 +51,93 @@ export const OtpScreen = () => {
     }
   };
 
-  const handleVerifyOtp = () => {
-    setCurrentScreen('home');
+  const handleDigitChange = (index, value) => {
+    const cleanVal = value.replace(/\D/g, '');
+    if (!cleanVal) {
+      const updated = [...otp];
+      updated[index] = '';
+      setOtp(updated);
+      return;
+    }
+
+    if (cleanVal.length > 1) {
+      // User pasted multiple digits
+      const digits = cleanVal.slice(0, 4).split('');
+      const updated = [...otp];
+      digits.forEach((d, i) => {
+        if (i < 4) updated[i] = d;
+      });
+      setOtp(updated);
+      const nextIdx = Math.min(digits.length, 3);
+      if (inputRefs.current[nextIdx]) {
+        inputRefs.current[nextIdx].focus();
+      }
+      return;
+    }
+
+    const updated = [...otp];
+    updated[index] = cleanVal;
+    setOtp(updated);
+
+    if (index < 3 && cleanVal) {
+      if (inputRefs.current[index + 1]) {
+        inputRefs.current[index + 1].focus();
+      }
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      if (inputRefs.current[index - 1]) {
+        inputRefs.current[index - 1].focus();
+      }
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!isOtpComplete || inFlightRef.current) return;
+    inFlightRef.current = true;
+    setIsVerifying(true);
+
+    try {
+      let isComplete = false;
+      if (checkUserExistingProfile) {
+        isComplete = await checkUserExistingProfile(userProfile?.phone);
+      }
+
+      // Check if user is B2B (either chosen on role screen or stored in existing profile)
+      const effectiveRole = (userProfile?.role || userRole || '').toLowerCase().trim();
+      const isB2B = isB2BRole(effectiveRole);
+
+      if (isB2B) {
+        // DIRECTLY OPEN B2B PROFESSIONAL VERIFICATION USER ACCOUNT FOR ALL B2B USERS
+        setCurrentScreen('b2b_verification');
+        return;
+      }
+
+      // For General User (B2C):
+      if (isComplete) {
+        setCurrentScreen('home');
+      } else {
+        setCurrentScreen('complete_profile');
+      }
+    } catch (e) {
+      const effectiveRole = (userProfile?.role || userRole || '').toLowerCase().trim();
+      if (isB2BRole(effectiveRole)) {
+        setCurrentScreen('b2b_verification');
+      } else {
+        setCurrentScreen('complete_profile');
+      }
+    } finally {
+      inFlightRef.current = false;
+      setIsVerifying(false);
+    }
   };
 
   const handleResendOtp = () => {
     setTimerSeconds(120);
-    setOtp(['4', '8', '2', '1']);
+    setOtp(['', '', '', '']);
+    if (inputRefs.current[0]) inputRefs.current[0].focus();
   };
 
   return (
@@ -64,8 +161,11 @@ export const OtpScreen = () => {
         <h2 className="text-2xl font-black text-[#3A2430] mb-1.5">
           Verify OTP
         </h2>
-        <p className="text-xs font-medium text-[#8C7078] mb-8 leading-relaxed">
-          Sent verification code to <span className="font-bold text-[#3A2430]">{userProfile?.phone || '+91 98765 43210'}</span>
+        <p className="text-xs font-medium text-[#8C7078] mb-2 leading-relaxed">
+          Sent verification code to <span className="font-bold text-[#3A2430]">{userProfile?.phone || ''}</span>
+        </p>
+        <p className="text-[11px] text-[#C2477A] font-semibold mb-6">
+          Enter 4-digit code (e.g. 1234)
         </p>
 
         {/* 4-Digit Crisp White OTP Inputs */}
@@ -73,18 +173,20 @@ export const OtpScreen = () => {
           {otp.map((digit, index) => (
             <div
               key={index}
-              className="w-14 h-14 rounded-2xl border border-[#F5A8C0] bg-white flex items-center justify-center shadow-xs"
+              className={`w-14 h-14 rounded-2xl border bg-white flex items-center justify-center shadow-xs transition-all ${
+                digit ? 'border-[#C2477A] ring-1 ring-[#C2477A]' : 'border-[#F5A8C0]'
+              }`}
             >
               <input
+                ref={(el) => (inputRefs.current[index] = el)}
                 type="text"
+                inputMode="numeric"
                 value={digit}
-                maxLength={1}
-                onChange={(e) => {
-                  const updated = [...otp];
-                  updated[index] = e.target.value;
-                  setOtp(updated);
-                }}
+                maxLength={4}
+                onChange={(e) => handleDigitChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
                 className="text-2xl font-black text-[#3A2430] text-center w-full bg-transparent outline-none"
+                autoFocus={index === 0}
               />
             </div>
           ))}
@@ -102,7 +204,7 @@ export const OtpScreen = () => {
           ) : (
             <button
               onClick={handleResendOtp}
-              className="bg-white border border-[#F5A8C0] px-4 py-2 rounded-full flex items-center gap-1.5 text-xs font-black text-[#C2477A] shadow-xs"
+              className="bg-white border border-[#F5A8C0] px-4 py-2 rounded-full flex items-center gap-1.5 text-xs font-black text-[#C2477A] shadow-xs cursor-pointer hover:bg-[#FFF5F8]"
             >
               <RefreshCw size={14} />
               <span>Resend OTP</span>
@@ -113,9 +215,14 @@ export const OtpScreen = () => {
         {/* Verify & Continue Button */}
         <button
           onClick={handleVerifyOtp}
-          className="w-full bg-[#C2477A] text-white py-4 rounded-full font-black text-base tracking-wide shadow-lg hover:bg-[#a83765] active:scale-[0.99] transition-all mb-4"
+          disabled={!isOtpComplete || isVerifying}
+          className={`w-full py-4 rounded-full font-black text-base tracking-wide transition-all mb-4 ${
+            isOtpComplete && !isVerifying
+              ? 'bg-[#C2477A] text-white shadow-lg hover:bg-[#a83765] active:scale-[0.99] cursor-pointer'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
         >
-          Verify & Continue
+          {isVerifying ? 'Verifying...' : 'Verify & Continue'}
         </button>
       </div>
 

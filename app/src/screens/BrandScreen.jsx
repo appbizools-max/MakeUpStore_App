@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext.jsx';
-import { ChevronLeft, Star, Store } from 'lucide-react';
+import { ChevronLeft, Star, Store, Heart } from 'lucide-react';
 
 export const BrandScreen = () => {
   const {
@@ -12,7 +12,9 @@ export const BrandScreen = () => {
     getRolePrice,
     setSelectedProduct,
     setCurrentScreen,
-    addToCart
+    addToCart,
+    isFavorite,
+    toggleFavorite
   } = useApp();
 
   React.useEffect(() => {
@@ -21,9 +23,11 @@ export const BrandScreen = () => {
     }
   }, [selectedBrand, activeBrands]);
 
-  const brandProducts = (selectedBrand && selectedBrand.enabled)
-    ? activeProducts.filter(p => p.brandId === selectedBrand.id || p.brandName.toLowerCase() === selectedBrand.name.toLowerCase())
-    : activeProducts;
+  const brandProducts = useMemo(() => {
+    return (selectedBrand && selectedBrand.enabled)
+      ? activeProducts.filter(p => p.brandId === selectedBrand.id || p.brandName.toLowerCase() === selectedBrand.name.toLowerCase())
+      : activeProducts;
+  }, [selectedBrand, activeProducts]);
 
   return (
     <div className="pb-28 min-h-screen bg-[#FFF8FA] animate-fade-in">
@@ -83,7 +87,6 @@ export const BrandScreen = () => {
             {brandProducts.map((product) => {
               const rolePrice = getRolePrice(product, userRole);
               const hasDiscount = userRole !== 'general' && rolePrice < product.mrp;
-              const isOutOfStock = product.stock === 0;
 
               return (
                 <div
@@ -96,19 +99,23 @@ export const BrandScreen = () => {
                 >
                   <div>
                     <div className="relative aspect-square bg-[#FCE4EC]/40 overflow-hidden">
-                      <img src={product.image} alt={product.name} className={`w-full h-full object-cover ${isOutOfStock ? 'opacity-40' : ''}`} />
-                      {isOutOfStock ? (
-                        <span className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-[10px] font-black uppercase tracking-wider">
-                          Out of Stock
-                        </span>
-                      ) : hasDiscount ? (
+                      <img src={product.image} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                      {hasDiscount && (
                         <span className="absolute top-2 left-2 bg-[#C2477A] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
                           {Math.round(((product.mrp - rolePrice) / product.mrp) * 100)}% OFF
                         </span>
-                      ) : null}
-                      <span className="absolute top-2 right-2 bg-white/90 text-[#3A2430] text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-sm">
-                        <Star size={10} className="fill-[#F5A8C0] text-[#C2477A]" /> {product.rating}
-                      </span>
+                      )}
+                      {/* Heart / Favorite Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(product); }}
+                        className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all active:scale-90 hover:scale-110 ${
+                          isFavorite(product.id) ? 'bg-[#C2477A]' : 'bg-white/95'
+                        }`}
+                        title={isFavorite(product.id) ? 'Remove from Wishlist' : 'Save to Wishlist'}
+                      >
+                        <Heart size={13} className={isFavorite(product.id) ? 'fill-white text-white' : 'text-[#C2477A]'} />
+                      </button>
                     </div>
 
                     <div className="p-3">
@@ -131,22 +138,14 @@ export const BrandScreen = () => {
                       ) : (
                         <span className="text-sm font-bold text-[#3A2430]">₹{product.mrp}</span>
                       )}
-                      {isOutOfStock ? (
-                        <div className="text-[9px] text-rose-600 font-bold">Out of Stock</div>
-                      ) : (
-                        <div className="text-[9px] text-[#4C8C5C] font-semibold">In Stock ({product.stock})</div>
-                      )}
                     </div>
 
                     <button
-                      disabled={isOutOfStock}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!isOutOfStock) addToCart(product, 1);
+                        addToCart(product, 1);
                       }}
-                      className={`w-7 h-7 rounded-full font-bold text-sm flex items-center justify-center transition-colors ${
-                        isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#FCE4EC] text-[#C2477A] hover:bg-[#C2477A] hover:text-white'
-                      }`}
+                      className="w-7 h-7 rounded-full font-bold text-sm flex items-center justify-center transition-colors bg-[#FCE4EC] text-[#C2477A] hover:bg-[#C2477A] hover:text-white"
                     >
                       +
                     </button>

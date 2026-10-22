@@ -29,18 +29,19 @@ export const PlaceOrderScreen = () => {
 
   const handleConfirmOrder = () => {
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
       const createdOrder = placeOrder({
         deliveryType,
         address: finalAddressText,
         branch: selectedBranch,
         notes: orderNotes
       });
-      setIsSubmitting(false);
       if (createdOrder) {
         setCurrentScreen('confirmation');
       }
-    }, 600);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

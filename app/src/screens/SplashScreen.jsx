@@ -2,10 +2,14 @@ import React from 'react';
 import { useApp } from '../context/AppContext.jsx';
 
 export const SplashScreen = () => {
-  const { setCurrentScreen } = useApp();
+  const { setCurrentScreen, userProfile } = useApp();
 
   const handleProceed = () => {
-    setCurrentScreen('onboarding');
+    if (userProfile?.isProfileComplete) {
+      setCurrentScreen('home');
+    } else {
+      setCurrentScreen('onboarding');
+    }
   };
 
   return (

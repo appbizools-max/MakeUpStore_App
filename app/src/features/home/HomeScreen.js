@@ -1,733 +1,1149 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, TextInput, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Platform, RefreshControl, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
-import { useApp } from '../../context/AppContext';
+import { useApp, DEFAULT_HOME_BANNERS } from '../../context/AppContext';
+import { getSafeImageSource, DEFAULT_CATEGORY_FALLBACKS } from '../../utils/imageUtils';
+import { storage } from '../../utils/storage';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 600);
+const BANNER_HEIGHT = Math.round(BANNER_WIDTH / 2.56);
+
+const LOCAL_BANNER_ASSETS = {
+  banner_1: require('../../../Assets/banners/banner_1.jpg'),
+  banner_2: require('../../../Assets/banners/banner_2.jpg'),
+  banner_3: require('../../../Assets/banners/banner_3.jpg'),
+  banner_4: require('../../../Assets/banners/banner_4.jpg'),
+  banner_5: require('../../../Assets/banners/banner_5.jpg'),
+};
+
+// Reusable Section Header Component
+const SectionHeader = ({ title, subtitle, ctaText = 'View All →', onCtaPress, showCta = true, iconName }) => (
+  <View className="px-4 mb-3">
+    <View className="flex-row justify-between items-center">
+      <View className="flex-row items-center gap-1.5 flex-1 pr-2">
+        {iconName && <Ionicons name={iconName} size={15} color="#C2477A" />}
+        <Text className="text-base font-extrabold text-[#3A2430]" numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
+      {showCta && (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={onCtaPress}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text className="text-xs font-bold text-[#C2477A]">{ctaText}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+    {subtitle ? (
+      <Text className="text-[10px] font-medium text-[#8C7078] mt-0.5">{subtitle}</Text>
+    ) : null}
+  </View>
+);
+
+// Reusable Universal Product Card Component
+const ProductCard = React.memo(({
+  product,
+  badgeText = 'NEW',
+  userRole,
+  getRolePrice,
+  isLiked = false,
+  onToggleFavorite,
+  onSelectProduct,
+  cartQty = 0,
+  onAddToCart,
+  onUpdateCartQty,
+}) => {
+  const rolePrice = getRolePrice(product, userRole);
+  const mrp = product.mrp && product.mrp > rolePrice ? Number(product.mrp) : Math.round(rolePrice * 1.25);
+  const discountPercent = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 14;
+
+  const rating = product.rating ? Number(product.rating).toFixed(1) : '4.5';
+  const reviews = product.reviewCount || 120;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={() => onSelectProduct(product)}
+      style={{ width: 144, borderColor: '#FCE4EC', borderWidth: 1 }}
+      className="mr-3 bg-white rounded-2xl p-2.5 shadow-xs flex-col"
+    >
+      {/* Product Image Box with Badge & Wishlist Heart */}
+      <View
+        style={{ width: '100%', height: 110, borderColor: '#FCE4EC', borderWidth: 1 }}
+        className="relative rounded-xl overflow-hidden mb-2 bg-[#FFF5F8] items-center justify-center"
+      >
+        <Image
+          source={getSafeImageSource(product.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400')}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="cover"
+        />
+
+        {/* Badge (NEW or BESTSELLER) */}
+        {badgeText ? (
+          <View className="absolute top-1.5 left-1.5 bg-[#C2477A] px-1.5 py-0.5 rounded-md shadow-xs">
+            <Text className="text-white text-[7.5px] font-black uppercase tracking-wider">
+              {badgeText}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Wishlist Heart Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            onToggleFavorite(product);
+          }}
+          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white items-center justify-center shadow-xs"
+        >
+          <Ionicons
+            name={isLiked ? 'heart' : 'heart-outline'}
+            size={13}
+            color="#C2477A"
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Brand & Name */}
+      <Text className="text-[8.5px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5" numberOfLines={1}>
+        {product.brandName || 'SALBEAU'}
+      </Text>
+      <Text className="text-[11px] font-bold text-[#3A2430] leading-tight mb-1" numberOfLines={1}>
+        {product.name}
+      </Text>
+
+      {/* Rating Row: ★ 4.5 (124) */}
+      <View className="flex-row items-center gap-1 mb-1.5">
+        <Ionicons name="star" size={10} color="#F59E0B" />
+        <Text className="text-[9.5px] font-bold text-[#3A2430]">{rating}</Text>
+        <Text className="text-[9px] text-[#8C7078]">({reviews})</Text>
+      </View>
+
+      {/* Pricing Row: ₹599 ₹699 14% OFF */}
+      <View className="flex-row items-baseline gap-1 mb-2 flex-wrap">
+        <Text className="text-xs font-black text-[#3A2430]">₹{rolePrice}</Text>
+        {mrp > rolePrice && (
+          <Text className="text-[9px] font-semibold text-[#8C7078] line-through">₹{mrp}</Text>
+        )}
+        {discountPercent > 0 && (
+          <Text className="text-[9px] font-black text-[#E11D48]">{discountPercent}% OFF</Text>
+        )}
+      </View>
+
+      {/* Cart Control */}
+      <View className="mt-auto pt-0.5">
+        {cartQty > 0 ? (
+          <View
+            style={{
+              backgroundColor: '#C2477A',
+              shadowColor: '#C2477A',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.2,
+              shadowRadius: 3,
+              elevation: 2,
+            }}
+            className="rounded-full flex-row items-center justify-between px-1.5 py-0.5 w-full"
+          >
+            <TouchableOpacity
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onUpdateCartQty(product.id, cartQty - 1);
+              }}
+              className="w-5 h-5 rounded-full bg-white/20 items-center justify-center"
+            >
+              <Ionicons name="remove" size={12} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <Text className="text-[11px] font-black text-white px-1 text-center min-w-[16px]">
+              {cartQty}
+            </Text>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onUpdateCartQty(product.id, cartQty + 1);
+              }}
+              className="w-5 h-5 rounded-full bg-white/20 items-center justify-center"
+            >
+              <Ionicons name="add" size={12} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onAddToCart(product);
+            }}
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderColor: '#C2477A',
+              borderWidth: 1.5,
+            }}
+            className="w-full py-1 rounded-full flex-row items-center justify-center gap-1 shadow-xs"
+          >
+            <Ionicons name="add" size={12} color="#C2477A" />
+            <Text className="text-[11px] font-black text-[#C2477A]">Add</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 export const HomeScreen = () => {
   const [fontsLoaded] = useFonts({
     GreatVibes_400Regular,
   });
+
   const {
     userRole,
     getRolePrice,
     setSelectedProduct,
     setSelectedCategory,
     setCurrentScreen,
+    cart = [],
     addToCart,
+    updateCartQuantity,
     searchQuery,
     setSearchQuery,
-    activeProducts,
-    activeBrands,
-    brands,
-    categories,
-    homeSectionVisibility
+    activeProducts = [],
+    categories = [],
+    brands = [],
+    activeBrands = [],
+    favorites = [],
+    isFavorite,
+    toggleFavorite,
+    setGlobalSearchQuery,
+    refreshCatalog,
+    productSalesCounts = {},
+    homeBanners = [],
+    activeBanners = [],
+    setSelectedBrand,
   } = useApp();
 
-  const [wishlist, setWishlist] = useState({});
-  const [activeSlide, setActiveSlide] = useState(0);
-
-  const heroSlides = [
-    {
-      id: 'hs1',
-      badge: 'EXCLUSIVE PRO TIER',
-      title: 'Autumn Glamour & Glass Glow',
-      subtitle: 'Up to 35% Wholesale Pricing for Salon Pros & Artists',
-      ctaText: 'Explore Pro Rates →',
-      image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=1000&auto=format&fit=crop&q=80',
-      screen: 'onboarding'
-    },
-    {
-      id: 'hs2',
-      badge: '365+ VERIFIED BRANDS',
-      title: '100% Authentic Beauty Direct Supplies',
-      subtitle: 'L\'Oréal, M.A.C, Maybelline, Agaro, Biotique & More In-Stock',
-      ctaText: 'Browse All Brands →',
-      image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1000&auto=format&fit=crop&q=80',
-      screen: 'search'
-    },
-    {
-      id: 'hs3',
-      badge: 'SAME DAY EXPRESS DISPATCH',
-      title: 'Store Pickup & Express Shipping',
-      subtitle: 'Realtime order tracking & wholesale tier invoice receipts',
-      ctaText: 'Shop Best Sellers →',
-      image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1000&auto=format&fit=crop&q=80',
-      screen: 'search'
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (refreshCatalog) await refreshCatalog();
+    } catch (e) {
+      console.warn('Pull-to-refresh error:', e);
+    } finally {
+      setRefreshing(false);
     }
-  ];
+  }, [refreshCatalog]);
+
+  // Cart quantity lookup map for instant O(1) checks
+  const cartQuantityMap = useMemo(() => {
+    const map = new Map();
+    for (const item of (cart || [])) {
+      if (item.product?.id) map.set(item.product.id, item.quantity || 0);
+    }
+    return map;
+  }, [cart]);
+
+  const totalCartQuantity = useMemo(() => {
+    return (cart || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+  }, [cart]);
+
+  const totalCartPrice = useMemo(() => {
+    return (cart || []).reduce((sum, item) => {
+      const price = getRolePrice(item.product, userRole);
+      return sum + (price * (item.quantity || 0));
+    }, 0);
+  }, [cart, userRole, getRolePrice]);
+
+  const getProductCartQuantity = useCallback((productId) => {
+    return cartQuantityMap.get(productId) || 0;
+  }, [cartQuantityMap]);
+
+  // Customer-Specific Recently Viewed tracking in persistent storage (NO mock fallbacks!)
+  const [recentlyViewedIds, setRecentlyViewedIds] = useState([]);
 
   useEffect(() => {
+    let isMounted = true;
+    const loadRecentlyViewed = async () => {
+      try {
+        const saved = await storage.getItem('salbeau_recently_viewed_ids');
+        if (saved && isMounted) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setRecentlyViewedIds(parsed);
+        }
+      } catch (e) {}
+    };
+    loadRecentlyViewed();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleProductSelect = useCallback((product) => {
+    if (product?.id) {
+      setRecentlyViewedIds(prev => {
+        const updated = [product.id, ...prev.filter(id => id !== product.id)].slice(0, 10);
+        storage.setItem('salbeau_recently_viewed_ids', JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
+    }
+    setSelectedProduct(product);
+    setCurrentScreen('product');
+  }, [setSelectedProduct, setCurrentScreen]);
+
+  const [activeSlide, setActiveSlide] = useState(0);
+  const bannerScrollRef = useRef(null);
+
+  const displayBanners = useMemo(() => {
+    if (activeBanners && activeBanners.length > 0) return activeBanners;
+    if (homeBanners && homeBanners.length > 0) return homeBanners.filter(b => b.isActive !== false);
+    return DEFAULT_HOME_BANNERS;
+  }, [activeBanners, homeBanners]);
+
+  const handleBannerClick = useCallback((banner) => {
+    if (!banner) return;
+    const destType = (banner.destinationType || '').toUpperCase();
+    const destId = banner.destinationId || '';
+
+    switch (destType) {
+      case 'BEST_SELLERS':
+        setSearchQuery('');
+        setSelectedCategory('Best Sellers');
+        setCurrentScreen('search');
+        break;
+
+      case 'CATEGORY':
+        if (destId) {
+          const matched = (categories || []).find(c => 
+            c.id?.toLowerCase() === destId.toLowerCase() || 
+            c.name?.toLowerCase() === destId.toLowerCase()
+          );
+          setSelectedCategory(matched?.name || destId);
+        }
+        setCurrentScreen('category');
+        break;
+
+      case 'SUBCATEGORY':
+        if (destId) {
+          setSelectedCategory(destId);
+        }
+        setCurrentScreen('category');
+        break;
+
+      case 'BRAND':
+        if (destId) {
+          const matched = (brands || []).find(b =>
+            b.id?.toLowerCase() === destId.toLowerCase() ||
+            b.name?.toLowerCase() === destId.toLowerCase()
+          );
+          setSelectedBrand(matched || { name: destId });
+          setSearchQuery(matched?.name || destId);
+        }
+        setCurrentScreen('search');
+        break;
+
+      case 'PRODUCT':
+        if (destId) {
+          const matched = (activeProducts || []).find(p => p.id === destId || p.barcode === destId);
+          if (matched) {
+            handleProductSelect(matched);
+            return;
+          }
+        }
+        setCurrentScreen('product');
+        break;
+
+      case 'NEW_ARRIVALS':
+        setCurrentScreen('search');
+        break;
+
+      case 'TRENDING':
+        setCurrentScreen('search');
+        break;
+
+      default:
+        if (destId) {
+          setSelectedCategory(destId);
+          setCurrentScreen('category');
+        } else {
+          setCurrentScreen('search');
+        }
+        break;
+    }
+  }, [categories, brands, activeProducts, setSelectedCategory, setSelectedBrand, setSearchQuery, setCurrentScreen, handleProductSelect]);
+
+  useEffect(() => {
+    if (displayBanners.length <= 1) return;
     const timer = setInterval(() => {
-      setActiveSlide(prev => (prev + 1) % heroSlides.length);
-    }, 3800);
+      setActiveSlide(prev => {
+        const next = (prev + 1) % displayBanners.length;
+        bannerScrollRef.current?.scrollTo({ x: next * BANNER_WIDTH, animated: true });
+        return next;
+      });
+    }, 4500);
     return () => clearInterval(timer);
-  }, [heroSlides.length]);
+  }, [displayBanners.length]);
 
-  const toggleWishlist = (id) => {
-    setWishlist(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const fallbackTopBrands = [
-    { id: 'tb1', name: "L'Oréal", image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300' },
-    { id: 'tb2', name: 'Maybelline', image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300' },
-    { id: 'tb3', name: 'Lakmé', image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300' },
-    { id: 'tb4', name: 'M.A.C', image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300' },
-    { id: 'tb5', name: 'Salbeau', image: 'https://images.unsplash.com/photo-1608248597261-e4d0947c6999?w=300' },
-  ];
-
-  const fallbackCategories = [
-    { id: 'c1', name: 'Hair Care', image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300' },
-    { id: 'c2', name: 'Skin Care', image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=300' },
-    { id: 'c3', name: 'Lipstick & Gloss', image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300' },
-    { id: 'c4', name: 'Eye Makeup', image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=300' },
-    { id: 'c5', name: 'Nail Polish', image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=300' },
-  ];
-
-  const displayCategories = (categories && categories.length > 0) ? categories : fallbackCategories;
-
-  const productsList = [
-    {
-      id: 'hp1',
-      brandName: 'SALBEAU ORGANICS',
-      name: 'Glaze Hydrating Lip Oil - Rosewood',
-      image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=600&auto=format&fit=crop&q=80',
-      rating: '4.8',
-      mrp: 499,
-      salonPrice: 399,
-      artistPrice: 379,
-      beauticianPrice: 389,
-    },
-    {
-      id: 'hp3',
-      brandName: 'LUXE BEAUTY',
-      name: 'Rose Velvet Blush Palette',
-      image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&auto=format&fit=crop&q=80',
-      rating: '4.7',
-      mrp: 799,
-      salonPrice: 559,
-      artistPrice: 529,
-      beauticianPrice: 539,
-    },
-    {
-      id: 'hp4',
-      brandName: 'M.A.C COSMETICS',
-      name: 'Studio Fix Matte Foundation',
-      image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&auto=format&fit=crop&q=80',
-      rating: '4.9',
-      mrp: 1499,
-      salonPrice: 1099,
-      artistPrice: 999,
-      beauticianPrice: 1049,
-    },
-    {
-      id: 'hp5',
-      brandName: "L'ORÉAL PARIS",
-      name: 'Absolut Repair Hair Mask 250ml',
-      image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=600&auto=format&fit=crop&q=80',
-      rating: '4.8',
-      mrp: 899,
-      salonPrice: 629,
-      artistPrice: 599,
-      beauticianPrice: 609,
-    }
-  ];
-
-  const newArrivals = [
-    {
-      id: 'na1',
-      brandName: 'SALBEAU LUXE',
-      name: 'Nourishing Night Face Cream',
-      image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&auto=format&fit=crop&q=80',
-      rating: '4.9',
-      mrp: 1299,
-      salonPrice: 949,
-      artistPrice: 899,
-      beauticianPrice: 919,
-    },
-    {
-      id: 'na2',
-      brandName: 'GLOW RADIANCE',
-      name: 'Rose Velvet Blush Palette',
-      image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&auto=format&fit=crop&q=80',
-      rating: '4.7',
-      mrp: 799,
-      salonPrice: 559,
-      artistPrice: 529,
-      beauticianPrice: 539,
-    }
-  ];
-
-  // Essential Beauty Staples Data
-  const beautyEssentials = [
-    { id: 'be1', title: 'Face Serums', iconName: 'sparkles', subtitle: 'Radiance & Hydration' },
-    { id: 'be2', title: 'Hair Care Oils', iconName: 'cut', subtitle: 'Nourishment & Spa' },
-    { id: 'be3', title: 'Lipsticks & Oils', iconName: 'color-palette', subtitle: 'Velvet & Gloss Shades' },
-    { id: 'be4', title: 'Aloevera & Gels', iconName: 'leaf', subtitle: 'Pure Organic Care' },
-    { id: 'be5', title: 'Waxing & Kits', iconName: 'gift', subtitle: 'Salon Smooth Finish' },
-    { id: 'be6', title: 'Sunscreen Shield', iconName: 'sunny', subtitle: 'Broad Spectrum UV' }
-  ];
-
-  const recommendedProducts = [
-    {
-      id: 'rec1',
-      brandName: 'DERMAVIVE',
-      name: 'Hydrating Hydra-Boost Serum 50ml',
-      image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=80',
-      rating: '4.9',
-      mrp: 999,
-      salonPrice: 749,
-      artistPrice: 699,
-      beauticianPrice: 719,
-    },
-    {
-      id: 'rec2',
-      brandName: 'BIOTIQUE',
-      name: 'Bio Kelp Protein Conditioner',
-      image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=600&auto=format&fit=crop&q=80',
-      rating: '4.6',
-      mrp: 350,
-      salonPrice: 245,
-      artistPrice: 229,
-      beauticianPrice: 235,
-    }
-  ];
-
-  const recentlyViewedProducts = [
-    {
-      id: 'rv1',
-      name: 'Glaze Lip Oil',
-      brandName: 'SALBEAU',
-      image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300',
-      price: 399
-    },
-    {
-      id: 'rv2',
-      name: 'Matte Foundation',
-      brandName: 'M.A.C',
-      image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300',
-      price: 1099
-    },
-    {
-      id: 'rv3',
-      name: 'Hair Repair Mask',
-      brandName: "L'ORÉAL",
-      image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=300',
-      price: 629
-    }
-  ];
-
-  const displayProducts = (activeProducts && activeProducts.length > 0)
-    ? activeProducts
-    : productsList.filter(p => {
-        const matchingBrand = (brands || []).find(b => b.id === p.brandId || b.name.toLowerCase() === p.brandName.toLowerCase());
-        return matchingBrand ? matchingBrand.enabled : true;
+  // 1. Shop by Category — Pure database categories
+  const displayCategories = useMemo(() => {
+    if (!categories || categories.length === 0) return [];
+    return categories
+      .filter(c => c.enabled !== false && !c.id.startsWith('app_') && !c.id.startsWith('salbeau_'))
+      .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
+      .map(cat => {
+        const productCount = (activeProducts || []).filter(p => p.category?.toLowerCase() === cat.name?.toLowerCase()).length;
+        return {
+          id: cat.id,
+          name: cat.name,
+          image: cat.image || DEFAULT_CATEGORY_FALLBACKS.default,
+          countText: productCount > 0 ? `${productCount} Products` : 'Explore'
+        };
       });
+  }, [categories, activeProducts]);
 
-  const displayBrands = (activeBrands && activeBrands.length > 0)
-    ? activeBrands
-    : fallbackTopBrands.filter(tb => {
-        const matchingBrand = (brands || []).find(b => b.id === tb.id || b.name.toLowerCase() === tb.name.toLowerCase());
-        return matchingBrand ? matchingBrand.enabled : true;
-      });
+  // 2. Trending Now — Customer Engagement / Orders + Admin Curated Override
+  const trendingProducts = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) return [];
+    return [...activeProducts].sort((a, b) => {
+      // 1. Admin curated trending flag & priority
+      if (a.isTrending && !b.isTrending) return -1;
+      if (!a.isTrending && b.isTrending) return 1;
+      if (a.isTrending && b.isTrending) {
+        return (b.trendingPriority || 0) - (a.trendingPriority || 0);
+      }
+      // 2. Real sales data ranking
+      const salesA = productSalesCounts[a.id] || 0;
+      const salesB = productSalesCounts[b.id] || 0;
+      if (salesB !== salesA) return salesB - salesA;
+      // 3. Ratings / review count
+      return (b.rating || 0) - (a.rating || 0);
+    }).slice(0, 10);
+  }, [activeProducts, productSalesCounts]);
+
+  // 3. Top Brands — Dynamic from Database
+  const topBrandsList = useMemo(() => {
+    const list = activeBrands && activeBrands.length > 0 ? activeBrands : brands.filter(b => b.enabled !== false);
+    return list.filter(b => b.name && !b.id.startsWith('app_') && !b.id.startsWith('salbeau_')).slice(0, 12);
+  }, [activeBrands, brands]);
+
+  // 4. New Arrivals — Automatic by publishedAt / created_at DESC
+  const newArrivals = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) return [];
+    return [...activeProducts]
+      .filter(p => p.showInNewArrivals !== false)
+      .sort((a, b) => {
+        const timeA = new Date(a.publishedAt || a.created_at || 0).getTime();
+        const timeB = new Date(b.publishedAt || b.created_at || 0).getTime();
+        return timeB - timeA;
+      })
+      .slice(0, 10);
+  }, [activeProducts]);
+
+  // 5. Best Sellers — Real Units Sold from Completed Store Orders
+  const bestSellers = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) return [];
+    return [...activeProducts].sort((a, b) => {
+      const salesA = productSalesCounts[a.id] || 0;
+      const salesB = productSalesCounts[b.id] || 0;
+      if (salesB !== salesA) return salesB - salesA;
+      return (b.reviewCount || 0) - (a.reviewCount || 0);
+    }).slice(0, 10);
+  }, [activeProducts, productSalesCounts]);
+
+  // 6. Recently Viewed — Customer's Personalized History (ZERO mock fallbacks!)
+  const recentlyViewedProducts = useMemo(() => {
+    if (recentlyViewedIds.length === 0 || !activeProducts || activeProducts.length === 0) {
+      return [];
+    }
+    const map = new Map(activeProducts.map(p => [p.id, p]));
+    return recentlyViewedIds.map(id => map.get(id)).filter(Boolean);
+  }, [recentlyViewedIds, activeProducts]);
+
+  // 7. Complete Your Look — Real Catalog Product Bundle
+  const duoBundle = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) return null;
+    const lipProduct = activeProducts.find(p => (p.category || '').toLowerCase().includes('lip') || (p.name || '').toLowerCase().includes('lip'));
+    const faceProduct = activeProducts.find(p => p.id !== lipProduct?.id && ((p.category || '').toLowerCase().includes('face') || (p.category || '').toLowerCase().includes('cream') || (p.name || '').toLowerCase().includes('blush') || (p.name || '').toLowerCase().includes('serum')));
+    const p1 = lipProduct || activeProducts[0];
+    const p2 = faceProduct || activeProducts[1] || activeProducts[0];
+    if (!p1 || !p2) return null;
+
+    const price1 = getRolePrice(p1, userRole);
+    const price2 = getRolePrice(p2, userRole);
+    const rawTotal = price1 + (p1.id !== p2.id ? price2 : 0);
+    const bundlePrice = Math.round(rawTotal * 0.80);
+
+    return {
+      title: p1.id !== p2.id ? `${p1.name} + ${p2.name}` : p1.name,
+      subtitle: 'Save 20% extra when buying this salon-ready radiance pair.',
+      bundlePrice,
+      rawTotal,
+      p1,
+      p2,
+      image: p1.image || p2.image
+    };
+  }, [activeProducts, userRole, getRolePrice]);
+
+  const handleAddBundleToCart = useCallback(() => {
+    if (!duoBundle) return;
+    addToCart(duoBundle.p1, 1);
+    if (duoBundle.p2 && duoBundle.p2.id !== duoBundle.p1.id) {
+      addToCart(duoBundle.p2, 1);
+    }
+  }, [duoBundle, addToCart]);
+
+  // Essential Beauty Staples Data (Categories & Real Queries)
+  const beautyEssentials = useMemo(() => [
+    { id: 'be1', title: 'Face Serums', subtitle: 'Radiance & Hydration', iconName: 'sparkles', query: 'Serum' },
+    { id: 'be2', title: 'Hair Care Oils', subtitle: 'Nourishment & Spa', iconName: 'cut', query: 'Hair' },
+    { id: 'be3', title: 'Lipsticks & Oils', subtitle: 'Velvet & Gloss Shades', iconName: 'color-palette', query: 'Lipstick' },
+    { id: 'be4', title: 'Aloevera & Green Care', subtitle: 'Pure Organic Care', iconName: 'leaf', query: 'Aloe' },
+    { id: 'be5', title: 'Waxing & Kits', subtitle: 'Salon Smooth Finish', iconName: 'gift', query: 'Wax' },
+    { id: 'be6', title: 'Sunscreen Shades', subtitle: 'Broad Spectrum UV', iconName: 'sunny', query: 'Sunscreen' }
+  ], []);
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 110 }} className="bg-white">
-      {/* ---------------- 1. EXISTING HEADER ---------------- */}
-      <View className="px-4 pt-4 pb-3 bg-white space-y-3">
-        <View className="flex-row justify-between items-center mb-1 mt-1">
-          <Text
-            style={{
-              fontFamily: fontsLoaded ? 'GreatVibes_400Regular' : (Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif'),
-            }}
-            className="text-[36px] text-[#C2477A] tracking-wide ml-0.5 mt-0.5"
-          >
-            Salbeau
-          </Text>
-          <View className="flex-row items-center gap-3">
-            <TouchableOpacity onPress={() => setCurrentScreen('orders')}>
-              <View className="w-8.5 h-8.5 rounded-full bg-[#FFF5F8] items-center justify-center border border-[#FCE4EC]">
+    <View className="flex-1 bg-white relative">
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: totalCartQuantity > 0 ? 160 : 100 }}
+        showsVerticalScrollIndicator={false}
+        className="bg-white"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#C2477A']}
+            tintColor="#C2477A"
+          />
+        }
+      >
+        {/* ========================================================================= */}
+        {/* 1. HEADER (SALBEAU SCRIPT LOGO + NOTIFICATIONS + WISHLIST) */}
+        {/* ========================================================================= */}
+        <View className="px-4 pt-3 pb-2 bg-white">
+          <View className="flex-row justify-between items-center">
+            <Text
+              style={{
+                fontFamily: fontsLoaded ? 'GreatVibes_400Regular' : (Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif'),
+              }}
+              className="text-[36px] text-[#C2477A] tracking-wide ml-0.5 mt-0.5"
+            >
+              Salbeau
+            </Text>
+            <View className="flex-row items-center gap-2.5">
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setCurrentScreen('orders')}
+                style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
+                className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center"
+              >
                 <Ionicons name="notifications-outline" size={18} color="#C2477A" />
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <View className="w-8.5 h-8.5 rounded-full bg-[#FFF5F8] items-center justify-center border border-[#FCE4EC]">
-                <Ionicons name="heart-outline" size={18} color="#C2477A" />
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setCurrentScreen('wishlist')}
+                style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
+                className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center relative"
+              >
+                <Ionicons name={favorites.length > 0 ? "heart" : "heart-outline"} size={18} color="#C2477A" />
+                {favorites.length > 0 && (
+                  <View className="absolute -top-1 -right-1 bg-[#C2477A] w-4 h-4 rounded-full items-center justify-center border border-white">
+                    <Text className="text-white text-[8px] font-black">{favorites.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
-        <View className="items-center w-full mt-1.5">
+        {/* ========================================================================= */}
+        {/* 2. SEARCH BAR (WITH SCANNER ICON ON RIGHT) */}
+        {/* ========================================================================= */}
+        <View className="px-4 mb-4">
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() => setCurrentScreen('search')}
-            className="w-[94%] flex-row items-center bg-white border border-[#F5A8C0] px-3.5 py-1.5 rounded-full shadow-2xs relative"
-          >
-            <View className="absolute left-3.5 z-10 justify-center items-center">
-              <Ionicons name="search-outline" size={14} color="#C2477A" />
-            </View>
-            <TextInput
-              editable={false}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search products, brands, lipsticks..."
-              placeholderTextColor="#8C7078"
-              textAlign="center"
-              className="w-full text-[11px] font-semibold text-[#3A2430] p-0"
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* ---------------- 2. HERO SLIDER BANNER (CLEAN WITH BUTTON ONLY) ---------------- */}
-      <View className="px-4 mb-5 mt-2">
-        <View className="rounded-3xl overflow-hidden shadow-md bg-[#FCE4EC] relative h-48 border border-[#FCE4EC]">
-          {/* Slider Banner Image */}
-          <Image
-            source={{ uri: heroSlides[activeSlide].image }}
-            className="w-full h-full object-cover"
-          />
-
-          {/* Button Only Overlay */}
-          <View className="absolute bottom-3.5 left-3.5">
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => setCurrentScreen(heroSlides[activeSlide].screen || 'onboarding')}
-              className="bg-white px-4 py-2 rounded-xl shadow-md border border-pink-100"
-            >
-              <Text className="text-xs font-black text-[#C2477A]">
-                {heroSlides[activeSlide].ctaText || 'Shop Collection →'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* ---------------- 3. EXISTING SHOP BY CATEGORY ---------------- */}
-      <Text className="text-base font-extrabold text-[#3A2430] px-4 mb-3">Shop by Category</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pl-4 mb-6">
-        {displayCategories.map((cat) => (
-          <TouchableOpacity
-            key={cat.id}
-            activeOpacity={0.85}
             onPress={() => {
-              setSelectedCategory(cat);
-              setCurrentScreen('category');
+              if (setGlobalSearchQuery && searchQuery) setGlobalSearchQuery(searchQuery);
+              setCurrentScreen('search');
             }}
-            className="bg-white rounded-2xl border border-[#FCE4EC] p-2.5 items-center mr-3 shadow-xs"
+            style={{ borderColor: '#F5A8C0', borderWidth: 1 }}
+            className="w-full flex-row items-center bg-white px-3.5 py-2 rounded-full shadow-xs"
           >
-            <View className="w-14 h-14 rounded-xl overflow-hidden mb-2 bg-[#FFF5F8] border border-[#FCE4EC]">
-              <Image source={{ uri: cat.image }} className="w-full h-full object-cover" />
-            </View>
-            <Text className="text-xs font-bold text-[#3A2430]">{cat.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* ---------------- 4. EXISTING TRENDING NOW ---------------- */}
-      <View className="flex-row justify-between items-center px-4 mb-3">
-        <Text className="text-base font-extrabold text-[#3A2430]">Trending Now</Text>
-        <TouchableOpacity onPress={() => setCurrentScreen('search')}>
-          <Text className="text-xs font-bold text-[#C2477A]">View All</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View className="px-4 flex-row flex-wrap justify-between gap-y-4 mb-6">
-        {displayProducts.map((item) => {
-          const rolePrice = getRolePrice(item, userRole);
-          const isLiked = wishlist[item.id];
-          const originalMrp = item.mrp > rolePrice ? item.mrp : Math.round(item.mrp * 1.25);
-
-          return (
-            <TouchableOpacity
-              key={item.id}
-              onPress={() => {
-                setSelectedProduct(item);
-                setCurrentScreen('product');
-              }}
-              className="w-[48%] bg-white rounded-2xl p-2.5 shadow-2xs border border-[#FCE4EC]"
+            <Ionicons name="search-outline" size={16} color="#C2477A" />
+            <Text
+              className="flex-1 text-[11px] font-semibold text-[#8C7078] px-2.5"
+              numberOfLines={1}
             >
-              <View className="relative w-full h-28 rounded-xl overflow-hidden mb-2 bg-[#FCE4EC]">
-                <Image source={{ uri: item.image }} className="w-full h-full object-cover" />
-                <TouchableOpacity
-                  onPress={() => toggleWishlist(item.id)}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white items-center justify-center shadow-xs"
+              {searchQuery || 'Search products, brands, lipsticks...'}
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                setCurrentScreen('search');
+              }}
+            >
+              <Ionicons name="scan-outline" size={16} color="#C2477A" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+
+        {/* ========================================================================= */}
+        {/* 3. HERO BANNER (EDITORIAL BEAUTY CARD + CTA + CAROUSEL DOTS) */}
+        {/* ========================================================================= */}
+        {/* ========================================================================= */}
+        {/* 3. HERO BANNER (EDITORIAL BEAUTY CARD + CTA + CAROUSEL DOTS) */}
+        {/* ========================================================================= */}
+        <View className="mb-6">
+          <ScrollView
+            ref={bannerScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => {
+              const offsetX = e.nativeEvent.contentOffset.x;
+              const newIndex = Math.round(offsetX / (BANNER_WIDTH + 12));
+              setActiveSlide(Math.max(0, Math.min(newIndex, displayBanners.length - 1)));
+            }}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+            decelerationRate="fast"
+            snapToInterval={BANNER_WIDTH + 12}
+            snapToAlignment="start"
+          >
+            {displayBanners.map((banner, idx) => {
+              const imageSource = LOCAL_BANNER_ASSETS[banner.id] || (banner.imageUrl ? { uri: banner.imageUrl } : null);
+              return (
+                <View
+                  key={banner.id || idx}
+                  style={{
+                    width: BANNER_WIDTH,
+                    height: BANNER_HEIGHT,
+                    marginRight: idx < displayBanners.length - 1 ? 12 : 0,
+                    borderRadius: 20,
+                    overflow: 'hidden',
+                    backgroundColor: '#FDE8EF',
+                    borderColor: '#FCE4EC',
+                    borderWidth: 1,
+                    elevation: 3,
+                    shadowColor: '#C2477A',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 6,
+                  }}
                 >
-                  <Ionicons
-                    name={isLiked ? "heart" : "heart-outline"}
-                    size={13}
-                    color="#C2477A"
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <Text className="text-[8.5px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5">
-                {item.brandName}
-              </Text>
-              <Text className="text-[11px] font-bold text-[#3A2430] leading-tight mb-2 h-7" numberOfLines={2}>
-                {item.name}
-              </Text>
-
-              <View className="flex-row items-center justify-between mt-auto pt-0.5">
-                <View className="flex-col">
-                  <Text className="text-[9px] font-semibold text-[#8C7078] line-through">
-                    MRP ₹{originalMrp}
-                  </Text>
-                  <Text className="text-sm font-extrabold text-[#C2477A]">₹{rolePrice}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.92}
+                    onPress={() => handleBannerClick(banner)}
+                    style={{ width: '100%', height: '100%' }}
+                  >
+                    {imageSource && (
+                      <Image
+                        source={imageSource}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                      />
+                    )}
+                    {/* Interactive CTA pill overlay */}
+                    <View
+                      style={{
+                        position: 'absolute',
+                        left: 14,
+                        bottom: 12,
+                        backgroundColor: 'rgba(194, 71, 122, 0.92)',
+                        paddingHorizontal: 14,
+                        paddingVertical: 6,
+                        borderRadius: 20,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 4,
+                        elevation: 4,
+                      }}
+                    >
+                      <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>
+                        {banner.ctaText || banner.ctaLabel || 'Shop Now →'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
+              );
+            })}
+          </ScrollView>
+
+          {/* Carousel Pagination Dots */}
+          {displayBanners.length > 1 && (
+            <View className="flex-row items-center justify-center gap-1.5 mt-2.5">
+              {displayBanners.map((banner, idx) => (
                 <TouchableOpacity
-                  onPress={() => addToCart(item)}
-                  className="w-6.5 h-6.5 rounded-full bg-[#FCE4EC] items-center justify-center border border-[#F5A8C0]"
-                >
-                  <Ionicons name="add" size={16} color="#C2477A" />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* ---------------- 5. EXISTING TOP BRANDS ---------------- */}
-      <Text className="text-base font-extrabold text-[#3A2430] px-4 mb-3">Top Brands</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pl-4 mb-6">
-        {displayBrands.map((brand) => (
-          <TouchableOpacity
-            key={brand.id}
-            activeOpacity={0.8}
-            onPress={() => setCurrentScreen('search')}
-            className="px-4 py-2.5 rounded-full bg-white border border-[#F5A8C0] mr-2.5 shadow-2xs items-center justify-center"
-          >
-            <Text className="text-xs font-extrabold text-[#C2477A] tracking-wide">{brand.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* ---------------- 6. EXISTING NEW ARRIVALS ---------------- */}
-      <Text className="text-base font-extrabold text-[#3A2430] px-4 mb-3">New Arrivals</Text>
-      <View className="px-4 flex-row justify-between mb-8">
-        {newArrivals.map((item) => {
-          const rolePrice = getRolePrice(item, userRole);
-          const isLiked = wishlist[item.id];
-          const originalMrp = item.mrp > rolePrice ? item.mrp : Math.round(item.mrp * 1.25);
-
-          return (
-            <TouchableOpacity
-              key={item.id}
-              onPress={() => {
-                setSelectedProduct(item);
-                setCurrentScreen('product');
-              }}
-              className="w-[48%] bg-white rounded-2xl p-2.5 shadow-2xs border border-[#FCE4EC]"
-            >
-              <View className="relative w-full h-24 rounded-xl overflow-hidden mb-1.5 bg-[#FCE4EC]">
-                <Image source={{ uri: item.image }} className="w-full h-full object-cover" />
-                <TouchableOpacity
-                  onPress={() => toggleWishlist(item.id)}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white items-center justify-center shadow-xs"
-                >
-                  <Ionicons
-                    name={isLiked ? "heart" : "heart-outline"}
-                    size={13}
-                    color="#C2477A"
-                  />
-                </TouchableOpacity>
-              </View>
-              <Text className="text-[8.5px] font-bold text-[#C2477A] uppercase mb-0.5">{item.brandName}</Text>
-              <Text className="text-[11px] font-bold text-[#3A2430]" numberOfLines={1}>{item.name}</Text>
-              <View className="flex-col mt-1">
-                <Text className="text-[9px] font-semibold text-[#8C7078] line-through">
-                  MRP ₹{originalMrp}
-                </Text>
-                <Text className="text-sm font-extrabold text-[#C2477A]">₹{rolePrice}</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* ========================================================================= */}
-      {/* 💥 NEW ADDITIONS BELOW CURRENT EXISTING CONTENT (100% PRESERVED ABOVE) 💥 */}
-      {/* ========================================================================= */}
-
-      {/* NEW SECTION 1: BEAUTY EDIT (EDITORIAL CONTENT) */}
-      <View className="px-4 mb-8">
-        <Text className="text-base font-extrabold text-[#3A2430] mb-3">Beauty Edit</Text>
-        <View className="bg-white rounded-3xl overflow-hidden border border-[#FCE4EC] shadow-xs">
-          <View className="relative w-full h-36 bg-[#FCE4EC]">
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&auto=format&fit=crop&q=80' }}
-              className="w-full h-full object-cover"
-            />
-            <View className="absolute top-3 left-3 bg-[#C2477A] px-2.5 py-1 rounded-full">
-              <Text className="text-white text-[9px] font-black uppercase tracking-wider">THE SALBEAU EDIT</Text>
+                  key={`dot-${banner.id || idx}`}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setActiveSlide(idx);
+                    bannerScrollRef.current?.scrollTo({ x: idx * (BANNER_WIDTH + 12), animated: true });
+                  }}
+                  className={`h-1.5 rounded-full ${
+                    activeSlide === idx ? 'w-5 bg-[#C2477A]' : 'w-1.5 bg-[#C2477A]/30'
+                  }`}
+                />
+              ))}
             </View>
-          </View>
-          <View className="p-4 bg-white">
-            <Text className="text-xs font-black text-[#3A2430] mb-1">
-              Autumn Gloss & Radiance Rituals
-            </Text>
-            <Text className="text-[10.5px] text-[#8C7078] font-medium leading-relaxed mb-3">
-              Discover curated autumn beauty masterclasses, pro artist tricks, and hydration secrets for glass skin.
-            </Text>
-            <TouchableOpacity onPress={() => setCurrentScreen('search')} className="flex-row items-center gap-1">
-              <Text className="text-[11px] font-extrabold text-[#C2477A]">Read Beauty Journal</Text>
-              <Ionicons name="arrow-forward" size={13} color="#C2477A" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-
-      {/* NEW SECTION 3: RECOMMENDED FOR YOU */}
-      <View className="px-4 mb-8">
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-base font-extrabold text-[#3A2430]">Recommended For You</Text>
-          <TouchableOpacity onPress={() => setCurrentScreen('search')}>
-            <Text className="text-xs font-bold text-[#C2477A]">See All</Text>
-          </TouchableOpacity>
+          )}
         </View>
 
-        <View className="flex-row flex-wrap justify-between gap-y-4">
-          {recommendedProducts.map((item) => {
-            const rolePrice = getRolePrice(item, userRole);
-            const isLiked = wishlist[item.id];
-            const originalMrp = item.mrp > rolePrice ? item.mrp : Math.round(item.mrp * 1.25);
-
-            return (
-              <TouchableOpacity
-                key={item.id}
-                onPress={() => {
-                  setSelectedProduct(item);
-                  setCurrentScreen('product');
-                }}
-                className="w-[48%] bg-white rounded-2xl p-2.5 shadow-2xs border border-[#FCE4EC]"
+        {/* ========================================================================= */}
+        {/* 4. SHOP BY CATEGORY (HORIZONTAL CAROUSEL) */}
+        {/* ========================================================================= */}
+        <SectionHeader
+          title="Shop by Category"
+          ctaText="View All →"
+          onCtaPress={() => setCurrentScreen('category')}
+        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+          className="mb-6"
+        >
+          {displayCategories.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              activeOpacity={0.85}
+              onPress={() => {
+                setSelectedCategory(cat);
+                setCurrentScreen('category');
+              }}
+              style={{ width: 88, borderColor: '#FCE4EC', borderWidth: 1 }}
+              className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs"
+            >
+              <View
+                style={{ width: 64, height: 64, borderColor: '#FCE4EC', borderWidth: 1 }}
+                className="rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] items-center justify-center"
               >
-                <View className="relative w-full h-28 rounded-xl overflow-hidden mb-2 bg-[#FCE4EC]">
-                  <Image source={{ uri: item.image }} className="w-full h-full object-cover" />
-                  <TouchableOpacity
-                    onPress={() => toggleWishlist(item.id)}
-                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white items-center justify-center shadow-xs"
-                  >
-                    <Ionicons
-                      name={isLiked ? "heart" : "heart-outline"}
-                      size={13}
-                      color="#C2477A"
+                <Image
+                  source={getSafeImageSource(cat.image, 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=400')}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+              </View>
+              <Text className="text-[11px] font-bold text-[#3A2430] text-center" numberOfLines={1}>
+                {cat.name}
+              </Text>
+              <Text className="text-[9px] font-medium text-[#8C7078] text-center mt-0.5">
+                {cat.countText}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* ========================================================================= */}
+        {/* 5. TRENDING NOW (HORIZONTAL PRODUCT CAROUSEL) */}
+        {/* ========================================================================= */}
+        <SectionHeader
+          title="🔥 Trending Now"
+          ctaText="View All →"
+          onCtaPress={() => setCurrentScreen('search')}
+        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+          className="mb-6"
+        >
+          {trendingProducts.map((item) => (
+            <ProductCard
+              key={item.id}
+              product={item}
+              badgeText="NEW"
+              userRole={userRole}
+              getRolePrice={getRolePrice}
+              isLiked={isFavorite(item.id)}
+              onToggleFavorite={toggleFavorite}
+              onSelectProduct={handleProductSelect}
+              cartQty={getProductCartQuantity(item.id)}
+              onAddToCart={(prod) => addToCart(prod, 1)}
+              onUpdateCartQty={updateCartQuantity}
+            />
+          ))}
+        </ScrollView>
+
+        {/* ========================================================================= */}
+        {/* 6. TOP BRANDS (CIRCULAR BRAND CAROUSEL) */}
+        {/* ========================================================================= */}
+        {topBrandsList.length > 0 && (
+          <>
+            <SectionHeader
+              title="Top Brands"
+              ctaText="View All →"
+              onCtaPress={() => setCurrentScreen('search')}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+              className="mb-6"
+            >
+              {topBrandsList.map((brand) => (
+                <TouchableOpacity
+                  key={brand.id}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    const brandQuery = (brand.name || '').replace('\n', ' ');
+                    if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
+                    setSearchQuery(brandQuery);
+                    setCurrentScreen('search');
+                  }}
+                  style={{ width: 72, height: 72, borderColor: '#FCE4EC', borderWidth: 1 }}
+                  className="rounded-full bg-white mr-3 shadow-xs items-center justify-center p-1.5 overflow-hidden"
+                >
+                  {brand.logo && typeof brand.logo === 'string' && brand.logo.startsWith('http') ? (
+                    <Image
+                      source={{ uri: brand.logo }}
+                      style={{ width: '80%', height: '80%' }}
+                      resizeMode="contain"
                     />
-                  </TouchableOpacity>
-                </View>
-
-                <Text className="text-[8.5px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5">
-                  {item.brandName}
-                </Text>
-                <Text className="text-[11px] font-bold text-[#3A2430] leading-tight mb-2 h-7" numberOfLines={2}>
-                  {item.name}
-                </Text>
-
-                <View className="flex-row items-center justify-between mt-auto pt-0.5">
-                  <View className="flex-col">
-                    <Text className="text-[9px] font-semibold text-[#8C7078] line-through">
-                      MRP ₹{originalMrp}
+                  ) : (
+                    <Text
+                      className="text-[9.5px] font-black text-center tracking-tight text-[#1F2937]"
+                      numberOfLines={2}
+                    >
+                      {brand.name}
                     </Text>
-                    <Text className="text-sm font-extrabold text-[#C2477A]">₹{rolePrice}</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => addToCart(item)}
-                    className="w-6.5 h-6.5 rounded-full bg-[#FCE4EC] items-center justify-center border border-[#F5A8C0]"
-                  >
-                    <Ionicons name="add" size={16} color="#C2477A" />
-                  </TouchableOpacity>
-                </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 7. NEW ARRIVALS (HORIZONTAL PRODUCT CAROUSEL) */}
+        {/* ========================================================================= */}
+        <SectionHeader
+          title="New Arrivals"
+          ctaText="View All →"
+          onCtaPress={() => setCurrentScreen('search')}
+        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+          className="mb-6"
+        >
+          {newArrivals.map((item) => (
+            <ProductCard
+              key={`na_${item.id}`}
+              product={item}
+              badgeText="NEW"
+              userRole={userRole}
+              getRolePrice={getRolePrice}
+              isLiked={isFavorite(item.id)}
+              onToggleFavorite={toggleFavorite}
+              onSelectProduct={handleProductSelect}
+              cartQty={getProductCartQuantity(item.id)}
+              onAddToCart={(prod) => addToCart(prod, 1)}
+              onUpdateCartQty={updateCartQuantity}
+            />
+          ))}
+        </ScrollView>
+
+        {/* ========================================================================= */}
+        {/* 8. BEST SELLERS (HORIZONTAL PRODUCT CAROUSEL) */}
+        {/* ========================================================================= */}
+        <SectionHeader
+          title="Best Sellers"
+          ctaText="View All →"
+          onCtaPress={() => setCurrentScreen('search')}
+        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+          className="mb-6"
+        >
+          {bestSellers.map((item) => (
+            <ProductCard
+              key={`bs_${item.id}`}
+              product={item}
+              badgeText="NEW"
+              userRole={userRole}
+              getRolePrice={getRolePrice}
+              isLiked={isFavorite(item.id)}
+              onToggleFavorite={toggleFavorite}
+              onSelectProduct={handleProductSelect}
+              cartQty={getProductCartQuantity(item.id)}
+              onAddToCart={(prod) => addToCart(prod, 1)}
+              onUpdateCartQty={updateCartQuantity}
+            />
+          ))}
+        </ScrollView>
+
+        {/* ========================================================================= */}
+        {/* 9. BEAUTY EDIT (EDITORIAL BANNER CARD) */}
+        {/* ========================================================================= */}
+        <SectionHeader
+          title="Beauty Edit"
+          ctaText="View All →"
+          onCtaPress={() => setCurrentScreen('search')}
+        />
+        <View className="px-4 mb-6">
+          <View
+            style={{ height: 170, backgroundColor: '#FFF0F5', borderColor: '#FCE4EC', borderWidth: 1 }}
+            className="rounded-3xl overflow-hidden shadow-xs flex-row items-center"
+          >
+            {/* Left Editorial Text Column */}
+            <View className="flex-1 p-4 pr-1 z-10 justify-center">
+              <View className="bg-[#C2477A] px-2 py-0.5 rounded-full self-start mb-2">
+                <Text className="text-white text-[8px] font-black uppercase tracking-wider">
+                  THE SALBEAU EDIT
+                </Text>
+              </View>
+              <Text className="text-[15px] font-black text-[#3A2430] leading-snug mb-1">
+                Autumn Gloss & Radiance Rituals
+              </Text>
+              <Text className="text-[9.5px] text-[#8C7078] font-medium leading-relaxed mb-3">
+                Discover curated autumn beauty masterclasses, pro artist tricks, and hydration secrets for glass skin.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setCurrentScreen('search')}
+                className="bg-[#C2477A] px-3.5 py-1.5 rounded-full self-start shadow-xs"
+              >
+                <Text className="text-white text-[10px] font-black">
+                  Read Beauty Journal →
+                </Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+            </View>
 
-      {/* NEW SECTION 4: ESSENTIAL BEAUTY STAPLES */}
-      <View className="px-4 mb-8">
-        <View className="flex-row justify-between items-center mb-3">
-          <View>
-            <Text className="text-base font-extrabold text-[#3A2430]">Essential Beauty Staples</Text>
-            <Text className="text-[10px] font-medium text-[#8C7078]">Handpicked pro catalog favorites</Text>
+            {/* Right Editorial Model Image */}
+            <View style={{ width: '42%', height: '100%' }} className="justify-center items-end relative overflow-hidden">
+              <Image
+                source={{ uri: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=800&auto=format&fit=crop&q=80' }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+            </View>
           </View>
-          <TouchableOpacity onPress={() => setCurrentScreen('search')}>
-            <Text className="text-xs font-bold text-[#C2477A]">Explore All →</Text>
-          </TouchableOpacity>
         </View>
 
-        <View className="flex-row flex-wrap justify-between gap-y-3">
+        {/* ========================================================================= */}
+        {/* 10. ESSENTIAL BEAUTY STAPLES (2-COLUMN GRID) */}
+        {/* ========================================================================= */}
+        <SectionHeader
+          title="Essential Beauty Staples"
+          subtitle="Handpicked pro catalog favorites"
+          ctaText="Explore All →"
+          onCtaPress={() => setCurrentScreen('search')}
+        />
+        <View className="px-4 flex-row flex-wrap justify-between gap-y-3 mb-6">
           {beautyEssentials.map((item) => (
             <TouchableOpacity
               key={item.id}
               activeOpacity={0.85}
               onPress={() => {
-                setSearchQuery(item.title);
+                if (setGlobalSearchQuery) setGlobalSearchQuery(item.query);
+                setSearchQuery(item.query);
                 setCurrentScreen('search');
               }}
-              className="w-[48%] bg-white rounded-2xl border border-[#FCE4EC] p-3 flex-row items-center gap-3 shadow-2xs"
+              style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
+              className="w-[48%] bg-white rounded-2xl p-2.5 flex-row items-center gap-2.5 shadow-xs"
             >
-              <View className="w-10 h-10 rounded-2xl items-center justify-center bg-[#FFF5F8] border border-[#FCE4EC]">
-                <Ionicons name={item.iconName} size={18} color="#C2477A" />
+              <View
+                style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
+                className="w-9 h-9 rounded-xl items-center justify-center bg-[#FFF5F8]"
+              >
+                <Ionicons name={item.iconName} size={16} color="#C2477A" />
               </View>
               <View className="flex-1">
-                <Text className="text-xs font-extrabold text-[#3A2430]" numberOfLines={1}>{item.title}</Text>
-                <Text className="text-[9px] font-medium text-[#8C7078]" numberOfLines={1}>{item.subtitle}</Text>
+                <Text className="text-[11px] font-extrabold text-[#3A2430]" numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <Text className="text-[8.5px] font-medium text-[#8C7078]" numberOfLines={1}>
+                  {item.subtitle}
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
-      </View>
 
-      {/* NEW SECTION 5: BEST SELLERS */}
-      <View className="px-4 mb-8">
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-base font-extrabold text-[#3A2430]">Best Sellers</Text>
-          <TouchableOpacity onPress={() => setCurrentScreen('search')}>
-            <Text className="text-xs font-bold text-[#C2477A]">View All</Text>
+        {/* ========================================================================= */}
+        {/* 11. RECENTLY VIEWED (HORIZONTAL CAROUSEL — PERSONALIZED PER CUSTOMER) */}
+        {/* ========================================================================= */}
+        {recentlyViewedProducts.length > 0 && (
+          <>
+            <SectionHeader
+              title="Recently Viewed"
+              ctaText="View All →"
+              onCtaPress={() => setCurrentScreen('search')}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+              className="mb-6"
+            >
+              {recentlyViewedProducts.map((item) => (
+                <ProductCard
+                  key={`rv_${item.id}`}
+                  product={item}
+                  badgeText=""
+                  userRole={userRole}
+                  getRolePrice={getRolePrice}
+                  isLiked={isFavorite(item.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onSelectProduct={handleProductSelect}
+                  cartQty={getProductCartQuantity(item.id)}
+                  onAddToCart={(prod) => addToCart(prod, 1)}
+                  onUpdateCartQty={updateCartQuantity}
+                />
+              ))}
+            </ScrollView>
+          </>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 12. COMPLETE YOUR LOOK (DYNAMIC DUO BUNDLE PROMO CARD) */}
+        {/* ========================================================================= */}
+        {duoBundle && (
+          <>
+            <SectionHeader
+              title="Complete Your Look"
+              showCta={false}
+            />
+            <View className="px-4 mb-6">
+              <View
+                style={{ backgroundColor: '#FFF5F8', borderColor: '#FCE4EC', borderWidth: 1 }}
+                className="rounded-3xl p-4 shadow-xs flex-row items-center justify-between"
+              >
+                <View className="flex-1 pr-3">
+                  <Text className="text-[8.5px] font-black text-[#C2477A] uppercase tracking-wider mb-1">
+                    DUO BEAUTY BUNDLE
+                  </Text>
+                  <Text className="text-xs font-black text-[#3A2430] mb-1 leading-snug" numberOfLines={2}>
+                    {duoBundle.title}
+                  </Text>
+                  <Text className="text-[9.5px] text-[#8C7078] font-medium mb-2.5 leading-relaxed">
+                    {duoBundle.subtitle}
+                  </Text>
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={handleAddBundleToCart}
+                    className="bg-[#C2477A] px-3.5 py-1.5 rounded-full self-start shadow-xs"
+                  >
+                    <Text className="text-white text-[10px] font-black">
+                      Add Bundle ₹{duoBundle.bundlePrice} →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View
+                  style={{ width: 80, height: 80, borderColor: '#F5A8C0', borderWidth: 1 }}
+                  className="rounded-2xl overflow-hidden bg-white items-center justify-center"
+                >
+                  <Image
+                    source={getSafeImageSource(duoBundle.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=600')}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                </View>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 13. SEASONAL COLLECTION (FULL-WIDTH PROMO CARD) */}
+        {/* ========================================================================= */}
+        <SectionHeader
+          title="Seasonal Collection"
+          showCta={false}
+        />
+        <View className="px-4 mb-4">
+          <View
+            style={{ backgroundColor: '#FFF8F3', borderColor: '#FCE4EC', borderWidth: 1 }}
+            className="rounded-3xl overflow-hidden shadow-xs"
+          >
+            <View style={{ width: '100%', height: 128 }} className="relative bg-[#FCE4EC]">
+              <Image
+                source={{ uri: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=800&auto=format&fit=crop&q=80' }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+              <View className="absolute top-2.5 left-2.5 bg-white/95 px-2.5 py-0.5 rounded-full border border-pink-100">
+                <Text className="text-[#C2477A] text-[8px] font-black uppercase tracking-wider">
+                  SEASONAL COLLECTION
+                </Text>
+              </View>
+            </View>
+            <View className="p-3.5 flex-row items-center justify-between">
+              <View className="flex-1 pr-2">
+                <Text className="text-xs font-black text-[#3A2430]">
+                  Luxe Bridal & Salon Master Series
+                </Text>
+                <Text className="text-[9.5px] text-[#8C7078] font-medium mt-0.5">
+                  Professional bridal kits with extended durability formulas.
+                </Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setCurrentScreen('search')}
+                className="bg-[#C2477A] px-3.5 py-1.5 rounded-full shadow-xs"
+              >
+                <Text className="text-white text-[10px] font-black">Explore →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* ========================================================================= */}
+      {/* 14. STICKY VIEW CART BAR (WHEN ITEMS IN CART) */}
+      {/* ========================================================================= */}
+      {totalCartQuantity > 0 && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 58,
+            left: 12,
+            right: 12,
+            zIndex: 50,
+            backgroundColor: '#C2477A',
+            shadowColor: '#C2477A',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+            elevation: 8,
+          }}
+          className="rounded-2xl px-4 py-2.5 flex-row items-center justify-between"
+        >
+          <View className="flex-row items-center gap-2.5">
+            <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
+              <Ionicons name="bag-handle" size={17} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text className="text-xs font-black text-white tracking-wide">
+                {totalCartQuantity} {totalCartQuantity === 1 ? 'Item' : 'Items'} • ₹{totalCartPrice}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => setCurrentScreen('cart')}
+            className="bg-white px-3.5 py-1.5 rounded-xl flex-row items-center gap-1 shadow-xs"
+          >
+            <Text className="text-[11px] font-black text-[#C2477A] uppercase tracking-wider">
+              View Cart
+            </Text>
+            <Ionicons name="arrow-forward" size={12} color="#C2477A" />
           </TouchableOpacity>
         </View>
-
-        <View className="flex-row flex-wrap justify-between gap-y-4">
-          {displayProducts.slice(0, 2).map((item) => {
-            const rolePrice = getRolePrice(item, userRole);
-            const isLiked = wishlist[item.id];
-            const originalMrp = item.mrp > rolePrice ? item.mrp : Math.round(item.mrp * 1.25);
-
-            return (
-              <TouchableOpacity
-                key={`bs_${item.id}`}
-                onPress={() => {
-                  setSelectedProduct(item);
-                  setCurrentScreen('product');
-                }}
-                className="w-[48%] bg-white rounded-2xl p-2.5 shadow-2xs border border-[#FCE4EC]"
-              >
-                <View className="relative w-full h-28 rounded-xl overflow-hidden mb-2 bg-[#FCE4EC]">
-                  <Image source={{ uri: item.image }} className="w-full h-full object-cover" />
-                  <View className="absolute top-1.5 left-1.5 bg-[#C2477A] px-1.5 py-0.5 rounded-md">
-                    <Text className="text-white text-[8px] font-black uppercase">BESTSELLER</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => toggleWishlist(item.id)}
-                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white items-center justify-center shadow-xs"
-                  >
-                    <Ionicons
-                      name={isLiked ? "heart" : "heart-outline"}
-                      size={13}
-                      color="#C2477A"
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <Text className="text-[8.5px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5">
-                  {item.brandName}
-                </Text>
-                <Text className="text-[11px] font-bold text-[#3A2430] leading-tight mb-2 h-7" numberOfLines={2}>
-                  {item.name}
-                </Text>
-
-                <View className="flex-row items-center justify-between mt-auto pt-0.5">
-                  <View className="flex-col">
-                    <Text className="text-[9px] font-semibold text-[#8C7078] line-through">
-                      MRP ₹{originalMrp}
-                    </Text>
-                    <Text className="text-sm font-extrabold text-[#C2477A]">₹{rolePrice}</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => addToCart(item)}
-                    className="w-6.5 h-6.5 rounded-full bg-[#FCE4EC] items-center justify-center border border-[#F5A8C0]"
-                  >
-                    <Ionicons name="add" size={16} color="#C2477A" />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* NEW SECTION 6: RECENTLY VIEWED */}
-      <View className="mb-8">
-        <Text className="text-base font-extrabold text-[#3A2430] px-4 mb-3">Recently Viewed</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pl-4">
-          {recentlyViewedProducts.map((rv) => (
-            <TouchableOpacity
-              key={rv.id}
-              activeOpacity={0.85}
-              onPress={() => setCurrentScreen('product')}
-              className="bg-white rounded-2xl border border-[#FCE4EC] p-2.5 mr-3 shadow-2xs w-28 items-center"
-            >
-              <View className="w-16 h-16 rounded-xl overflow-hidden mb-2 bg-[#FFF5F8] border border-[#FCE4EC]">
-                <Image source={{ uri: rv.image }} className="w-full h-full object-cover" />
-              </View>
-              <Text className="text-[8.5px] font-bold text-[#C2477A] uppercase mb-0.5">{rv.brandName}</Text>
-              <Text className="text-[10.5px] font-bold text-[#3A2430] text-center" numberOfLines={1}>{rv.name}</Text>
-              <Text className="text-xs font-extrabold text-[#C2477A] mt-1">₹{rv.price}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* NEW SECTION 7: COMPLETE YOUR LOOK */}
-      <View className="px-4 mb-8">
-        <Text className="text-base font-extrabold text-[#3A2430] mb-3">Complete Your Look</Text>
-        <View className="bg-[#FFF5F8] rounded-3xl p-4 border border-[#FCE4EC] shadow-2xs flex-row items-center justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-[9px] font-extrabold text-[#C2477A] uppercase tracking-wider mb-0.5">DUO BEAUTY BUNDLE</Text>
-            <Text className="text-xs font-extrabold text-[#3A2430] mb-1">
-              Hydrating Lip Oil + Rose Velvet Blush
-            </Text>
-            <Text className="text-[10px] text-[#8C7078] font-medium mb-2">
-              Save 20% extra when buying this salon-ready radiance pair.
-            </Text>
-            <TouchableOpacity
-              onPress={() => setCurrentScreen('cart')}
-              className="bg-[#C2477A] px-3 py-1.5 rounded-xl self-start"
-            >
-              <Text className="text-white text-[10px] font-bold">Add Bundle ₹899 →</Text>
-            </TouchableOpacity>
-          </View>
-          <View className="w-20 h-20 rounded-2xl overflow-hidden bg-white border border-[#F5A8C0]">
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300' }}
-              className="w-full h-full object-cover"
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* NEW SECTION 8: SEASONAL BEAUTY COLLECTION */}
-      <View className="px-4 mb-4">
-        <View className="rounded-3xl overflow-hidden border border-[#FCE4EC] bg-white shadow-xs">
-          <View className="relative w-full h-36 bg-[#FCE4EC]">
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&auto=format&fit=crop&q=80' }}
-              className="w-full h-full object-cover"
-            />
-            <View className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full">
-              <Text className="text-[#C2477A] text-[9px] font-black uppercase tracking-wider">SEASONAL COLLECTION</Text>
-            </View>
-          </View>
-          <View className="p-4 flex-row items-center justify-between">
-            <View className="flex-1 pr-2">
-              <Text className="text-xs font-black text-[#3A2430]">
-                Luxe Bridal & Salon Master Series
-              </Text>
-              <Text className="text-[10px] text-[#8C7078] font-medium">
-                Professional bridal kits with extended durability formulas.
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => setCurrentScreen('search')}
-              className="bg-[#C2477A] px-3 py-2 rounded-xl"
-            >
-              <Text className="text-white text-[10px] font-black">Explore →</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </ScrollView>
+      )}
+    </View>
   );
 };

@@ -1,536 +1,924 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext.jsx';
-import { Search, ShoppingBag, MapPin, ChevronRight, ChevronLeft, Star, Tag, Sparkles, ArrowRight, Heart, Scissors, Palette, Leaf, Gift, Sun } from 'lucide-react';
+import {
+  Search,
+  ShoppingBag,
+  Star,
+  Sparkles,
+  ArrowRight,
+  Heart,
+  Scissors,
+  Palette,
+  Leaf,
+  Gift,
+  Sun,
+  Bell,
+  QrCode
+} from 'lucide-react';
+
+import { getSafeImageSource, DEFAULT_CATEGORY_FALLBACKS } from '../utils/imageUtils';
+import { storage } from '../utils/storage';
+
+// Reusable Section Header Component
+const SectionHeader = ({ title, subtitle, ctaText = 'View All →', onCtaPress, showCta = true, icon }) => (
+  <div className="px-4 mb-3">
+    <div className="flex justify-between items-center">
+      <div className="flex items-center gap-1.5 flex-1 pr-2">
+        {icon && <span className="text-[#C2477A]">{icon}</span>}
+        <h3 className="text-base font-extrabold text-[#3A2430] truncate">
+          {title}
+        </h3>
+      </div>
+      {showCta && (
+        <button
+          onClick={onCtaPress}
+          className="text-xs font-bold text-[#C2477A] hover:opacity-80 transition-opacity cursor-pointer shrink-0"
+        >
+          {ctaText}
+        </button>
+      )}
+    </div>
+    {subtitle && (
+      <p className="text-[10px] font-medium text-[#8C7078] mt-0.5">{subtitle}</p>
+    )}
+  </div>
+);
+
+// Reusable Universal Product Card Component
+const ProductCard = React.memo(({
+  product,
+  badgeText = 'NEW',
+  userRole,
+  getRolePrice,
+  isLiked = false,
+  onToggleFavorite,
+  onSelectProduct,
+  cartQty = 0,
+  onAddToCart,
+  onUpdateCartQty,
+}) => {
+  const rolePrice = getRolePrice(product, userRole);
+  const mrp = product.mrp && product.mrp > rolePrice ? Number(product.mrp) : Math.round(rolePrice * 1.25);
+  const discountPercent = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 14;
+
+  const rating = product.rating ? Number(product.rating).toFixed(1) : '4.5';
+  const reviews = product.reviewCount || 120;
+
+  return (
+    <div
+      onClick={() => onSelectProduct(product)}
+      className="w-36 shrink-0 bg-white rounded-2xl p-2.5 shadow-2xs border border-[#FCE4EC] flex flex-col cursor-pointer hover:shadow-xs transition-shadow"
+    >
+      {/* Product Image Box with Badge & Wishlist Heart */}
+      <div className="relative w-full h-28 rounded-xl overflow-hidden mb-2 bg-[#FFF5F8] border border-[#FCE4EC]/40 flex items-center justify-center">
+        <img
+          src={product.image || 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400'}
+          alt={product.name}
+          className="w-full h-full object-cover"
+        />
+
+        {/* Badge (NEW or BESTSELLER) */}
+        {badgeText && (
+          <div className="absolute top-1.5 left-1.5 bg-[#C2477A] px-1.5 py-0.5 rounded-md shadow-2xs">
+            <span className="text-white text-[7.5px] font-black uppercase tracking-wider block">
+              {badgeText}
+            </span>
+          </div>
+        )}
+
+        {/* Wishlist Heart Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(product);
+          }}
+          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-xs hover:scale-105 transition-transform"
+        >
+          <Heart
+            size={13}
+            className={isLiked ? "fill-[#C2477A] text-[#C2477A]" : "text-[#C2477A]"}
+          />
+        </button>
+      </div>
+
+      {/* Brand & Name */}
+      <span className="text-[8.5px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5 truncate block">
+        {product.brandName || 'SALBEAU'}
+      </span>
+      <h4 className="text-[11px] font-bold text-[#3A2430] leading-tight mb-1 truncate">
+        {product.name}
+      </h4>
+
+      {/* Rating Row: ★ 4.5 (124) */}
+      <div className="flex items-center gap-1 mb-1.5">
+        <Star size={10} className="fill-[#F59E0B] text-[#F59E0B]" />
+        <span className="text-[9.5px] font-bold text-[#3A2430]">{rating}</span>
+        <span className="text-[9px] text-[#8C7078]">({reviews})</span>
+      </div>
+
+      {/* Pricing Row: ₹599 ₹699 14% OFF */}
+      <div className="flex items-baseline gap-1 mb-2 flex-wrap">
+        <span className="text-xs font-black text-[#3A2430]">₹{rolePrice}</span>
+        {mrp > rolePrice && (
+          <span className="text-[9px] font-semibold text-[#8C7078] line-through">₹{mrp}</span>
+        )}
+        {discountPercent > 0 && (
+          <span className="text-[9px] font-black text-[#E11D48]">{discountPercent}% OFF</span>
+        )}
+      </div>
+
+      {/* Cart Control */}
+      <div className="mt-auto pt-0.5">
+        {cartQty > 0 ? (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#C2477A] text-white rounded-full flex items-center justify-between px-1.5 py-0.5 w-full shadow-xs"
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdateCartQty(product.id, cartQty - 1);
+              }}
+              className="w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-xs font-bold transition-colors cursor-pointer"
+            >
+              −
+            </button>
+            <span className="text-[11px] font-black text-white px-1 text-center min-w-[16px]">
+              {cartQty}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdateCartQty(product.id, cartQty + 1);
+              }}
+              className="w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-xs font-bold transition-colors cursor-pointer"
+            >
+              +
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToCart(product);
+            }}
+            className="w-full py-1 rounded-full flex items-center justify-center gap-1 shadow-2xs border-[1.5px] border-[#C2477A] bg-white text-[#C2477A] hover:bg-[#FFF5F8] transition-colors cursor-pointer"
+          >
+            <span className="text-xs font-bold">+</span>
+            <span className="text-[11px] font-black text-[#C2477A]">Add</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+});
 
 export const HomeScreen = () => {
   const {
-    activeProducts,
-    activeBrands,
-    categories,
     userRole,
     getRolePrice,
     setSelectedProduct,
     setSelectedCategory,
-    setSelectedBrand,
     setCurrentScreen,
-    cart,
+    cart = [],
     addToCart,
-    selectedBranch,
-    setSelectedBranch,
-    homeSectionVisibility
+    updateCartQuantity,
+    searchQuery,
+    setSearchQuery,
+    activeProducts = [],
+    brands = [],
+    activeBrands = [],
+    categories = [],
+    favorites = [],
+    isFavorite,
+    toggleFavorite,
+    setGlobalSearchQuery,
+    productSalesCounts = {},
+    homeBanners = [],
+    activeBanners = [],
   } = useApp();
 
-  const [activeSlide, setActiveSlide] = useState(0);
-
-  const heroSlides = [
-    {
-      id: 'hs1',
-      badge: 'EXCLUSIVE PRO TIER',
-      title: 'Autumn Glamour & Glass Glow',
-      subtitle: 'Up to 35% Wholesale Pricing for Salon Pros & Artists',
-      ctaText: 'Explore Pro Rates →',
-      image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=1000&auto=format&fit=crop&q=80',
-      screen: 'onboarding'
-    },
-    {
-      id: 'hs2',
-      badge: '365+ VERIFIED BRANDS',
-      title: '100% Authentic Beauty Direct Supplies',
-      subtitle: 'L\'Oréal, M.A.C, Maybelline, Agaro, Biotique & More In-Stock',
-      ctaText: 'Browse All Brands →',
-      image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1000&auto=format&fit=crop&q=80',
-      screen: 'search'
-    },
-    {
-      id: 'hs3',
-      badge: 'SAME DAY EXPRESS DISPATCH',
-      title: 'Store Pickup & Express Shipping',
-      subtitle: 'Realtime order tracking & wholesale tier invoice receipts',
-      ctaText: 'Shop Best Sellers →',
-      image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1000&auto=format&fit=crop&q=80',
-      screen: 'search'
+  // Cart quantity lookup map for instant O(1) checks
+  const cartQuantityMap = useMemo(() => {
+    const map = new Map();
+    for (const item of (cart || [])) {
+      if (item.product?.id) map.set(item.product.id, item.quantity || 0);
     }
-  ];
+    return map;
+  }, [cart]);
+
+  const totalCartQuantity = useMemo(() => {
+    return (cart || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+  }, [cart]);
+
+  const totalCartPrice = useMemo(() => {
+    return (cart || []).reduce((sum, item) => {
+      const price = getRolePrice(item.product, userRole);
+      return sum + (price * (item.quantity || 0));
+    }, 0);
+  }, [cart, userRole, getRolePrice]);
+
+  const getProductCartQuantity = useCallback((productId) => {
+    return cartQuantityMap.get(productId) || 0;
+  }, [cartQuantityMap]);
+
+  // Customer-Specific Recently Viewed tracking in persistent storage (NO mock fallbacks!)
+  const [recentlyViewedIds, setRecentlyViewedIds] = useState([]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveSlide(prev => (prev + 1) % heroSlides.length);
-    }, 3800);
-    return () => clearInterval(timer);
-  }, [heroSlides.length]);
+    let isMounted = true;
+    const loadRecentlyViewed = async () => {
+      try {
+        const saved = await storage.getItem('salbeau_recently_viewed_ids');
+        if (saved && isMounted) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setRecentlyViewedIds(parsed);
+        }
+      } catch (e) {}
+    };
+    loadRecentlyViewed();
+    return () => { isMounted = false; };
+  }, []);
 
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
-  const roleLabels = {
-    general: 'Retail Customer',
-    salon: 'Salon Owner Pricing',
-    artist: 'Makeup Artist Pricing',
-    beautician: 'Beautician Pricing',
-  };
-
-  const beautyEssentials = [
-    { id: 'be1', title: 'Face Serums', icon: Sparkles, subtitle: 'Radiance & Hydration' },
-    { id: 'be2', title: 'Hair Care Oils', icon: Scissors, subtitle: 'Nourishment & Spa' },
-    { id: 'be3', title: 'Lipsticks & Oils', icon: Palette, subtitle: 'Velvet & Gloss Shades' },
-    { id: 'be4', title: 'Aloevera & Gels', icon: Leaf, subtitle: 'Pure Organic Care' },
-    { id: 'be5', title: 'Waxing & Kits', icon: Gift, subtitle: 'Salon Smooth Finish' },
-    { id: 'be6', title: 'Sunscreen Shield', icon: Sun, subtitle: 'Broad Spectrum UV' }
-  ];
-
-  const recommendedProducts = [
-    {
-      id: 'rec1',
-      brandName: 'DERMAVIVE',
-      name: 'Hydrating Hydra-Boost Serum 50ml',
-      image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=80',
-      rating: '4.9',
-      mrp: 999,
-      salonPrice: 749,
-      artistPrice: 699,
-      beauticianPrice: 719,
-      stock: 15
-    },
-    {
-      id: 'rec2',
-      brandName: 'BIOTIQUE',
-      name: 'Bio Kelp Protein Conditioner',
-      image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=600&auto=format&fit=crop&q=80',
-      rating: '4.6',
-      mrp: 350,
-      salonPrice: 245,
-      artistPrice: 229,
-      beauticianPrice: 235,
-      stock: 20
+  const handleProductSelect = useCallback((product) => {
+    if (product?.id) {
+      setRecentlyViewedIds(prev => {
+        const updated = [product.id, ...prev.filter(id => id !== product.id)].slice(0, 10);
+        storage.setItem('salbeau_recently_viewed_ids', JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
     }
-  ];
+    setSelectedProduct(product);
+    setCurrentScreen('product');
+  }, [setSelectedProduct, setCurrentScreen]);
 
-  const recentlyViewedProducts = [
-    { id: 'rv1', name: 'Glaze Lip Oil', brandName: 'SALBEAU', image: 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300', price: 399 },
-    { id: 'rv2', name: 'Matte Foundation', brandName: 'M.A.C', image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300', price: 1099 },
-    { id: 'rv3', name: 'Hair Repair Mask', brandName: "L'ORÉAL", image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=300', price: 629 }
-  ];
+  // Home Banners state & router
+  const [activeSlide, setActiveSlide] = useState(0);
+  const displayBanners = useMemo(() => {
+    if (activeBanners && activeBanners.length > 0) return activeBanners;
+    if (homeBanners && homeBanners.length > 0) return homeBanners.filter(b => b.isActive !== false);
+    return [];
+  }, [activeBanners, homeBanners]);
+
+  const handleBannerClick = useCallback((banner) => {
+    if (!banner) return;
+    const destType = (banner.destinationType || '').toUpperCase();
+    const destId = banner.destinationId || '';
+
+    switch (destType) {
+      case 'BEST_SELLERS':
+        setSearchQuery('');
+        setSelectedCategory('Best Sellers');
+        setCurrentScreen('search');
+        break;
+      case 'CATEGORY':
+        if (destId) {
+          const matched = (categories || []).find(c =>
+            c.id?.toLowerCase() === destId.toLowerCase() ||
+            c.name?.toLowerCase() === destId.toLowerCase()
+          );
+          setSelectedCategory(matched?.name || destId);
+        }
+        setCurrentScreen('category');
+        break;
+      case 'SUBCATEGORY':
+        if (destId) setSelectedCategory(destId);
+        setCurrentScreen('category');
+        break;
+      case 'BRAND':
+        if (destId) {
+          const matched = (brands || []).find(b =>
+            b.id?.toLowerCase() === destId.toLowerCase() ||
+            b.name?.toLowerCase() === destId.toLowerCase()
+          );
+          if (matched) setCurrentScreen('brand');
+        }
+        break;
+      case 'PRODUCT':
+        if (destId) {
+          const matched = (activeProducts || []).find(p => p.id === destId || p.barcode === destId);
+          if (matched) {
+            handleProductSelect(matched);
+            return;
+          }
+        }
+        setCurrentScreen('product');
+        break;
+      default:
+        if (destId) {
+          setSelectedCategory(destId);
+          setCurrentScreen('category');
+        } else {
+          setCurrentScreen('search');
+        }
+        break;
+    }
+  }, [categories, brands, activeProducts, setSelectedCategory, setSearchQuery, setCurrentScreen, handleProductSelect]);
+
+  useEffect(() => {
+    if (displayBanners.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % displayBanners.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [displayBanners.length]);
+
+  // 1. Shop by Category — Pure database categories
+  const displayCategories = useMemo(() => {
+    if (!categories || categories.length === 0) return [];
+    return categories
+      .filter(c => c.enabled !== false && !c.id.startsWith('app_') && !c.id.startsWith('salbeau_'))
+      .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
+      .map(cat => {
+        const productCount = (activeProducts || []).filter(p => p.category?.toLowerCase() === cat.name?.toLowerCase()).length;
+        return {
+          id: cat.id,
+          name: cat.name,
+          image: cat.image || DEFAULT_CATEGORY_FALLBACKS.default,
+          countText: productCount > 0 ? `${productCount} Products` : 'Explore'
+        };
+      });
+  }, [categories, activeProducts]);
+
+  // 2. Trending Now — Customer Engagement / Orders + Admin Curated Override
+  const trendingProducts = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) return [];
+    return [...activeProducts].sort((a, b) => {
+      // 1. Admin curated trending flag & priority
+      if (a.isTrending && !b.isTrending) return -1;
+      if (!a.isTrending && b.isTrending) return 1;
+      if (a.isTrending && b.isTrending) {
+        return (b.trendingPriority || 0) - (a.trendingPriority || 0);
+      }
+      // 2. Real sales data ranking
+      const salesA = productSalesCounts[a.id] || 0;
+      const salesB = productSalesCounts[b.id] || 0;
+      if (salesB !== salesA) return salesB - salesA;
+      // 3. Ratings / review count
+      return (b.rating || 0) - (a.rating || 0);
+    }).slice(0, 10);
+  }, [activeProducts, productSalesCounts]);
+
+  // 3. Top Brands — Dynamic from Database
+  const topBrandsList = useMemo(() => {
+    const list = activeBrands && activeBrands.length > 0 ? activeBrands : brands.filter(b => b.enabled !== false);
+    return list.filter(b => b.name && !b.id.startsWith('app_') && !b.id.startsWith('salbeau_')).slice(0, 12);
+  }, [activeBrands, brands]);
+
+  // 4. New Arrivals — Automatic by publishedAt / created_at DESC
+  const newArrivals = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) return [];
+    return [...activeProducts]
+      .filter(p => p.showInNewArrivals !== false)
+      .sort((a, b) => {
+        const timeA = new Date(a.publishedAt || a.created_at || 0).getTime();
+        const timeB = new Date(b.publishedAt || b.created_at || 0).getTime();
+        return timeB - timeA;
+      })
+      .slice(0, 10);
+  }, [activeProducts]);
+
+  // 5. Best Sellers — Real Units Sold from Completed Store Orders
+  const bestSellers = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) return [];
+    return [...activeProducts].sort((a, b) => {
+      const salesA = productSalesCounts[a.id] || 0;
+      const salesB = productSalesCounts[b.id] || 0;
+      if (salesB !== salesA) return salesB - salesA;
+      return (b.reviewCount || 0) - (a.reviewCount || 0);
+    }).slice(0, 10);
+  }, [activeProducts, productSalesCounts]);
+
+  // 6. Recently Viewed — Customer's Personalized History (ZERO mock fallbacks!)
+  const recentlyViewedProducts = useMemo(() => {
+    if (recentlyViewedIds.length === 0 || !activeProducts || activeProducts.length === 0) {
+      return [];
+    }
+    const map = new Map(activeProducts.map(p => [p.id, p]));
+    return recentlyViewedIds.map(id => map.get(id)).filter(Boolean);
+  }, [recentlyViewedIds, activeProducts]);
+
+  // 7. Complete Your Look — Real Catalog Product Bundle
+  const duoBundle = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) return null;
+    const lipProduct = activeProducts.find(p => (p.category || '').toLowerCase().includes('lip') || (p.name || '').toLowerCase().includes('lip'));
+    const faceProduct = activeProducts.find(p => p.id !== lipProduct?.id && ((p.category || '').toLowerCase().includes('face') || (p.category || '').toLowerCase().includes('cream') || (p.name || '').toLowerCase().includes('blush') || (p.name || '').toLowerCase().includes('serum')));
+    const p1 = lipProduct || activeProducts[0];
+    const p2 = faceProduct || activeProducts[1] || activeProducts[0];
+    if (!p1 || !p2) return null;
+
+    const price1 = getRolePrice(p1, userRole);
+    const price2 = getRolePrice(p2, userRole);
+    const rawTotal = price1 + (p1.id !== p2.id ? price2 : 0);
+    const bundlePrice = Math.round(rawTotal * 0.80);
+
+    return {
+      title: p1.id !== p2.id ? `${p1.name} + ${p2.name}` : p1.name,
+      subtitle: 'Save 20% extra when buying this salon-ready radiance pair.',
+      bundlePrice,
+      rawTotal,
+      p1,
+      p2,
+      image: p1.image || p2.image
+    };
+  }, [activeProducts, userRole, getRolePrice]);
+
+  const handleAddBundleToCart = useCallback(() => {
+    if (!duoBundle) return;
+    addToCart(duoBundle.p1, 1);
+    if (duoBundle.p2 && duoBundle.p2.id !== duoBundle.p1.id) {
+      addToCart(duoBundle.p2, 1);
+    }
+  }, [duoBundle, addToCart]);
+
+  // Essential Beauty Staples Data
+  const beautyEssentials = useMemo(() => [
+    { id: 'be1', title: 'Face Serums', subtitle: 'Radiance & Hydration', icon: Sparkles, query: 'Serum' },
+    { id: 'be2', title: 'Hair Care Oils', subtitle: 'Nourishment & Spa', icon: Scissors, query: 'Hair' },
+    { id: 'be3', title: 'Lipsticks & Oils', subtitle: 'Velvet & Gloss Shades', icon: Palette, query: 'Lipstick' },
+    { id: 'be4', title: 'Aloevera & Green Care', subtitle: 'Pure Organic Care', icon: Leaf, query: 'Aloe' },
+    { id: 'be5', title: 'Waxing & Kits', subtitle: 'Salon Smooth Finish', icon: Gift, query: 'Wax' },
+    { id: 'be6', title: 'Sunscreen Shades', subtitle: 'Broad Spectrum UV', icon: Sun, query: 'Sunscreen' }
+  ], []);
 
   return (
-    <div className="pb-24 animate-fade-in">
-      {/* ---------------- 1. EXISTING HEADER ---------------- */}
-      {homeSectionVisibility?.branchBar !== false && (
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-[#FCE4EC] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#FCE4EC] flex items-center justify-center text-[#C2477A]">
-              <MapPin size={16} />
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-[#8C7078] font-semibold">Store Branch</div>
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                className="text-xs font-semibold text-[#3A2430] bg-transparent outline-none cursor-pointer pr-2"
-              >
-                <option value="MG Road Branch">MG Road Branch ▾</option>
-                <option value="Indiranagar Branch">Indiranagar Branch ▾</option>
-                <option value="Koramangala Branch">Koramangala Branch ▾</option>
-                <option value="Jayanagar Branch">Jayanagar Branch ▾</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentScreen('search')}
-              className="w-9 h-9 rounded-full bg-white border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] shadow-sm hover:bg-[#FCE4EC]"
-            >
-              <Search size={18} />
-            </button>
-            <button
-              onClick={() => setCurrentScreen('cart')}
-              className="relative w-9 h-9 rounded-full bg-[#C2477A] text-white flex items-center justify-center shadow-md hover:bg-[#a83765]"
-            >
-              <ShoppingBag size={18} />
-              {cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#F5A8C0] text-[#3A2430] font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
-                  {cartItemCount}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------- 2. EXISTING ROLE BAR ---------------- */}
-      {homeSectionVisibility?.pricingRoleBanner !== false && (
-        <div className="bg-gradient-to-r from-[#FCE4EC] to-[#FFF8FA] px-4 py-2.5 border-b border-[#FCE4EC]/60 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Sparkles size={14} className="text-[#C2477A]" />
-            <span className="text-xs text-[#8C7078] font-medium">Pricing Mode:</span>
-            <span className="text-xs font-bold text-[#C2477A] bg-white px-2 py-0.5 rounded-full border border-[#F5A8C0]">
-              {roleLabels[userRole]}
-            </span>
-          </div>
+    <div className="min-h-screen bg-white pb-32 animate-fade-in relative selection:bg-[#FCE4EC]">
+      {/* ========================================================================= */}
+      {/* 1. HEADER (SALBEAU SCRIPT LOGO + NOTIFICATIONS + WISHLIST) */}
+      {/* ========================================================================= */}
+      <div className="px-4 pt-3 pb-2 bg-white flex justify-between items-center">
+        <h1
+          style={{ fontFamily: "'Great Vibes', cursive, 'Snell Roundhand', serif" }}
+          className="text-4xl text-[#C2477A] tracking-wide select-none"
+        >
+          Salbeau
+        </h1>
+        <div className="flex items-center gap-2.5">
           <button
-            onClick={() => setCurrentScreen('onboarding')}
-            className="text-xs font-semibold text-[#C2477A] underline hover:text-[#a83765]"
+            onClick={() => setCurrentScreen('orders')}
+            className="w-9 h-9 rounded-full bg-[#FFF5F8] flex items-center justify-center border border-[#FCE4EC] text-[#C2477A] hover:bg-[#FCE4EC] transition-colors cursor-pointer"
+            title="Notifications & Orders"
           >
-            Change Role
+            <Bell size={18} />
+          </button>
+          <button
+            onClick={() => setCurrentScreen('wishlist')}
+            className="relative w-9 h-9 rounded-full bg-[#FFF5F8] flex items-center justify-center border border-[#FCE4EC] text-[#C2477A] hover:bg-[#FCE4EC] transition-colors cursor-pointer"
+            title="Wishlist"
+          >
+            <Heart size={18} className={favorites.length > 0 ? "fill-[#C2477A]" : ""} />
+            {favorites.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#C2477A] text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white">
+                {favorites.length}
+              </span>
+            )}
           </button>
         </div>
-      )}
+      </div>
 
-      {/* ---------------- 3. HERO SLIDER BANNER (CLEAN WITH BUTTON ONLY) ---------------- */}
-      {homeSectionVisibility?.heroPromoBanner !== false && (
-        <div className="p-4">
-          <div className="relative rounded-2xl overflow-hidden shadow-lg bg-[#FCE4EC] h-48 border border-[#FCE4EC]">
-            <img
-              src={heroSlides[activeSlide].image}
-              alt="Hero Banner"
-              className="w-full h-full object-cover transition-all duration-700"
-            />
-
-            <div className="absolute bottom-3.5 left-3.5">
-              <button
-                onClick={() => setCurrentScreen(heroSlides[activeSlide].screen || 'onboarding')}
-                className="bg-white text-[#C2477A] font-extrabold text-xs px-4 py-2 rounded-xl shadow-md border border-pink-100 hover:bg-[#FFF5F8] transition-all"
-              >
-                {heroSlides[activeSlide].ctaText || 'Shop Collection →'}
-              </button>
-            </div>
-          </div>
+      {/* ========================================================================= */}
+      {/* 2. SEARCH BAR (WITH SCANNER ICON ON RIGHT) */}
+      {/* ========================================================================= */}
+      <div className="px-4 mb-4">
+        <div
+          onClick={() => {
+            if (setGlobalSearchQuery && searchQuery) setGlobalSearchQuery(searchQuery);
+            setCurrentScreen('search');
+          }}
+          className="w-full flex items-center bg-white border border-[#F5A8C0] px-3.5 py-2 rounded-full shadow-2xs cursor-pointer hover:border-[#C2477A] transition-colors"
+        >
+          <Search size={16} className="text-[#C2477A] shrink-0" />
+          <span className="flex-1 text-[11px] font-semibold text-[#8C7078] px-2.5 truncate">
+            {searchQuery || 'Search products, brands, lipsticks...'}
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentScreen('search');
+            }}
+            className="text-[#C2477A] hover:opacity-80 p-0.5 cursor-pointer"
+          >
+            <QrCode size={16} />
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* ---------------- 4. EXISTING SHOP CATEGORIES ---------------- */}
-      {homeSectionVisibility?.shopCategories !== false && (
-        <div className="mb-6">
-          <div className="px-4 flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-[#3A2430] uppercase tracking-wider">Shop Categories</h3>
-            <span className="text-xs text-[#C2477A] font-semibold cursor-pointer">View All</span>
-          </div>
-          <div className="flex overflow-x-auto gap-3 px-4 no-scrollbar pb-1">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  setSelectedCategory(cat);
-                  setCurrentScreen('category');
-                }}
-                className="flex-shrink-0 flex flex-col items-center gap-1.5 group"
-              >
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-[#F5A8C0]/30 transition-transform group-hover:scale-105"
-                  style={{ backgroundColor: cat.color }}
-                >
-                  {cat.icon}
-                </div>
-                <span className="text-xs font-medium text-[#3A2430] text-center w-16 truncate">
-                  {cat.name}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ---------------- 5. EXISTING FEATURED BRANDS ---------------- */}
-      {homeSectionVisibility?.featuredBrands !== false && (
-        <div className="mb-6 bg-white/70 py-4 border-y border-[#FCE4EC]">
-          <div className="px-4 flex items-center justify-between mb-3">
-            <div>
-              <h3 className="text-sm font-bold text-[#3A2430] uppercase tracking-wider">Featured Brands</h3>
-              <p className="text-[11px] text-[#8C7078]">Only active partner brands shown</p>
-            </div>
-            <button
-              onClick={() => setCurrentScreen('brand')}
-              className="text-xs text-[#C2477A] font-semibold flex items-center gap-0.5"
+      {/* ========================================================================= */}
+      {/* 3. HERO BANNER (DYNAMIC 5-BANNER CAROUSEL) */}
+      {/* ========================================================================= */}
+      <div className="px-4 mb-6">
+        <div className="relative w-full aspect-[2.56/1] rounded-3xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FDE8EF]">
+          {displayBanners.map((banner, idx) => (
+            <div
+              key={banner.id || idx}
+              onClick={() => handleBannerClick(banner)}
+              className={`absolute inset-0 w-full h-full cursor-pointer transition-opacity duration-700 ${
+                activeSlide === idx ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
+              }`}
             >
-              All Brands <ChevronRight size={14} />
-            </button>
-          </div>
+              {banner.imageUrl && (
+                <img
+                  src={banner.imageUrl}
+                  alt={banner.title || 'Banner'}
+                  className="w-full h-full object-cover"
+                />
+              )}
+              {/* Interactive CTA Pill */}
+              <div className="absolute left-3.5 bottom-3 bg-[#C2477A] hover:bg-[#a83765] text-white text-[10.5px] font-black tracking-wide px-3.5 py-1.5 rounded-full shadow-xs transition-colors">
+                {banner.ctaText || banner.ctaLabel || 'Shop Now →'}
+              </div>
+            </div>
+          ))}
 
-          <div className="flex overflow-x-auto gap-3 px-4 no-scrollbar">
-            {activeBrands.map((brand) => (
+          {/* Carousel Pagination Dots */}
+          {displayBanners.length > 1 && (
+            <div className="absolute bottom-2.5 right-4 flex items-center gap-1.5 z-20">
+              {displayBanners.map((banner, idx) => (
+                <button
+                  key={banner.id || idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSlide(idx);
+                  }}
+                  className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                    activeSlide === idx ? 'w-4 bg-[#C2477A]' : 'w-1.5 bg-black/30'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 4. SHOP BY CATEGORY (HORIZONTAL CAROUSEL) */}
+      {/* ========================================================================= */}
+      <SectionHeader
+        title="Shop by Category"
+        ctaText="View All →"
+        onCtaPress={() => setCurrentScreen('category')}
+      />
+      <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
+        {displayCategories.map((cat) => (
+          <div
+            key={cat.id}
+            onClick={() => {
+              setSelectedCategory(cat);
+              setCurrentScreen('category');
+            }}
+            className="bg-white rounded-2xl border border-[#FCE4EC] p-2 flex flex-col items-center shadow-2xs w-[88px] shrink-0 cursor-pointer hover:border-[#C2477A]/50 transition-colors"
+          >
+            <div className="w-16 h-16 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#FCE4EC]/50 flex items-center justify-center">
+              <img
+                src={cat.image || 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=400'}
+                alt={cat.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <span className="text-[11px] font-bold text-[#3A2430] text-center truncate w-full">
+              {cat.name}
+            </span>
+            <span className="text-[9px] font-medium text-[#8C7078] text-center mt-0.5">
+              {cat.countText}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 5. TRENDING NOW (HORIZONTAL PRODUCT CAROUSEL) */}
+      {/* ========================================================================= */}
+      <SectionHeader
+        title="🔥 Trending Now"
+        ctaText="View All →"
+        onCtaPress={() => setCurrentScreen('search')}
+      />
+      <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
+        {trendingProducts.map((item) => (
+          <ProductCard
+            key={item.id}
+            product={item}
+            badgeText="NEW"
+            userRole={userRole}
+            getRolePrice={getRolePrice}
+            isLiked={isFavorite(item.id)}
+            onToggleFavorite={toggleFavorite}
+            onSelectProduct={handleProductSelect}
+            cartQty={getProductCartQuantity(item.id)}
+            onAddToCart={(prod) => addToCart(prod, 1)}
+            onUpdateCartQty={updateCartQuantity}
+          />
+        ))}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 6. TOP BRANDS (CIRCULAR BRAND CAROUSEL) */}
+      {/* ========================================================================= */}
+      {topBrandsList.length > 0 && (
+        <>
+          <SectionHeader
+            title="Top Brands"
+            ctaText="View All →"
+            onCtaPress={() => setCurrentScreen('search')}
+          />
+          <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
+            {topBrandsList.map((brand) => (
               <button
                 key={brand.id}
                 onClick={() => {
-                  setSelectedBrand(brand);
-                  setCurrentScreen('brand');
+                  const brandQuery = (brand.name || '').replace('\n', ' ');
+                  if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
+                  setSearchQuery(brandQuery);
+                  setCurrentScreen('search');
                 }}
-                className="flex-shrink-0 bg-white border border-[#F5A8C0]/50 rounded-xl px-4 py-2.5 flex items-center gap-2.5 shadow-sm hover:border-[#C2477A]"
+                className="w-[72px] h-[72px] shrink-0 rounded-full bg-white border border-[#FCE4EC] shadow-xs flex items-center justify-center p-1.5 hover:border-[#C2477A] transition-colors cursor-pointer overflow-hidden"
               >
-                <span className="text-xl">{brand.logo}</span>
-                <div className="text-left">
-                  <div className="text-xs font-bold text-[#3A2430] whitespace-nowrap">{brand.name}</div>
-                  <div className="text-[10px] text-[#8C7078]">{brand.category}</div>
-                </div>
+                {brand.logo && typeof brand.logo === 'string' && brand.logo.startsWith('http') ? (
+                  <img
+                    src={brand.logo}
+                    alt={brand.name}
+                    className="w-4/5 h-4/5 object-contain"
+                  />
+                ) : (
+                  <span
+                    className="text-[9.5px] font-black text-center tracking-tight text-[#1F2937] line-clamp-2"
+                  >
+                    {brand.name}
+                  </span>
+                )}
               </button>
             ))}
           </div>
-        </div>
+        </>
       )}
 
-      {/* ---------------- 6. EXISTING BEST SELLERS ---------------- */}
-      {homeSectionVisibility?.bestSellers !== false && (
-        <div className="px-4 mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5">
-              <Tag size={16} className="text-[#C2477A]" />
-              <h3 className="text-sm font-bold text-[#3A2430] uppercase tracking-wider">Best Sellers</h3>
+      {/* ========================================================================= */}
+      {/* 7. NEW ARRIVALS (HORIZONTAL PRODUCT CAROUSEL) */}
+      {/* ========================================================================= */}
+      <SectionHeader
+        title="New Arrivals"
+        ctaText="View All →"
+        onCtaPress={() => setCurrentScreen('search')}
+      />
+      <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
+        {newArrivals.map((item) => (
+          <ProductCard
+            key={`na_${item.id}`}
+            product={item}
+            badgeText="NEW"
+            userRole={userRole}
+            getRolePrice={getRolePrice}
+            isLiked={isFavorite(item.id)}
+            onToggleFavorite={toggleFavorite}
+            onSelectProduct={handleProductSelect}
+            cartQty={getProductCartQuantity(item.id)}
+            onAddToCart={(prod) => addToCart(prod, 1)}
+            onUpdateCartQty={updateCartQuantity}
+          />
+        ))}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 8. BEST SELLERS (HORIZONTAL PRODUCT CAROUSEL) */}
+      {/* ========================================================================= */}
+      <SectionHeader
+        title="Best Sellers"
+        ctaText="View All →"
+        onCtaPress={() => setCurrentScreen('search')}
+      />
+      <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
+        {bestSellers.map((item) => (
+          <ProductCard
+            key={`bs_${item.id}`}
+            product={item}
+            badgeText="NEW"
+            userRole={userRole}
+            getRolePrice={getRolePrice}
+            isLiked={isFavorite(item.id)}
+            onToggleFavorite={toggleFavorite}
+            onSelectProduct={handleProductSelect}
+            cartQty={getProductCartQuantity(item.id)}
+            onAddToCart={(prod) => addToCart(prod, 1)}
+            onUpdateCartQty={updateCartQuantity}
+          />
+        ))}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 9. BEAUTY EDIT (EDITORIAL BANNER CARD) */}
+      {/* ========================================================================= */}
+      <SectionHeader
+        title="Beauty Edit"
+        ctaText="View All →"
+        onCtaPress={() => setCurrentScreen('search')}
+      />
+      <div className="px-4 mb-6">
+        <div className="bg-[#FFF0F5] rounded-3xl overflow-hidden border border-[#FCE4EC] shadow-xs flex items-center min-h-[160px]">
+          {/* Left Editorial Text Column */}
+          <div className="flex-1 p-4 pr-1 z-10 flex flex-col justify-center">
+            <div className="bg-[#C2477A] px-2 py-0.5 rounded-full self-start mb-2">
+              <span className="text-white text-[8px] font-black uppercase tracking-wider block">
+                THE SALBEAU EDIT
+              </span>
             </div>
-            <span className="text-xs text-[#C2477A] font-semibold">{activeProducts.length} items</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {activeProducts.map((product) => {
-              const rolePrice = getRolePrice(product, userRole);
-              const hasDiscount = userRole !== 'general' && rolePrice < product.mrp;
-              const isOutOfStock = product.stock === 0;
-
-              return (
-                <div
-                  key={product.id}
-                  onClick={() => {
-                    setSelectedProduct(product);
-                    setCurrentScreen('product');
-                  }}
-                  className="bg-white rounded-2xl border border-[#FCE4EC] overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="relative aspect-square bg-[#FCE4EC]/40 overflow-hidden">
-                      <img src={product.image} alt={product.name} className={`w-full h-full object-cover ${isOutOfStock ? 'opacity-40' : ''}`} />
-                      {isOutOfStock ? (
-                        <span className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center text-white text-[10px] font-black uppercase tracking-wider">
-                          Out of Stock
-                        </span>
-                      ) : hasDiscount ? (
-                        <span className="absolute top-2 left-2 bg-[#C2477A] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
-                          {Math.round(((product.mrp - rolePrice) / product.mrp) * 100)}% OFF
-                        </span>
-                      ) : null}
-                      <span className="absolute top-2 right-2 bg-white/90 text-[#3A2430] text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-sm">
-                        <Star size={10} className="fill-[#F5A8C0] text-[#C2477A]" /> {product.rating}
-                      </span>
-                    </div>
-
-                    <div className="p-3">
-                      <div className="text-[10px] uppercase font-bold tracking-wider text-[#8C7078] mb-0.5">
-                        {product.brandName}
-                      </div>
-                      <h4 className="text-xs font-semibold text-[#3A2430] line-clamp-2 leading-snug mb-2">
-                        {product.name}
-                      </h4>
-                    </div>
-                  </div>
-
-                  <div className="px-3 pb-3 pt-1 border-t border-[#FCE4EC]/50 flex items-center justify-between">
-                    <div>
-                      {hasDiscount ? (
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-sm font-bold text-[#C2477A]">₹{rolePrice}</span>
-                          <span className="text-[11px] text-[#8C7078] line-through">₹{product.mrp}</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm font-bold text-[#3A2430]">₹{product.mrp}</span>
-                      )}
-                      {isOutOfStock ? (
-                        <div className="text-[9px] text-rose-600 font-bold">Out of Stock</div>
-                      ) : (
-                        <div className="text-[9px] text-[#4C8C5C] font-semibold">In Stock ({product.stock})</div>
-                      )}
-                    </div>
-
-                    <button
-                      disabled={isOutOfStock}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isOutOfStock) addToCart(product, 1);
-                      }}
-                      className={`w-7 h-7 rounded-full font-bold text-sm flex items-center justify-center transition-colors ${
-                        isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-[#FCE4EC] text-[#C2477A] hover:bg-[#C2477A] hover:text-white'
-                      }`}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 💥 NEW ADDITIONS BELOW CURRENT EXISTING CONTENT (100% PRESERVED ABOVE) 💥 */}
-      {/* ========================================================================= */}
-
-      {/* NEW SECTION 1: BEAUTY EDIT */}
-      <div className="px-4 mb-8">
-        <h3 className="text-sm font-bold text-[#3A2430] uppercase tracking-wider mb-3">Beauty Edit</h3>
-        <div className="bg-white rounded-2xl border border-[#FCE4EC] overflow-hidden shadow-sm">
-          <div className="relative h-36 bg-[#FCE4EC]">
-            <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&auto=format&fit=crop&q=80" alt="Beauty Edit" className="w-full h-full object-cover" />
-            <span className="absolute top-3 left-3 bg-[#C2477A] text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full">
-              THE SALBEAU EDIT
-            </span>
-          </div>
-          <div className="p-4 bg-white">
-            <h4 className="text-sm font-bold text-[#3A2430] mb-1">Autumn Gloss & Radiance Rituals</h4>
-            <p className="text-xs text-[#8C7078] leading-relaxed mb-3">
+            <h3 className="text-[15px] font-black text-[#3A2430] leading-snug mb-1">
+              Autumn Gloss & Radiance Rituals
+            </h3>
+            <p className="text-[9.5px] text-[#8C7078] font-medium leading-relaxed mb-3">
               Discover curated autumn beauty masterclasses, pro artist tricks, and hydration secrets for glass skin.
             </p>
-            <button onClick={() => setCurrentScreen('search')} className="text-xs font-bold text-[#C2477A] flex items-center gap-1 hover:underline">
-              Read Beauty Journal <ArrowRight size={13} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-
-      {/* NEW SECTION 3: RECOMMENDED FOR YOU */}
-      <div className="px-4 mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-[#3A2430] uppercase tracking-wider">Recommended For You</h3>
-          <span onClick={() => setCurrentScreen('search')} className="text-xs font-semibold text-[#C2477A] cursor-pointer">See All</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {recommendedProducts.map((product) => {
-            const rolePrice = getRolePrice(product, userRole);
-            return (
-              <div
-                key={product.id}
-                onClick={() => {
-                  setSelectedProduct(product);
-                  setCurrentScreen('product');
-                }}
-                className="bg-white rounded-2xl border border-[#FCE4EC] overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
-              >
-                <div>
-                  <div className="relative aspect-square bg-[#FCE4EC]/40 overflow-hidden">
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                    <span className="absolute top-2 right-2 bg-white/90 text-[#3A2430] text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-sm">
-                      <Star size={10} className="fill-[#F5A8C0] text-[#C2477A]" /> {product.rating}
-                    </span>
-                  </div>
-
-                  <div className="p-3">
-                    <div className="text-[10px] uppercase font-bold tracking-wider text-[#8C7078] mb-0.5">
-                      {product.brandName}
-                    </div>
-                    <h4 className="text-xs font-semibold text-[#3A2430] line-clamp-2 leading-snug mb-2">
-                      {product.name}
-                    </h4>
-                  </div>
-                </div>
-
-                <div className="px-3 pb-3 pt-1 border-t border-[#FCE4EC]/50 flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-bold text-[#C2477A]">₹{rolePrice}</span>
-                    <span className="text-[11px] text-[#8C7078] line-through ml-1.5">₹{product.mrp}</span>
-                  </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addToCart(product, 1);
-                    }}
-                    className="w-7 h-7 rounded-full font-bold text-sm bg-[#FCE4EC] text-[#C2477A] hover:bg-[#C2477A] hover:text-white flex items-center justify-center transition-colors"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* NEW SECTION 4: ESSENTIAL BEAUTY STAPLES */}
-      <div className="px-4 mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-bold text-[#3A2430] uppercase tracking-wider">Essential Beauty Staples</h3>
-            <p className="text-[11px] text-[#8C7078]">Handpicked pro catalog favorites</p>
-          </div>
-          <span onClick={() => setCurrentScreen('search')} className="text-xs font-semibold text-[#C2477A] cursor-pointer">Explore All →</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {beautyEssentials.map((item) => {
-            const IconComp = item.icon;
-            return (
-              <div
-                key={item.id}
-                onClick={() => setCurrentScreen('search')}
-                className="bg-white rounded-2xl border border-[#FCE4EC] p-3 flex items-center gap-3 shadow-2xs hover:border-[#F5A8C0] cursor-pointer transition-all"
-              >
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-[#FFF5F8] border border-[#FCE4EC] shrink-0 text-[#C2477A]">
-                  <IconComp size={18} />
-                </div>
-                <div className="overflow-hidden">
-                  <div className="text-xs font-bold text-[#3A2430] truncate">{item.title}</div>
-                  <div className="text-[10px] text-[#8C7078] truncate">{item.subtitle}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* NEW SECTION 5: RECENTLY VIEWED */}
-      <div className="mb-8">
-        <h3 className="text-sm font-bold text-[#3A2430] uppercase tracking-wider px-4 mb-3">Recently Viewed</h3>
-        <div className="flex overflow-x-auto gap-3 px-4 no-scrollbar">
-          {recentlyViewedProducts.map((rv) => (
-            <div
-              key={rv.id}
-              onClick={() => setCurrentScreen('product')}
-              className="flex-shrink-0 w-28 bg-white border border-[#FCE4EC] rounded-2xl p-2.5 text-center shadow-2xs cursor-pointer hover:border-[#F5A8C0]"
+            <button
+              onClick={() => setCurrentScreen('search')}
+              className="bg-[#C2477A] hover:bg-[#a83765] text-white text-[10px] font-black px-3.5 py-1.5 rounded-full self-start shadow-xs transition-colors cursor-pointer"
             >
-              <div className="w-16 h-16 rounded-xl overflow-hidden mb-2 mx-auto bg-[#FFF5F8] border border-[#FCE4EC]">
-                <img src={rv.image} alt={rv.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="text-[9px] font-bold text-[#C2477A] uppercase">{rv.brandName}</div>
-              <div className="text-xs font-semibold text-[#3A2430] truncate">{rv.name}</div>
-              <div className="text-xs font-bold text-[#C2477A] mt-1">₹{rv.price}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* NEW SECTION 6: COMPLETE YOUR LOOK */}
-      <div className="px-4 mb-8">
-        <h3 className="text-sm font-bold text-[#3A2430] uppercase tracking-wider mb-3">Complete Your Look</h3>
-        <div className="bg-[#FFF5F8] rounded-2xl p-4 border border-[#FCE4EC] shadow-2xs flex items-center justify-between gap-3">
-          <div className="flex-1">
-            <span className="text-[9px] font-black text-[#C2477A] uppercase tracking-wider block mb-0.5">DUO BEAUTY BUNDLE</span>
-            <h4 className="text-xs font-bold text-[#3A2430] mb-1">Hydrating Lip Oil + Velvet Blush</h4>
-            <p className="text-[11px] text-[#8C7078] mb-2 leading-relaxed">Save 20% extra when buying this salon radiance duo.</p>
-            <button onClick={() => setCurrentScreen('cart')} className="bg-[#C2477A] text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-[#a83765]">
-              Add Bundle ₹899 →
+              Read Beauty Journal →
             </button>
           </div>
-          <div className="w-20 h-20 rounded-xl overflow-hidden bg-white border border-[#F5A8C0] flex-shrink-0">
-            <img src="https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300" alt="Bundle" className="w-full h-full object-cover" />
+
+          {/* Right Editorial Model Image */}
+          <div className="w-[42%] h-full flex justify-center items-end relative overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=800&auto=format&fit=crop&q=80"
+              alt="Editorial Beauty"
+              className="w-full h-full object-cover"
+            />
           </div>
         </div>
       </div>
 
-      {/* NEW SECTION 7: SEASONAL BEAUTY COLLECTION */}
-      <div className="px-4 mb-4">
-        <div className="rounded-2xl overflow-hidden border border-[#FCE4EC] bg-white shadow-sm">
-          <div className="relative h-36 bg-[#FCE4EC]">
-            <img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&auto=format&fit=crop&q=80" alt="Collection" className="w-full h-full object-cover" />
-            <span className="absolute top-3 left-3 bg-white/90 text-[#C2477A] text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full">
-              SEASONAL COLLECTION
-            </span>
-          </div>
-          <div className="p-4 flex items-center justify-between">
-            <div>
-              <h4 className="text-xs font-bold text-[#3A2430]">Luxe Bridal & Salon Master Series</h4>
-              <p className="text-[11px] text-[#8C7078]">Professional bridal kits with long-wear formulas.</p>
+      {/* ========================================================================= */}
+      {/* 10. ESSENTIAL BEAUTY STAPLES (2-COLUMN GRID) */}
+      {/* ========================================================================= */}
+      <SectionHeader
+        title="Essential Beauty Staples"
+        subtitle="Handpicked pro catalog favorites"
+        ctaText="Explore All →"
+        onCtaPress={() => setCurrentScreen('search')}
+      />
+      <div className="px-4 grid grid-cols-2 gap-3 mb-6">
+        {beautyEssentials.map((item) => {
+          const IconComp = item.icon;
+          return (
+            <div
+              key={item.id}
+              onClick={() => {
+                if (setGlobalSearchQuery) setGlobalSearchQuery(item.query);
+                setSearchQuery(item.query);
+                setCurrentScreen('search');
+              }}
+              className="bg-white rounded-2xl border border-[#FCE4EC] p-2.5 flex items-center gap-2.5 shadow-2xs cursor-pointer hover:border-[#C2477A]/50 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#FFF5F8] border border-[#FCE4EC] shrink-0 text-[#C2477A]">
+                <IconComp size={16} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[11px] font-extrabold text-[#3A2430] truncate block">
+                  {item.title}
+                </span>
+                <span className="text-[8.5px] font-medium text-[#8C7078] truncate block">
+                  {item.subtitle}
+                </span>
+              </div>
             </div>
-            <button onClick={() => setCurrentScreen('search')} className="bg-[#C2477A] text-white text-xs font-bold px-3 py-2 rounded-xl hover:bg-[#a83765]">
+          );
+        })}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 11. RECENTLY VIEWED (HORIZONTAL CAROUSEL — PERSONALIZED PER CUSTOMER) */}
+      {/* ========================================================================= */}
+      {recentlyViewedProducts.length > 0 && (
+        <>
+          <SectionHeader
+            title="Recently Viewed"
+            ctaText="View All →"
+            onCtaPress={() => setCurrentScreen('search')}
+          />
+          <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
+            {recentlyViewedProducts.map((item) => (
+              <ProductCard
+                key={`rv_${item.id}`}
+                product={item}
+                badgeText=""
+                userRole={userRole}
+                getRolePrice={getRolePrice}
+                isLiked={isFavorite(item.id)}
+                onToggleFavorite={toggleFavorite}
+                onSelectProduct={handleProductSelect}
+                cartQty={getProductCartQuantity(item.id)}
+                onAddToCart={(prod) => addToCart(prod, 1)}
+                onUpdateCartQty={updateCartQuantity}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 12. COMPLETE YOUR LOOK (DYNAMIC DUO BUNDLE PROMO CARD) */}
+      {/* ========================================================================= */}
+      {duoBundle && (
+        <>
+          <SectionHeader
+            title="Complete Your Look"
+            showCta={false}
+          />
+          <div className="px-4 mb-6">
+            <div className="bg-[#FFF5F8] rounded-3xl p-4 border border-[#FCE4EC] shadow-2xs flex items-center justify-between">
+              <div className="flex-1 pr-3">
+                <span className="text-[8.5px] font-black text-[#C2477A] uppercase tracking-wider mb-1 block">
+                  DUO BEAUTY BUNDLE
+                </span>
+                <h4 className="text-xs font-black text-[#3A2430] mb-1 leading-snug line-clamp-2">
+                  {duoBundle.title}
+                </h4>
+                <p className="text-[9.5px] text-[#8C7078] font-medium mb-2.5 leading-relaxed">
+                  {duoBundle.subtitle}
+                </p>
+                <button
+                  onClick={handleAddBundleToCart}
+                  className="bg-[#C2477A] hover:bg-[#a83765] text-white text-[10px] font-black px-3.5 py-1.5 rounded-full shadow-xs transition-colors cursor-pointer"
+                >
+                  Add Bundle ₹{duoBundle.bundlePrice} →
+                </button>
+              </div>
+              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white border border-[#F5A8C0] shrink-0">
+                <img
+                  src={getSafeImageSource(duoBundle.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=600')}
+                  alt={duoBundle.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 13. SEASONAL COLLECTION (FULL-WIDTH PROMO CARD) */}
+      {/* ========================================================================= */}
+      <SectionHeader
+        title="Seasonal Collection"
+        showCta={false}
+      />
+      <div className="px-4 mb-4">
+        <div className="rounded-3xl overflow-hidden border border-[#FCE4EC] bg-[#FFF8F3] shadow-xs">
+          <div className="relative w-full h-32 bg-[#FCE4EC]">
+            <img
+              src="https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=800&auto=format&fit=crop&q=80"
+              alt="Seasonal Collection"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-pink-100">
+              <span className="text-[#C2477A] text-[8px] font-black uppercase tracking-wider block">
+                SEASONAL COLLECTION
+              </span>
+            </div>
+          </div>
+          <div className="p-3.5 flex items-center justify-between">
+            <div className="flex-1 pr-2">
+              <h4 className="text-xs font-black text-[#3A2430]">
+                Luxe Bridal & Salon Master Series
+              </h4>
+              <p className="text-[9.5px] text-[#8C7078] font-medium mt-0.5">
+                Professional bridal kits with extended durability formulas.
+              </p>
+            </div>
+            <button
+              onClick={() => setCurrentScreen('search')}
+              className="bg-[#C2477A] hover:bg-[#a83765] text-white text-[10px] font-black px-3.5 py-1.5 rounded-full shadow-xs transition-colors cursor-pointer shrink-0"
+            >
               Explore →
             </button>
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 14. STICKY VIEW CART BAR (WHEN ITEMS IN CART) */}
+      {/* ========================================================================= */}
+      {totalCartQuantity > 0 && (
+        <div className="fixed bottom-16 left-3 right-3 z-40 bg-[#C2477A] rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-lg text-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+              <ShoppingBag size={17} className="text-white" />
+            </div>
+            <div>
+              <span className="text-xs font-black text-white tracking-wide block">
+                {totalCartQuantity} {totalCartQuantity === 1 ? 'Item' : 'Items'} • ₹{totalCartPrice}
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setCurrentScreen('cart')}
+            className="bg-white text-[#C2477A] text-[11px] font-black uppercase tracking-wider px-3.5 py-1.5 rounded-xl flex items-center gap-1 shadow-xs hover:bg-pink-50 transition-colors cursor-pointer"
+          >
+            <span>View Cart</span>
+            <ArrowRight size={12} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

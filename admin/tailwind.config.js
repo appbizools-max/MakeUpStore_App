@@ -8,19 +8,24 @@ export default {
     extend: {
       colors: {
         salbeau: {
-          bg: '#FFF8FA',
+          brand: '#C2477A',        // Logo's primary brand color
+          brandDark: '#9E2D5B',    // Hover / pressed state
+          brandLight: '#FFF5F8',   // Lightest background tint
+          brandSoft: '#FDF2F8',    // Active / soft badge background
+          brandBorder: '#FCE4EC',  // Soft border
+          brandBorderHover: '#F8B4CB',
+          bg: '#FFFFFF',           // Crisp white background
           pink: '#F5A8C0',
           pinkDeep: '#C2477A',
           pinkSoft: '#FCE4EC',
-          softCard: '#FDEAF1',
-          text: '#3A2430',
-          muted: '#8C7078',
-          success: '#4C8C5C',
+          softCard: '#FFF5F8',
+          text: '#000000',         // Black text throughout
+          textMuted: '#1F2937',    // Clean dark readable text
           border: '#FCE4EC',
         }
       },
       fontFamily: {
-        sans: ['Poppins', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Poppins', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       }
     },
   },

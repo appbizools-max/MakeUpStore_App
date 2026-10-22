@@ -125,6 +125,20 @@ export const RoleSelectionScreen = () => {
             </View>
           )}
         </View>
+
+        {selectedRole !== 'general' && (
+          <View className="bg-[#FFF5F8] border border-[#F8BBD0] rounded-2xl p-3.5 flex-row items-start gap-2.5">
+            <Ionicons name="shield-checkmark" size={18} color="#C2477A" style={{ marginTop: 1 }} />
+            <View className="flex-1">
+              <Text className="text-xs font-black text-[#3A2430]">
+                B2B Verification Required
+              </Text>
+              <Text className="text-[11px] text-[#8C7078] mt-0.5 leading-snug">
+                Exclusive professional wholesale pricing will be unlocked after admin verification and approval. General users do not require verification.
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Bottom Action Button */}

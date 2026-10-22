@@ -1,21 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, StatusBar } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, StatusBar, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
+import { isB2BRole } from '../../utils/b2bVerificationService';
 
 export const OtpScreen = () => {
-  const { userRole, userProfile, setCurrentScreen } = useApp();
-  const [otp, setOtp] = useState(['4', '8', '2', '1']);
+  const { userRole, userProfile, setCurrentScreen, checkUserExistingProfile, prefetchUserProfile } = useApp();
+  const [otp, setOtp] = useState(['', '', '', '']);
   const [timerSeconds, setTimerSeconds] = useState(120); // 2:00 minutes countdown limit
+  const [isVerifying, setIsVerifying] = useState(false);
+  const inFlightRef = useRef(false);
+  const inputRefs = useRef([]);
 
+  const isOtpComplete = otp.every(d => d.trim().length === 1);
+
+  // Background prefetch profile as soon as OTP screen mounts to eliminate verify delay
   useEffect(() => {
-    if (timerSeconds <= 0) return;
+    if (prefetchUserProfile && userProfile?.phone) {
+      prefetchUserProfile(userProfile.phone);
+    }
+  }, [userProfile?.phone]);
+
+  // Smooth timer without recreating interval every second
+  useEffect(() => {
     const interval = setInterval(() => {
-      setTimerSeconds(prev => (prev > 0 ? prev - 1 : 0));
+      setTimerSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timerSeconds]);
+  }, []);
 
   const formatTimer = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -35,13 +54,70 @@ export const OtpScreen = () => {
     }
   };
 
-  const handleVerifyOtp = () => {
-    setCurrentScreen('home');
+  const handleDigitChange = (index, val) => {
+    const cleanVal = val.replace(/\D/g, '');
+    const updated = [...otp];
+    updated[index] = cleanVal ? cleanVal.slice(-1) : '';
+    setOtp(updated);
+
+    if (cleanVal && index < 3 && inputRefs.current[index + 1]) {
+      inputRefs.current[index + 1].focus();
+    }
+  };
+
+  const handleKeyPress = (index, e) => {
+    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+      if (inputRefs.current[index - 1]) {
+        inputRefs.current[index - 1].focus();
+      }
+    }
+  };
+
+  // Instant one-tap verification with duplicate request prevention
+  const handleVerifyOtp = async () => {
+    if (!isOtpComplete || inFlightRef.current) return;
+    inFlightRef.current = true;
+    setIsVerifying(true);
+
+    try {
+      let isComplete = false;
+      if (checkUserExistingProfile) {
+        isComplete = await checkUserExistingProfile(userProfile?.phone);
+      }
+
+      // Check if user is B2B (either chosen on role screen or stored in existing profile)
+      const effectiveRole = (userProfile?.role || userRole || '').toLowerCase().trim();
+      const isB2B = isB2BRole(effectiveRole);
+
+      if (isB2B) {
+        // DIRECTLY OPEN B2B PROFESSIONAL VERIFICATION USER ACCOUNT FOR ALL B2B USERS
+        setCurrentScreen('b2b_verification');
+        return;
+      }
+
+      // For General User (B2C):
+      if (isComplete) {
+        setCurrentScreen('home');
+      } else {
+        setCurrentScreen('complete_profile');
+      }
+    } catch (e) {
+      const effectiveRole = (userProfile?.role || userRole || '').toLowerCase().trim();
+      if (isB2BRole(effectiveRole)) {
+        setCurrentScreen('b2b_verification');
+      } else {
+        setCurrentScreen('complete_profile');
+      }
+    } finally {
+      inFlightRef.current = false;
+      setIsVerifying(false);
+    }
   };
 
   const handleResendOtp = () => {
     setTimerSeconds(120);
-    setOtp(['4', '8', '2', '1']);
+    setOtp(['', '', '', '']);
+    if (inputRefs.current[0]) inputRefs.current[0].focus();
   };
 
   return (
@@ -73,8 +149,11 @@ export const OtpScreen = () => {
         <Text className="text-2xl font-black text-[#3A2430] mb-1.5">
           Verify OTP
         </Text>
-        <Text className="text-xs font-medium text-[#8C7078] mb-8 leading-relaxed">
-          Sent verification code to <Text className="font-bold text-[#3A2430]">{userProfile?.phone || '+91 98765 43210'}</Text>
+        <Text className="text-xs font-medium text-[#8C7078] mb-1 leading-relaxed">
+          Sent verification code to <Text className="font-bold text-[#3A2430]">{userProfile?.phone || ''}</Text>
+        </Text>
+        <Text className="text-[11px] text-[#C2477A] font-semibold mb-6">
+          Enter 4-digit code (e.g. 1234)
         </Text>
 
         {/* 4-Digit Crisp White OTP Inputs */}
@@ -82,18 +161,18 @@ export const OtpScreen = () => {
           {otp.map((digit, index) => (
             <View
               key={index}
-              className="w-14 h-14 rounded-2xl border border-[#F5A8C0] bg-white items-center justify-center shadow-xs"
+              style={{ borderColor: digit ? '#C2477A' : '#F5A8C0' }}
+              className="w-14 h-14 rounded-2xl border bg-white items-center justify-center shadow-xs"
             >
               <TextInput
+                ref={(el) => (inputRefs.current[index] = el)}
                 value={digit}
-                onChangeText={(val) => {
-                  const updated = [...otp];
-                  updated[index] = val;
-                  setOtp(updated);
-                }}
+                onChangeText={(val) => handleDigitChange(index, val)}
+                onKeyPress={(e) => handleKeyPress(index, e)}
                 keyboardType="number-pad"
                 maxLength={1}
                 className="text-2xl font-black text-[#3A2430] text-center w-full"
+                autoFocus={index === 0}
               />
             </View>
           ))}
@@ -122,12 +201,28 @@ export const OtpScreen = () => {
         {/* Verify & Continue Button */}
         <TouchableOpacity
           activeOpacity={0.9}
+          disabled={!isOtpComplete || isVerifying}
           onPress={handleVerifyOtp}
-          className="w-full bg-[#C2477A] py-4 rounded-full items-center justify-center shadow-lg active:opacity-90 mb-4"
+          style={{
+            backgroundColor: isOtpComplete && !isVerifying ? '#C2477A' : '#E5E7EB'
+          }}
+          className="w-full py-4 rounded-full items-center justify-center shadow-lg active:opacity-90 mb-4"
         >
-          <Text className="text-white font-black text-base tracking-wide">
-            Verify & Continue
-          </Text>
+          {isVerifying ? (
+            <View className="flex-row items-center gap-2">
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text className="text-white font-black text-base tracking-wide">
+                Verifying OTP...
+              </Text>
+            </View>
+          ) : (
+            <Text
+              style={{ color: isOtpComplete ? '#FFFFFF' : '#9CA3AF' }}
+              className="font-black text-base tracking-wide"
+            >
+              Verify & Continue
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 

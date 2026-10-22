@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Platform } from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
+import { lookupIndianPincode, validateIndianPincode } from '../../utils/pincodeService';
 
 export const PlaceOrderScreen = () => {
   const {
@@ -22,27 +23,113 @@ export const PlaceOrderScreen = () => {
     addresses[0]?.id || 'default'
   );
 
-  // Full Screen State for Adding New Address directly on Checkout
+  // Full Screen State for Adding New Address directly on Checkout - Starts EMPTY (No mock data!)
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newLabel, setNewLabel] = useState('Home'); // 'Home' | 'Office' | 'Other' (NO STUDIO!)
-  const [newName, setNewName] = useState(userProfile?.name || 'Bizools');
-  const [newPhone, setNewPhone] = useState(userProfile?.phone || '+91 98765 43210');
+  const [newLabel, setNewLabel] = useState('Home'); // 'Home' | 'Office' | 'Other'
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
   
-  // Detailed address inputs
+  // Detailed address inputs - completely empty
   const [houseNo, setHouseNo] = useState('');
   const [streetArea, setStreetArea] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [city, setCity] = useState('Bangalore');
-  const [pincode, setPincode] = useState('560102');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [pincode, setPincode] = useState('');
   
+  // Real Pincode Lookup States
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [pincodeStatus, setPincodeStatus] = useState(null); // 'searching' | 'found' | 'error' | null
+  const [pincodeMessage, setPincodeMessage] = useState('');
+
+  const lastLookedUpPincodeRef = useRef('');
+  const pincodeDebounceRef = useRef(null);
+
+  const openAddAddressModal = () => {
+    setNewLabel('Home');
+    setNewName('');
+    setNewPhone('');
+    setHouseNo('');
+    setStreetArea('');
+    setLandmark('');
+    setCity('');
+    setState('');
+    setPincode('');
+    setPincodeLoading(false);
+    setPincodeStatus(null);
+    setPincodeMessage('');
+    lastLookedUpPincodeRef.current = '';
+    if (pincodeDebounceRef.current) clearTimeout(pincodeDebounceRef.current);
+    setShowAddModal(true);
+  };
+
+  const handlePincodeChange = (text) => {
+    const cleanPin = String(text || '').replace(/\D/g, '').slice(0, 6);
+    setPincode(cleanPin);
+
+    if (cleanPin.length < 6) {
+      if (pincodeStatus) {
+        setPincodeStatus(null);
+        setPincodeMessage('');
+      }
+      if (pincodeDebounceRef.current) {
+        clearTimeout(pincodeDebounceRef.current);
+      }
+      return;
+    }
+
+    if (cleanPin === lastLookedUpPincodeRef.current) {
+      return;
+    }
+
+    if (pincodeDebounceRef.current) {
+      clearTimeout(pincodeDebounceRef.current);
+    }
+
+    setPincodeLoading(true);
+    setPincodeStatus('searching');
+    setPincodeMessage('Searching...');
+
+    pincodeDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await lookupIndianPincode(cleanPin);
+        lastLookedUpPincodeRef.current = cleanPin;
+        setPincodeLoading(false);
+
+        if (res.success) {
+          setPincodeStatus('found');
+          setPincodeMessage('✓ Address found');
+          if (res.city) setCity(res.city);
+          if (res.state) setState(res.state);
+          if (res.locality && (!streetArea || streetArea.trim() === '')) {
+            setStreetArea(res.locality);
+          }
+          // Note: Flat/House No. and Landmark are NEVER overwritten or reset!
+        } else {
+          setPincodeStatus('error');
+          setPincodeMessage("We couldn't find this pincode. Please check it or enter the address manually.");
+          // No mock data inserted!
+        }
+      } catch (err) {
+        setPincodeLoading(false);
+        setPincodeStatus('error');
+        setPincodeMessage("We couldn't find this pincode. Please check it or enter the address manually.");
+      }
+    }, 300);
+  };
+
   const [notes, setNotes] = useState('');
 
-  const totalItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
-  const bagTotal = cart.reduce((sum, item) => {
-    const rolePrice = getRolePrice(item.product, userRole);
-    return sum + (rolePrice * item.quantity);
-  }, 0);
+  const { totalItemCount, bagTotal } = useMemo(() => {
+    let count = 0;
+    let total = 0;
+    for (const item of cart) {
+      count += item.quantity;
+      const rolePrice = getRolePrice(item.product, userRole, item.shade, item.quantity);
+      total += (rolePrice * item.quantity);
+    }
+    return { totalItemCount: count, bagTotal: total };
+  }, [cart, userRole, getRolePrice]);
 
   const discountAmount = 350;
   const totalPayable = Math.max(0, bagTotal - discountAmount);
@@ -50,28 +137,59 @@ export const PlaceOrderScreen = () => {
   // Active address object or fallback string
   const activeAddr = addresses.find(a => a.id === selectedAddressId);
   const selectedAddressString = activeAddr
-    ? `${activeAddr.label}: ${activeAddr.text} (${activeAddr.name || userProfile?.name} • ${activeAddr.phone || userProfile?.phone})`
-    : (userProfile?.address || '102 Rosewood Heights, 4th Block, MG Road, Bengaluru - 560001');
+    ? `${activeAddr.label}: ${activeAddr.text} (${activeAddr.name || userProfile?.name || 'Customer'} • ${activeAddr.phone || userProfile?.phone || ''})`
+    : (userProfile?.address || '');
 
   const handleSaveNewAddress = () => {
+    if (!newName.trim()) {
+      Alert.alert('Required Field', 'Please enter recipient name.');
+      return;
+    }
+    if (!newPhone.trim() || newPhone.trim().replace(/\D/g, '').length < 10) {
+      Alert.alert('Required Field', 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    if (!pincode.trim() || pincode.trim().length !== 6) {
+      Alert.alert('Required Field', 'Please enter a valid 6-digit PIN code.');
+      return;
+    }
+    if (!city.trim()) {
+      Alert.alert('Required Field', 'Please enter the city / district.');
+      return;
+    }
+    if (!state.trim()) {
+      Alert.alert('Required Field', 'Please enter the state.');
+      return;
+    }
+    if (!houseNo.trim()) {
+      Alert.alert('Required Field', 'Please enter your flat, house number, or building name.');
+      return;
+    }
+    if (!streetArea.trim()) {
+      Alert.alert('Required Field', 'Please enter your street address or locality.');
+      return;
+    }
+
     const parts = [
       houseNo.trim(),
       streetArea.trim(),
       landmark.trim() ? `Near ${landmark.trim()}` : '',
-      city.trim() ? `${city.trim()}${pincode.trim() ? ` - ${pincode.trim()}` : ''}` : pincode.trim()
+      city.trim(),
+      `${state.trim()} - ${pincode.trim()}`
     ].filter(Boolean);
 
     const fullText = parts.join(', ');
 
-    if (!houseNo.trim() && !streetArea.trim()) {
-      Alert.alert('Required Field', 'Please enter your flat/house number and street/area address.');
-      return;
-    }
-
     const created = addAddress ? addAddress({
       label: newLabel,
-      name: newName || userProfile?.name || 'Bizools',
-      phone: newPhone || userProfile?.phone || '+91 98765 43210',
+      name: newName.trim(),
+      phone: newPhone.trim(),
+      houseNo: houseNo.trim(),
+      streetArea: streetArea.trim(),
+      landmark: landmark.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      pincode: pincode.trim(),
       text: fullText
     }) : null;
 
@@ -79,10 +197,6 @@ export const PlaceOrderScreen = () => {
       setSelectedAddressId(created.id);
     }
 
-    // Reset form fields
-    setHouseNo('');
-    setStreetArea('');
-    setLandmark('');
     setShowAddModal(false);
     Alert.alert('Address Saved', `New delivery address (${newLabel}) added and selected.`);
   };
@@ -117,7 +231,7 @@ export const PlaceOrderScreen = () => {
         <View className="flex-row justify-between items-center mb-3.5">
           <Text className="text-xs font-black text-slate-900 uppercase tracking-wider">Select Delivery Address</Text>
           <TouchableOpacity
-            onPress={() => setShowAddModal(true)}
+            onPress={openAddAddressModal}
             className="flex-row items-center gap-1 bg-gray-900 px-2.5 py-1 rounded-lg shadow-2xs"
           >
             <Ionicons name="add" size={14} color="#FFFFFF" />
@@ -181,10 +295,10 @@ export const PlaceOrderScreen = () => {
                 <Ionicons name="checkmark-circle" size={20} color="#1E293B" style={{ marginTop: 2 }} />
                 <View className="flex-1">
                   <Text className="text-xs font-bold text-slate-900 mb-0.5">
-                    {userProfile?.name || 'Bizools'}
+                    {userProfile?.name || 'Customer'}
                   </Text>
                   <Text className="text-xs font-medium text-slate-600 leading-relaxed">
-                    {userProfile?.address || '102 Rosewood Heights, 4th Block, MG Road, Bengaluru - 560001'}
+                    {userProfile?.address || 'No address provided'}
                   </Text>
                 </View>
               </View>
@@ -215,12 +329,14 @@ export const PlaceOrderScreen = () => {
       {/* Expanded Order Items Preview */}
       {isSummaryExpanded && (
         <View className="bg-white border border-gray-200 rounded-2xl p-3 mb-4 space-y-2">
-          {cart.map(({ product, quantity }) => {
-            const rolePrice = getRolePrice(product, userRole);
+          {cart.map((item) => {
+            const { product, quantity, shade } = item;
+            const itemId = item.id || (shade ? `${product.id}_${shade.id || shade.name}` : product.id);
+            const rolePrice = getRolePrice(product, userRole, shade, quantity);
             return (
-              <View key={product.id} className="flex-row items-center justify-between py-1 border-b border-gray-100 last:border-b-0">
+              <View key={itemId} className="flex-row items-center justify-between py-1 border-b border-gray-100 last:border-b-0">
                 <Text className="text-xs font-semibold text-slate-800 flex-1" numberOfLines={1}>
-                  {product.name} x {quantity}
+                  {product.name}{shade ? ` (${shade.name})` : ''} x {quantity}
                 </Text>
                 <Text className="text-xs font-bold text-slate-900 ml-2">₹{rolePrice * quantity}</Text>
               </View>
@@ -351,151 +467,275 @@ export const PlaceOrderScreen = () => {
             </View>
 
             {/* Recipient Details Card Box - Slim Compact Box Height (34px) with Clean Gap */}
+            {/* Recipient Details Card Box */}
             <View className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 shadow-xs">
               <Text className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4">
-                Contact Information
+                Recipient Contact
               </Text>
 
               {/* Recipient Name */}
-              <View className="mb-4">
-                <Text className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Full Name *
                 </Text>
-                <View className="mt-2 flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-1 gap-2" style={{ height: 34 }}>
-                  <Ionicons name="person-outline" size={14} color="#64748B" />
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    height: 46,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <Ionicons name="person-outline" size={16} color="#C2477A" />
                   <TextInput
                     value={newName}
                     onChangeText={setNewName}
                     placeholder="Recipient Full Name"
                     placeholderTextColor="#94A3B8"
-                    includeFontPadding={false}
-                    style={{ paddingVertical: 0, textAlignVertical: 'center' }}
-                    className="flex-1 text-xs font-bold text-slate-800"
+                    style={{ color: '#1E293B', flex: 1, height: '100%', fontSize: 13, fontWeight: '700', paddingVertical: 0 }}
                   />
                 </View>
               </View>
 
               {/* Mobile Phone Number */}
-              <View className="mb-1">
-                <Text className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
+              <View style={{ marginBottom: 4 }}>
+                <Text className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Mobile Phone Number *
                 </Text>
-                <View className="mt-2 flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-1 gap-2" style={{ height: 34 }}>
-                  <Ionicons name="call-outline" size={14} color="#64748B" />
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    height: 46,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <Ionicons name="call-outline" size={16} color="#C2477A" />
                   <TextInput
                     value={newPhone}
                     onChangeText={setNewPhone}
                     keyboardType="phone-pad"
                     placeholder="+91 10-digit mobile number"
                     placeholderTextColor="#94A3B8"
-                    includeFontPadding={false}
-                    style={{ paddingVertical: 0, textAlignVertical: 'center' }}
-                    className="flex-1 text-xs font-bold text-slate-800"
+                    style={{ color: '#1E293B', flex: 1, height: '100%', fontSize: 13, fontWeight: '700', paddingVertical: 0 }}
                   />
                 </View>
               </View>
             </View>
 
-            {/* Address Location Card Box - Slim Compact Box Height (34px) with Clean Gap */}
+            {/* Address Location Card Box */}
             <View className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 shadow-xs">
               <Text className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4">
-                Address Location Details
+                Location Details
               </Text>
 
-              {/* House / Building No */}
-              <View className="mb-4">
-                <Text className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                  Flat, House No., Building Name *
-                </Text>
-                <View className="mt-2 flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-1 gap-2" style={{ height: 34 }}>
-                  <Ionicons name="business-outline" size={14} color="#64748B" />
+              {/* 1. PINCODE * (Trigger with real API lookup & status) */}
+              <View style={{ marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <Text className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    PINCODE *
+                  </Text>
+                  {pincodeLoading && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <ActivityIndicator size="small" color="#C2477A" />
+                      <Text style={{ color: '#C2477A', fontSize: 11, fontWeight: '700' }}>
+                        Searching...
+                      </Text>
+                    </View>
+                  )}
+                  {!pincodeLoading && pincodeStatus === 'found' && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+                      <Text style={{ color: '#16A34A', fontSize: 11, fontWeight: '700' }}>
+                        ✓ Address found
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: pincodeStatus === 'error' ? '#EF4444' : (pincodeStatus === 'found' ? '#16A34A' : '#E2E8F0'),
+                    borderWidth: 1,
+                    height: 46,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <Ionicons name="pin-outline" size={16} color="#C2477A" />
                   <TextInput
-                    value={houseNo}
-                    onChangeText={setHouseNo}
-                    placeholder="e.g. Flat 402, Rosewood Heights"
+                    value={pincode}
+                    onChangeText={handlePincodeChange}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    placeholder="Enter 6-digit Pincode"
                     placeholderTextColor="#94A3B8"
-                    includeFontPadding={false}
-                    style={{ paddingVertical: 0, textAlignVertical: 'center' }}
-                    className="flex-1 text-xs font-bold text-slate-800"
+                    style={{ color: '#1E293B', flex: 1, height: '100%', fontSize: 13, fontWeight: '700', paddingVertical: 0 }}
+                  />
+                </View>
+                {pincodeStatus === 'error' && (
+                  <Text style={{ color: '#DC2626', fontSize: 11, fontWeight: '600', marginTop: 4 }}>
+                    {pincodeMessage || "We couldn't find this pincode. Please check it or enter the address manually."}
+                  </Text>
+                )}
+              </View>
+
+              {/* 2. CITY * */}
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  CITY *
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    height: 46,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <Ionicons name="location-sharp" size={16} color="#C2477A" />
+                  <TextInput
+                    value={city}
+                    onChangeText={setCity}
+                    placeholder="City / District"
+                    placeholderTextColor="#94A3B8"
+                    style={{ color: '#1E293B', flex: 1, height: '100%', fontSize: 13, fontWeight: '700', paddingVertical: 0 }}
                   />
                 </View>
               </View>
 
-              {/* Street / Area / Sector */}
-              <View className="mb-4">
-                <Text className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                  Street Address, Area, Sector *
+              {/* 3. STATE * */}
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  STATE *
                 </Text>
-                <View className="mt-2 flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-1 gap-2" style={{ height: 34 }}>
-                  <Ionicons name="map-outline" size={14} color="#64748B" />
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    height: 46,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <Ionicons name="map-outline" size={16} color="#C2477A" />
+                  <TextInput
+                    value={state}
+                    onChangeText={setState}
+                    placeholder="State"
+                    placeholderTextColor="#94A3B8"
+                    style={{ color: '#1E293B', flex: 1, height: '100%', fontSize: 13, fontWeight: '700', paddingVertical: 0 }}
+                  />
+                </View>
+              </View>
+
+              {/* 4. STREET / AREA * */}
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  STREET / AREA *
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    height: 46,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <Ionicons name="navigate-outline" size={16} color="#C2477A" />
                   <TextInput
                     value={streetArea}
                     onChangeText={setStreetArea}
-                    placeholder="e.g. Sector 6, MG Road"
+                    placeholder="Street, Locality, Area, Sector"
                     placeholderTextColor="#94A3B8"
-                    includeFontPadding={false}
-                    style={{ paddingVertical: 0, textAlignVertical: 'center' }}
-                    className="flex-1 text-xs font-bold text-slate-800"
+                    style={{ color: '#1E293B', flex: 1, height: '100%', fontSize: 13, fontWeight: '700', paddingVertical: 0 }}
                   />
                 </View>
               </View>
 
-              {/* Landmark */}
-              <View className="mb-4">
-                <Text className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                  Landmark (Optional)
+              {/* 5. FLAT / HOUSE NO. * */}
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  FLAT / HOUSE NO. *
                 </Text>
-                <View className="mt-2 flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-1 gap-2" style={{ height: 34 }}>
-                  <Ionicons name="compass-outline" size={14} color="#64748B" />
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    height: 46,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <Ionicons name="business-outline" size={16} color="#C2477A" />
+                  <TextInput
+                    value={houseNo}
+                    onChangeText={setHouseNo}
+                    placeholder="Flat, House No., Building Name"
+                    placeholderTextColor="#94A3B8"
+                    style={{ color: '#1E293B', flex: 1, height: '100%', fontSize: 13, fontWeight: '700', paddingVertical: 0 }}
+                  />
+                </View>
+              </View>
+
+              {/* 6. LANDMARK (OPTIONAL) */}
+              <View style={{ marginBottom: 4 }}>
+                <Text className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  LANDMARK (OPTIONAL)
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    height: 46,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <Ionicons name="compass-outline" size={16} color="#C2477A" />
                   <TextInput
                     value={landmark}
                     onChangeText={setLandmark}
-                    placeholder="e.g. Near BDA Complex"
+                    placeholder="e.g. Near BDA Complex or Metro Station"
                     placeholderTextColor="#94A3B8"
-                    includeFontPadding={false}
-                    style={{ paddingVertical: 0, textAlignVertical: 'center' }}
-                    className="flex-1 text-xs font-bold text-slate-800"
+                    style={{ color: '#1E293B', flex: 1, height: '100%', fontSize: 13, fontWeight: '700', paddingVertical: 0 }}
                   />
-                </View>
-              </View>
-
-              {/* City & Pincode Row */}
-              <View className="flex-row gap-2.5">
-                <View className="flex-1">
-                  <Text className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                    City *
-                  </Text>
-                  <View className="mt-2 flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-1 gap-2" style={{ height: 34 }}>
-                    <Ionicons name="location-sharp" size={14} color="#64748B" />
-                    <TextInput
-                      value={city}
-                      onChangeText={setCity}
-                      placeholder="City"
-                      placeholderTextColor="#94A3B8"
-                      includeFontPadding={false}
-                      style={{ paddingVertical: 0, textAlignVertical: 'center' }}
-                      className="flex-1 text-xs font-bold text-slate-800"
-                    />
-                  </View>
-                </View>
-
-                <View className="w-32">
-                  <Text className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                    Pincode *
-                  </Text>
-                  <View className="mt-2 flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-1 gap-2" style={{ height: 34 }}>
-                    <Ionicons name="pin-outline" size={14} color="#64748B" />
-                    <TextInput
-                      value={pincode}
-                      onChangeText={setPincode}
-                      keyboardType="number-pad"
-                      placeholder="Pincode"
-                      placeholderTextColor="#94A3B8"
-                      includeFontPadding={false}
-                      style={{ paddingVertical: 0, textAlignVertical: 'center' }}
-                      className="flex-1 text-xs font-bold text-slate-800"
-                    />
-                  </View>
                 </View>
               </View>
             </View>
