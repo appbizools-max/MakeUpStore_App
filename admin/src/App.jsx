@@ -76,36 +76,36 @@ import {
   ShieldCheck,
   Table
 } from 'lucide-react';
-import AllEmployeesPage from './components/employees/AllEmployeesPage';
-import AddEmployeePage from './components/employees/AddEmployeePage';
-import EmployeeProfilePage from './components/employees/EmployeeProfilePage';
-import EditEmployeePage from './components/employees/EditEmployeePage';
-import EmployeePermissionsPage from './components/employees/EmployeePermissionsPage';
-import EmployeeActivityPage from './components/employees/EmployeeActivityPage';
+import AllEmployeesPage from './components/governance/employees/AllEmployeesPage';
+import AddEmployeePage from './components/governance/employees/AddEmployeePage';
+import EmployeeProfilePage from './components/governance/employees/EmployeeProfilePage';
+import EditEmployeePage from './components/governance/employees/EditEmployeePage';
+import EmployeePermissionsPage from './components/governance/employees/EmployeePermissionsPage';
+import EmployeeActivityPage from './components/governance/employees/EmployeeActivityPage';
 import { hasModuleAccess } from './utils/permissionEngine';
-import BarcodeScannerModal from './components/BarcodeScannerModal';
-import BarcodeSearchResultModal from './components/BarcodeSearchResultModal';
+import BarcodeScannerModal from './components/products/BarcodeScannerModal';
+import BarcodeSearchResultModal from './components/products/BarcodeSearchResultModal';
 import { validateBarcodeFormat } from './utils/barcodeUtils';
 import { useHardwareBarcodeScanner } from './utils/useHardwareBarcodeScanner';
 import { matchProductSearch, flattenProductsToIndividualVariants } from './utils/productSearchEngine';
-import RoleQuantityTiersManager from './components/RoleQuantityTiersManager';
-import RolePricingMatrix from './components/RolePricingMatrix';
-import ShadePricingModal from './components/ShadePricingModal';
-import ProductsCatalogMatrix from './components/ProductsCatalogMatrix';
-import { AbandonedCartsManager } from './components/AbandonedCartsManager';
-import AddNewProductPage from './components/AddNewProductPage_Redesigned';
-import { BulkProductEntryModal } from './components/BulkProductEntryModal';
-import AttributesMasterPage from './components/AttributesMasterPage';
-import MainCategoriesManager from './components/MainCategoriesManager';
-import CategorySubcategoryManager from './components/CategorySubcategoryManager';
-import CustomerSearchRequestsPage from './components/CustomerSearchRequestsPage';
-import B2BVerificationPage from './components/B2BVerificationPage';
-import ApprovalCenterPage from './components/ApprovalCenterPage';
-import AuditTrailPage from './components/AuditTrailPage';
-import GeneratedDataPanel from './components/GeneratedDataPanel';
-import SearchableSelect from './components/SearchableSelect';
-import ImageField from './components/ImageField';
-import { getBeautyShadeName, MAKEUP_SWATCH_PRESETS, normalizeHex, isValidHex } from './components/HexColorPicker';
+import RoleQuantityTiersManager from './components/products/RoleQuantityTiersManager';
+import RolePricingMatrix from './components/products/RolePricingMatrix';
+import ShadePricingModal from './components/products/ShadePricingModal';
+import ProductsCatalogMatrix from './components/products/ProductsCatalogMatrix';
+import { AbandonedCartsManager } from './components/orders/AbandonedCartsManager';
+import FulfillmentStatusSelector from './components/orders/FulfillmentStatusSelector';
+import AddNewProductPage from './components/products/AddNewProductPage_Redesigned';
+import { BulkProductEntryModal } from './components/products/BulkProductEntryModal';
+import AttributesMasterPage from './components/categories/AttributesMasterPage';
+import MainCategoriesManager from './components/categories/MainCategoriesManager';
+import CustomerSearchRequestsPage from './components/b2b/CustomerSearchRequestsPage';
+import B2BVerificationPage from './components/b2b/B2BVerificationPage';
+import ApprovalCenterPage from './components/governance/ApprovalCenterPage';
+import AuditTrailPage from './components/governance/AuditTrailPage';
+import GeneratedDataPanel from './components/products/GeneratedDataPanel';
+import SearchableSelect from './components/common/SearchableSelect';
+import ImageField from './components/media/ImageField';
+import { getBeautyShadeName, MAKEUP_SWATCH_PRESETS, normalizeHex, isValidHex } from './components/common/HexColorPicker';
 import {
   DISCOUNT_ROLES,
   normalizeQuantityTiers,

@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase';
-import { MAKEUP_SWATCH_PRESETS } from '../components/HexColorPicker';
+import { MAKEUP_SWATCH_PRESETS } from '../components/common/HexColorPicker';
 
 export const ATTRIBUTE_GROUPS = [
   'Appearance',
