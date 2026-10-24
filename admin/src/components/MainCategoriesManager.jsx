@@ -136,9 +136,93 @@ export default function MainCategoriesManager({
     isDeleting: false
   });
 
+  // Wipe All Images Modal State
+  const [isWipeModalOpen, setIsWipeModalOpen] = useState(false);
+  const [isWipingImages, setIsWipingImages] = useState(false);
+
   const showNotice = (message, type = 'success') => {
     setNotice({ message, type });
     setTimeout(() => setNotice(null), 4000);
+  };
+
+  // ── WIPE ALL IMAGES COMPLETELY FROM DATABASE & ADMIN PANEL ───────────
+  const handleWipeAllImages = async () => {
+    setIsWipingImages(true);
+    try {
+      const client = supabaseAdmin || supabase;
+
+      // 1. Clear categories table image and icon
+      try {
+        await client.from('categories').update({ image: '', icon: '' }).neq('id', '___salbeau_dummy___');
+      } catch (e) {
+        console.warn('Clear categories images error:', e);
+      }
+
+      // 2. Clear subcategories table image
+      try {
+        await client.from('subcategories').update({ image: '' }).neq('id', '___salbeau_dummy___');
+      } catch (e) {
+        console.warn('Clear subcategories images error:', e);
+      }
+
+      // 3. Clear product_types table image
+      try {
+        await client.from('product_types').update({ image: '' }).neq('id', '___salbeau_dummy___');
+      } catch (_) {}
+
+      // 4. Clear products image & images
+      try {
+        await client.from('products').update({ image: '', images: [] }).neq('id', '___salbeau_dummy___');
+      } catch (e) {
+        console.warn('Clear products images error:', e);
+      }
+
+      // 5. Clear brands logo (excluding config records)
+      try {
+        await client.from('brands').update({ logo: '' })
+          .neq('id', 'salbeau_category_subcategory_hierarchy')
+          .neq('id', 'app_category_order_config');
+      } catch (_) {}
+
+      // 6. Strip all images from local memory categories & subcategories & productTypes
+      const cleanCategories = categories.map(c => ({ ...c, image: '', icon: '' }));
+      const cleanSubcategories = subcategories.map(s => ({ ...s, image: '' }));
+      const cleanProductTypes = productTypes.map(pt => ({ ...pt, image: '' }));
+
+      // 7. Update the hierarchy configuration record in brands table
+      await client.from('brands').upsert({
+        id: 'salbeau_category_subcategory_hierarchy',
+        name: 'Salbeau Category & Subcategory Master Hierarchy',
+        logo: JSON.stringify({
+          categories: cleanCategories,
+          subcategories: cleanSubcategories,
+          leafCategories: cleanProductTypes,
+          product_types: cleanProductTypes,
+          updatedAt: new Date().toISOString()
+        }),
+        enabled: true
+      });
+
+      await client.from('brands').upsert({
+        id: 'app_category_order_config',
+        name: 'Category Order Config',
+        logo: JSON.stringify(cleanCategories),
+        enabled: true
+      });
+
+      // 8. Update local React state
+      setCategories(cleanCategories);
+      setSubcategories(cleanSubcategories);
+      setProductTypes(cleanProductTypes);
+
+      setIsWipeModalOpen(false);
+      showNotice('All images have been completely removed from database and admin panel!', 'success');
+    } catch (err) {
+      console.error('Wipe images error:', err);
+      showNotice(`Failed to remove images: ${err.message || 'Unknown database error'}`, 'error');
+    } finally {
+      setIsWipingImages(false);
+    }
   };
 
   // ── 1. LOAD DATA FROM SUPABASE ──────────────────────────────────────
@@ -323,6 +407,40 @@ export default function MainCategoriesManager({
       supabase.removeChannel(channel);
     };
   }, [loadHierarchyData]);
+
+  // ── Keyboard Escape Dismissal & Background Scroll Lock ───────────────
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (modalMode && !isSaving) {
+          closeModal();
+        } else if (deleteModal.isOpen && !deleteModal.isDeleting && !deleteModal.isChecking) {
+          setDeleteModal({
+            isOpen: false,
+            type: 'category',
+            item: null,
+            isChecking: false,
+            hasRelations: false,
+            childCount: 0,
+            productsCount: 0,
+            isDeleting: false
+          });
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalMode, isSaving, deleteModal]);
+
+  useEffect(() => {
+    if (modalMode || deleteModal.isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [modalMode, deleteModal.isOpen]);
 
   // ── 3. PERSISTENCE HELPER ───────────────────────────────────────────
   const persistHierarchy = async (newCategories, newSubcategories, newProductTypes) => {
@@ -1460,6 +1578,16 @@ export default function MainCategoriesManager({
 
               <button
                 type="button"
+                onClick={() => setIsWipeModalOpen(true)}
+                title="Completely remove all images from the database and reset to clean state"
+                className="bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 hover:border-rose-300 font-extrabold text-xs sm:text-sm px-4 py-3 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full sm:w-auto shrink-0"
+              >
+                <Trash2 size={16} className="text-rose-600" />
+                <span>Remove All Images</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={openAddCategoryModal}
                 className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full sm:w-auto shrink-0"
               >
@@ -1592,7 +1720,7 @@ export default function MainCategoriesManager({
                                     className="w-full h-full object-cover rounded-lg"
                                     onError={(e) => {
                                       e.target.onerror = null;
-                                      e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150';
+                                      e.target.style.display = 'none';
                                     }}
                                   />
                                 ) : (
@@ -1880,7 +2008,7 @@ export default function MainCategoriesManager({
                                     className="w-full h-full object-cover rounded-lg"
                                     onError={(e) => {
                                       e.target.onerror = null;
-                                      e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150';
+                                      e.target.style.display = 'none';
                                     }}
                                   />
                                 ) : (
@@ -2178,7 +2306,7 @@ export default function MainCategoriesManager({
                                     className="w-full h-full object-cover rounded-lg"
                                     onError={(e) => {
                                       e.target.onerror = null;
-                                      e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150';
+                                      e.target.style.display = 'none';
                                     }}
                                   />
                                 ) : (
@@ -2281,18 +2409,29 @@ export default function MainCategoriesManager({
       {/* 11. ADD / EDIT MAIN CATEGORY MODAL (INTEGRATED IMAGE SECTION)    */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {(modalMode === 'add_category' || modalMode === 'edit_category') && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-2xl my-8 overflow-hidden animate-scale-up">
-            <div className="p-6 bg-gradient-to-r from-[#FFF5F8] to-white border-b border-pink-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSaving) {
+              closeModal();
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-scale-up relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header - Sticky with prominent Close (✕) button */}
+            <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-[#FFF5F8] via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
+              <div className="flex items-center gap-3 min-w-0 pr-2">
+                <div className="w-10 h-10 rounded-2xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs shrink-0">
                   <FolderPlus size={20} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-black text-gray-900">
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-black text-gray-900 truncate">
                     {modalMode === 'add_category' ? 'Add Main Category' : `Edit Category: ${editingItem?.name}`}
                   </h2>
-                  <p className="text-xs text-gray-500 font-medium mt-0.5">
+                  <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">
                     Parent Level 1 category in the product catalog
                   </p>
                 </div>
@@ -2301,97 +2440,103 @@ export default function MainCategoriesManager({
                 type="button"
                 onClick={closeModal}
                 disabled={isSaving}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                className="w-10 h-10 rounded-2xl bg-white hover:bg-rose-50 text-gray-500 hover:text-rose-600 border border-pink-200/90 hover:border-rose-300 shadow-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 ml-3 group focus:outline-none focus:ring-2 focus:ring-rose-200"
+                aria-label="Close modal"
+                title="Close (✕)"
               >
-                <X size={18} />
+                <X size={20} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-200" />
               </button>
             </div>
 
-            <form onSubmit={handleCategoryFormSubmit} className="p-6 sm:p-7 space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                  <span>Category Name <span className="text-rose-500">*</span></span>
-                  {formErrors.name && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.name}</span>}
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Makeup, Skincare, Hair Care"
-                  value={categoryFormData.name}
-                  onChange={(e) => {
-                    setCategoryFormData(prev => ({ ...prev, name: e.target.value }));
-                    if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
-                  }}
-                  className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-medium outline-none transition-all"
+            {/* Scrollable Form Body with Sticky Footer */}
+            <form onSubmit={handleCategoryFormSubmit} className="flex-1 overflow-y-auto overscroll-contain flex flex-col min-h-0">
+              <div className="p-5 sm:p-7 space-y-5 flex-1">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                    <span>Category Name <span className="text-rose-500">*</span></span>
+                    {formErrors.name && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.name}</span>}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Makeup, Skincare, Hair Care"
+                    value={categoryFormData.name}
+                    onChange={(e) => {
+                      setCategoryFormData(prev => ({ ...prev, name: e.target.value }));
+                      if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-medium outline-none transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700">Description</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter a clean, descriptive summary of products in this category..."
+                    value={categoryFormData.description}
+                    onChange={(e) => setCategoryFormData(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
+                  />
+                </div>
+
+                {/* Mobile App & Status Switches */}
+                <div className="bg-[#FFF9FB] p-3.5 rounded-xl border border-pink-100/80 flex items-center justify-around">
+                  <div className="flex flex-col items-center gap-1.5 text-center">
+                    <span className="text-xs font-bold text-gray-700">Show in Mobile App</span>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        categoryFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        categoryFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                    <span className={`text-[10px] font-extrabold ${categoryFormData.show_in_mobile_app ? 'text-[#C2477A]' : 'text-gray-400'}`}>
+                      {categoryFormData.show_in_mobile_app ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1.5 text-center border-l border-pink-200/60 pl-6">
+                    <span className="text-xs font-bold text-gray-700">Active Status</span>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        categoryFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        categoryFormData.is_active ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                    <span className={`text-[10px] font-extrabold ${categoryFormData.is_active ? 'text-emerald-700' : 'text-gray-400'}`}>
+                      {categoryFormData.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Integrated Image Management: Preview + Google Search + Drag & Drop Upload */}
+                <InlineImageSection
+                  imageUrl={categoryFormData.image}
+                  onChange={(newUrl) => setCategoryFormData(prev => ({ ...prev, image: newUrl }))}
+                  entityName={categoryFormData.name || 'Category'}
+                  entityType="Main Category"
+                  folder="categories"
+                  filenamePrefix="cat"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Description</label>
-                <textarea
-                  rows={2}
-                  placeholder="Enter a clean, descriptive summary of products in this category..."
-                  value={categoryFormData.description}
-                  onChange={(e) => setCategoryFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
-                />
-              </div>
-
-              {/* Mobile App & Status Switches */}
-              <div className="bg-[#FFF9FB] p-3.5 rounded-xl border border-pink-100/80 flex items-center justify-around">
-                <div className="flex flex-col items-center gap-1.5 text-center">
-                  <span className="text-xs font-bold text-gray-700">Show in Mobile App</span>
-                  <button
-                    type="button"
-                    onClick={() => setCategoryFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      categoryFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      categoryFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                  <span className={`text-[10px] font-extrabold ${categoryFormData.show_in_mobile_app ? 'text-[#C2477A]' : 'text-gray-400'}`}>
-                    {categoryFormData.show_in_mobile_app ? 'Yes' : 'No'}
-                  </span>
-                </div>
-
-                <div className="flex flex-col items-center gap-1.5 text-center border-l border-pink-200/60 pl-6">
-                  <span className="text-xs font-bold text-gray-700">Active Status</span>
-                  <button
-                    type="button"
-                    onClick={() => setCategoryFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      categoryFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      categoryFormData.is_active ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                  <span className={`text-[10px] font-extrabold ${categoryFormData.is_active ? 'text-emerald-700' : 'text-gray-400'}`}>
-                    {categoryFormData.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Integrated Image Management: Preview + Google Search + Drag & Drop Upload */}
-              <InlineImageSection
-                imageUrl={categoryFormData.image}
-                onChange={(newUrl) => setCategoryFormData(prev => ({ ...prev, image: newUrl }))}
-                entityName={categoryFormData.name || 'Category'}
-                entityType="Main Category"
-                folder="categories"
-                filenamePrefix="cat"
-              />
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-pink-100">
+              {/* Sticky Footer */}
+              <div className="p-4 sm:p-5 bg-gray-50/95 backdrop-blur-xs border-t border-pink-100 flex items-center justify-end gap-3 shrink-0 sticky bottom-0 z-10">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={isSaving}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-xs cursor-pointer transition-colors"
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-white font-bold text-xs cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
@@ -2413,18 +2558,29 @@ export default function MainCategoriesManager({
       {/* 12. ADD / EDIT SUBCATEGORY MODAL (INTEGRATED IMAGE SECTION)      */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {(modalMode === 'add_subcategory' || modalMode === 'edit_subcategory') && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-2xl my-8 overflow-hidden animate-scale-up">
-            <div className="p-6 bg-gradient-to-r from-[#FFF5F8] to-white border-b border-pink-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSaving) {
+              closeModal();
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-scale-up relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header - Sticky with prominent Close (✕) button */}
+            <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-[#FFF5F8] via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
+              <div className="flex items-center gap-3 min-w-0 pr-2">
+                <div className="w-10 h-10 rounded-2xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs shrink-0">
                   <Layers size={20} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-black text-gray-900">
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-black text-gray-900 truncate">
                     {modalMode === 'add_subcategory' ? 'Add Sub Category' : `Edit Subcategory: ${editingItem?.name}`}
                   </h2>
-                  <p className="text-xs text-gray-500 font-medium mt-0.5">
+                  <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">
                     Subcategory Level 2 attached to a Main Category
                   </p>
                 </div>
@@ -2433,124 +2589,130 @@ export default function MainCategoriesManager({
                 type="button"
                 onClick={closeModal}
                 disabled={isSaving}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                className="w-10 h-10 rounded-2xl bg-white hover:bg-rose-50 text-gray-500 hover:text-rose-600 border border-pink-200/90 hover:border-rose-300 shadow-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 ml-3 group focus:outline-none focus:ring-2 focus:ring-rose-200"
+                aria-label="Close modal"
+                title="Close (✕)"
               >
-                <X size={18} />
+                <X size={20} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-200" />
               </button>
             </div>
 
-            <form onSubmit={handleSubcategoryFormSubmit} className="p-6 sm:p-7 space-y-5">
-              {/* Parent Main Category Selection (Required) */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                  <span>Parent Main Category <span className="text-rose-500">*</span></span>
-                  {formErrors.category_id && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.category_id}</span>}
-                </label>
-                <select
-                  required
-                  value={subFormData.category_id}
-                  onChange={(e) => {
-                    const newCatId = e.target.value;
-                    setSubFormData(prev => ({ ...prev, category_id: newCatId }));
-                    if (formErrors.category_id) setFormErrors(prev => ({ ...prev, category_id: null }));
-                  }}
-                  className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-bold text-gray-800 bg-[#FFF5F8]/50 outline-none transition-all cursor-pointer"
-                >
-                  <option value="" disabled>Select Parent Main Category...</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.is_active ? '' : '(Inactive)'}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Scrollable Form Body with Sticky Footer */}
+            <form onSubmit={handleSubcategoryFormSubmit} className="flex-1 overflow-y-auto overscroll-contain flex flex-col min-h-0">
+              <div className="p-5 sm:p-7 space-y-5 flex-1">
+                {/* Parent Main Category Selection (Required) */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                    <span>Parent Main Category <span className="text-rose-500">*</span></span>
+                    {formErrors.category_id && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.category_id}</span>}
+                  </label>
+                  <select
+                    required
+                    value={subFormData.category_id}
+                    onChange={(e) => {
+                      const newCatId = e.target.value;
+                      setSubFormData(prev => ({ ...prev, category_id: newCatId }));
+                      if (formErrors.category_id) setFormErrors(prev => ({ ...prev, category_id: null }));
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-bold text-gray-800 bg-[#FFF5F8]/50 outline-none transition-all cursor-pointer"
+                  >
+                    <option value="" disabled>Select Parent Main Category...</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} {c.is_active ? '' : '(Inactive)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Subcategory Name */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                  <span>Sub Category Name <span className="text-rose-500">*</span></span>
-                  {formErrors.name && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.name}</span>}
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Lip Makeup, Face Cleansers"
-                  value={subFormData.name}
-                  onChange={(e) => {
-                    setSubFormData(prev => ({ ...prev, name: e.target.value }));
-                    if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
-                  }}
-                  className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-medium outline-none transition-all"
+                {/* Subcategory Name */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                    <span>Sub Category Name <span className="text-rose-500">*</span></span>
+                    {formErrors.name && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.name}</span>}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Lip Makeup, Face Cleansers"
+                    value={subFormData.name}
+                    onChange={(e) => {
+                      setSubFormData(prev => ({ ...prev, name: e.target.value }));
+                      if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-medium outline-none transition-all"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700">Description</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter a descriptive summary for this subcategory..."
+                    value={subFormData.description}
+                    onChange={(e) => setSubFormData(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
+                  />
+                </div>
+
+                {/* Mobile App & Status Switches */}
+                <div className="bg-[#FFF9FB] p-3.5 rounded-xl border border-pink-100/80 flex items-center justify-around">
+                  <div className="flex flex-col items-center gap-1.5 text-center">
+                    <span className="text-xs font-bold text-gray-700">Show in Mobile App</span>
+                    <button
+                      type="button"
+                      onClick={() => setSubFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        subFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        subFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                    <span className={`text-[10px] font-extrabold ${subFormData.show_in_mobile_app ? 'text-[#C2477A]' : 'text-gray-400'}`}>
+                      {subFormData.show_in_mobile_app ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1.5 text-center border-l border-pink-200/60 pl-6">
+                    <span className="text-xs font-bold text-gray-700">Active Status</span>
+                    <button
+                      type="button"
+                      onClick={() => setSubFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        subFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        subFormData.is_active ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                    <span className={`text-[10px] font-extrabold ${subFormData.is_active ? 'text-emerald-700' : 'text-gray-400'}`}>
+                      {subFormData.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Integrated Image Management: Preview + Google Search + Drag & Drop Upload */}
+                <InlineImageSection
+                  imageUrl={subFormData.image}
+                  onChange={(newUrl) => setSubFormData(prev => ({ ...prev, image: newUrl }))}
+                  entityName={subFormData.name || 'Subcategory'}
+                  entityType="Sub Category"
+                  folder="subcategories"
+                  filenamePrefix="sub"
                 />
               </div>
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Description</label>
-                <textarea
-                  rows={2}
-                  placeholder="Enter a descriptive summary for this subcategory..."
-                  value={subFormData.description}
-                  onChange={(e) => setSubFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
-                />
-              </div>
-
-              {/* Mobile App & Status Switches */}
-              <div className="bg-[#FFF9FB] p-3.5 rounded-xl border border-pink-100/80 flex items-center justify-around">
-                <div className="flex flex-col items-center gap-1.5 text-center">
-                  <span className="text-xs font-bold text-gray-700">Show in Mobile App</span>
-                  <button
-                    type="button"
-                    onClick={() => setSubFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      subFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      subFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                  <span className={`text-[10px] font-extrabold ${subFormData.show_in_mobile_app ? 'text-[#C2477A]' : 'text-gray-400'}`}>
-                    {subFormData.show_in_mobile_app ? 'Yes' : 'No'}
-                  </span>
-                </div>
-
-                <div className="flex flex-col items-center gap-1.5 text-center border-l border-pink-200/60 pl-6">
-                  <span className="text-xs font-bold text-gray-700">Active Status</span>
-                  <button
-                    type="button"
-                    onClick={() => setSubFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      subFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      subFormData.is_active ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                  <span className={`text-[10px] font-extrabold ${subFormData.is_active ? 'text-emerald-700' : 'text-gray-400'}`}>
-                    {subFormData.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Integrated Image Management: Preview + Google Search + Drag & Drop Upload */}
-              <InlineImageSection
-                imageUrl={subFormData.image}
-                onChange={(newUrl) => setSubFormData(prev => ({ ...prev, image: newUrl }))}
-                entityName={subFormData.name || 'Subcategory'}
-                entityType="Sub Category"
-                folder="subcategories"
-                filenamePrefix="sub"
-              />
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-pink-100">
+              {/* Sticky Footer */}
+              <div className="p-4 sm:p-5 bg-gray-50/95 backdrop-blur-xs border-t border-pink-100 flex items-center justify-end gap-3 shrink-0 sticky bottom-0 z-10">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={isSaving}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-xs cursor-pointer transition-colors"
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-white font-bold text-xs cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
@@ -2572,18 +2734,29 @@ export default function MainCategoriesManager({
       {/* 13. ADD / EDIT SELECT CATEGORY MODAL (INTEGRATED IMAGE SECTION)  */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {(modalMode === 'add_product_type' || modalMode === 'edit_product_type') && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-purple-100 shadow-2xl w-full max-w-2xl my-8 overflow-hidden animate-scale-up">
-            <div className="p-6 bg-gradient-to-r from-purple-50 to-white border-b border-purple-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSaving) {
+              closeModal();
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-purple-100 shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-scale-up relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header - Sticky with prominent Close (✕) button */}
+            <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-purple-50 via-[#FAF5FF] to-white border-b border-purple-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
+              <div className="flex items-center gap-3 min-w-0 pr-2">
+                <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
                   <Tag size={20} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-black text-gray-900">
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-black text-gray-900 truncate">
                     {modalMode === 'add_product_type' ? 'Add Select Category' : `Edit Select Category: ${editingItem?.name}`}
                   </h2>
-                  <p className="text-xs text-gray-500 font-medium mt-0.5">
+                  <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">
                     Level 3 Catalog: Select Category / Product Type
                   </p>
                 </div>
@@ -2592,162 +2765,168 @@ export default function MainCategoriesManager({
                 type="button"
                 onClick={closeModal}
                 disabled={isSaving}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                className="w-10 h-10 rounded-2xl bg-white hover:bg-rose-50 text-gray-500 hover:text-rose-600 border border-purple-200/90 hover:border-rose-300 shadow-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 ml-3 group focus:outline-none focus:ring-2 focus:ring-rose-200"
+                aria-label="Close modal"
+                title="Close (✕)"
               >
-                <X size={18} />
+                <X size={20} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-200" />
               </button>
             </div>
 
-            <form onSubmit={handleProductTypeFormSubmit} className="p-6 sm:p-7 space-y-5">
-              {/* Hierarchical Dependent Dropdowns */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* 1. Parent Main Category Dropdown */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                    <span>Main Category <span className="text-rose-500">*</span></span>
-                    {formErrors.category_id && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.category_id}</span>}
-                  </label>
-                  <select
-                    required
-                    value={ptFormData.category_id}
-                    onChange={(e) => {
-                      const newCatId = e.target.value;
-                      const validSubs = subcategories.filter(s => s.category_id === newCatId);
-                      const defaultSubId = validSubs[0] ? validSubs[0].id : '';
+            {/* Scrollable Form Body with Sticky Footer */}
+            <form onSubmit={handleProductTypeFormSubmit} className="flex-1 overflow-y-auto overscroll-contain flex flex-col min-h-0">
+              <div className="p-5 sm:p-7 space-y-5 flex-1">
+                {/* Hierarchical Dependent Dropdowns */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* 1. Parent Main Category Dropdown */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                      <span>Main Category <span className="text-rose-500">*</span></span>
+                      {formErrors.category_id && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.category_id}</span>}
+                    </label>
+                    <select
+                      required
+                      value={ptFormData.category_id}
+                      onChange={(e) => {
+                        const newCatId = e.target.value;
+                        const validSubs = subcategories.filter(s => s.category_id === newCatId);
+                        const defaultSubId = validSubs[0] ? validSubs[0].id : '';
 
-                      setPtFormData(prev => ({
-                        ...prev,
-                        category_id: newCatId,
-                        subcategory_id: defaultSubId
-                      }));
-                      if (formErrors.category_id) setFormErrors(prev => ({ ...prev, category_id: null }));
-                    }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 text-sm font-bold text-gray-800 bg-purple-50/40 outline-none transition-all cursor-pointer"
-                  >
-                    <option value="" disabled>Select Main Category...</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.is_active ? '' : '(Inactive)'}
+                        setPtFormData(prev => ({
+                          ...prev,
+                          category_id: newCatId,
+                          subcategory_id: defaultSubId
+                        }));
+                        if (formErrors.category_id) setFormErrors(prev => ({ ...prev, category_id: null }));
+                      }}
+                      className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 text-sm font-bold text-gray-800 bg-purple-50/40 outline-none transition-all cursor-pointer"
+                    >
+                      <option value="" disabled>Select Main Category...</option>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.is_active ? '' : '(Inactive)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 2. Parent Sub Category (Dependent Dropdown!) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                      <span>Sub Category <span className="text-rose-500">*</span></span>
+                      {formErrors.subcategory_id && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.subcategory_id}</span>}
+                    </label>
+                    <select
+                      required
+                      value={ptFormData.subcategory_id}
+                      onChange={(e) => {
+                        const newSubId = e.target.value;
+                        setPtFormData(prev => ({ ...prev, subcategory_id: newSubId }));
+                        if (formErrors.subcategory_id) setFormErrors(prev => ({ ...prev, subcategory_id: null }));
+                      }}
+                      disabled={dependentSubcategoryOptions.length === 0}
+                      className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 text-sm font-bold text-gray-800 bg-purple-50/40 outline-none transition-all cursor-pointer disabled:bg-gray-100 disabled:text-gray-400"
+                    >
+                      <option value="" disabled>
+                        {dependentSubcategoryOptions.length === 0 ? 'No subcategories available' : 'Select Sub Category...'}
                       </option>
-                    ))}
-                  </select>
+                      {dependentSubcategoryOptions.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} {s.is_active ? '' : '(Inactive)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {/* 2. Parent Sub Category (Dependent Dropdown!) */}
+                {/* Select Category / Product Type Name */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                    <span>Sub Category <span className="text-rose-500">*</span></span>
-                    {formErrors.subcategory_id && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.subcategory_id}</span>}
+                    <span>Select Category / Product Type Name <span className="text-rose-500">*</span></span>
+                    {formErrors.name && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.name}</span>}
                   </label>
-                  <select
+                  <input
+                    type="text"
                     required
-                    value={ptFormData.subcategory_id}
+                    placeholder="e.g. Lipstick, Liquid Foundation, Day Cream"
+                    value={ptFormData.name}
                     onChange={(e) => {
-                      const newSubId = e.target.value;
-                      setPtFormData(prev => ({ ...prev, subcategory_id: newSubId }));
-                      if (formErrors.subcategory_id) setFormErrors(prev => ({ ...prev, subcategory_id: null }));
+                      setPtFormData(prev => ({ ...prev, name: e.target.value }));
+                      if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
                     }}
-                    disabled={dependentSubcategoryOptions.length === 0}
-                    className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 text-sm font-bold text-gray-800 bg-purple-50/40 outline-none transition-all cursor-pointer disabled:bg-gray-100 disabled:text-gray-400"
-                  >
-                    <option value="" disabled>
-                      {dependentSubcategoryOptions.length === 0 ? 'No subcategories available' : 'Select Sub Category...'}
-                    </option>
-                    {dependentSubcategoryOptions.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} {s.is_active ? '' : '(Inactive)'}
-                      </option>
-                    ))}
-                  </select>
+                    className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 text-sm font-medium outline-none transition-all"
+                  />
                 </div>
-              </div>
 
-              {/* Select Category / Product Type Name */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                  <span>Select Category / Product Type Name <span className="text-rose-500">*</span></span>
-                  {formErrors.name && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.name}</span>}
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Lipstick, Liquid Foundation, Day Cream"
-                  value={ptFormData.name}
-                  onChange={(e) => {
-                    setPtFormData(prev => ({ ...prev, name: e.target.value }));
-                    if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
-                  }}
-                  className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 text-sm font-medium outline-none transition-all"
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700">Description</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter a descriptive summary for this select category..."
+                    value={ptFormData.description}
+                    onChange={(e) => setPtFormData(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
+                  />
+                </div>
+
+                {/* Mobile App & Status Switches */}
+                <div className="bg-purple-50/40 p-3.5 rounded-xl border border-purple-100/80 flex items-center justify-around">
+                  <div className="flex flex-col items-center gap-1.5 text-center">
+                    <span className="text-xs font-bold text-gray-700">Show in Mobile App</span>
+                    <button
+                      type="button"
+                      onClick={() => setPtFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        ptFormData.show_in_mobile_app ? 'bg-purple-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        ptFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                    <span className={`text-[10px] font-extrabold ${ptFormData.show_in_mobile_app ? 'text-purple-700' : 'text-gray-400'}`}>
+                      {ptFormData.show_in_mobile_app ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1.5 text-center border-l border-purple-200/60 pl-6">
+                    <span className="text-xs font-bold text-gray-700">Active Status</span>
+                    <button
+                      type="button"
+                      onClick={() => setPtFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        ptFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        ptFormData.is_active ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                    <span className={`text-[10px] font-extrabold ${ptFormData.is_active ? 'text-emerald-700' : 'text-gray-400'}`}>
+                      {ptFormData.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Integrated Image Management: Preview + Google Search + Drag & Drop Upload */}
+                <InlineImageSection
+                  imageUrl={ptFormData.image}
+                  onChange={(newUrl) => setPtFormData(prev => ({ ...prev, image: newUrl }))}
+                  entityName={ptFormData.name || 'Product Type'}
+                  entityType="Select Category"
+                  folder="products"
+                  filenamePrefix="pt"
                 />
               </div>
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700">Description</label>
-                <textarea
-                  rows={2}
-                  placeholder="Enter a descriptive summary for this select category..."
-                  value={ptFormData.description}
-                  onChange={(e) => setPtFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
-                />
-              </div>
-
-              {/* Mobile App & Status Switches */}
-              <div className="bg-purple-50/40 p-3.5 rounded-xl border border-purple-100/80 flex items-center justify-around">
-                <div className="flex flex-col items-center gap-1.5 text-center">
-                  <span className="text-xs font-bold text-gray-700">Show in Mobile App</span>
-                  <button
-                    type="button"
-                    onClick={() => setPtFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      ptFormData.show_in_mobile_app ? 'bg-purple-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      ptFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                  <span className={`text-[10px] font-extrabold ${ptFormData.show_in_mobile_app ? 'text-purple-700' : 'text-gray-400'}`}>
-                    {ptFormData.show_in_mobile_app ? 'Yes' : 'No'}
-                  </span>
-                </div>
-
-                <div className="flex flex-col items-center gap-1.5 text-center border-l border-purple-200/60 pl-6">
-                  <span className="text-xs font-bold text-gray-700">Active Status</span>
-                  <button
-                    type="button"
-                    onClick={() => setPtFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      ptFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      ptFormData.is_active ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                  <span className={`text-[10px] font-extrabold ${ptFormData.is_active ? 'text-emerald-700' : 'text-gray-400'}`}>
-                    {ptFormData.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Integrated Image Management: Preview + Google Search + Drag & Drop Upload */}
-              <InlineImageSection
-                imageUrl={ptFormData.image}
-                onChange={(newUrl) => setPtFormData(prev => ({ ...prev, image: newUrl }))}
-                entityName={ptFormData.name || 'Product Type'}
-                entityType="Select Category"
-                folder="products"
-                filenamePrefix="pt"
-              />
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-purple-100">
+              {/* Sticky Footer */}
+              <div className="p-4 sm:p-5 bg-gray-50/95 backdrop-blur-xs border-t border-purple-100 flex items-center justify-end gap-3 shrink-0 sticky bottom-0 z-10">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={isSaving}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-xs cursor-pointer transition-colors"
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-white font-bold text-xs cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
@@ -2769,42 +2948,65 @@ export default function MainCategoriesManager({
       {/* 14. SAFE DELETE CONFIRMATION MODAL                              */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {deleteModal.isOpen && deleteModal.item && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-lg overflow-hidden animate-scale-up">
-            <div className={`p-6 border-b flex items-center gap-3.5 ${
-              deleteModal.hasRelations ? 'bg-amber-50/80 border-amber-100' : 'bg-rose-50/80 border-rose-100'
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deleteModal.isDeleting && !deleteModal.isChecking) {
+              setDeleteModal({ isOpen: false, type: 'category', item: null, isChecking: false, hasRelations: false, childCount: 0, productsCount: 0, isDeleting: false });
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-scale-up relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with prominent Close (✕) button */}
+            <div className={`p-4 sm:p-5 sm:px-6 border-b flex items-center justify-between shrink-0 sticky top-0 z-20 ${
+              deleteModal.hasRelations ? 'bg-amber-50/90 border-amber-100' : 'bg-rose-50/90 border-rose-100'
             }`}>
-              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs ${
-                deleteModal.hasRelations ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
-              }`}>
-                {deleteModal.hasRelations ? <AlertTriangle size={22} /> : <Trash2 size={22} />}
+              <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs ${
+                  deleteModal.hasRelations ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                }`}>
+                  {deleteModal.hasRelations ? <AlertTriangle size={22} /> : <Trash2 size={22} />}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-black text-gray-900 truncate">
+                    {deleteModal.hasRelations
+                      ? `Cannot Delete ${
+                          deleteModal.type === 'category'
+                            ? 'Category'
+                            : deleteModal.type === 'subcategory'
+                            ? 'Subcategory'
+                            : 'Select Category'
+                        }`
+                      : `Delete ${
+                          deleteModal.type === 'category'
+                            ? 'Main Category'
+                            : deleteModal.type === 'subcategory'
+                            ? 'Subcategory'
+                            : 'Select Category'
+                        }?`}
+                  </h3>
+                  <span className="text-xs text-gray-500 font-medium truncate block">
+                    {deleteModal.type === 'category'
+                      ? 'Main Category'
+                      : deleteModal.type === 'subcategory'
+                      ? 'Subcategory'
+                      : 'Select Category'}: <strong className="text-gray-800">{deleteModal.item.name}</strong>
+                  </span>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-black text-gray-900">
-                  {deleteModal.hasRelations
-                    ? `Cannot Delete ${
-                        deleteModal.type === 'category'
-                          ? 'Category'
-                          : deleteModal.type === 'subcategory'
-                          ? 'Subcategory'
-                          : 'Select Category'
-                      }`
-                    : `Delete ${
-                        deleteModal.type === 'category'
-                          ? 'Main Category'
-                          : deleteModal.type === 'subcategory'
-                          ? 'Subcategory'
-                          : 'Select Category'
-                      }?`}
-                </h3>
-                <span className="text-xs text-gray-500 font-medium">
-                  {deleteModal.type === 'category'
-                    ? 'Main Category'
-                    : deleteModal.type === 'subcategory'
-                    ? 'Subcategory'
-                    : 'Select Category'}: <strong className="text-gray-800">{deleteModal.item.name}</strong>
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteModal({ isOpen: false, type: 'category', item: null, isChecking: false, hasRelations: false, childCount: 0, productsCount: 0, isDeleting: false })}
+                disabled={deleteModal.isDeleting}
+                className="w-10 h-10 rounded-2xl bg-white hover:bg-rose-50 text-gray-500 hover:text-rose-600 border border-gray-200/90 hover:border-rose-300 shadow-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 ml-3 group focus:outline-none focus:ring-2 focus:ring-rose-200"
+                aria-label="Close modal"
+                title="Close (✕)"
+              >
+                <X size={20} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-200" />
+              </button>
             </div>
 
             <div className="p-6 space-y-4 text-xs sm:text-sm">
@@ -2888,6 +3090,82 @@ export default function MainCategoriesManager({
                   <span>Permanently Delete</span>
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. WIPE ALL IMAGES CONFIRMATION MODAL ───────────────────────────── */}
+      {isWipeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-rose-200 shadow-2xl w-full max-w-lg p-6 sm:p-7 relative animate-scale-up">
+            <div className="flex items-center justify-between pb-4 border-b border-rose-100">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold shadow-2xs">
+                  <Trash2 size={24} />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg text-gray-900">
+                    Remove All Images from Database?
+                  </h3>
+                  <span className="text-xs text-rose-600 font-bold block">
+                    Complete Database & Admin Panel Image Cleanup
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWipeModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-rose-100 text-gray-500 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="py-5 space-y-3 text-xs sm:text-sm text-gray-600 leading-relaxed">
+              <p>
+                This action will permanently clear all saved image URLs and icons across:
+              </p>
+              <ul className="list-disc pl-5 space-y-1 font-semibold text-gray-700">
+                <li>Categories (<code className="text-rose-600">categories.image</code>, <code className="text-rose-600">categories.icon</code>)</li>
+                <li>Subcategories (<code className="text-rose-600">subcategories.image</code>)</li>
+                <li>Select Categories / Product Types (<code className="text-rose-600">product_types.image</code>)</li>
+                <li>Database Hierarchy Cache (<code className="text-rose-600">salbeau_category_subcategory_hierarchy</code>)</li>
+                <li>Products Catalog (<code className="text-rose-600">products.image</code>, <code className="text-rose-600">products.images</code>)</li>
+                <li>Brand Logos (<code className="text-rose-600">brands.logo</code>)</li>
+              </ul>
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold">
+                ✓ Category names, hierarchical parent-child relationships, sort order, and products will remain 100% intact.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setIsWipeModalOpen(false)}
+                disabled={isWipingImages}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleWipeAllImages}
+                disabled={isWipingImages}
+                className="px-6 py-2.5 rounded-xl text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 shadow-md flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+              >
+                {isWipingImages ? (
+                  <>
+                    <RefreshCw size={15} className="animate-spin" />
+                    <span>Removing All Images...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={15} />
+                    <span>Confirm & Remove All Images</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

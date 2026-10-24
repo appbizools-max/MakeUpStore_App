@@ -50,10 +50,6 @@ export default function InlineImageSection({
   };
 
   const [searchQuery, setSearchQuery] = useState(() => getDefaultQuery(entityName, entityType));
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState(null);
-  const [hasSearched, setHasSearched] = useState(false);
 
   // Upload & Drag Drop state
   const [isDragging, setIsDragging] = useState(false);
@@ -67,8 +63,6 @@ export default function InlineImageSection({
   // Update default search query when entity name changes
   useEffect(() => {
     setSearchQuery(getDefaultQuery(entityName, entityType));
-    setSearchResults([]);
-    setHasSearched(false);
     setUploadError(null);
   }, [entityName, entityType]);
 
@@ -77,38 +71,6 @@ export default function InlineImageSection({
     const q = searchQuery.trim() || getDefaultQuery(entityName, entityType);
     const googleUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`;
     window.open(googleUrl, '_blank', 'noopener,noreferrer');
-  };
-
-  // In-app beauty search
-  const handleSearch = async (e) => {
-    e?.preventDefault?.();
-    if (!searchQuery.trim()) return;
-
-    setIsSearching(true);
-    setSearchError(null);
-    setHasSearched(true);
-
-    try {
-      const results = await searchBeautyImages(searchQuery);
-      setSearchResults(results);
-      if (results.length === 0) {
-        setSearchError('No images found for this query. Try a different search term or use Google Images search.');
-      }
-    } catch (err) {
-      console.error('Image search failed:', err);
-      setSearchError('Failed to search images. Please check network connection.');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // Select image from in-app search results
-  const handleSelectSearchResult = (url) => {
-    if (typeof onChange === 'function') {
-      onChange(url);
-      setUploadSuccess(true);
-      setTimeout(() => setUploadSuccess(false), 3000);
-    }
   };
 
   // Remove current image
@@ -302,7 +264,7 @@ export default function InlineImageSection({
                 className="w-full h-full object-cover rounded-xl"
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200';
+                  e.target.style.display = 'none';
                 }}
               />
             </div>
@@ -363,33 +325,24 @@ export default function InlineImageSection({
           </button>
         </div>
 
-        {/* Search query input for quick adjustments */}
+        {/* Search query input for Google Images search */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search keyword for Google..."
+              placeholder="Search keyword for Google Images..."
               className="w-full px-3.5 py-2 rounded-xl border border-gray-200 focus:border-[#C2477A] text-xs font-medium outline-none bg-white"
             />
           </div>
           <button
             type="button"
             onClick={handleOpenGoogleImages}
-            className="px-3.5 py-2 rounded-xl bg-white border border-gray-200 hover:border-amber-400 text-gray-700 text-xs font-bold cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1"
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition-all active:scale-[0.98] cursor-pointer shrink-0"
           >
-            <Search size={12} />
-            <span>Open Google</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleSearch}
-            disabled={isSearching}
-            className="px-3.5 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white text-xs font-bold cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1 shadow-2xs disabled:opacity-50"
-          >
-            {isSearching ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-            <span>Search In-App</span>
+            <Globe size={13} />
+            <span>Search in Google Images ↗</span>
           </button>
         </div>
       </div>
@@ -455,61 +408,6 @@ export default function InlineImageSection({
         <div className="p-3 bg-rose-50 text-rose-700 text-xs rounded-xl border border-rose-100 font-medium flex items-center gap-2">
           <AlertCircle size={15} className="shrink-0" />
           <span>{uploadError}</span>
-        </div>
-      )}
-
-      {/* ── 4. IN-APP IMAGE SEARCH RESULTS (OPTIONAL QUICK PICK) ─────────── */}
-      {hasSearched && (
-        <div className="space-y-3 bg-white p-4 rounded-2xl border border-gray-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-xs font-bold text-gray-700">
-            <span>In-App Results for "{searchQuery}"</span>
-            <span className="text-gray-400">{searchResults.length} images found</span>
-          </div>
-
-          {isSearching ? (
-            <div className="py-6 text-center text-xs font-bold text-gray-500 space-y-2">
-              <Loader2 size={20} className="animate-spin mx-auto text-[#C2477A]" />
-              <span>Searching beauty catalogs...</span>
-            </div>
-          ) : searchResults.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-1">
-              {searchResults.map((img) => {
-                const isSelected = imageUrl === img.url;
-                return (
-                  <div
-                    key={img.id}
-                    className={`relative rounded-xl overflow-hidden border bg-gray-50 aspect-square group shadow-2xs transition-all ${
-                      isSelected ? 'ring-2 ring-[#C2477A] border-[#C2477A]' : 'border-gray-200 hover:border-pink-300'
-                    }`}
-                  >
-                    <img
-                      src={img.thumb || img.url}
-                      alt={img.title || 'Product visual'}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      loading="lazy"
-                    />
-
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectSearchResult(img.url)}
-                        className="px-2.5 py-1.5 rounded-lg bg-white text-gray-900 font-extrabold text-[11px] shadow-sm hover:bg-[#C2477A] hover:text-white transition-colors cursor-pointer flex items-center gap-1"
-                      >
-                        {isSelected ? <Check size={11} /> : <Sparkles size={11} />}
-                        <span>{isSelected ? 'Selected' : 'Use Image'}</span>
-                      </button>
-                    </div>
-
-                    {isSelected && (
-                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#C2477A] text-white flex items-center justify-center shadow-xs">
-                        <Check size={11} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
         </div>
       )}
     </div>

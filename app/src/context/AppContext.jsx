@@ -86,8 +86,7 @@ export const mapProductFromDb = (p) => {
     salonPrice: salonPr,
     artistPrice: artistPr,
     beauticianPrice: beauticianPr,
-    stock: Number(p.stock || 0),
-    image: getSafeImageUri(p.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400'),
+    image: getSafeImageUri(p.image, ''),
     images: Array.isArray(p.images) && p.images.length > 0 ? p.images : (Array.isArray(addInfo.images) && addInfo.images.length > 0 ? addInfo.images : (p.image ? [p.image] : [])),
     shades: rawShades,
     variants: Array.isArray(p.variants) ? p.variants : (Array.isArray(addInfo.variants) ? addInfo.variants : []),
@@ -319,7 +318,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Shop Best Sellers →',
     destinationType: 'BEST_SELLERS',
     destinationId: 'best_sellers',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_1.jpg',
+    imageUrl: '',
     displayOrder: 1,
     isActive: true,
     startDate: null,
@@ -333,7 +332,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Shop Skincare →',
     destinationType: 'CATEGORY',
     destinationId: 'Skin Care',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_2.jpg',
+    imageUrl: '',
     displayOrder: 2,
     isActive: true,
     startDate: null,
@@ -347,7 +346,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Explore Makeup →',
     destinationType: 'CATEGORY',
     destinationId: 'Makeup',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_3.jpg',
+    imageUrl: '',
     displayOrder: 3,
     isActive: true,
     startDate: null,
@@ -361,7 +360,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Shop Hair Care →',
     destinationType: 'CATEGORY',
     destinationId: 'Hair Care',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_4.jpg',
+    imageUrl: '',
     displayOrder: 4,
     isActive: true,
     startDate: null,
@@ -375,7 +374,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Explore Pro Rates →',
     destinationType: 'CATEGORY',
     destinationId: 'Face Cream & Serums',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_5.jpg',
+    imageUrl: '',
     displayOrder: 5,
     isActive: true,
     startDate: null,
@@ -1032,7 +1031,7 @@ export const AppProvider = ({ children }) => {
           }
         }
       })
-      // 6. PRODUCTS (instant sync for Add, Edit, Delete, Prices, Variants, Shades, Stock, Barcode, Images)
+      // 6. PRODUCTS (instant sync for Add, Edit, Delete, Prices, Variants, Shades, Barcode, Images)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const updatedProduct = mapProductFromDb(payload.new);
@@ -1896,7 +1895,7 @@ export const AppProvider = ({ children }) => {
       id: newOrderId,
       userName: userProfile.name || 'Customer',
       phone: userProfile.phone || '',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      avatar: '',
       itemDescription: orderItems.map(i => `${i.product?.name || 'Item'}${i.shade ? ` - ${i.shade.name}` : ''} (x${i.quantity})`).join(', ') || 'Cosmetics Package',
       userRole: userRole === 'salon' ? 'Salon Owner' : userRole === 'artist' ? 'Makeup Artist' : userRole === 'beautician' ? 'Beautician' : 'General Retail',
       branch: branch || selectedBranch || 'MG Road Branch',

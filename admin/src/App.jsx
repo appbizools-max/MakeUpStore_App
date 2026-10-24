@@ -157,7 +157,6 @@ const AdminDashboard = () => {
     deleteProductVariant,
     updateOrderStatus,
     updateOrderItemStatus,
-    decrementProductStock,
     updateProductRolePrices,
     toggleUserVerification,
     updateCancelFeeSettings,
@@ -1210,7 +1209,7 @@ const AdminDashboard = () => {
   const [isAddBrandModalOpen, setIsAddBrandModalOpen] = useState(false);
   const [newBrand, setNewBrand] = useState({
     name: '',
-    logo: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&auto=format&fit=crop&q=80',
+    logo: '',
     category: 'Makeup',
     enabled: true
   });
@@ -1268,9 +1267,8 @@ const AdminDashboard = () => {
     salonPrice: '',
     artistPrice: '',
     beauticianPrice: '',
-    stock: '',
     image: '',
-    shades: [], // Array of { id, name, hexColor, priceOverride, stock, active }
+    shades: [], // Array of { id, name, hexColor, priceOverride, active }
     quantityTiers: getDefaultQuantityTiers()
   });
   const [selectedImageFile, setSelectedImageFile] = useState(null);
@@ -1478,7 +1476,7 @@ const AdminDashboard = () => {
   const [previewQty, setPreviewQty] = useState(3);
 
   // Shade/Color Variant Management State (Catalog Matrix)
-  const [shadeFormDraft, setShadeFormDraft] = useState({ name: '', hexColor: '#C2477A', priceOverride: '', stock: '', active: true });
+  const [shadeFormDraft, setShadeFormDraft] = useState({ name: '', hexColor: '#C2477A', priceOverride: '', active: true });
   // Dynamic Variant Management State for Edit Product Modal
   const [editProductActiveAttributes, setEditProductActiveAttributes] = useState([]);
   const [showAddVariantForm, setShowAddVariantForm] = useState(false);
@@ -1489,7 +1487,6 @@ const AdminDashboard = () => {
     attributes: {},
     hexColor: '#C2477A',
     price: '',
-    stock: '',
     barcode: ''
   });
   const [editingShadeProductId, setEditingShadeProductId] = useState(null); // product whose shades panel is open
@@ -1725,6 +1722,11 @@ const AdminDashboard = () => {
   const [rejectionReasonText, setRejectionReasonText] = useState('Out of stock');
   const [customRejectionReason, setCustomRejectionReason] = useState('');
 
+  // Order Acceptance Confirmation Modal states (Phase 7: Manual product availability confirmation without inventory constraints)
+  const [isAcceptanceModalOpen, setIsAcceptanceModalOpen] = useState(false);
+  const [acceptanceTargetOrder, setAcceptanceTargetOrder] = useState(null);
+  const [itemsConfirmedAvailable, setItemsConfirmedAvailable] = useState(false);
+
   // Invoice Modal states
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
@@ -1895,7 +1897,7 @@ const AdminDashboard = () => {
   const handleOpenAddBrand = () => {
     setNewBrand({
       name: '',
-      logo: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&auto=format&fit=crop&q=80',
+      logo: '',
       category: 'Makeup',
       enabled: true
     });
@@ -1919,7 +1921,7 @@ const AdminDashboard = () => {
     addBrand(newBrand);
     setNewBrand({
       name: '',
-      logo: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&auto=format&fit=crop&q=80',
+      logo: '',
       category: 'Makeup',
       enabled: true
     });
@@ -2095,7 +2097,7 @@ const AdminDashboard = () => {
         }
       }
 
-      const defaultImg = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&auto=format&fit=crop&q=80';
+      const defaultImg = '';
       const mrpNum = Number(newProduct.mrp);
       
       // Validate role quantity tiers
@@ -2118,7 +2120,6 @@ const AdminDashboard = () => {
         salonPrice: Number(newProduct.salonPrice || 0),
         artistPrice: Number(newProduct.artistPrice || 0),
         beauticianPrice: Number(newProduct.beauticianPrice || 0),
-        stock: 9999,
         shades: newProduct.shades || [],
         quantityTiers: normalizedNewTiers
       });
@@ -2132,7 +2133,6 @@ const AdminDashboard = () => {
         salonPrice: '',
         artistPrice: '',
         beauticianPrice: '',
-        stock: '',
         image: '',
         shades: [],
         quantityTiers: getDefaultQuantityTiers()
@@ -2216,7 +2216,6 @@ const AdminDashboard = () => {
       attributes: {},
       hexColor: '#C2477A',
       price: '',
-      stock: '',
       barcode: ''
     });
 
@@ -2233,7 +2232,6 @@ const AdminDashboard = () => {
       salonPrice: targetProduct.salonPrice || targetProduct.mrp || '',
       artistPrice: targetProduct.artistPrice || targetProduct.mrp || '',
       beauticianPrice: targetProduct.beauticianPrice || targetProduct.mrp || '',
-      stock: targetProduct.stock !== undefined ? targetProduct.stock : 20,
       image: targetProduct.image || '',
       images: targetProduct.images || (targetProduct.image ? [targetProduct.image] : []),
       shades: existingVariants,
@@ -2309,7 +2307,6 @@ const AdminDashboard = () => {
         salonPrice: salonPriceNum,
         artistPrice: artistPriceNum,
         beauticianPrice: beauticianPriceNum,
-        stock: editingProductData.stock !== undefined && editingProductData.stock !== null ? Number(editingProductData.stock) : 9999,
         image: editingProductData.image,
         shades: editingProductData.shades || [],
         discountPercentages: {
@@ -2709,9 +2706,23 @@ const AdminDashboard = () => {
     if (newStatus === 'rejected') {
       setRejectionTargetOrderId(orderId);
       setIsRejectionModalOpen(true);
+    } else if (newStatus === 'accepted') {
+      const target = orders.find(o => o.id === orderId);
+      setAcceptanceTargetOrder(target || { id: orderId });
+      setItemsConfirmedAvailable(false);
+      setIsAcceptanceModalOpen(true);
     } else {
       updateOrderStatus(orderId, newStatus);
     }
+  };
+
+  const handleConfirmAcceptance = () => {
+    if (acceptanceTargetOrder?.id) {
+      updateOrderStatus(acceptanceTargetOrder.id, 'accepted');
+    }
+    setIsAcceptanceModalOpen(false);
+    setAcceptanceTargetOrder(null);
+    setItemsConfirmedAvailable(false);
   };
 
   const handleConfirmRejection = (e) => {
@@ -3510,14 +3521,18 @@ const AdminDashboard = () => {
                         >
                           <td className="py-3.5 px-4 rounded-l-xl">
                             <div className="flex items-center gap-3">
-                              <img
-                                src={
-                                  order.avatar ||
-                                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-                                }
-                                alt={order.userName}
-                                className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-2xs"
-                              />
+                              {order.avatar ? (
+                                <img
+                                  src={order.avatar}
+                                  alt={order.userName}
+                                  onError={(e) => { e.target.style.display = 'none'; }}
+                                  className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-2xs"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-pink-100 text-[#C2477A] font-bold flex items-center justify-center text-xs">
+                                  {(order.userName || 'U').slice(0, 2).toUpperCase()}
+                                </div>
+                              )}
                               <div>
                                 <div className="font-bold text-sm text-gray-900">{order.userName}</div>
                                 <div className="text-xs text-gray-400 font-medium mt-0.5 max-w-xs truncate">
@@ -3652,7 +3667,7 @@ const AdminDashboard = () => {
                   {
                     key: 'bestSellers',
                     title: 'Best Sellers Product Grid',
-                    desc: '2-column product catalog grid with role-sensitive prices and stock indicators.',
+                    desc: '2-column product catalog grid with role-sensitive prices and catalog status.',
                     icon: Package,
                     tag: 'Product Catalog Grid'
                   }
@@ -6431,7 +6446,7 @@ const AdminDashboard = () => {
                     </div>
                     <div>
                       <h3 className="font-extrabold text-sm text-gray-900">Catalog & Products</h3>
-                      <p className="text-[11px] text-gray-400 font-medium">Manage stock, shades & bulk imports</p>
+                      <p className="text-[11px] text-gray-400 font-medium">Manage catalog, shades & bulk imports</p>
                     </div>
                   </div>
                 </div>
@@ -7815,6 +7830,146 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* Order Acceptance Confirmation Modal (Phase 7: Manual product availability check without inventory constraints) */}
+        {isAcceptanceModalOpen && acceptanceTargetOrder && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-pink-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shadow-2xs border border-emerald-100">
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase">
+                      Accept Order #{acceptanceTargetOrder.id}
+                    </h3>
+                    <span className="text-[11px] text-gray-500 font-medium block">
+                      Customer: <strong className="text-gray-800">{acceptanceTargetOrder.userName || 'Customer'}</strong> ({acceptanceTargetOrder.userRole || 'General'})
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAcceptanceModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Inventory Management Notice Banner */}
+              <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5 mb-4 text-xs text-amber-900 space-y-1">
+                <div className="flex items-center gap-2 font-black text-amber-800 uppercase tracking-wider text-[11px]">
+                  <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+                  <span>Physical Fulfillment Verification</span>
+                </div>
+                <p className="text-[11.5px] leading-relaxed text-amber-950 font-medium">
+                  Inventory tracking is removed from the system. Confirm that all items in this order are available for fulfillment before accepting.
+                </p>
+              </div>
+
+              {/* Order Items Preview Table */}
+              <div className="space-y-2 mb-4">
+                <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider">
+                  Order Line Items ({Array.isArray(acceptanceTargetOrder.items) ? acceptanceTargetOrder.items.length : 0})
+                </label>
+                <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-2.5 max-h-48 overflow-y-auto space-y-2">
+                  {Array.isArray(acceptanceTargetOrder.items) && acceptanceTargetOrder.items.length > 0 ? (
+                    acceptanceTargetOrder.items.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-white border border-gray-100 shadow-2xs text-xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-pink-50 border border-pink-100 overflow-hidden shrink-0 flex items-center justify-center">
+                            {item.product?.image || item.product?.imageUrl ? (
+                              <img src={item.product?.image || item.product?.imageUrl} alt={item.product?.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package size={14} className="text-pink-300" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-bold text-gray-900 truncate block text-[11.5px]">
+                              {item.product?.name || item.name || 'Product Item'}
+                            </span>
+                            {item.shade && (
+                              <span className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                                {item.shade.hexColor && (
+                                  <span className="w-2 h-2 rounded-full inline-block border border-gray-300" style={{ backgroundColor: item.shade.hexColor }} />
+                                )}
+                                Variant: {item.shade.name || item.shade.title || 'Standard'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="px-2 py-0.5 rounded-full bg-pink-50 border border-pink-200 text-[#C2477A] font-extrabold text-[11px]">
+                            Qty: {item.quantity || 1}
+                          </span>
+                          <span className="block font-bold text-gray-800 text-[11px] mt-0.5">
+                            ₹{item.unitPrice ? (item.unitPrice * (item.quantity || 1)).toFixed(2) : (item.price || 0)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-400 italic text-center py-2 text-xs">
+                      {acceptanceTargetOrder.itemDescription || 'Standard Package'}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Checkbox verification */}
+              <div className="p-3 rounded-2xl bg-emerald-50/50 border border-emerald-200 mb-5">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={itemsConfirmedAvailable}
+                    onChange={(e) => setItemsConfirmedAvailable(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 mt-0.5 cursor-pointer"
+                  />
+                  <span className="text-xs font-bold text-gray-800 leading-snug">
+                    I confirm that all items in this order are physically verified and ready for packaging &amp; fulfillment.
+                  </span>
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAcceptanceModalOpen(false);
+                    setRejectionTargetOrderId(acceptanceTargetOrder.id);
+                    setIsRejectionModalOpen(true);
+                  }}
+                  className="w-1/3 bg-rose-50 hover:bg-rose-100 text-rose-700 py-3 rounded-xl font-bold transition-all text-xs border border-rose-200 cursor-pointer text-center"
+                >
+                  Unavailable? Reject
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAcceptanceModalOpen(false)}
+                  className="w-1/4 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!itemsConfirmedAvailable}
+                  onClick={handleConfirmAcceptance}
+                  className={`w-1/2 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 text-xs ${
+                    itemsConfirmedAvailable
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-[0.99] shadow-md'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <CheckCircle2 size={15} /> Confirm &amp; Accept
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* View Invoice Modal */}
         {isInvoiceModalOpen && selectedInvoiceOrder && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -8289,7 +8444,6 @@ const AdminDashboard = () => {
                       artistPrice,
                       beauticianPrice,
                       priceOverride: editVariantDraft.price ? Number(editVariantDraft.price) : null,
-                      stock: editVariantDraft.stock !== '' && editVariantDraft.stock !== undefined ? Number(editVariantDraft.stock) : Number(editingProductData.stock || 20),
                       barcode: (editVariantDraft.barcode || '').trim(),
                       active: true,
                       discountPercentages: { ...editProductDiscounts },
@@ -8307,7 +8461,6 @@ const AdminDashboard = () => {
                       attributes: {},
                       hexColor: '#C2477A',
                       price: '',
-                      stock: '',
                       barcode: ''
                     });
                   };
@@ -8325,7 +8478,7 @@ const AdminDashboard = () => {
                               No Variants Configured
                             </h4>
                             <p className="text-[11px] text-gray-500 font-medium max-w-md mx-auto leading-relaxed">
-                              This product is currently configured as a single standalone item with base catalog pricing (₹{editingProductData.mrp || 0} MRP) and {editingProductData.stock ?? 0} stock units. No shade, size, volume, or formula variants are attached.
+                              This product is currently configured as a single standalone item with base catalog pricing (₹{editingProductData.mrp || 0} MRP). No shade, size, volume, or formula variants are attached.
                             </p>
                           </div>
                           <div className="pt-1.5 flex justify-center">
@@ -8414,12 +8567,6 @@ const AdminDashboard = () => {
                                           <span className="text-[#C2477A] font-bold">₹{shadeMrp} MRP</span>
                                           <span>•</span>
                                           <span className="text-amber-700 font-bold">{tiersCount} Tiers</span>
-                                          {shade.stock !== null && shade.stock !== undefined && (
-                                            <>
-                                              <span>•</span>
-                                              <span>{shade.stock} Units</span>
-                                            </>
-                                          )}
                                           {shade.barcode && (
                                             <>
                                               <span>•</span>
@@ -8648,31 +8795,20 @@ const AdminDashboard = () => {
                                   />
                                 </div>
 
-                                {/* Stock (Units) (Labeled cleanly, not "Shade Stock"!) */}
-                                <div className="sm:col-span-3">
-                                  <label className="block text-[10px] font-bold text-gray-700 mb-1">Stock (Units)</label>
-                                  <div className="flex gap-1.5">
-                                    <input
-                                      type="number"
-                                      placeholder="Units"
-                                      value={editVariantDraft.stock}
-                                      onChange={(e) => setEditVariantDraft(prev => ({ ...prev, stock: e.target.value }))}
-                                      className="w-full p-2.5 rounded-xl border border-[#FCE4EC]/80 outline-none focus:border-[#C2477A] bg-white font-medium text-gray-900 text-xs shadow-xs"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={handleAddVariantSubmit}
-                                      className="shrink-0 px-3 h-9 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white rounded-xl flex items-center gap-1 font-bold text-xs shadow-xs active:scale-95 cursor-pointer"
-                                      title="Add variant"
-                                    >
-                                      <Plus size={14} />
-                                      <span>Add</span>
-                                    </button>
+                                <div className="sm:col-span-3 flex items-end">
+                                  <button
+                                    type="button"
+                                    onClick={handleAddVariantSubmit}
+                                    className="w-full h-9 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white rounded-xl flex items-center justify-center gap-1 font-bold text-xs shadow-xs active:scale-95 cursor-pointer"
+                                    title="Add variant"
+                                  >
+                                    <Plus size={14} />
+                                    <span>Add Variant</span>
+                                  </button>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            )}
                         </div>
                       )}
                     </div>
@@ -8732,7 +8868,7 @@ const AdminDashboard = () => {
           const hasVariants = productToDelete.shades && Array.isArray(productToDelete.shades) && productToDelete.shades.length > 0;
           const targetImage = deleteModeChoice === 'variant' && selectedVariantToDelete?.image
             ? selectedVariantToDelete.image
-            : (productToDelete.image || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400');
+            : (productToDelete.image || '');
           const targetName = deleteModeChoice === 'variant' && selectedVariantToDelete
             ? `${productToDelete.name} — ${selectedVariantToDelete.name}`
             : productToDelete.name;
@@ -8776,7 +8912,7 @@ const AdminDashboard = () => {
                       alt={targetName}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400';
+                        e.target.style.display = 'none';
                       }}
                     />
                   </div>

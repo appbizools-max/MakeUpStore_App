@@ -164,7 +164,7 @@ export const CartScreen = () => {
               {/* Product Image Stage */}
               <View className="w-20 h-20 rounded-2xl overflow-hidden bg-[#FCE4EC] justify-center items-center">
                 <Image
-                  source={getSafeImageSource(item.shade?.image || product.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400')}
+                  source={getSafeImageSource(item.shade?.image || product.image, '')}
                   className="w-full h-full object-cover"
                 />
               </View>
@@ -282,7 +282,7 @@ export const CartScreen = () => {
                       className="relative w-full h-24 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#FCE4EC]/60 items-center justify-center"
                     >
                       <Image
-                        source={getSafeImageSource(subItems[0]?.image || p.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300')}
+                        source={getSafeImageSource(subItems[0]?.image || p.image, '')}
                         className="w-full h-full object-cover"
                         resizeMode="cover"
                       />
@@ -456,7 +456,7 @@ export const CartScreen = () => {
               {selectedQuickShade && (
                 <View className="flex-row items-center gap-3 bg-[#FFF5F8] p-3 rounded-2xl border border-[#FCE4EC] my-3">
                   <Image
-                    source={getSafeImageSource(selectedQuickShade.image || quickShadeModalItem.image, 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300')}
+                    source={getSafeImageSource(selectedQuickShade.image || quickShadeModalItem.image, '')}
                     className="w-12 h-12 rounded-xl object-cover border border-[#FCE4EC]"
                   />
                   <View className="flex-1">
@@ -497,7 +497,7 @@ export const CartScreen = () => {
                     >
                       <View className="relative w-16 h-16 rounded-xl overflow-hidden mb-1 bg-[#FFF5F8] items-center justify-center">
                         <Image
-                          source={getSafeImageSource(shade.image || quickShadeModalItem.image, 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=200')}
+                          source={getSafeImageSource(shade.image || quickShadeModalItem.image, '')}
                           className="w-full h-full object-cover"
                         />
                         {shade.hexColor && (

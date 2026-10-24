@@ -144,9 +144,6 @@ export default function AddNewProductPage({
     salonPrice: '',
     artistPrice: '',
     beauticianPrice: '',
-    stock: '50',
-    lowStockThreshold: '5',
-    stockStatus: 'in_stock',
     image: '',
     images: [],
     status: editingProduct ? (editingProduct.status || editingProduct.additionalInfo?.status || 'published') : 'published',
@@ -235,7 +232,6 @@ export default function AddNewProductPage({
         beauticianPrice: s.beauticianPrice !== undefined ? String(s.beauticianPrice) : '',
         roleDiscounts: s.roleDiscounts || { general: '0', salon: '10', artist: '15', beautician: '20' },
         quantityTiers: s.quantityTiers ? normalizeQuantityTiers(s.quantityTiers) : getDefaultQuantityTiers(),
-        stock: s.stock !== undefined ? String(s.stock) : '50',
         attributes: s.attributes || {},
         isExpanded: true,
         activeTierRole: 'general'
@@ -983,7 +979,6 @@ export default function AddNewProductPage({
       beauticianPrice: parentBeau,
       roleDiscounts: { ...roleDiscounts },
       quantityTiers: JSON.parse(JSON.stringify(normalizeQuantityTiers(formData.quantityTiers))),
-      stock: formData.stock || '50',
       attributes: { ...(formData.categoryAttributes || {}) },
       isExpanded: true,
       activeTierRole: 'general'
@@ -1235,7 +1230,6 @@ export default function AddNewProductPage({
           salonPrice: child.salonPrice !== undefined && child.salonPrice !== '' ? Number(child.salonPrice) : salonPriceNum,
           artistPrice: child.artistPrice !== undefined && child.artistPrice !== '' ? Number(child.artistPrice) : artistPriceNum,
           beauticianPrice: child.beauticianPrice !== undefined && child.beauticianPrice !== '' ? Number(child.beauticianPrice) : beauticianPriceNum,
-          stock: Number(child.stock !== undefined ? child.stock : 50),
           active: true,
           attributes: child.attributes || {},
           roleDiscounts: child.roleDiscounts || roleDiscounts,
@@ -1255,7 +1249,6 @@ export default function AddNewProductPage({
           salonPrice: shade.salonPrice !== undefined && shade.salonPrice !== '' ? Number(shade.salonPrice) : salonPriceNum,
           artistPrice: shade.artistPrice !== undefined && shade.artistPrice !== '' ? Number(shade.artistPrice) : artistPriceNum,
           beauticianPrice: shade.beauticianPrice !== undefined && shade.beauticianPrice !== '' ? Number(shade.beauticianPrice) : beauticianPriceNum,
-          stock: Number(shade.stock !== undefined ? shade.stock : 50),
           active: shade.active !== false,
           attributes: shade.attributes || {}
         })) : []);
@@ -1279,9 +1272,6 @@ export default function AddNewProductPage({
       salonPrice: salonPriceNum,
       artistPrice: artistPriceNum,
       beauticianPrice: beauticianPriceNum,
-      stock: Number(formData.stock) || 50,
-      lowStockThreshold: Number(formData.lowStockThreshold) || 5,
-      stockStatus: (Number(formData.stock) || 0) > 0 ? 'in_stock' : 'out_of_stock',
       image: primaryImage,
       images: allImages,
       status: finalStatus,
@@ -1393,9 +1383,6 @@ export default function AddNewProductPage({
             salonPrice: child.salonPrice !== undefined && child.salonPrice !== '' ? Number(child.salonPrice) : salonPriceNum,
             artistPrice: child.artistPrice !== undefined && child.artistPrice !== '' ? Number(child.artistPrice) : artistPriceNum,
             beauticianPrice: child.beauticianPrice !== undefined && child.beauticianPrice !== '' ? Number(child.beauticianPrice) : beauticianPriceNum,
-            stock: Number(child.stock !== undefined ? child.stock : 50),
-            lowStockThreshold: Number(payload.lowStockThreshold || 5),
-            stockStatus: (Number(child.stock) || 0) > 0 ? 'in_stock' : 'out_of_stock',
             image: childPrimaryImage,
             images: childImages,
             status: payload.status,
@@ -1455,8 +1442,6 @@ export default function AddNewProductPage({
             salonPrice: Number(shade.salonPrice || payload.salonPrice),
             artistPrice: Number(shade.artistPrice || payload.artistPrice),
             beauticianPrice: Number(shade.beauticianPrice || payload.beauticianPrice),
-            stock: Number(shade.stock !== undefined ? shade.stock : 25),
-            lowStockThreshold: Number(payload.lowStockThreshold || 5),
             image: shade.image || payload.image,
             images: shade.image ? [shade.image] : payload.images,
             status: payload.status,
@@ -2344,7 +2329,7 @@ export default function AddNewProductPage({
                             alt={`Packshot ${index + 1}`}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200';
+                              e.target.style.display = 'none';
                             }}
                           />
 
@@ -3085,8 +3070,8 @@ export default function AddNewProductPage({
                           {/* Child Card Expandable Body */}
                           {child.isExpanded && (
                             <div className="p-4 space-y-4 animate-fade-in text-xs">
-                              {/* Row 1: Name, Barcode & Stock */}
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              {/* Row 1: Name & Barcode */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                   <label className="block text-gray-800 font-bold mb-1">
                                     Variant / Shade Name <span className="text-[#E11D48]">*</span>
@@ -3124,19 +3109,6 @@ export default function AddNewProductPage({
                                       <ScanBarcode size={16} />
                                     </button>
                                   </div>
-                                </div>
-
-                                <div>
-                                  <label className="block text-gray-800 font-bold mb-1">
-                                    Stock Units
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={child.stock}
-                                    onChange={(e) => handleUpdateChildField(cIdx, 'stock', e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl border border-pink-100 font-bold text-gray-900 text-xs outline-none focus:border-[#E11D48]"
-                                  />
                                 </div>
                               </div>
 
@@ -3393,11 +3365,11 @@ export default function AddNewProductPage({
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[#E11D48]" />
                   <h3 className="text-xs font-black text-gray-900 uppercase tracking-wider">
-                    Section A: Publishing &amp; Inventory Status
+                    Section A: Publishing &amp; Catalog Status
                   </h3>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
                     <label className="block text-gray-800 font-bold mb-1.5 text-xs">
                       Publish Status <span className="text-[#E11D48]">*</span>
@@ -3411,40 +3383,9 @@ export default function AddNewProductPage({
                         <option value="published">🟢 Published (Active &amp; Visible)</option>
                         <option value="draft">🟡 Draft (Hidden from Customers)</option>
                         <option value="hidden">⚪ Hidden (Internal Only)</option>
-                        <option value="out_of_stock">🔴 Out of Stock</option>
                       </select>
                       <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-800 font-bold mb-1.5 text-xs">
-                      Available Stock Units
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                      onWheel={(e) => e.target.blur()}
-                      onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                      className="w-full px-3 py-2.5 rounded-xl border border-pink-100 outline-none font-bold text-gray-900 text-xs shadow-2xs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-800 font-bold mb-1.5 text-xs">
-                      Low Stock Alert Threshold
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.lowStockThreshold}
-                      onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
-                      onWheel={(e) => e.target.blur()}
-                      onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                      className="w-full px-3 py-2.5 rounded-xl border border-pink-100 outline-none font-bold text-gray-900 text-xs shadow-2xs"
-                    />
                   </div>
                 </div>
               </div>
@@ -3630,7 +3571,7 @@ export default function AddNewProductPage({
                       alt={formData.name || 'Product packshot'}
                       className="w-full h-full object-contain p-3 transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500';
+                        e.target.style.display = 'none';
                       }}
                     />
 
@@ -3737,7 +3678,7 @@ export default function AddNewProductPage({
                   )}
                 </div>
 
-                {/* 4. PUBLICATION & INVENTORY STATUS */}
+                {/* 4. PUBLICATION & CATALOG STATUS */}
                 <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-gray-700">Catalog Visibility:</span>
@@ -3752,13 +3693,9 @@ export default function AddNewProductPage({
                   </div>
 
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-gray-700">Stock Availability:</span>
-                    <span className="font-bold font-mono text-gray-900 flex items-center gap-1">
-                      {Number(formData.stock) > 0 ? (
-                        <span className="text-emerald-700">● In Stock ({formData.stock} units)</span>
-                      ) : (
-                        <span className="text-rose-700">● Out of Stock</span>
-                      )}
+                    <span className="font-bold text-gray-700">Catalog Visibility:</span>
+                    <span className="font-bold text-emerald-700 flex items-center gap-1">
+                      ● Active (Catalog Visible)
                     </span>
                   </div>
 

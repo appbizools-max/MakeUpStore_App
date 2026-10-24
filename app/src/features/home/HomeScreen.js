@@ -78,7 +78,7 @@ const ProductCard = React.memo(({
         className="relative rounded-xl overflow-hidden mb-2 bg-[#FFF5F8] items-center justify-center"
       >
         <Image
-          source={getSafeImageSource(product.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400')}
+          source={getSafeImageSource(product.image, '')}
           style={{ width: '100%', height: '100%' }}
           resizeMode="cover"
         />
@@ -727,7 +727,7 @@ export const HomeScreen = () => {
                 className="rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] items-center justify-center"
               >
                 <Image
-                  source={getSafeImageSource(cat.image, 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=400')}
+                  source={getSafeImageSource(cat.image, '')}
                   style={{ width: '100%', height: '100%' }}
                   resizeMode="cover"
                 />
@@ -921,14 +921,8 @@ export const HomeScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Right Editorial Model Image */}
-            <View style={{ width: '42%', height: '100%' }} className="justify-center items-end relative overflow-hidden">
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=800&auto=format&fit=crop&q=80' }}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="cover"
-              />
-            </View>
+            {/* Right Editorial Decoration */}
+            <View style={{ width: '42%', height: '100%' }} className="justify-center items-center relative overflow-hidden bg-white/10 rounded-r-3xl" />
           </View>
         </View>
 
@@ -1046,7 +1040,7 @@ export const HomeScreen = () => {
                   className="rounded-2xl overflow-hidden bg-white items-center justify-center"
                 >
                   <Image
-                    source={getSafeImageSource(duoBundle.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=600')}
+                    source={getSafeImageSource(duoBundle.image, '')}
                     style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
                   />
@@ -1068,12 +1062,7 @@ export const HomeScreen = () => {
             style={{ backgroundColor: '#FFF8F3', borderColor: '#FCE4EC', borderWidth: 1 }}
             className="rounded-3xl overflow-hidden shadow-xs"
           >
-            <View style={{ width: '100%', height: 128 }} className="relative bg-[#FCE4EC]">
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=800&auto=format&fit=crop&q=80' }}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="cover"
-              />
+            <View style={{ width: '100%', height: 96 }} className="relative bg-[#FCE4EC] justify-center items-center">
               <View className="absolute top-2.5 left-2.5 bg-white/95 px-2.5 py-0.5 rounded-full border border-pink-100">
                 <Text className="text-[#C2477A] text-[8px] font-black uppercase tracking-wider">
                   SEASONAL COLLECTION

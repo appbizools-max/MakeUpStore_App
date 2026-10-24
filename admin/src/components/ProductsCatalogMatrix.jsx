@@ -106,7 +106,7 @@ export default function ProductsCatalogMatrix({
   isSavingShades = false,
   shadesSaveSuccess = false,
   handleOpenShadePricing,
-  shadeFormDraft = { name: '', hexColor: '#C2477A', priceOverride: '', stock: '', active: true },
+  shadeFormDraft = { name: '', hexColor: '#C2477A', priceOverride: '', active: true },
   setShadeFormDraft,
   updateProduct,
   productRecordsPerPage = 15,
@@ -191,7 +191,7 @@ export default function ProductsCatalogMatrix({
           'Salon Price (₹)': Number(p.salonPrice || 0),
           'Artist Price (₹)': Number(p.artistPrice || 0),
           'Beautician Price (₹)': Number(p.beauticianPrice || 0),
-          'Stock': Number(p.stock !== undefined ? p.stock : 0),
+          'Active Status': p.enabled !== false ? 'Active' : 'Inactive',
           'Size': p.size || p.additionalInfo?.size || '',
           'Net Quantity': p.netQty || p.net_qty || p.additionalInfo?.net_qty || '',
           'GST %': Number(p.gstPercent ?? p.gst ?? p.additionalInfo?.gst_percent ?? 18),
@@ -229,7 +229,7 @@ export default function ProductsCatalogMatrix({
             </span>
           </div>
           <p className="text-[11px] text-gray-500 font-medium mt-1">
-            Complete beauty-commerce catalog matrix showing all product details, 4-role multi-tier pricing, category attributes, variants & live inventory.
+            Complete beauty-commerce catalog matrix showing all product details, 4-role multi-tier pricing, category attributes, variants & catalog status.
           </p>
         </div>
 
@@ -435,7 +435,6 @@ export default function ProductsCatalogMatrix({
               <th className="py-3.5 px-4 text-left min-w-[280px]">PRODUCT & DETAILS</th>
               <th className="py-3.5 px-3 text-left whitespace-nowrap">BARCODE</th>
               <th className="py-3.5 px-3 text-left whitespace-nowrap">BRAND</th>
-              <th className="py-3.5 px-3 text-center whitespace-nowrap">STOCK</th>
               <th className="py-3.5 px-3 text-right whitespace-nowrap">ORIGINAL MRP (₹)</th>
               <th className="py-3.5 px-3 text-right whitespace-nowrap">GENERAL USER (₹)</th>
               <th className="py-3.5 px-3 text-right whitespace-nowrap text-[#E11D48]">SALON OWNER (₹)</th>
@@ -447,7 +446,7 @@ export default function ProductsCatalogMatrix({
           <tbody className="divide-y divide-gray-100">
             {paginatedProducts.length === 0 ? (
               <tr>
-                <td colSpan={11} className="py-14 px-6 text-center">
+                <td colSpan={10} className="py-14 px-6 text-center">
                   {isBarcodeQuery && isBarcodeQuery(productSearch) ? (
                     <div className="max-w-md mx-auto p-6 bg-[#FFF8FA] border border-pink-200 rounded-3xl shadow-xs space-y-3">
                       <div className="w-12 h-12 rounded-2xl bg-pink-100 text-[#E11D48] flex items-center justify-center mx-auto shadow-2xs">
@@ -550,7 +549,7 @@ export default function ProductsCatalogMatrix({
                               alt={p.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                               onError={(e) => {
-                                e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=100';
+                                e.target.style.display = 'none';
                               }}
                             />
                           ) : (
@@ -641,24 +640,36 @@ export default function ProductsCatalogMatrix({
 
                           {/* Primary Metadata Badges (Category, Subcategory, Variant Type, Size, Net Qty, GST) */}
                           <div className="text-[10px] text-gray-600 font-medium flex items-center gap-1.5 flex-wrap">
-                            {/* Status */}
-                            {p.status && p.status !== 'published' ? (
-                              <span
-                                className={`inline-flex items-center px-1.5 py-0.5 rounded font-bold text-[9px] uppercase border ${
-                                  p.status === 'draft'
-                                    ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                    : p.status === 'out_of_stock'
-                                    ? 'bg-rose-50 text-rose-800 border-rose-200'
-                                    : 'bg-gray-100 text-gray-700 border-gray-200'
-                                }`}
-                              >
-                                {p.status.replace('_', ' ')}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[9px] uppercase border border-emerald-200">
-                                ACTIVE
-                              </span>
-                            )}
+                            {/* Interactive Catalog Status Toggle */}
+                            {(() => {
+                              const isProdActive = p.enabled !== false && (p.status || 'published').toLowerCase() === 'published';
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (updateProduct) {
+                                      const nextActive = !isProdActive;
+                                      await updateProduct(p.id, {
+                                        enabled: nextActive,
+                                        status: nextActive ? 'published' : 'hidden'
+                                      });
+                                    }
+                                  }}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold text-[9px] uppercase border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${
+                                    isProdActive
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                      : p.status === 'draft'
+                                      ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                      : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                                  }`}
+                                  title={`Click to ${isProdActive ? 'Deactivate (Hide from customer catalog)' : 'Activate (Publish in customer catalog)'}`}
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full ${isProdActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                                  <span>{isProdActive ? 'ACTIVE' : (p.status || 'INACTIVE').toUpperCase()}</span>
+                                </button>
+                              );
+                            })()}
 
                             {/* Category */}
                             {p.category && (
@@ -822,31 +833,6 @@ export default function ProductsCatalogMatrix({
                         <span className="font-bold text-xs text-gray-800 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
                           {p.brandName || brands?.find(b => b.id === p.brandId)?.name || '—'}
                         </span>
-                      </td>
-
-                      {/* 5. Stock Quantity & Status */}
-                      <td className="py-3 px-3 whitespace-nowrap text-center">
-                        {(() => {
-                          const stockNum = Number(p.stock !== undefined && p.stock !== null ? p.stock : 0);
-                          const isLow = stockNum > 0 && stockNum <= 5;
-                          const isOut = stockNum <= 0;
-
-                          return (
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs border shadow-2xs ${
-                                isOut
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : isLow
-                                  ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              }`}
-                              title={`Total Stock: ${stockNum} units`}
-                            >
-                              <Boxes size={12} className={isOut ? 'text-rose-500' : isLow ? 'text-amber-500' : 'text-emerald-600'} />
-                              <span>{stockNum}</span>
-                            </span>
-                          );
-                        })()}
                       </td>
 
                       {/* 6. Original MRP */}
@@ -1159,11 +1145,11 @@ export default function ProductsCatalogMatrix({
                                 </div>
                               </div>
 
-                              {/* 2. Core Specifications & Inventory */}
+                              {/* 2. Core Specifications */}
                               <div className="bg-[#FFF9FB] p-4 rounded-2xl border border-pink-100/90 space-y-3">
                                 <div className="flex items-center gap-2 text-xs font-black text-gray-900 uppercase">
                                   <Sliders size={14} className="text-blue-600" />
-                                  <span>Inventory & Specs</span>
+                                  <span>Catalog Specs & Details</span>
                                 </div>
                                 <div className="space-y-2 text-xs">
                                   <div className="flex justify-between items-center py-1 border-b border-pink-100">
@@ -1182,8 +1168,8 @@ export default function ProductsCatalogMatrix({
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center py-1 border-b border-pink-100">
-                                    <span className="text-gray-500 font-medium">Stock Status:</span>
-                                    <span className="font-bold text-gray-900">{p.stock ?? 0} units ({Number(p.stock) > 0 ? 'In Stock' : 'Out of Stock'})</span>
+                                    <span className="text-gray-500 font-medium">Catalog Status:</span>
+                                    <span className={`font-bold ${p.enabled !== false ? 'text-emerald-700' : 'text-gray-500'}`}>{p.enabled !== false ? 'Active' : 'Inactive'}</span>
                                   </div>
                                   <div className="flex justify-between items-center py-1 border-b border-pink-100">
                                     <span className="text-gray-500 font-medium">Size / Net Qty:</span>
@@ -1335,7 +1321,6 @@ export default function ProductsCatalogMatrix({
                             ? Number(v.beauticianPrice)
                             : (v.beautician_price ?? p.beauticianPrice ?? vSalon);
 
-                        const vStock = v.stock !== undefined && v.stock !== null ? Number(v.stock) : (p.stock ?? 0);
                         const attrEntries = v.attributes ? Object.entries(v.attributes) : [];
 
                         return (
@@ -1416,13 +1401,6 @@ export default function ProductsCatalogMatrix({
                             {/* 4. Brand */}
                             <td className="py-2.5 px-3 whitespace-nowrap text-xs font-semibold text-gray-500">
                               {p.brandName || brands?.find(b => b.id === p.brandId)?.name || '—'}
-                            </td>
-
-                            {/* 5. Variant Stock */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-center">
-                              <span className="font-bold text-[11px] text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200">
-                                {vStock}
-                              </span>
                             </td>
 
                             {/* 6. Original MRP */}
@@ -1756,7 +1734,6 @@ export default function ProductsCatalogMatrix({
                                     priceOverride: shadeFormDraft.priceOverride
                                       ? Number(shadeFormDraft.priceOverride)
                                       : null,
-                                    stock: 9999,
                                     active: true,
                                     quantityTiers: getDefaultQuantityTiers ? getDefaultQuantityTiers() : {}
                                   };
@@ -1765,7 +1742,6 @@ export default function ProductsCatalogMatrix({
                                     name: '',
                                     hexColor: '#E11D48',
                                     priceOverride: '',
-                                    stock: '',
                                     active: true
                                   });
                                 }}
@@ -1989,8 +1965,10 @@ export default function ProductsCatalogMatrix({
                       <span className="font-extrabold text-sm text-gray-900">{selectedDetailModalProduct.brandName || brands?.find(b => b.id === selectedDetailModalProduct.brandId)?.name || '—'}</span>
                     </div>
                     <div className="bg-[#FFF9FB] p-3.5 rounded-2xl border border-pink-100">
-                      <span className="text-[10.5px] font-bold text-gray-500 block">Stock Units</span>
-                      <span className="font-extrabold text-sm text-emerald-700">{selectedDetailModalProduct.stock ?? 0} in stock</span>
+                      <span className="text-[10.5px] font-bold text-gray-500 block">Catalog Status</span>
+                      <span className={`font-extrabold text-sm ${selectedDetailModalProduct.enabled !== false ? 'text-emerald-700' : 'text-gray-500'}`}>
+                        {selectedDetailModalProduct.enabled !== false ? 'Active' : 'Inactive'}
+                      </span>
                     </div>
                   </div>
 
@@ -2123,7 +2101,6 @@ export default function ProductsCatalogMatrix({
                             <th className="py-2.5 px-3">Salon</th>
                             <th className="py-2.5 px-3">Artist</th>
                             <th className="py-2.5 px-3">Beautician</th>
-                            <th className="py-2.5 px-3 text-center">Stock</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -2140,7 +2117,6 @@ export default function ProductsCatalogMatrix({
                               <td className="py-2.5 px-3 font-bold text-[#E11D48]">₹{sh.salonPrice || selectedDetailModalProduct.salonPrice}</td>
                               <td className="py-2.5 px-3 font-bold text-purple-700">₹{sh.artistPrice || selectedDetailModalProduct.artistPrice}</td>
                               <td className="py-2.5 px-3 font-bold text-indigo-700">₹{sh.beauticianPrice || selectedDetailModalProduct.beauticianPrice}</td>
-                              <td className="py-2.5 px-3 text-center font-bold text-gray-700">{sh.stock ?? 9999}</td>
                             </tr>
                           ))}
                         </tbody>

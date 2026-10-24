@@ -397,7 +397,6 @@ export const flattenProductsToIndividualVariants = (products = []) => {
           salonPrice: vSalonPrice,
           artistPrice: vArtistPrice,
           beauticianPrice: vBeauticianPrice,
-          stock: v.stock !== undefined ? Number(v.stock) : p.stock,
           quantityTiers: v.quantityTiers || p.quantityTiers,
           active: v.active !== false,
           isSellable: v.isSellable !== false,

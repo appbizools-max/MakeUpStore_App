@@ -236,7 +236,7 @@ export const B2BVerificationScreen = () => {
         {
           type: slot.key,
           name: `${slot.label} Copy`,
-          url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800'
+          url: ''
         }
       ];
     });
@@ -844,8 +844,7 @@ export const B2BVerificationScreen = () => {
                             alt={uploadedDoc.name}
                             className="w-10 h-10 rounded-lg object-cover bg-stone-100 border border-stone-100 shrink-0"
                             onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400';
+                              e.target.style.display = 'none';
                             }}
                           />
                           <div className="min-w-0">

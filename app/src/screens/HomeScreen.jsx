@@ -72,8 +72,9 @@ const ProductCard = React.memo(({
       {/* Product Image Box with Badge & Wishlist Heart */}
       <div className="relative w-full h-28 rounded-xl overflow-hidden mb-2 bg-[#FFF5F8] border border-[#FCE4EC]/40 flex items-center justify-center">
         <img
-          src={product.image || 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400'}
+          src={product.image || ''}
           alt={product.name}
+          onError={(e) => { e.target.style.display = 'none'; }}
           className="w-full h-full object-cover"
         />
 
@@ -570,8 +571,9 @@ export const HomeScreen = () => {
           >
             <div className="w-16 h-16 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#FCE4EC]/50 flex items-center justify-center">
               <img
-                src={cat.image || 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=400'}
+                src={cat.image || ''}
                 alt={cat.name}
+                onError={(e) => { e.target.style.display = 'none'; }}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -735,13 +737,9 @@ export const HomeScreen = () => {
             </button>
           </div>
 
-          {/* Right Editorial Model Image */}
-          <div className="w-[42%] h-full flex justify-center items-end relative overflow-hidden">
-            <img
-              src="https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=800&auto=format&fit=crop&q=80"
-              alt="Editorial Beauty"
-              className="w-full h-full object-cover"
-            />
+          {/* Right Editorial Decoration */}
+          <div className="w-[42%] h-full flex justify-center items-center relative overflow-hidden bg-white/10 rounded-r-3xl">
+            <Sparkles className="text-white/40" size={48} />
           </div>
         </div>
       </div>
@@ -844,8 +842,9 @@ export const HomeScreen = () => {
               </div>
               <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white border border-[#F5A8C0] shrink-0">
                 <img
-                  src={getSafeImageSource(duoBundle.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=600')}
+                  src={getSafeImageSource(duoBundle.image, '')}
                   alt={duoBundle.title}
+                  onError={(e) => { e.target.style.display = 'none'; }}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -863,12 +862,7 @@ export const HomeScreen = () => {
       />
       <div className="px-4 mb-4">
         <div className="rounded-3xl overflow-hidden border border-[#FCE4EC] bg-[#FFF8F3] shadow-xs">
-          <div className="relative w-full h-32 bg-[#FCE4EC]">
-            <img
-              src="https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=800&auto=format&fit=crop&q=80"
-              alt="Seasonal Collection"
-              className="w-full h-full object-cover"
-            />
+          <div className="relative w-full h-24 bg-gradient-to-r from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center">
             <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-pink-100">
               <span className="text-[#C2477A] text-[8px] font-black uppercase tracking-wider block">
                 SEASONAL COLLECTION

@@ -262,7 +262,6 @@ const mapProductFromDb = (p) => ({
   salonPrice: Number(p.salon_price || p.salonPrice || p.mrp || 0),
   artistPrice: Number(p.artist_price || p.artistPrice || p.mrp || 0),
   beauticianPrice: Number(p.beautician_price || p.beauticianPrice || p.mrp || 0),
-  stock: Number(p.stock !== undefined && p.stock !== null ? p.stock : 0),
   image: p.image || (Array.isArray(p.additional_info?.images) ? p.additional_info.images[0] : ''),
   images: Array.isArray(p.images) && p.images.length > 0 ? p.images : (Array.isArray(p.additional_info?.images) ? p.additional_info.images : (p.image ? [p.image] : [])),
   shade: p.additional_info?.shade_name || (Array.isArray(p.shades) && p.shades[0]?.name) || '',
@@ -524,7 +523,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Shop Best Sellers →',
     destinationType: 'BEST_SELLERS',
     destinationId: 'best_sellers',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_1.jpg',
+    imageUrl: '',
     displayOrder: 1,
     isActive: true,
     startDate: null,
@@ -538,7 +537,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Shop Skincare →',
     destinationType: 'CATEGORY',
     destinationId: 'Skin Care',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_2.jpg',
+    imageUrl: '',
     displayOrder: 2,
     isActive: true,
     startDate: null,
@@ -552,7 +551,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Explore Makeup →',
     destinationType: 'CATEGORY',
     destinationId: 'Makeup',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_3.jpg',
+    imageUrl: '',
     displayOrder: 3,
     isActive: true,
     startDate: null,
@@ -566,7 +565,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Shop Hair Care →',
     destinationType: 'CATEGORY',
     destinationId: 'Hair Care',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_4.jpg',
+    imageUrl: '',
     displayOrder: 4,
     isActive: true,
     startDate: null,
@@ -580,7 +579,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Explore Pro Rates →',
     destinationType: 'CATEGORY',
     destinationId: 'Face Cream & Serums',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_5.jpg',
+    imageUrl: '',
     displayOrder: 5,
     isActive: true,
     startDate: null,
@@ -655,14 +654,6 @@ export const AdminProvider = ({ children }) => {
       fullName: 'System Administrator',
       permissions: null,
     };
-  });
-  const [stockAuditLogs, setStockAuditLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('salbeau_stock_audit_logs');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
   });
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -1449,7 +1440,6 @@ export const AdminProvider = ({ children }) => {
       salon_price: Number(productObj.salonPrice || mrpVal),
       artist_price: Number(productObj.artistPrice || mrpVal),
       beautician_price: Number(productObj.beauticianPrice || mrpVal),
-      stock: Number(productObj.stock !== undefined ? productObj.stock : 9999),
       image: productObj.image || (Array.isArray(productObj.images) && productObj.images[0] ? productObj.images[0] : '')
     };
 
@@ -1862,167 +1852,6 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
-  const recordStockLog = (entry) => {
-    setStockAuditLogs(prev => {
-      const updated = [
-        {
-          id: 'stk_log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-          timestamp: new Date().toISOString(),
-          ...entry
-        },
-        ...prev
-      ].slice(0, 150); // Keep most recent 150 log events
-      try {
-        localStorage.setItem('salbeau_stock_audit_logs', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
-  };
-
-  const updateProductStock = async (productId, newStockValue, variantIdOrIndex = null, reason = 'Direct Adjustment') => {
-    const target = products.find(p => p.id === productId);
-    if (!target) return { success: false, error: 'Product not found' };
-
-    const parsedStock = Math.max(0, parseInt(newStockValue, 10) || 0);
-    let prevStock = Number(target.stock || 0);
-    let updatedShades = target.shades ? [...target.shades] : [];
-    let variantName = null;
-
-    if (variantIdOrIndex !== null && updatedShades.length > 0) {
-      let vIndex = -1;
-      if (typeof variantIdOrIndex === 'number') {
-        vIndex = variantIdOrIndex;
-      } else {
-        vIndex = updatedShades.findIndex(s => s.id === variantIdOrIndex || s.code === variantIdOrIndex || s.name === variantIdOrIndex);
-      }
-
-      if (vIndex >= 0 && updatedShades[vIndex]) {
-        prevStock = updatedShades[vIndex].stock !== undefined && updatedShades[vIndex].stock !== null ? Number(updatedShades[vIndex].stock) : 0;
-        variantName = updatedShades[vIndex].name || `Variant #${vIndex + 1}`;
-        updatedShades[vIndex] = {
-          ...updatedShades[vIndex],
-          stock: parsedStock
-        };
-
-        const totalVariantStock = updatedShades.reduce((sum, sh) => sum + (Number(sh.stock) || 0), 0);
-
-        setProducts(prev => prev.map(p => (
-          p.id === productId
-            ? { ...p, stock: totalVariantStock, shades: updatedShades }
-            : p
-        )));
-
-        recordStockLog({
-          productId,
-          productName: target.name,
-          variantId: updatedShades[vIndex].id || `var_${vIndex}`,
-          variantName,
-          prevStock,
-          newStock: parsedStock,
-          changeQty: parsedStock - prevStock,
-          reason,
-          type: parsedStock >= prevStock ? 'inward' : 'adjustment'
-        });
-
-        try {
-          await supabase.from('products').update({
-            stock: totalVariantStock,
-            shades: updatedShades
-          }).eq('id', productId);
-        } catch (e) {
-          console.warn('Error updating variant stock in Supabase:', e);
-        }
-
-        return { success: true, newStock: parsedStock, totalStock: totalVariantStock };
-      }
-    }
-
-    setProducts(prev => prev.map(p => (
-      p.id === productId
-        ? { ...p, stock: parsedStock }
-        : p
-    )));
-
-    recordStockLog({
-      productId,
-      productName: target.name,
-      variantId: null,
-      variantName: null,
-      prevStock,
-      newStock: parsedStock,
-      changeQty: parsedStock - prevStock,
-      reason,
-      type: parsedStock >= prevStock ? 'inward' : 'adjustment'
-    });
-
-    try {
-      await supabase.from('products').update({ stock: parsedStock }).eq('id', productId);
-    } catch (e) {
-      console.warn('Error updating product stock in Supabase:', e);
-    }
-
-    return { success: true, newStock: parsedStock };
-  };
-
-  const adjustProductStock = async (productId, deltaQty, variantIdOrIndex = null, reason = 'Restock Inward') => {
-    const target = products.find(p => p.id === productId);
-    if (!target) return { success: false, error: 'Product not found' };
-
-    let currentStock = Number(target.stock || 0);
-    if (variantIdOrIndex !== null && target.shades && target.shades.length > 0) {
-      let vIndex = typeof variantIdOrIndex === 'number'
-        ? variantIdOrIndex
-        : target.shades.findIndex(s => s.id === variantIdOrIndex || s.code === variantIdOrIndex || s.name === variantIdOrIndex);
-      if (vIndex >= 0 && target.shades[vIndex]) {
-        currentStock = target.shades[vIndex].stock !== undefined && target.shades[vIndex].stock !== null ? Number(target.shades[vIndex].stock) : 0;
-      }
-    }
-
-    const newStock = Math.max(0, currentStock + Number(deltaQty));
-    return await updateProductStock(productId, newStock, variantIdOrIndex, reason);
-  };
-
-  const bulkAdjustStock = async (adjustments = []) => {
-    for (const item of adjustments) {
-      if (item.productId && item.deltaQty !== undefined) {
-        await adjustProductStock(item.productId, item.deltaQty, item.variantId, item.reason || 'Bulk Shipment Inward');
-      } else if (item.productId && item.newStock !== undefined) {
-        await updateProductStock(item.productId, item.newStock, item.variantId, item.reason || 'Bulk Stock Set');
-      }
-    }
-    return { success: true };
-  };
-
-  const clearStockLogs = () => {
-    setStockAuditLogs([]);
-    try {
-      localStorage.removeItem('salbeau_stock_audit_logs');
-    } catch (e) {}
-  };
-
-  const decrementProductStock = async (productId, qty = 1) => {
-    const target = products.find(p => p.id === productId);
-    if (!target) return;
-    const newStock = Math.max(0, target.stock - qty);
-    setProducts(prev => prev.map(p => (p.id === productId ? { ...p, stock: newStock } : p)));
-    recordStockLog({
-      productId,
-      productName: target.name,
-      variantId: null,
-      variantName: null,
-      prevStock: target.stock || 0,
-      newStock,
-      changeQty: -qty,
-      reason: 'Order Fulfillment Deduction',
-      type: 'sale_deduction'
-    });
-    try {
-      await supabase.from('products').update({ stock: newStock }).eq('id', productId);
-    } catch (e) {
-      console.warn('Error updating product stock in Supabase:', e);
-    }
-  };
-
   const updateProductRolePrices = async (productId, newPrices) => {
     setProducts(prev => prev.map(p => (p.id === productId ? { ...p, ...newPrices } : p)));
     try {
@@ -2112,7 +1941,6 @@ export const AdminProvider = ({ children }) => {
       if (updatedFields.salonPrice !== undefined) payload.salon_price = Number(updatedFields.salonPrice);
       if (updatedFields.artistPrice !== undefined) payload.artist_price = Number(updatedFields.artistPrice);
       if (updatedFields.beauticianPrice !== undefined) payload.beautician_price = Number(updatedFields.beauticianPrice);
-      if (updatedFields.stock !== undefined) payload.stock = Number(updatedFields.stock);
       if (updatedFields.image !== undefined) payload.image = updatedFields.image;
       if (updatedFields.shades !== undefined) payload.shades = updatedFields.shades;
       if (updatedFields.searchKeywords !== undefined) payload.search_keywords = updatedFields.searchKeywords;
@@ -3738,12 +3566,6 @@ export const AdminProvider = ({ children }) => {
         deleteProductVariant,
         updateOrderStatus,
         updateOrderItemStatus,
-        decrementProductStock,
-        updateProductStock,
-        adjustProductStock,
-        bulkAdjustStock,
-        stockAuditLogs,
-        clearStockLogs,
         updateProductRolePrices,
         toggleUserVerification,
         updateCancelFeeSettings,

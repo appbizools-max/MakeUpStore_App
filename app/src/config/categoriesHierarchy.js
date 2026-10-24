@@ -2,19 +2,19 @@
 // Structured for 4-Level Navigation Flow (Nykaa / Tira / Sephora style)
 
 export const CATEGORY_IMAGES = {
-  makeup: 'https://images.unsplash.com/photo-1512207736890-6ffed8a84e8d?w=800&auto=format&fit=crop&q=80',
-  skincare: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&auto=format&fit=crop&q=80',
-  hairCare: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&auto=format&fit=crop&q=80',
-  hairStylingTools: 'https://images.unsplash.com/photo-1620118657710-23d8f6d2da74?w=800&auto=format&fit=crop&q=80',
-  bathBody: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=800&auto=format&fit=crop&q=80',
-  fragrance: 'https://images.unsplash.com/photo-1541643600914-78b084683702?w=800&auto=format&fit=crop&q=80',
-  mensGrooming: 'https://images.unsplash.com/photo-1621607512214-68297480165e?w=800&auto=format&fit=crop&q=80',
-  nailCare: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=800&auto=format&fit=crop&q=80',
-  salonProducts: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=800&auto=format&fit=crop&q=80',
-  beautyTools: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&auto=format&fit=crop&q=80',
-  personalCare: 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=800&auto=format&fit=crop&q=80',
-  beautyKits: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&auto=format&fit=crop&q=80',
-  eyeMakeup: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=800&auto=format&fit=crop&q=80',
+  makeup: '',
+  skincare: '',
+  hairCare: '',
+  hairStylingTools: '',
+  bathBody: '',
+  fragrance: '',
+  mensGrooming: '',
+  nailCare: '',
+  salonProducts: '',
+  beautyTools: '',
+  personalCare: '',
+  beautyKits: '',
+  eyeMakeup: '',
 };
 
 export const MAIN_CATEGORIES = [
@@ -161,7 +161,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_face_makeup',
         name: 'Face Makeup',
-        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500',
+        image: '',
         tagline: 'Flawless base, contour & luminous finishes',
         leafCategories: [
           { id: 'leaf_foundation', name: 'Foundation', keywords: ['foundation', 'liquid foundation'] },
@@ -175,7 +175,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_lip_makeup',
         name: 'Lip Makeup',
-        image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=500',
+        image: '',
         tagline: 'Statement pout with hydration and bold payoff',
         leafCategories: [
           { id: 'leaf_lipstick', name: 'Lipstick', keywords: ['lipstick', 'matte lipstick', 'bullet'] },
@@ -188,7 +188,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_eye_makeup',
         name: 'Eye Makeup',
-        image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=500',
+        image: '',
         tagline: 'Magnetic eyes, winged precision & dramatic volume',
         leafCategories: [
           { id: 'leaf_kajal', name: 'Kajal & Kohl', keywords: ['kajal', 'kohl'] },
@@ -201,7 +201,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_nails_group',
         name: 'Nails',
-        image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=500',
+        image: '',
         tagline: 'Salon manicure finishes in vibrant hues',
         leafCategories: [
           { id: 'leaf_nail_polish', name: 'Nail Polish', keywords: ['nail polish', 'nail enamel', 'lacquer'] },
@@ -212,7 +212,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_makeup_tools',
         name: 'Makeup Tools',
-        image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=500',
+        image: '',
         tagline: 'Professional blending tools and brushes',
         leafCategories: [
           { id: 'leaf_brushes', name: 'Makeup Brushes', keywords: ['brush', 'brush set', 'kabuki'] },
@@ -223,7 +223,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_makeup_kits',
         name: 'Makeup Kits & Palettes',
-        image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500',
+        image: '',
         tagline: 'All-in-one vanity editions & bridal essentials',
         leafCategories: [
           { id: 'leaf_all_in_one', name: 'All-In-One Palettes', keywords: ['palette', 'all-in-one', 'combo palette'] },
@@ -240,7 +240,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_cleansers',
         name: 'Cleansers & Facewash',
-        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500',
+        image: '',
         tagline: 'Deep purify without stripping natural moisture',
         leafCategories: [
           { id: 'leaf_face_wash', name: 'Face Wash', keywords: ['face wash', 'cleanser', 'foaming wash'] },
@@ -251,7 +251,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_serums',
         name: 'Serums & Treatments',
-        image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500',
+        image: '',
         tagline: 'High-potency actives for targeted skin concerns',
         leafCategories: [
           { id: 'leaf_face_serum', name: 'Face Serums', keywords: ['serum', 'concentrate', 'ampoule'] },
@@ -262,7 +262,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_moisturizers',
         name: 'Moisturizers & Creams',
-        image: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=500',
+        image: '',
         tagline: '24-hour hydration barrier and supple skin',
         leafCategories: [
           { id: 'leaf_day_cream', name: 'Day Cream', keywords: ['day cream', 'moisturizer', 'daily lotion'] },
@@ -273,7 +273,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_sunscreen',
         name: 'Sun Protection',
-        image: 'https://images.unsplash.com/photo-1556228722-d0b5de70d772?w=500',
+        image: '',
         tagline: 'Broad-spectrum UV shields without white cast',
         leafCategories: [
           { id: 'leaf_sunscreen_gel', name: 'Sunscreen Gel & Matte', keywords: ['sunscreen', 'sunblock', 'spf', 'uv'] },
@@ -283,7 +283,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_masks',
         name: 'Masks & Peels',
-        image: 'https://images.unsplash.com/photo-1567928815116-3a13b199807f?w=500',
+        image: '',
         tagline: 'Weekly detox and instant radiance rituals',
         leafCategories: [
           { id: 'leaf_sheet_mask', name: 'Sheet Masks', keywords: ['sheet mask', 'facial mask'] },
@@ -300,7 +300,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_shampoo_cond',
         name: 'Shampoo & Conditioner',
-        image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=500',
+        image: '',
         tagline: 'Cleanse and soften for silky, manageable strands',
         leafCategories: [
           { id: 'leaf_shampoo', name: 'Shampoo', keywords: ['shampoo', 'hair wash', 'cleansing rinse'] },
@@ -311,7 +311,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_hair_treatment',
         name: 'Hair Masks & Spa',
-        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500',
+        image: '',
         tagline: 'Intensive protein therapy for damaged and treated hair',
         leafCategories: [
           { id: 'leaf_hair_mask', name: 'Hair Masks & Masques', keywords: ['mask', 'masque', 'absolut repair'] },
@@ -322,7 +322,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_hair_oil',
         name: 'Hair Oils & Tonics',
-        image: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=500',
+        image: '',
         tagline: 'Traditional and cold-pressed root nourishment',
         leafCategories: [
           { id: 'leaf_hair_oil_pure', name: 'Pure Hair Oils', keywords: ['hair oil', 'argan oil', 'onion oil', 'rosemary'] },
@@ -332,7 +332,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_hair_colour',
         name: 'Hair Colour',
-        image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=500',
+        image: '',
         tagline: 'Rich, multi-dimensional salon and home shades',
         leafCategories: [
           { id: 'leaf_permanent_colour', name: 'Hair Colour Kits', keywords: ['hair colour', 'hair dye', 'colour cream'] },
@@ -349,7 +349,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_dryers',
         name: 'Hair Dryers',
-        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500',
+        image: '',
         tagline: 'Fast drying ionic tech that seals moisture',
         leafCategories: [
           { id: 'leaf_pro_dryer', name: 'Professional Dryers', keywords: ['dryer', 'blow dryer', 'ionic'] },
@@ -359,7 +359,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_straighteners',
         name: 'Straighteners & Flat Irons',
-        image: 'https://images.unsplash.com/photo-1620118657710-23d8f6d2da74?w=500',
+        image: '',
         tagline: 'Silky smooth glass hair in a single pass',
         leafCategories: [
           { id: 'leaf_ceramic_iron', name: 'Ceramic Straighteners', keywords: ['straightener', 'flat iron', 'ceramic'] },
@@ -369,7 +369,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_curlers',
         name: 'Curling Irons & Wands',
-        image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=500',
+        image: '',
         tagline: 'Voluminous beach waves and sculpted curls',
         leafCategories: [
           { id: 'leaf_curling_wand', name: 'Curling Wands', keywords: ['curling wand', 'curler', 'tong'] },
@@ -386,7 +386,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_body_wash',
         name: 'Shower Gels & Soaps',
-        image: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=500',
+        image: '',
         tagline: 'Invigorating lather with botanical essences',
         leafCategories: [
           { id: 'leaf_shower_gel', name: 'Shower Gel', keywords: ['shower gel', 'body wash'] },
@@ -396,7 +396,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_body_moisturizer',
         name: 'Body Lotions & Butters',
-        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500',
+        image: '',
         tagline: 'Silky softness with shea butter & ceramides',
         leafCategories: [
           { id: 'leaf_body_lotion', name: 'Body Lotions', keywords: ['body lotion', 'body milk'] },
@@ -407,7 +407,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_body_scrubs',
         name: 'Body Scrubs & Polishes',
-        image: 'https://images.unsplash.com/photo-1567928815116-3a13b199807f?w=500',
+        image: '',
         tagline: 'Buff away dullness for baby-soft skin',
         leafCategories: [
           { id: 'leaf_sugar_scrub', name: 'Body Scrubs', keywords: ['body scrub', 'sugar scrub', 'coffee scrub'] }
@@ -423,7 +423,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_womens_perfume',
         name: "Women's Perfumes",
-        image: 'https://images.unsplash.com/photo-1541643600914-78b084683702?w=500',
+        image: '',
         tagline: 'Floral, oriental & gourmand luxury notes',
         leafCategories: [
           { id: 'leaf_edp_women', name: 'Eau De Parfum (EDP)', keywords: ['perfume', 'edp', 'eau de parfum'] },
@@ -433,7 +433,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_body_mists',
         name: 'Body Mists & Deodorants',
-        image: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=500',
+        image: '',
         tagline: 'Light, all-day refreshing spritzes',
         leafCategories: [
           { id: 'leaf_body_mist', name: 'Body Mists', keywords: ['body mist', 'fragrance mist'] },
@@ -443,7 +443,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_attars',
         name: 'Attars & Concentrates',
-        image: 'https://images.unsplash.com/photo-1547887537-6158d64c35b3?w=500',
+        image: '',
         tagline: 'Pure non-alcoholic concentrated essences',
         leafCategories: [
           { id: 'leaf_attar_oil', name: 'Pure Attar', keywords: ['attar', 'perfume oil', 'concentrated oil'] }
@@ -459,7 +459,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_beard_care',
         name: 'Beard Care',
-        image: 'https://images.unsplash.com/photo-1621607512214-68297480165e?w=500',
+        image: '',
         tagline: 'Shape, soften and condition facial hair',
         leafCategories: [
           { id: 'leaf_beard_oil', name: 'Beard Oil & Balms', keywords: ['beard oil', 'beard balm', 'beard growth'] },
@@ -469,7 +469,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_shaving',
         name: 'Shaving Essentials',
-        image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500',
+        image: '',
         tagline: 'Ultra-glide lather and soothing aftershaves',
         leafCategories: [
           { id: 'leaf_shave_foam', name: 'Shaving Foam & Gel', keywords: ['shaving foam', 'shave cream', 'shave gel'] },
@@ -479,7 +479,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_men_hair',
         name: 'Men Hair Styling',
-        image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=500',
+        image: '',
         tagline: 'Matte pomades, strong clays and hair waxes',
         leafCategories: [
           { id: 'leaf_hair_wax', name: 'Hair Wax & Pomades', keywords: ['hair wax', 'pomade', 'hair clay', 'styling gel'] }
@@ -495,7 +495,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_nail_lacquers',
         name: 'Nail Polishes',
-        image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=500',
+        image: '',
         tagline: 'Vibrant non-chipping shades and quick-dry formulas',
         leafCategories: [
           { id: 'leaf_lacquer_gloss', name: 'Glossy Enamels', keywords: ['nail polish', 'glossy polish', 'enamel'] },
@@ -505,7 +505,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_gel_nails',
         name: 'Gel Systems & Treatments',
-        image: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?w=500',
+        image: '',
         tagline: 'Long-wear salon durability and cuticle health',
         leafCategories: [
           { id: 'leaf_gel_system', name: 'Gel Polishes', keywords: ['gel polish', 'gel coat'] },
@@ -522,7 +522,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_salon_hair',
         name: 'Professional Hair Treatments',
-        image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=500',
+        image: '',
         tagline: 'Keratin, botoplex and salon backbar solutions',
         leafCategories: [
           { id: 'leaf_keratin', name: 'Keratin & Smoothening', keywords: ['keratin', 'smoothening', 'botoplex', 'straightening cream'] },
@@ -532,7 +532,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_salon_colour',
         name: 'Salon Hair Colour & Developers',
-        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500',
+        image: '',
         tagline: 'Master shade tubes and calibrated peroxide volumes',
         leafCategories: [
           { id: 'leaf_pro_tube', name: 'Professional Colour Tubes', keywords: ['colour tube', 'majirel', 'inoa'] },
@@ -542,7 +542,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_salon_skin',
         name: 'Facial Kits & Skin Solutions',
-        image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500',
+        image: '',
         tagline: 'Multi-step diamond, gold and bridal facial kits',
         leafCategories: [
           { id: 'leaf_facial_kit', name: 'Salon Facial Kits', keywords: ['facial kit', 'diamond facial', 'gold facial', 'o3+'] }
@@ -558,7 +558,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_tools_brushes',
         name: 'Makeup Brushes & Kits',
-        image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=500',
+        image: '',
         tagline: 'Dense ultra-soft synthetic bristles for blending',
         leafCategories: [
           { id: 'leaf_brush_set', name: 'Brush Sets', keywords: ['brush set', 'pro brushes'] },
@@ -568,7 +568,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_tools_facial',
         name: 'Facial & Massage Tools',
-        image: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=500',
+        image: '',
         tagline: 'Lymphatic drainage and sculpting stones',
         leafCategories: [
           { id: 'leaf_gua_sha', name: 'Gua Sha & Jade Rollers', keywords: ['gua sha', 'jade roller', 'facial roller'] }
@@ -577,7 +577,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_tools_sponges',
         name: 'Sponges & Blenders',
-        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500',
+        image: '',
         tagline: 'Porous bouncy blenders for streak-free foundation',
         leafCategories: [
           { id: 'leaf_blender_sponge', name: 'Beauty Sponges', keywords: ['blender', 'sponge', 'powder puff'] }
@@ -593,7 +593,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_fem_hygiene',
         name: 'Feminine Hygiene',
-        image: 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=500',
+        image: '',
         tagline: 'Gentle intimate wellness and pure cotton comfort',
         leafCategories: [
           { id: 'leaf_intimate_wash', name: 'Intimate Washes', keywords: ['intimate wash', 'feminine wash'] },
@@ -603,7 +603,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_hair_removal',
         name: 'Hair Removal & Razors',
-        image: 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=500',
+        image: '',
         tagline: 'Painless smooth skin solutions',
         leafCategories: [
           { id: 'leaf_face_razors', name: 'Facial Razors & Wax Strips', keywords: ['razor', 'facial razor', 'wax strips'] }
@@ -619,7 +619,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_gift_hampers',
         name: 'Luxury Gift Sets & Hampers',
-        image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500',
+        image: '',
         tagline: 'Elegantly packaged beauty sets for celebrations',
         leafCategories: [
           { id: 'leaf_gift_box', name: 'Curated Gift Boxes', keywords: ['gift set', 'gift box', 'hamper'] },
@@ -629,7 +629,7 @@ export const CATEGORY_DETAILS_MAP = {
       {
         id: 'sub_travel_kits',
         name: 'Travel Minis & Essentials',
-        image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=500',
+        image: '',
         tagline: 'Carry-on approved beauty favorites',
         leafCategories: [
           { id: 'leaf_mini_set', name: 'Travel Minis', keywords: ['travel kit', 'mini', 'starter kit'] }
@@ -807,7 +807,7 @@ export const getSubcategoriesForCategory = (catIdOrName) => {
 
           return {
             ...s,
-            image: cleanImage || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500',
+            image: cleanImage || '',
             leafCategories: matchedLeaves
           };
         });

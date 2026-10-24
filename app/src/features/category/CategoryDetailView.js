@@ -102,7 +102,7 @@ export const CategoryDetailView = ({
         {/* ── TOP HERO BANNER ─────────────────────────────────────────── */}
         <View className="mx-4 mt-3 mb-4 rounded-2xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FFF0F5] relative h-44">
           <Image
-            source={getSafeImageSource(category?.image, category?.fallbackImage || 'https://images.unsplash.com/photo-1512207736890-6ffed8a84e8d?w=600')}
+            source={getSafeImageSource(category?.image, category?.fallbackImage || '')}
             className="w-full h-full object-cover"
             resizeMode="cover"
           />
@@ -152,7 +152,7 @@ export const CategoryDetailView = ({
                 {/* Visual Thumbnail */}
                 <View className="w-14 h-14 rounded-xl overflow-hidden bg-[#FFF0F5] border border-[#FCE4EC]">
                   <Image
-                    source={getSafeImageSource(sub.image, 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300')}
+                    source={getSafeImageSource(sub.image, '')}
                     className="w-full h-full object-cover"
                     resizeMode="cover"
                   />

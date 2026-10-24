@@ -935,7 +935,7 @@ export default function DynamicVariantBuilder({
                                       alt={v.name}
                                       className="w-full h-full object-cover"
                                       onError={(e) => {
-                                        e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=100';
+                                        e.target.style.display = 'none';
                                       }}
                                     />
                                   ) : (

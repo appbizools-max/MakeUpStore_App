@@ -1096,7 +1096,7 @@ export default function CategorySubcategoryManager({
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150';
+                    e.target.style.display = 'none';
                   }}
                 />
               ) : (
@@ -1244,7 +1244,7 @@ export default function CategorySubcategoryManager({
                               className="w-full h-full object-contain"
                               onError={(e) => {
                                 e.target.onerror = null;
-                                e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150';
+                                e.target.style.display = 'none';
                               }}
                             />
                           ) : (
@@ -1407,7 +1407,7 @@ export default function CategorySubcategoryManager({
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150';
+                    e.target.style.display = 'none';
                   }}
                 />
               ) : (
@@ -1548,7 +1548,7 @@ export default function CategorySubcategoryManager({
                               className="w-full h-full object-contain"
                               onError={(e) => {
                                 e.target.onerror = null;
-                                e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150';
+                                e.target.style.display = 'none';
                               }}
                             />
                           ) : (
@@ -1810,7 +1810,7 @@ export default function CategorySubcategoryManager({
                               className="w-full h-full object-contain"
                               onError={(e) => {
                                 e.target.onerror = null;
-                                e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150';
+                                e.target.style.display = 'none';
                               }}
                             />
                           ) : (

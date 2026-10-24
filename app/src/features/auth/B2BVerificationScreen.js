@@ -202,7 +202,7 @@ export const B2BVerificationScreen = () => {
 
   const handleSaveUploadedDoc = () => {
     if (!activeUploadSlot) return;
-    const finalUrl = uploadDocUrl.trim() || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800';
+    const finalUrl = uploadDocUrl.trim() || '';
     const finalName = uploadDocName.trim() || activeUploadSlot.label;
 
     setDocuments(prev => {

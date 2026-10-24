@@ -42,7 +42,6 @@ export default function ShadePricingModal({
     id: shade.id || 'shade_' + Date.now(),
     name: shade.name || '',
     hexColor: shade.hexColor || '#C2477A',
-    stock: shade.stock !== undefined && shade.stock !== null ? shade.stock : (parentProduct?.stock || 20),
     active: shade.active !== false,
     mrp: shade.mrp !== undefined && shade.mrp !== '' ? shade.mrp : (shade.priceOverride || parentProduct?.mrp || ''),
     generalPrice: shade.generalPrice !== undefined && shade.generalPrice !== '' ? shade.generalPrice : (shade.priceOverride || parentProduct?.generalPrice || parentProduct?.mrp || ''),
@@ -91,7 +90,6 @@ export default function ShadePricingModal({
         id: shade.id || 'shade_' + Date.now(),
         name: shade.name || '',
         hexColor: shade.hexColor || '#C2477A',
-        stock: shade.stock !== undefined && shade.stock !== null ? shade.stock : (parentProduct?.stock || 20),
         active: shade.active !== false,
         mrp: shade.mrp !== undefined && shade.mrp !== '' ? shade.mrp : (shade.priceOverride || parentProduct?.mrp || ''),
         generalPrice: shade.generalPrice !== undefined && shade.generalPrice !== '' ? shade.generalPrice : (shade.priceOverride || parentProduct?.generalPrice || parentProduct?.mrp || ''),
@@ -170,7 +168,6 @@ export default function ShadePricingModal({
       artistPrice: Number(shadeData.artistPrice || shadeMrpNum),
       beauticianPrice: Number(shadeData.beauticianPrice || shadeMrpNum),
       priceOverride: shadeMrpNum ? shadeMrpNum : null,
-      stock: shadeData.stock !== undefined && shadeData.stock !== '' ? Math.max(0, Number(shadeData.stock)) : 0,
       discountPercentages: { ...shadeDiscounts },
       quantityTiers: {
         ...normalizedTiers,
@@ -256,7 +253,7 @@ export default function ShadePricingModal({
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-              <div className={isColorVariant ? "sm:col-span-5" : "sm:col-span-8"}>
+              <div className={isColorVariant ? "sm:col-span-6" : "sm:col-span-12"}>
                 <label className="block text-gray-800 font-bold text-[11px] mb-1">Variant Name / Title *</label>
                 <input
                   type="text"
@@ -270,7 +267,7 @@ export default function ShadePricingModal({
 
               {/* Swatch Color picker ONLY when variant represents a genuine shade/color */}
               {isColorVariant && (
-                <div className="sm:col-span-5">
+                <div className="sm:col-span-6">
                   <label className="block text-gray-800 font-bold text-[11px] mb-1">Swatch Color</label>
                   <div className="flex items-center gap-2">
                     <input
@@ -289,18 +286,6 @@ export default function ShadePricingModal({
                   </div>
                 </div>
               )}
-
-              <div className={isColorVariant ? "sm:col-span-2" : "sm:col-span-4"}>
-                <label className="block text-gray-800 font-bold text-[11px] mb-1">Stock (Units)</label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="20"
-                  value={shadeData.stock !== undefined ? shadeData.stock : ''}
-                  onChange={(e) => setShadeData({ ...shadeData, stock: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-[#FCE4EC] outline-none focus:border-[#C2477A] bg-white font-black text-gray-900 text-xs shadow-2xs text-center"
-                />
-              </div>
             </div>
           </div>
 

@@ -253,6 +253,7 @@ export const submitB2BVerification = async (supabase, {
   const recordPayload = {
     id: verificationId,
     user_id: userId,
+    name: (professionalName || businessName || phone || 'Applicant').trim(),
     role: cleanRole,
     business_name: (businessName || '').trim(),
     professional_name: (professionalName || '').trim(),
@@ -291,9 +292,13 @@ export const submitB2BVerification = async (supabase, {
     id: `doc_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
     verification_id: verificationId,
     user_id: userId,
+    type: doc.type || doc.document_type || 'proof',
     document_type: doc.type || doc.document_type || 'proof',
+    url: doc.url || doc.file_url || '',
     file_url: doc.url || doc.file_url || '',
-    file_name: doc.name || doc.file_name || `Document ${idx + 1}`,
+    label: doc.name || doc.label || doc.file_name || `Document ${idx + 1}`,
+    file_name: doc.name || doc.label || doc.file_name || `Document ${idx + 1}`,
+    created_at: timestamp,
     uploaded_at: timestamp
   }));
 
@@ -443,10 +448,10 @@ export const uploadVerificationDocument = async (supabase, file, userId, customN
       });
 
     if (error) {
-      console.warn('Storage upload error, using fallback public URL:', error);
+      console.warn('Storage upload error, using local/empty URL:', error);
       return {
         success: true,
-        url: typeof file === 'string' ? file : 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800',
+        url: typeof file === 'string' ? file : '',
         path: filePath,
         name: file.name || fileName
       };
@@ -466,7 +471,7 @@ export const uploadVerificationDocument = async (supabase, file, userId, customN
     console.warn('Document upload catch:', err);
     return {
       success: true,
-      url: typeof file === 'string' ? file : 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800',
+      url: typeof file === 'string' ? file : '',
       name: file.name || 'Uploaded Document'
     };
   }

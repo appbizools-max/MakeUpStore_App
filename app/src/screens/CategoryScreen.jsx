@@ -80,9 +80,9 @@ export const CategoryScreen = () => {
         id: dbCat.id,
         dbKey: matched?.dbKey || dbCat.name.toLowerCase(),
         name: dbCat.name,
-        // Live image from DB takes highest priority, followed by static config image / fallbackImage
-        image: dbCat.image || matched?.image || matched?.fallbackImage || 'https://images.unsplash.com/photo-1512207736890-6ffed8a84e8d?w=600',
-        fallbackImage: matched?.fallbackImage || dbCat.image || 'https://images.unsplash.com/photo-1512207736890-6ffed8a84e8d?w=600',
+        // Live image from DB takes highest priority
+        image: dbCat.image || matched?.image || '',
+        fallbackImage: matched?.fallbackImage || dbCat.image || '',
         tagline: matched?.tagline || 'Premium Beauty Collection',
         description: matched?.description || 'Explore verified authentic formulations',
         accent: matched?.accent || '#C2477A',
@@ -344,8 +344,9 @@ export const CategoryScreen = () => {
                       {/* Image + Wishlist */}
                       <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-[#FFF5F8] mb-2">
                         <img
-                          src={p.image || 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400'}
+                          src={p.image || ''}
                           alt={p.name}
+                          onError={(e) => { e.target.style.display = 'none'; }}
                           className="w-full h-full object-cover"
                         />
                         {discountPct > 0 && (
@@ -467,8 +468,9 @@ export const CategoryScreen = () => {
         {/* Hero banner */}
         <div className="mx-4 mt-3 mb-4 rounded-2xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FFF0F5] relative h-36">
           <img
-            src={activeSubcategory?.image || activeCategory?.fallbackImage || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600'}
+            src={activeSubcategory?.image || activeCategory?.image || ''}
             alt={activeSubcategory?.name}
+            onError={(e) => { e.target.style.display = 'none'; }}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent flex flex-col justify-end p-4">
@@ -506,8 +508,7 @@ export const CategoryScreen = () => {
                       alt={leaf.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200';
+                        e.target.style.display = 'none';
                       }}
                     />
                   ) : (
@@ -604,10 +605,10 @@ export const CategoryScreen = () => {
               <div className="flex items-center gap-3.5 pr-2">
                 <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#FFF0F5] border border-[#FCE4EC] shrink-0">
                   <img
-                    src={sub.image || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300'}
+                    src={sub.image || ''}
                     alt={sub.name}
                     onError={(e) => {
-                      e.currentTarget.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300';
+                      e.currentTarget.style.display = 'none';
                     }}
                     className="w-full h-full object-cover"
                   />

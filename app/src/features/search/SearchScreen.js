@@ -381,7 +381,7 @@ export const SearchScreen = () => {
                     >
                       <View className="w-14 h-14 rounded-full border border-[#FCE4EC] bg-[#FFF5F8] overflow-hidden items-center justify-center p-1 mb-1">
                         {brand.logo || brand.image ? (
-                          <Image source={getSafeImageSource(brand.logo || brand.image, 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300')} className="w-full h-full rounded-full object-cover" />
+                          <Image source={getSafeImageSource(brand.logo || brand.image, '')} className="w-full h-full rounded-full object-cover" />
                         ) : (
                           <Text className="text-xs font-black text-[#C2477A]">{(brand.name || 'B').charAt(0)}</Text>
                         )}
@@ -449,7 +449,7 @@ export const SearchScreen = () => {
                       >
                         <View className="relative w-full h-28 rounded-xl overflow-hidden mb-2 bg-[#FFF5F8] border border-[#FCE4EC]">
                           <Image
-                            source={getSafeImageSource(p.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400')}
+                            source={getSafeImageSource(p.image, '')}
                             className="w-full h-full object-cover"
                           />
                           {discountPercent > 0 && (

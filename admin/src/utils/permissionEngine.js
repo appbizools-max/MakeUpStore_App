@@ -29,7 +29,7 @@ export const MODULE_DEFINITIONS = [
   {
     key: 'products',
     name: 'Products',
-    description: 'Catalog products, pricing tiers, shades, and stock',
+    description: 'Catalog products, pricing tiers, and shades',
     actions: [
       { key: 'view', label: 'View Products' },
       { key: 'add', label: 'Add Product' },
@@ -117,7 +117,7 @@ export const MODULE_DEFINITIONS = [
   {
     key: 'reports',
     name: 'Reports & Analytics',
-    description: 'Sales logs, stock audit history, and business metrics',
+    description: 'Sales logs, search demand analytics, and business metrics',
     actions: [
       { key: 'view', label: 'View Reports' },
       { key: 'export', label: 'Export Data (CSV/Excel)' },
@@ -345,7 +345,6 @@ export const EMPLOYEE_DESIGNATIONS = [
   'Catalog Specialist',
   'Customer Support Representative',
   'Marketing Executive',
-  'Inventory Coordinator',
   'Logistics Associate',
   'Executive Staff',
 ];

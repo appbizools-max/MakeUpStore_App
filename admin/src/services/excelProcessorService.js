@@ -29,8 +29,6 @@ export const COLUMN_SYNONYMS = {
   salonPrice: ['salon price', 'salon_price', 'salon wholesale', 'trade price', 'b2b salon', 'salon rate'],
   artistPrice: ['artist price', 'artist_price', 'makeup artist price', 'pro price', 'artist rate'],
   beauticianPrice: ['beautician price', 'beautician_price', 'beautician rate', 'spa price'],
-  stock: ['stock', 'qty', 'quantity', 'inventory', 'available qty', 'stock qty', 'units'],
-  lowStockThreshold: ['low stock threshold', 'threshold', 'reorder level', 'min stock', 'alert qty'],
   image: ['image', 'primary image', 'image url', 'main image', 'picture', 'photo', 'image_url'],
   images: ['gallery images', 'additional images', 'images', 'secondary images'],
   description: ['description', 'product description', 'about', 'details'],
@@ -225,7 +223,6 @@ export const transformSheetToEntities = (sheet, mapping, existingProducts = []) 
     const salonPrice = getNum('salonPrice', generalPrice);
     const artistPrice = getNum('artistPrice', salonPrice);
     const beauticianPrice = getNum('beauticianPrice', salonPrice);
-    const stock = Math.round(getNum('stock', 25));
     const barcode = getVal('barcode');
     const barcodeType = getVal('barcodeType') || detectBarcodeFormat(barcode);
     const sku = getVal('sku') || (brand && shade ? `${brand.slice(0, 3).toUpperCase()}-${shade.replace(/\s+/g, '-').toUpperCase()}` : `SKU-${Date.now()}-${idx + 1}`);
@@ -242,7 +239,6 @@ export const transformSheetToEntities = (sheet, mapping, existingProducts = []) 
     if (mrp <= 0) errors.push('MRP must be greater than 0');
     if (generalPrice > mrp) errors.push(`General Price (₹${generalPrice}) exceeds MRP (₹${mrp})`);
     if (salonPrice > mrp) errors.push(`Salon Price (₹${salonPrice}) exceeds MRP (₹${mrp})`);
-    if (stock < 0) errors.push('Stock cannot be negative');
 
     if (barcode) {
       if (!validateBarcodeChecksum(barcode)) {
@@ -293,8 +289,6 @@ export const transformSheetToEntities = (sheet, mapping, existingProducts = []) 
       salonPrice,
       artistPrice,
       beauticianPrice,
-      stock,
-      lowStockThreshold: Math.round(getNum('lowStockThreshold', 5)),
       barcode,
       barcodeType,
       sku,
@@ -340,8 +334,7 @@ export const downloadErrorExcel = (failedRows, originalFileName = 'import') => {
     'Barcode': sanitizeExcelCell(r.barcode),
     'MRP': r.mrp,
     'General Price': r.generalPrice,
-    'Salon Price': r.salonPrice,
-    'Stock': r.stock
+    'Salon Price': r.salonPrice
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(exportData);

@@ -80,7 +80,7 @@ export const SubcategoryView = ({
         {/* ── SUBCATEGORY BANNER ──────────────────────────────────────── */}
         <View className="mx-4 mt-3 mb-4 rounded-2xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FFF0F5] relative h-36">
           <Image
-            source={getSafeImageSource(subcategory?.image, category?.fallbackImage || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600')}
+            source={getSafeImageSource(subcategory?.image, category?.fallbackImage || '')}
             className="w-full h-full object-cover"
             resizeMode="cover"
           />
@@ -125,7 +125,7 @@ export const SubcategoryView = ({
                 <View className="w-12 h-12 rounded-xl bg-[#FFF0F5] border border-[#FCE4EC] overflow-hidden items-center justify-center shadow-2xs">
                   {leaf.image ? (
                     <Image
-                      source={getSafeImageSource(leaf.image, 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200')}
+                      source={getSafeImageSource(leaf.image, '')}
                       className="w-full h-full object-cover"
                       resizeMode="cover"
                     />

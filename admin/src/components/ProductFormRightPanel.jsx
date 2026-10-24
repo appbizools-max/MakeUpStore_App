@@ -34,7 +34,7 @@ import {
  * 
  * Live read-only summary and pricing preview of the current left-side form state.
  * Contains:
- * 1. Product Summary (Every detail visible: Identifiers, Inventory, 4-Role Pricing, Variants, Specs, Discovery, Rich Highlights)
+ * 1. Product Summary (Every detail visible: Identifiers, 4-Role Pricing, Variants, Specs, Discovery, Rich Highlights)
  * 2. Price Preview (4 role tabs with step-by-step unit price simulator)
  * 3. Quantity Discount Breakdown (Dynamically generated tier ranges)
  */
@@ -246,7 +246,7 @@ export default function ProductFormRightPanel({
                 alt="Product thumbnail"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&auto=format&fit=crop&q=80';
+                  e.target.style.display = 'none';
                 }}
               />
             ) : (

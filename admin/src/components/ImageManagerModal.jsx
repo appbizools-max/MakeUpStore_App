@@ -63,6 +63,29 @@ export default function ImageManagerModal({
     }
   }, [isOpen, defaultSearchQuery, entityName]);
 
+  // Handle Escape key to close modal cleanly without saving
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isUploading && !isProcessing) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isUploading, isProcessing, onClose]);
+
+  // Lock background scrolling while modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
   // Handle client-side optimization on raw image source
   const processRawSource = useCallback(async (source, customFilename = '') => {
     setErrorMessage(null);
@@ -267,30 +290,40 @@ export default function ImageManagerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isUploading && !isProcessing) {
+          onClose();
+        }
+      }}
+    >
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-scale-up relative"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-700 flex items-center justify-center shadow-sm">
+        {/* Header - Sticky with prominent Close (✕) button */}
+        <div className="p-4 sm:p-5 sm:px-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 via-white to-gray-50 shrink-0 sticky top-0 z-20">
+          <div className="flex items-center gap-3 min-w-0 pr-2">
+            <div className="w-10 h-10 rounded-2xl bg-pink-100 text-pink-700 flex items-center justify-center shadow-xs shrink-0">
               <ImageIcon className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-              <p className="text-xs text-gray-500">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-black text-gray-900 truncate">{title}</h2>
+              <p className="text-xs text-gray-500 font-medium truncate mt-0.5">
                 {entityName ? `Customizing image for: ${entityName}` : 'Centralized image management & storage sync'}
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Close"
+            disabled={isUploading || isProcessing}
+            className="w-10 h-10 rounded-2xl bg-white hover:bg-rose-50 text-gray-500 hover:text-rose-600 border border-gray-200/90 hover:border-rose-300 shadow-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 ml-3 group focus:outline-none focus:ring-2 focus:ring-rose-200"
+            title="Close (✕)"
+            aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X size={20} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-200" />
           </button>
         </div>
 

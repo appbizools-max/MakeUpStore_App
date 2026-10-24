@@ -170,8 +170,6 @@ export const ProductDetailScreen = () => {
       const pImg = baseProduct?.imageUrl || baseProduct?.image;
       if (pImg && !list.includes(pImg)) list.push(pImg);
     }
-    if (list.length === 0) {
-      list.push('https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=600');
     }
     return list;
   }, [baseProduct, selectedShade]);
@@ -525,8 +523,9 @@ export const ProductDetailScreen = () => {
                     {/* Visual Thumbnail */}
                     <div className="relative w-full h-24 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#FCE4EC]/60 flex items-center justify-center">
                       <img
-                        src={shade.imageUrl || shade.image || baseProduct.image || 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300'}
+                        src={shade.imageUrl || shade.image || baseProduct.image || ''}
                         alt={shade.title || shade.name}
+                        onError={(e) => { e.target.style.display = 'none'; }}
                         className="w-full h-full object-cover"
                       />
                       {shade.hexColor && (
@@ -607,8 +606,9 @@ export const ProductDetailScreen = () => {
                   >
                     <div className="relative w-full h-24 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#FCE4EC]/60 flex items-center justify-center">
                       <img
-                        src={variant.imageUrl || variant.image || baseProduct.image || 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=300'}
+                        src={variant.imageUrl || variant.image || baseProduct.image || ''}
                         alt={variant.title || variant.name}
+                        onError={(e) => { e.target.style.display = 'none'; }}
                         className="w-full h-full object-cover"
                       />
                       {isSelected && (

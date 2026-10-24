@@ -264,7 +264,6 @@ export const ExcelImportModal = ({
                                   <option value="sku">SKU *</option>
                                   <option value="mrp">MRP *</option>
                                   <option value="generalPrice">General Selling Price *</option>
-                                  <option value="stock">Stock Quantity *</option>
                                 </optgroup>
                                 <optgroup label="Variants & Hierarchy">
                                   <option value="subcategory">Sub Category</option>
@@ -334,7 +333,6 @@ export const ExcelImportModal = ({
                       <th className="px-3 py-2 text-left font-bold text-slate-700">SKU</th>
                       <th className="px-3 py-2 text-left font-bold text-slate-700">Barcode</th>
                       <th className="px-3 py-2 text-right font-bold text-slate-700">General</th>
-                      <th className="px-3 py-2 text-right font-bold text-slate-700">Stock</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -364,7 +362,6 @@ export const ExcelImportModal = ({
                         <td className="px-3 py-1.5 font-mono text-[11px] text-slate-600">{r.sku}</td>
                         <td className="px-3 py-1.5 font-mono text-[11px] text-slate-600">{r.barcode || '-'}</td>
                         <td className="px-3 py-1.5 text-right font-mono text-slate-900">₹{r.generalPrice}</td>
-                        <td className="px-3 py-1.5 text-right font-mono text-slate-900">{r.stock}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -251,7 +251,7 @@ export const WishlistScreen = () => {
                     {/* Product Image Box with Heart Button */}
                     <View className="relative w-full h-32 rounded-xl overflow-hidden mb-2 bg-[#F9FAFB] border border-[#F0E6EC]">
                       <Image
-                        source={getSafeImageSource(item.image, 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400')}
+                        source={getSafeImageSource(item.image, '')}
                         className="w-full h-full object-cover"
                       />
 

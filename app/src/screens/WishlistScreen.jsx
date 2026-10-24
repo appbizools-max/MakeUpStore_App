@@ -181,8 +181,9 @@ export const WishlistScreen = () => {
                   <div>
                     <div className="relative aspect-square bg-[#F9FAFB] overflow-hidden">
                       <img
-                        src={product.image || 'https://images.unsplash.com/photo-1625093742435-6fa192b6fb10?w=400'}
+                        src={product.image || ''}
                         alt={product.name}
+                        onError={(e) => { e.target.style.display = 'none'; }}
                         loading="lazy"
                         decoding="async"
                         className="w-full h-full object-cover"

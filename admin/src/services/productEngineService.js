@@ -727,7 +727,6 @@ export const toSupabaseProductPayload = (p) => {
     salon_price: Number(p.salonPrice || p.mrp || 0),
     artist_price: Number(p.artistPrice || p.mrp || 0),
     beautician_price: Number(p.beauticianPrice || p.mrp || 0),
-    stock: (p.stock !== undefined && p.stock !== null && !isNaN(Number(p.stock))) ? Number(p.stock) : 25,
     image: p.image || (Array.isArray(p.images) && p.images[0] ? p.images[0] : ''),
     images: Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.image ? [p.image] : []),
     shades: shadesJson,
