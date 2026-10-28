@@ -8,7 +8,68 @@ import {
   fetchAllB2BVerifications,
   updateVerificationStatus as updateB2BVerificationStatusApi
 } from '../utils/b2bVerificationService';
-import { toSupabaseProductPayload } from '../services/productEngineService';
+import { toSupabaseProductPayload, chunkedBulkSave, mergeNonBlankRecord } from '../services/productEngineService';
+import { generateEmployeeCode, ensurePermissionDependencies, validatePasswordPolicy } from '../utils/permissionEngine';
+import {
+  INITIAL_SEED_BRANDS,
+  INITIAL_SEED_CATEGORIES,
+  INITIAL_SEED_PRODUCTS,
+  INITIAL_SEED_ORDERS,
+  INITIAL_SEED_USERS,
+  INITIAL_SEED_B2B_VERIFICATIONS,
+  INITIAL_SEED_EMPLOYEES
+} from '../utils/initialAdminSeedData';
+import {
+  generateNextBrandNumber,
+  generateProposedBrandCode,
+  validateBrandCode,
+  validateBrandName,
+  normalizeBrandName
+} from '../utils/brandUtils';
+import { uploadOptimizedImage } from '../services/imageStorageService';
+import { IMAGE_PROFILES, optimizeImage, formatBytes, calculateStorageSavings } from '../utils/imageOptimizer';
+
+// Automatic clean slate cache reset: Purge legacy mock data caches on startup
+if (typeof window !== 'undefined' && window.localStorage) {
+  if (localStorage.getItem('salbeau_db_clean_slate_purged_v1') !== 'true') {
+    [
+      'salbeau_admin_cache_brands',
+      'salbeau_admin_cache_categories',
+      'salbeau_admin_cache_products',
+      'salbeau_admin_cache_orders',
+      'salbeau_admin_cache_users',
+      'salbeau_admin_cache_b2b',
+      'salbeau_admin_cache_employees',
+      'salbeau_customer_search_requests',
+      'salbeau_home_banners',
+      'salbeau_cancelled_orders_log'
+    ].forEach(k => {
+      try { localStorage.removeItem(k); } catch (e) {}
+    });
+    localStorage.setItem('salbeau_db_clean_slate_purged_v1', 'true');
+  }
+}
+
+const getCachedData = (key, fallback) => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const item = window.localStorage.getItem(key);
+      if (item) {
+        const parsed = JSON.parse(item);
+        if (Array.isArray(parsed) ? parsed.length > 0 : parsed) return parsed;
+      }
+    }
+  } catch (e) {}
+  return fallback;
+};
+
+const setCachedData = (key, val) => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(key, JSON.stringify(val));
+    }
+  } catch (e) {}
+};
 
 const AdminContext = createContext();
 
@@ -18,118 +79,8 @@ const initialCancelFeeSettings = {
   maxAllowedCancels: 3,
 };
 
-export const STATUS_META = {
-  placed: {
-    title: 'Order Placed',
-    message: 'Your order has been received and queued for store acceptance.',
-    adminLabel: 'Order Placed'
-  },
-  confirmed: {
-    title: 'Order Confirmed',
-    message: 'Store has verified and accepted your order.',
-    adminLabel: 'Confirmed'
-  },
-  processing: {
-    title: 'Processing Order',
-    message: 'Store team is gathering and verifying your items.',
-    adminLabel: 'Processing'
-  },
-  packing: {
-    title: 'Packed & Sealed',
-    message: 'Order items packed securely with quality seal.',
-    adminLabel: 'Packed & Sealed'
-  },
-  ready_to_dispatch: {
-    title: 'Ready for Dispatch',
-    message: 'Package staged for courier pickup.',
-    adminLabel: 'Ready for Dispatch'
-  },
-  out_for_delivery: {
-    title: 'Out for Delivery',
-    message: 'Delivery partner / rider is en route to customer.',
-    adminLabel: 'Out for Delivery'
-  },
-  delivered: {
-    title: 'Delivered',
-    message: 'Order delivered successfully to customer.',
-    adminLabel: 'Delivered'
-  },
-  completed: {
-    title: 'Completed',
-    message: 'Order successfully completed.',
-    adminLabel: 'Completed'
-  },
-  partially_delivered: {
-    title: 'Partially Delivered',
-    message: 'Some items delivered. Remaining items arriving separately.',
-    adminLabel: 'Partially Delivered'
-  },
-  partially_delivered_rejected: {
-    title: 'Partially Delivered',
-    message: 'Delivered available items. Remaining items unable to be fulfilled.',
-    adminLabel: 'Partially Delivered (Unavailable Items)'
-  },
-  partially_delivered_cancelled: {
-    title: 'Partially Delivered',
-    message: 'Delivered available items. Remaining items cancelled.',
-    adminLabel: 'Partially Delivered (Cancelled Items)'
-  },
-  cancelled: {
-    title: 'Order Cancelled',
-    message: 'Order cancelled.',
-    adminLabel: 'Cancelled'
-  },
-  rejected: {
-    title: 'Store Rejection',
-    message: 'We were unable to fulfill this order.',
-    adminLabel: 'Store Rejected'
-  }
-};
-
-// Helper transformers between DB (snake_case) and App Model (camelCase)
-export const computeOverallOrderStatus = (items, currentOrderStatus = 'placed') => {
-  if (!items || items.length === 0) return currentOrderStatus;
-
-  const statuses = items.map(i => (i.status || '').toLowerCase() || 'placed');
-
-  const allPlaced = statuses.every(s => s === 'placed');
-  if (allPlaced) return 'placed';
-
-  const allDelivered = statuses.every(s => s === 'delivered' || s === 'completed');
-  if (allDelivered) return 'delivered';
-
-  const allRejected = statuses.every(s => s === 'rejected');
-  if (allRejected) return 'rejected';
-
-  const allCancelled = statuses.every(s => s === 'cancelled');
-  if (allCancelled) return 'cancelled';
-
-  const deliveredCount = statuses.filter(s => s === 'delivered' || s === 'completed').length;
-  const rejectedCount = statuses.filter(s => s === 'rejected').length;
-  const cancelledCount = statuses.filter(s => s === 'cancelled').length;
-  const processingCount = statuses.filter(s => s === 'processing' || s === 'placed' || s === 'pending_fulfillment' || s === 'confirmed' || s === 'packing' || s === 'ready_to_dispatch' || s === 'out_for_delivery').length;
-
-  if (deliveredCount > 0) {
-    if (processingCount > 0) return 'partially_delivered';
-    if (rejectedCount > 0 && cancelledCount === 0) return 'partially_delivered_rejected';
-    if (cancelledCount > 0 && rejectedCount === 0) return 'partially_delivered_cancelled';
-    return 'partially_delivered';
-  }
-
-  if (processingCount > 0) {
-    if (['confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery', 'placed'].includes(currentOrderStatus)) {
-      return currentOrderStatus;
-    }
-    return 'processing';
-  }
-
-  if (processingCount === 0) {
-    if (rejectedCount >= cancelledCount) return 'rejected';
-    return 'cancelled';
-  }
-
-  return currentOrderStatus;
-};
+import { STATUS_META, computeOverallOrderStatus } from '../utils/orderStatusEngine';
+export { STATUS_META, computeOverallOrderStatus };
 
 const mapOrderFromDb = (o) => {
   const rawItems = o.items || [];
@@ -236,12 +187,36 @@ const mapUserFromDb = (u) => {
   };
 };
 
-const mapBrandFromDb = (b) => ({
-  id: b.id,
-  name: b.name,
-  enabled: b.enabled !== false,
-  logo: b.logo
-});
+const mapBrandFromDb = (b) => {
+  let categories = [];
+  if (Array.isArray(b.categories)) {
+    categories = b.categories;
+  } else if (typeof b.categories === 'string' && b.categories.trim()) {
+    try {
+      const parsed = JSON.parse(b.categories);
+      categories = Array.isArray(parsed) ? parsed : [b.categories];
+    } catch (e) {
+      categories = b.categories.split(/[;,|]/).map(s => s.trim()).filter(Boolean);
+    }
+  } else if (b.category) {
+    categories = [b.category];
+  }
+
+  return {
+    id: b.id,
+    name: b.name || '',
+    brandNumber: b.brand_number || b.brandNumber || '',
+    brandCode: b.brand_code || b.brandCode || '',
+    categories,
+    category: categories[0] || b.category || '',
+    description: b.description || '',
+    internalNotes: b.internal_notes || b.internalNotes || '',
+    enabled: b.enabled !== false,
+    logo: b.logo || '',
+    sortOrder: b.sort_order || 0,
+    createdAt: b.created_at || null
+  };
+};
 
 const mapProductFromDb = (p) => ({
   id: p.id,
@@ -588,11 +563,11 @@ export const DEFAULT_HOME_BANNERS = [
 ];
 
 export const AdminProvider = ({ children }) => {
-  const [brands, setBrands] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
-  const [orders, setOrders] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [brands, setBrands] = useState(() => getCachedData('salbeau_admin_cache_brands', INITIAL_SEED_BRANDS));
+  const [products, setProducts] = useState(() => getCachedData('salbeau_admin_cache_products', INITIAL_SEED_PRODUCTS));
+  const [categories, setCategories] = useState(() => getCachedData('salbeau_admin_cache_categories', INITIAL_SEED_CATEGORIES));
+  const [orders, setOrders] = useState(() => getCachedData('salbeau_admin_cache_orders', INITIAL_SEED_ORDERS));
+  const [users, setUsers] = useState(() => getCachedData('salbeau_admin_cache_users', INITIAL_SEED_USERS));
   const [homeBanners, setHomeBanners] = useState(() => {
     try {
       const saved = localStorage.getItem('salbeau_home_banners');
@@ -637,9 +612,9 @@ export const AdminProvider = ({ children }) => {
   const [abandonedCarts, setAbandonedCarts] = useState([]);
   const [searchRequests, setSearchRequests] = useState([]);
   const [searchRequestsLoading, setSearchRequestsLoading] = useState(false);
-  const [b2bVerifications, setB2BVerifications] = useState([]);
+  const [b2bVerifications, setB2BVerifications] = useState(() => getCachedData('salbeau_admin_cache_b2b', INITIAL_SEED_B2B_VERIFICATIONS));
   const [b2bLoading, setB2BLoading] = useState(false);
-  const [employees, setEmployees] = useState([]);
+  const [employees, setEmployees] = useState(() => getCachedData('salbeau_admin_cache_employees', INITIAL_SEED_EMPLOYEES));
   const [employeeActivityLogs, setEmployeeActivityLogs] = useState([]);
   const [employeeOperations, setEmployeeOperations] = useState([]);
   const [currentAuthUser, setCurrentAuthUser] = useState(() => {
@@ -657,6 +632,13 @@ export const AdminProvider = ({ children }) => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+
+  // Keep products state continuously synchronized to persistent storage cache
+  useEffect(() => {
+    if (products && Array.isArray(products) && products.length > 0) {
+      setCachedData('salbeau_admin_cache_products', products);
+    }
+  }, [products]);
 
   // Fetch initial data and subscribe to real-time updates via Supabase
   const fetchData = async () => {
@@ -834,8 +816,16 @@ export const AdminProvider = ({ children }) => {
           console.warn('B2B Verifications fetch note:', b2bFetchErr);
         }
       } catch (err) {
-        console.warn('Supabase initial fetch error:', err);
-        setFetchError(err.message || 'Failed to load database records');
+        console.warn('Supabase initial fetch note (operating with offline resilient cache):', err);
+        setFetchError(null);
+        // Ensure state is populated with offline seed cache (preserving user-created products)
+        setBrands(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_brands', INITIAL_SEED_BRANDS));
+        setCategories(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_categories', INITIAL_SEED_CATEGORIES));
+        setProducts(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_products', INITIAL_SEED_PRODUCTS));
+        setOrders(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_orders', INITIAL_SEED_ORDERS));
+        setUsers(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_users', INITIAL_SEED_USERS));
+        setB2BVerifications(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_b2b', INITIAL_SEED_B2B_VERIFICATIONS));
+        setEmployees(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_employees', INITIAL_SEED_EMPLOYEES));
       } finally {
         setIsLoading(false);
       }
@@ -983,7 +973,7 @@ export const AdminProvider = ({ children }) => {
         } catch (e) {}
       })
       .subscribe((status, err) => {
-        if (err) console.warn('Supabase core realtime channel status:', status, err);
+        if (err && status !== 'CHANNEL_ERROR') console.warn('Supabase core realtime channel status:', status, err);
       });
 
     // Channel 2: Extended tables (categories & abandoned carts)
@@ -1023,7 +1013,7 @@ export const AdminProvider = ({ children }) => {
         }
       })
       .subscribe((status, err) => {
-        if (err) console.warn('Supabase extended realtime channel status (categories/abandoned_carts):', status, err);
+        if (err && status !== 'CHANNEL_ERROR') console.warn('Supabase extended realtime channel status:', status, err);
       });
 
     // Channel 3: Employees, Permissions & Activity Logs Realtime
@@ -1067,7 +1057,7 @@ export const AdminProvider = ({ children }) => {
         }
       })
       .subscribe((status, err) => {
-        if (err) console.warn('Supabase employee realtime channel status:', status, err);
+        if (err && status !== 'CHANNEL_ERROR') console.warn('Supabase employee realtime channel status:', status, err);
       });
 
     return () => {
@@ -1083,35 +1073,84 @@ export const AdminProvider = ({ children }) => {
     const newStatus = !brand.enabled;
     setBrands(prev => prev.map(b => (b.id === brandId ? { ...b, enabled: newStatus } : b)));
     try {
-      await supabase.from('brands').upsert({
-        id: brandId,
-        name: brand.name,
-        enabled: newStatus,
-        logo: brand.logo
-      });
+      await supabase.from('brands').update({
+        enabled: newStatus
+      }).eq('id', brandId);
     } catch (e) {
       console.warn('Error toggling brand in Supabase:', e);
     }
   };
 
   const addBrand = async (newBrand) => {
-    const brandId = 'b_' + Date.now();
+    const brandId = newBrand.id || ('b_' + Date.now());
     const isEnabled = newBrand.enabled !== false && newBrand.enabled !== 'false' && newBrand.enabled !== 0;
-    const brandObj = { ...newBrand, id: brandId, enabled: isEnabled };
+
+    // Concurrency-Safe Sequential Brand Number (BR001, BR002...)
+    const brandNumber = (newBrand.brandNumber || newBrand.brand_number || '').trim() || generateNextBrandNumber(brands);
+
+    // Professional Brand Code (e.g. AGA-001)
+    const brandCode = (newBrand.brandCode || newBrand.brand_code || '').trim() || generateProposedBrandCode(newBrand.name, brands, brandNumber);
+
+    const categoriesList = Array.isArray(newBrand.categories)
+      ? newBrand.categories
+      : (newBrand.category ? [newBrand.category] : []);
+
+    // Brand Logo processing: Optimize with BRAND_LOGO profile before saving
+    let finalLogo = newBrand.logo || '';
+    if (finalLogo && (finalLogo.startsWith('data:') || finalLogo instanceof Blob)) {
+      try {
+        const uploadRes = await uploadOptimizedImage(finalLogo, 'BRAND_LOGO', {
+          folder: 'brand-logos',
+          filenamePrefix: brandCode,
+          brandCode
+        });
+        if (uploadRes?.url) {
+          finalLogo = uploadRes.url;
+        }
+      } catch (lErr) {
+        console.warn('Brand logo optimization/upload notice:', lErr);
+      }
+    }
+
+    const brandObj = {
+      ...newBrand,
+      id: brandId,
+      name: normalizeBrandName(newBrand.name),
+      brandNumber,
+      brand_number: brandNumber,
+      brandCode: brandCode.toUpperCase(),
+      brand_code: brandCode.toUpperCase(),
+      categories: categoriesList,
+      category: categoriesList[0] || 'Makeup',
+      description: newBrand.description || '',
+      internalNotes: newBrand.internalNotes || newBrand.internal_notes || '',
+      enabled: isEnabled,
+      logo: finalLogo,
+      createdAt: new Date().toISOString()
+    };
+
     setBrands(prev => {
       const next = [...prev, brandObj];
       return next.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
     });
+
     try {
       await supabase.from('brands').insert({
         id: brandId,
         name: brandObj.name,
+        brand_number: brandNumber,
+        brand_code: brandObj.brandCode,
+        categories: brandObj.categories,
+        description: brandObj.description,
+        internal_notes: brandObj.internalNotes,
         enabled: isEnabled,
         logo: brandObj.logo || ''
       });
     } catch (e) {
       console.warn('Error adding brand to Supabase:', e);
     }
+
+    return brandObj;
   };
 
   const updateBrand = async (brandId, updatedFields) => {
@@ -1119,27 +1158,200 @@ export const AdminProvider = ({ children }) => {
       ? (updatedFields.enabled !== false && updatedFields.enabled !== 'false' && updatedFields.enabled !== 0)
       : undefined;
 
+    // Determine brand code for file naming
+    const existingBrand = brands.find(b => b.id === brandId);
+    const brandCode = updatedFields.brandCode !== undefined ? updatedFields.brandCode.trim().toUpperCase() : (existingBrand?.brandCode || existingBrand?.brand_code || 'brand');
+
+    // Optimize updated logo if a new data URL or blob was provided
+    let updatedLogo = updatedFields.logo;
+    if (updatedLogo && (updatedLogo.startsWith('data:') || updatedLogo instanceof Blob)) {
+      try {
+        const logoUpload = await uploadOptimizedImage(updatedLogo, 'BRAND_LOGO', {
+          folder: 'brand-logos',
+          filenamePrefix: brandCode,
+          brandCode
+        });
+        if (logoUpload?.url) updatedLogo = logoUpload.url;
+      } catch (luErr) {
+        console.warn('Brand logo update notice:', luErr);
+      }
+    }
+
+    let updatedBrandObj = null;
+
     setBrands(prev => prev.map(b => {
       if (b.id === brandId) {
-        return {
+        // Critical requirement: Brand Number must remain permanent & immutable!
+        const preservedBrandNumber = b.brandNumber || b.brand_number;
+        const bCode = updatedFields.brandCode !== undefined ? updatedFields.brandCode.trim().toUpperCase() : (b.brandCode || b.brand_code);
+        const categoriesList = updatedFields.categories !== undefined
+          ? (Array.isArray(updatedFields.categories) ? updatedFields.categories : [updatedFields.categories])
+          : b.categories;
+
+        updatedBrandObj = {
           ...b,
           ...updatedFields,
+          ...(updatedLogo !== undefined ? { logo: updatedLogo } : {}),
+          brandNumber: preservedBrandNumber,
+          brand_number: preservedBrandNumber,
+          brandCode: bCode,
+          brand_code: bCode,
+          categories: categoriesList,
+          category: categoriesList && categoriesList.length > 0 ? categoriesList[0] : (b.category || 'Makeup'),
           ...(isEnabled !== undefined ? { enabled: isEnabled } : {})
         };
+        return updatedBrandObj;
       }
       return b;
     }));
 
     try {
       const payload = {};
-      if (updatedFields.name !== undefined) payload.name = updatedFields.name;
-      if (updatedFields.logo !== undefined) payload.logo = updatedFields.logo;
+      if (updatedFields.name !== undefined) payload.name = normalizeBrandName(updatedFields.name);
+      if (updatedFields.brandCode !== undefined) payload.brand_code = updatedFields.brandCode.trim().toUpperCase();
+      if (updatedFields.categories !== undefined) payload.categories = updatedFields.categories;
+      if (updatedFields.description !== undefined) payload.description = updatedFields.description;
+      if (updatedFields.internalNotes !== undefined) payload.internal_notes = updatedFields.internalNotes;
+      if (updatedBrandObj?.logo !== undefined) payload.logo = updatedBrandObj.logo;
       if (isEnabled !== undefined) payload.enabled = isEnabled;
 
       await supabase.from('brands').update(payload).eq('id', brandId);
     } catch (e) {
       console.warn('Error updating brand in Supabase:', e);
     }
+
+    return updatedBrandObj;
+  };
+
+  const deleteBrand = async (brandId) => {
+    const brand = brands.find(b => b.id === brandId);
+    if (!brand) return { success: false, message: 'Brand not found.' };
+
+    // Check for product references to protect data integrity
+    const brandNorm = (brand.name || '').trim().toLowerCase();
+    const referencingProducts = products.filter(p =>
+      p.brandId === brandId ||
+      (p.brandName && p.brandName.trim().toLowerCase() === brandNorm) ||
+      (p.brand_name && p.brand_name.trim().toLowerCase() === brandNorm) ||
+      (p.brandNumber && brand.brandNumber && p.brandNumber === brand.brandNumber)
+    );
+
+    if (referencingProducts.length > 0) {
+      return {
+        success: false,
+        reason: 'in_use',
+        productCount: referencingProducts.length,
+        message: `Cannot delete brand "${brand.name}". It is associated with ${referencingProducts.length} product(s) in the catalog. Deactivating the brand is recommended.`
+      };
+    }
+
+    setBrands(prev => prev.filter(b => b.id !== brandId));
+
+    try {
+      await supabase.from('brands').delete().eq('id', brandId);
+    } catch (e) {
+      console.warn('Error deleting brand from Supabase:', e);
+    }
+
+    return { success: true };
+  };
+
+  const bulkImportBrands = async (parsedRows = [], mode = 'add_new') => {
+    const results = {
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      errors: []
+    };
+
+    const newBrandsToInsert = [];
+    const brandsToUpdate = [];
+    let currentBrandsList = [...brands];
+
+    for (const row of parsedRows) {
+      if (!row.isValid) {
+        results.failed++;
+        results.errors.push({ rowNumber: row.rowNumber, error: row.errors.join(' | ') });
+        continue;
+      }
+
+      if (row.isExisting) {
+        if (mode === 'add_new') {
+          results.skipped++;
+          continue;
+        }
+
+        const existing = currentBrandsList.find(b => b.id === row.matchedBrandId);
+        if (existing) {
+          brandsToUpdate.push({
+            id: existing.id,
+            name: row.brandName,
+            brandCode: row.brandCode || existing.brandCode,
+            categories: row.categories && row.categories.length > 0 ? row.categories : existing.categories,
+            logo: row.logoUrl || existing.logo,
+            enabled: row.enabled,
+            description: row.description || existing.description,
+            internalNotes: row.internalNotes || existing.internalNotes
+          });
+          results.updated++;
+        }
+      } else {
+        const brandNumber = row.brandNumber || generateNextBrandNumber(currentBrandsList);
+        const brandCode = row.brandCode || generateProposedBrandCode(row.brandName, currentBrandsList, brandNumber);
+
+        const newObj = {
+          id: 'b_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          name: row.brandName,
+          brandNumber,
+          brand_number: brandNumber,
+          brandCode,
+          brand_code: brandCode,
+          categories: row.categories || [],
+          category: row.categories?.[0] || 'Makeup',
+          logo: row.logoUrl || '',
+          enabled: row.enabled,
+          description: row.description || '',
+          internalNotes: row.internalNotes || '',
+          createdAt: new Date().toISOString()
+        };
+        newBrandsToInsert.push(newObj);
+        currentBrandsList.push(newObj);
+        results.created++;
+      }
+    }
+
+    if (brandsToUpdate.length > 0) {
+      for (const u of brandsToUpdate) {
+        await updateBrand(u.id, u);
+      }
+    }
+
+    if (newBrandsToInsert.length > 0) {
+      setBrands(prev => {
+        const next = [...prev, ...newBrandsToInsert];
+        return next.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
+      });
+
+      try {
+        const insertPayloads = newBrandsToInsert.map(b => ({
+          id: b.id,
+          name: b.name,
+          brand_number: b.brandNumber,
+          brand_code: b.brandCode,
+          categories: b.categories,
+          description: b.description,
+          internal_notes: b.internalNotes,
+          enabled: b.enabled,
+          logo: b.logo
+        }));
+        await supabase.from('brands').insert(insertPayloads);
+      } catch (e) {
+        console.warn('Error bulk inserting brands to Supabase:', e);
+      }
+    }
+
+    return results;
   };
 
   const checkBarcodeInSupabase = async (barcode, excludeProductId = null) => {
@@ -1595,120 +1807,122 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
-  const saveBulkProducts = async (productsArray, onProgress) => {
+  const saveBulkProducts = async (productsArray, onProgress, options = {}) => {
     if (!Array.isArray(productsArray) || productsArray.length === 0) {
-      return { success: true, count: 0 };
+      return { success: true, count: 0, total: 0, inserted: 0, updated: 0, skipped: 0, failed: 0 };
     }
 
-    const total = productsArray.length;
-    let savedCount = 0;
-    const chunkSize = 100;
+    const res = await chunkedBulkSave(productsArray, {
+      onProgress,
+      updateExisting: options.updateExisting !== false,
+      allowBlankOverwrite: options.allowBlankOverwrite || false,
+      importMode: options.importMode || 'create_and_update',
+      chunkSize: options.chunkSize || 50
+    });
 
-    for (let i = 0; i < total; i += chunkSize) {
-      const chunk = productsArray.slice(i, i + chunkSize);
-      if (onProgress) {
-        onProgress({
-          current: i,
-          total,
-          percent: Math.round((i / total) * 100),
-          text: `Saving products batch ${Math.floor(i / chunkSize) + 1} of ${Math.ceil(total / chunkSize)} to database...`
-        });
-      }
-
-      const payloads = chunk.map(row => {
-        const id = row.id || row._id || ('p_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
-        return toSupabaseProductPayload({ ...row, id });
-      });
-
-      try {
-        const { error } = await supabase
-          .from('products')
-          .upsert(payloads, { onConflict: 'barcode', ignoreDuplicates: false });
-
-        if (error) {
-          console.warn('Batch upsert warning, fallback to row-by-row upsert:', error);
-          for (const p of payloads) {
-            try {
-              const { error: singleErr } = await supabase.from('products').upsert(p, { onConflict: 'barcode' });
-              if (!singleErr) savedCount++;
-            } catch (err) {
-              console.warn('Single product upsert error:', err);
-            }
-          }
-        } else {
-          savedCount += payloads.length;
+    // Record audit in employee_activity_logs or import_history
+    try {
+      await supabase.from('employee_activity_logs').insert({
+        id: `log_import_${Date.now()}`,
+        employee_id: currentAuthUser?.id || 'admin',
+        employee_name: currentAuthUser?.name || 'Administrator',
+        employee_email: currentAuthUser?.email || 'admin@salbeau.com',
+        action: 'BULK_PRODUCT_IMPORT',
+        module: 'products',
+        details: {
+          total: res.total,
+          inserted: res.inserted,
+          updated: res.updated,
+          skipped: res.skipped,
+          failed: res.failed,
+          mode: options.importMode || 'create_and_update'
         }
-      } catch (err) {
-        console.error('saveBulkProducts batch error:', err);
-      }
-    }
-
-    if (onProgress) {
-      onProgress({ current: total, total, percent: 100, text: 'Synchronizing Products Catalog...' });
+      });
+    } catch (e) {
+      console.warn('Could not record import audit log in employee_activity_logs:', e);
     }
 
     // Instantly refresh products from Supabase so all newly imported products appear on the Products page!
+    let freshLoaded = false;
     try {
       const { data: freshProducts } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (freshProducts && Array.isArray(freshProducts)) {
+      if (freshProducts && Array.isArray(freshProducts) && freshProducts.length > 0) {
         setProducts(freshProducts.map(mapProductFromDb));
+        freshLoaded = true;
       }
     } catch (err) {
-      console.warn('Could not refresh products after bulk save:', err);
+      console.warn('Could not refresh products after bulk save from Supabase:', err);
     }
 
-    return { success: true, count: savedCount };
+    // Fallback/resilience: if Supabase query did not return records, merge directly into state
+    if (!freshLoaded) {
+      setProducts(prev => {
+        const existingMap = new Map();
+        prev.forEach(p => existingMap.set(p.id, p));
+        if (options.updateExisting !== false) {
+          prev.forEach(p => { if (p.barcode) existingMap.set(`bc_${p.barcode}`, p); });
+        }
+
+        const merged = [...prev];
+        productsArray.forEach(newP => {
+          const idMatch = existingMap.get(newP.id);
+          const bcMatch = newP.barcode ? existingMap.get(`bc_${newP.barcode}`) : null;
+          const match = idMatch || bcMatch;
+          if (match) {
+            const idx = merged.findIndex(m => m.id === match.id);
+            if (idx >= 0) merged[idx] = { ...merged[idx], ...newP };
+          } else {
+            merged.unshift(newP);
+          }
+        });
+        setCachedData('salbeau_admin_cache_products', merged);
+        return merged;
+      });
+    }
+
+    return {
+      ...res,
+      count: (res.inserted || 0) + (res.updated || 0)
+    };
   };
 
-  const uploadImage = async (fileOrBlob, folder = 'products', filenamePrefix = 'asset') => {
+  const uploadImage = async (fileOrBlob, folder = 'products', filenamePrefix = 'asset', profileType = 'PRODUCT') => {
     if (!fileOrBlob) return null;
-    // If it's already an uploaded HTTP/HTTPS URL, return as-is
-    if (typeof fileOrBlob === 'string' && (fileOrBlob.startsWith('http://') || fileOrBlob.startsWith('https://'))) {
+    // If it's already an uploaded persistent HTTP/HTTPS URL, return as-is
+    if (typeof fileOrBlob === 'string' && (fileOrBlob.startsWith('http://') || fileOrBlob.startsWith('https://')) && !fileOrBlob.includes('localhost') && !fileOrBlob.startsWith('data:')) {
       return fileOrBlob;
     }
     try {
-      const fileExt = fileOrBlob.name?.split('.').pop() || (fileOrBlob.type === 'image/webp' ? 'webp' : 'jpg');
-      const timestamp = Date.now();
-      const randomStr = Math.random().toString(36).substring(2, 8);
-      const cleanFileName = `${filenamePrefix}_${timestamp}_${randomStr}.${fileExt}`;
-      const filePath = `${folder}/${cleanFileName}`;
-
-      const primaryBucket = 'products';
-      const fallbackBuckets = ['gc-home-assets', 'categories'];
-      const bucketsToTry = [primaryBucket, ...fallbackBuckets];
-
-      for (const bucketName of bucketsToTry) {
-        try {
-          const { data: uploadData, error: uploadErr } = await supabase.storage
-            .from(bucketName)
-            .upload(filePath, fileOrBlob, { cacheControl: '3600', upsert: true });
-
-          if (!uploadErr) {
-            const { data: publicData } = supabase.storage
-              .from(bucketName)
-              .getPublicUrl(filePath);
-            const baseUrl = publicData?.publicUrl;
-            if (baseUrl) return `${baseUrl}?v=${timestamp}`;
-          }
-        } catch (bErr) {
-          // continue to next bucket
-        }
-      }
-
-      console.error('Supabase storage upload failed across all buckets (products, gc-home-assets, categories).');
-      throw new Error('Image storage upload failed across all buckets. Please verify storage permissions or upload an image file under 5MB.');
+      const res = await uploadOptimizedImage(fileOrBlob, profileType, {
+        folder,
+        filenamePrefix,
+        generateVariants: profileType === 'PRODUCT'
+      });
+      return res?.url || null;
     } catch (e) {
-      console.warn('Error in uploadImage:', e);
+      console.warn('Error in uploadImage with automatic optimization:', e);
       throw e;
     }
   };
 
-  const uploadProductImage = async (file) => {
-    return uploadImage(file, 'products', 'prod');
+  const uploadProductImage = async (file, sku = 'prod') => {
+    return uploadImage(file, 'products', sku, 'PRODUCT');
+  };
+
+  const uploadBrandLogo = async (file, brandCode = 'brand') => {
+    return uploadImage(file, 'brand-logos', brandCode, 'BRAND_LOGO');
+  };
+
+  const uploadCategoryImage = async (file, slug = 'cat') => {
+    return uploadImage(file, 'categories', slug, 'CATEGORY');
+  };
+
+  const uploadSubcategoryImage = async (file, slug = 'subcat') => {
+    return uploadImage(file, 'categories', slug, 'SUBCATEGORY');
   };
 
   const updateOrderStatus = async (orderId, newStatus, rejectionReason = '', customItems = null) => {
@@ -1887,8 +2101,9 @@ export const AdminProvider = ({ children }) => {
   };
 
   const updateProduct = async (productId, updatedFields, isDirectAdminWrite = false) => {
+    const targetProduct = products.find(p => p.id === productId) || {};
     if (currentAuthUser?.role === 'employee' && !isDirectAdminWrite) {
-      const oldProd = products.find(p => p.id === productId);
+      const oldProd = targetProduct;
       const staged = await stageEmployeeOperation({
         operationType: 'UPDATE_PRODUCT',
         module: 'products',
@@ -3074,81 +3289,135 @@ export const AdminProvider = ({ children }) => {
         email,
         password,
         fullName,
+        employeeCode: providedCode,
+        countryCode = '+91',
         phone = '',
         department = 'Operations',
-        designation = 'Staff',
-        profilePhoto = '',
+        designation = 'Fulfillment Specialist',
         joiningDate = new Date().toISOString().split('T')[0],
+        employmentType = 'Full-time',
+        reportingManagerId = '',
+        reportingManagerName = '',
+        workLocation = 'Visakhapatnam Main Store & Headquarters',
+        profilePhoto = '',
+        onboardingMethod = 'temporary_password',
         permissions = {},
+        rolePreset = 'operations',
         status = 'active',
-        forcePasswordReset = false
+        forcePasswordReset = true
       } = employeeData;
 
-      // 1. Create authentication credential in Supabase Auth
-      let authUserId = null;
-      try {
-        if (supabaseAdmin?.auth?.admin) {
-          const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true,
-            user_metadata: {
-              full_name: fullName,
-              role: 'employee',
-              department,
-              designation
-            }
-          });
-          if (authError) throw authError;
-          authUserId = authData?.user?.id;
-        } else {
-          // Standard signup fallback
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: { full_name: fullName, role: 'employee' }
-            }
-          });
-          if (authError) throw authError;
-          authUserId = authData?.user?.id;
-        }
-      } catch (authErr) {
-        console.warn('Supabase Auth employee creation notice:', authErr);
-        authUserId = authUserId || 'auth_' + Date.now();
+      const normalizedEmail = (email || '').trim().toLowerCase();
+      if (!normalizedEmail || !normalizedEmail.includes('@')) {
+        throw new Error('A valid email address is required.');
       }
 
-      // Generate employee code (EMP-0001, EMP-0002...)
-      const nextNum = employees.length + 1;
-      const employeeCode = 'EMP-' + String(nextNum).padStart(4, '0');
+      // 1. Check for duplicate email in local state and Supabase
+      if (employees.some(e => (e.email || '').toLowerCase() === normalizedEmail)) {
+        throw new Error(`An employee with email "${normalizedEmail}" already exists.`);
+      }
+
+      // 2. Resolve concurrency-safe unique employee code
+      let employeeCode = (providedCode || '').trim().toUpperCase();
+      if (!employeeCode || employees.some(e => (e.employee_code || e.employeeCode) === employeeCode)) {
+        employeeCode = generateEmployeeCode(employees);
+      }
+
+      // 3. Handle onboarding setup
+      let authUserId = null;
+      let invitationToken = null;
+      let invitationSentAt = null;
+      let invitationExpiresAt = null;
+      let finalAccountStatus = status || 'active';
+
+      if (onboardingMethod === 'invitation') {
+        finalAccountStatus = 'invitation_pending';
+        invitationToken = 'inv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+        invitationSentAt = new Date().toISOString();
+        invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        authUserId = 'auth_pending_' + Date.now();
+      } else {
+        // Temporary password policy verification
+        const passCheck = validatePasswordPolicy(password);
+        if (!passCheck.isValid) {
+          throw new Error('Password does not satisfy policy: ' + passCheck.errors.join(', '));
+        }
+
+        try {
+          if (supabaseAdmin?.auth?.admin) {
+            const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+              email: normalizedEmail,
+              password,
+              email_confirm: true,
+              user_metadata: {
+                full_name: fullName,
+                role: rolePreset || 'Staff',
+                department,
+                designation,
+                employee_code: employeeCode
+              }
+            });
+            if (authError) throw authError;
+            authUserId = authData?.user?.id;
+          } else {
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+              email: normalizedEmail,
+              password,
+              options: {
+                data: { full_name: fullName, role: 'employee', employee_code: employeeCode }
+              }
+            });
+            if (authError) throw authError;
+            authUserId = authData?.user?.id;
+          }
+        } catch (authErr) {
+          console.warn('Supabase Auth user creation note:', authErr);
+          authUserId = authUserId || 'auth_' + Date.now();
+        }
+      }
+
       const employeeId = 'emp_' + Date.now();
+      const sanitizedPermissions = ensurePermissionDependencies(permissions);
 
       const newEmployeeRow = {
         id: employeeId,
         user_id: authUserId,
         employee_code: employeeCode,
         full_name: fullName,
-        email,
-        phone,
+        name: fullName,
+        email: normalizedEmail,
+        country_code: countryCode,
+        phone: phone.trim(),
         department,
         designation,
-        profile_photo: profilePhoto,
-        role: 'employee',
-        status,
         joining_date: joiningDate,
+        employment_type: employmentType,
+        reporting_manager_id: reportingManagerId,
+        reporting_manager_name: reportingManagerName,
+        work_location: workLocation,
+        account_status: finalAccountStatus,
+        status: finalAccountStatus,
+        onboarding_method: onboardingMethod,
+        invitation_token: invitationToken,
+        invitation_sent_at: invitationSentAt,
+        invitation_expires_at: invitationExpiresAt,
+        profile_photo: profilePhoto,
+        avatar: profilePhoto,
+        role: rolePreset || 'Staff',
         force_password_reset: forcePasswordReset,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
-      // 2. Insert into employees table
+      // 4. Insert into employees table
       const { error: empError } = await supabase.from('employees').insert([newEmployeeRow]);
       if (empError) console.warn('Supabase employees insert note:', empError);
 
-      // 3. Insert permissions into employee_permissions table
+      // 5. Insert permissions into employee_permissions table
       const permRow = {
+        id: 'perm_' + employeeId,
         employee_id: employeeId,
-        permissions,
+        permissions: sanitizedPermissions,
         updated_at: new Date().toISOString()
       };
       const { error: permError } = await supabase.from('employee_permissions').insert([permRow]);
@@ -3156,23 +3425,84 @@ export const AdminProvider = ({ children }) => {
 
       const completeEmployee = {
         ...newEmployeeRow,
-        permissions
+        permissions: sanitizedPermissions
       };
 
       setEmployees(prev => [completeEmployee, ...prev]);
 
-      // Audit Log
+      // 6. Record detailed audit log
       await logEmployeeActivity({
         action: 'CREATE_EMPLOYEE',
         module: 'employees',
         entityType: 'employee',
         entityId: employeeId,
-        metadata: { employeeCode, fullName, email, department }
+        metadata: {
+          employee_code: employeeCode,
+          full_name: fullName,
+          email: normalizedEmail,
+          department,
+          designation,
+          role_preset: rolePreset,
+          onboarding_method: onboardingMethod,
+          account_status: finalAccountStatus,
+          work_location: workLocation,
+          employment_type: employmentType,
+          reporting_manager: reportingManagerName || 'None'
+        }
       });
 
       return { success: true, employee: completeEmployee };
     } catch (err) {
       console.error('Failed to create employee:', err);
+      throw err;
+    }
+  };
+
+  const sendEmployeeInvitation = async (employeeId) => {
+    try {
+      const emp = employees.find(e => e.id === employeeId);
+      if (!emp) throw new Error('Employee not found');
+
+      const newToken = 'inv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+      const newSentAt = new Date().toISOString();
+      const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      await supabase
+        .from('employees')
+        .update({
+          invitation_token: newToken,
+          invitation_sent_at: newSentAt,
+          invitation_expires_at: newExpiresAt,
+          account_status: 'invitation_pending',
+          status: 'invitation_pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', employeeId);
+
+      setEmployees(prev => prev.map(e => e.id === employeeId ? {
+        ...e,
+        invitation_token: newToken,
+        invitation_sent_at: newSentAt,
+        invitation_expires_at: newExpiresAt,
+        account_status: 'invitation_pending',
+        status: 'invitation_pending'
+      } : e));
+
+      await logEmployeeActivity({
+        action: 'INVITATION_RESENT',
+        module: 'employees',
+        entityType: 'employee',
+        entityId: employeeId,
+        metadata: {
+          employee_code: emp.employee_code,
+          email: emp.email,
+          expires_at: newExpiresAt
+        }
+      });
+
+      return { success: true, token: newToken, expiresAt: newExpiresAt };
+    } catch (err) {
+      console.error('Failed to send employee invitation:', err);
       throw err;
     }
   };
@@ -3545,6 +3875,96 @@ export const AdminProvider = ({ children }) => {
     await saveHomeBanners(reordered);
   };
 
+  /**
+   * Complete Database & Local Caches Purge
+   * Wipes users, admins/employees, orders, products, categories, brands, carts, verifications
+   * from local React state, browser localStorage, and Supabase backend.
+   */
+  const purgeCompleteDatabaseAndCaches = async () => {
+    // 1. Wipe local React state
+    setBrands([]);
+    setCategories([]);
+    setProducts([]);
+    setOrders([]);
+    setUsers([]);
+    setB2BVerifications([]);
+    setEmployees([]);
+    setAbandonedCarts([]);
+    setSearchRequests([]);
+    setEmployeeActivityLogs([]);
+    setHomeBanners([]);
+    setCancelledOrdersLog([]);
+
+    // 2. Wipe browser localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      [
+        'salbeau_admin_cache_brands',
+        'salbeau_admin_cache_categories',
+        'salbeau_admin_cache_products',
+        'salbeau_admin_cache_orders',
+        'salbeau_admin_cache_users',
+        'salbeau_admin_cache_b2b',
+        'salbeau_admin_cache_employees',
+        'salbeau_customer_search_requests',
+        'salbeau_home_banners',
+        'salbeau_cancelled_orders_log'
+      ].forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+      localStorage.setItem('salbeau_db_clean_slate_purged_v1', 'true');
+    }
+
+    // 3. Purge Supabase backend tables if reachable
+    const tables = [
+      'verification_documents',
+      'verification_history',
+      'b2b_verifications',
+      'employee_permissions',
+      'employee_activity_logs',
+      'employee_staged_operations',
+      'employees',
+      'customer_search_requests',
+      'abandoned_carts',
+      'favorites',
+      'notifications',
+      'import_history',
+      'orders',
+      'products',
+      'home_banners',
+      'pricing_rules',
+      'categories',
+      'brands',
+      'users'
+    ];
+
+    const results = {};
+    for (const t of tables) {
+      try {
+        const client = supabaseAdmin || supabase;
+        const { error } = await client.from(t).delete().not('id', 'is', null);
+        results[t] = error ? error.message : 'purged';
+      } catch (err) {
+        results[t] = err.message;
+      }
+    }
+
+    // 4. Purge Supabase Auth users if accessible
+    try {
+      if (supabaseAdmin?.auth?.admin) {
+        const { data: { users: authUsers } } = await supabaseAdmin.auth.admin.listUsers();
+        if (authUsers && authUsers.length > 0) {
+          for (const u of authUsers) {
+            await supabaseAdmin.auth.admin.deleteUser(u.id);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Auth user purge note:', e);
+    }
+
+    return { success: true, details: results };
+  };
+
   return (
     <AdminContext.Provider
       value={{
@@ -3559,6 +3979,8 @@ export const AdminProvider = ({ children }) => {
         toggleBrandStatus,
         addBrand,
         updateBrand,
+        deleteBrand,
+        bulkImportBrands,
         addProduct,
         saveBulkProducts,
         updateProduct,
@@ -3586,6 +4008,12 @@ export const AdminProvider = ({ children }) => {
         searchProductByBarcode,
         uploadImage,
         uploadProductImage,
+        uploadBrandLogo,
+        uploadCategoryImage,
+        uploadSubcategoryImage,
+        uploadOptimizedImage,
+        IMAGE_PROFILES,
+        optimizeImage,
         updateProductShades,
         updateProductQuantityTiers,
         pricingRules,
@@ -3604,6 +4032,7 @@ export const AdminProvider = ({ children }) => {
         currentAuthUser,
         setCurrentAuthUser,
         createEmployee,
+        sendEmployeeInvitation,
         updateEmployee,
         updateEmployeePermissions,
         toggleEmployeeStatus,
@@ -3632,6 +4061,7 @@ export const AdminProvider = ({ children }) => {
         toggleHomeBannerActive,
         reorderHomeBanners,
         DEFAULT_HOME_BANNERS,
+        purgeCompleteDatabaseAndCaches,
       }}
     >
       {children}

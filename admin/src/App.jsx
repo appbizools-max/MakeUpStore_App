@@ -76,12 +76,33 @@ import {
   ShieldCheck,
   Table
 } from 'lucide-react';
-import AllEmployeesPage from './components/governance/employees/AllEmployeesPage';
-import AddEmployeePage from './components/governance/employees/AddEmployeePage';
-import EmployeeProfilePage from './components/governance/employees/EmployeeProfilePage';
-import EditEmployeePage from './components/governance/employees/EditEmployeePage';
-import EmployeePermissionsPage from './components/governance/employees/EmployeePermissionsPage';
-import EmployeeActivityPage from './components/governance/employees/EmployeeActivityPage';
+// Lazy-loaded feature modules for code-splitting and rapid initial rendering
+const AllEmployeesPage = React.lazy(() => import('./components/governance/employees/AllEmployeesPage'));
+const AddEmployeePage = React.lazy(() => import('./components/governance/employees/AddEmployeePage'));
+const EmployeeProfilePage = React.lazy(() => import('./components/governance/employees/EmployeeProfilePage'));
+const EditEmployeePage = React.lazy(() => import('./components/governance/employees/EditEmployeePage'));
+const EmployeePermissionsPage = React.lazy(() => import('./components/governance/employees/EmployeePermissionsPage'));
+const EmployeeActivityPage = React.lazy(() => import('./components/governance/employees/EmployeeActivityPage'));
+const ProductsCatalogMatrix = React.lazy(() => import('./components/products/ProductsCatalogMatrix'));
+const AddNewProductPage = React.lazy(() => import('./components/products/AddNewProductPage_Redesigned'));
+const AttributesMasterPage = React.lazy(() => import('./components/categories/AttributesMasterPage'));
+const MainCategoriesManager = React.lazy(() => import('./components/categories/MainCategoriesManager'));
+const CustomerSearchRequestsPage = React.lazy(() => import('./components/b2b/CustomerSearchRequestsPage'));
+const B2BVerificationPage = React.lazy(() => import('./components/b2b/B2BVerificationPage'));
+const ApprovalCenterPage = React.lazy(() => import('./components/governance/ApprovalCenterPage'));
+const AuditTrailPage = React.lazy(() => import('./components/governance/AuditTrailPage'));
+const BrandManagementPage = React.lazy(() => import('./components/brands/BrandManagementPage'));
+
+const PageLoadingFallback = () => (
+  <div className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+    <div className="w-12 h-12 rounded-2xl bg-[#FDF2F8] border border-[#FCE4EC] flex items-center justify-center mb-3 shadow-sm">
+      <Loader2 size={24} className="text-[#C2477A] animate-spin" />
+    </div>
+    <span className="text-xs font-bold text-gray-800 tracking-wide">Loading Module...</span>
+    <span className="text-[11px] text-gray-400 mt-0.5">Salbeau Executive Console</span>
+  </div>
+);
+
 import { hasModuleAccess } from './utils/permissionEngine';
 import BarcodeScannerModal from './components/products/BarcodeScannerModal';
 import BarcodeSearchResultModal from './components/products/BarcodeSearchResultModal';
@@ -91,19 +112,12 @@ import { matchProductSearch, flattenProductsToIndividualVariants } from './utils
 import RoleQuantityTiersManager from './components/products/RoleQuantityTiersManager';
 import RolePricingMatrix from './components/products/RolePricingMatrix';
 import ShadePricingModal from './components/products/ShadePricingModal';
-import ProductsCatalogMatrix from './components/products/ProductsCatalogMatrix';
 import { AbandonedCartsManager } from './components/orders/AbandonedCartsManager';
 import FulfillmentStatusSelector from './components/orders/FulfillmentStatusSelector';
-import AddNewProductPage from './components/products/AddNewProductPage_Redesigned';
 import { BulkProductEntryModal } from './components/products/BulkProductEntryModal';
-import AttributesMasterPage from './components/categories/AttributesMasterPage';
-import MainCategoriesManager from './components/categories/MainCategoriesManager';
-import CustomerSearchRequestsPage from './components/b2b/CustomerSearchRequestsPage';
-import B2BVerificationPage from './components/b2b/B2BVerificationPage';
-import ApprovalCenterPage from './components/governance/ApprovalCenterPage';
-import AuditTrailPage from './components/governance/AuditTrailPage';
 import GeneratedDataPanel from './components/products/GeneratedDataPanel';
 import SearchableSelect from './components/common/SearchableSelect';
+import AdminSidebar from './components/common/AdminSidebar';
 import ImageField from './components/media/ImageField';
 import { getBeautyShadeName, MAKEUP_SWATCH_PRESETS, normalizeHex, isValidHex } from './components/common/HexColorPicker';
 import {
@@ -151,6 +165,8 @@ const AdminDashboard = () => {
     toggleBrandStatus,
     addBrand,
     updateBrand,
+    deleteBrand,
+    bulkImportBrands,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -197,6 +213,9 @@ const AdminDashboard = () => {
     toggleHomeBannerActive,
     reorderHomeBanners,
     DEFAULT_HOME_BANNERS = [],
+    saveBulkProducts,
+    assignOrderToEmployee,
+    purgeCompleteDatabaseAndCaches,
   } = useAdmin();
 
   const [loginLoading, setLoginLoading] = useState(false);
@@ -204,6 +223,8 @@ const AdminDashboard = () => {
   const [loginError, setLoginError] = useState(null);
 
   const [dashboardToast, setDashboardToast] = useState(null);
+  const [isPurgingDatabase, setIsPurgingDatabase] = useState(false);
+  const [showPurgeConfirmModal, setShowPurgeConfirmModal] = useState(false);
 
   useEffect(() => {
     if (dashboardToast) {
@@ -220,8 +241,18 @@ const AdminDashboard = () => {
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase().replace(/^#\/?/, '');
-      const matchPath = pathname.match(/\/admin\/(.+)/);
-      const routeParam = matchPath ? matchPath[1].replace(/\/$/, '') : hash;
+      let routeParam = '';
+      const matchAdmin = pathname.match(/^\/admin\/(.+)/);
+      if (matchAdmin) {
+        routeParam = matchAdmin[1].replace(/\/$/, '');
+      } else {
+        const matchDirect = pathname.match(/^\/([a-z0-9_\/-]+)/);
+        if (matchDirect && matchDirect[1] !== 'admin') {
+          routeParam = matchDirect[1].replace(/\/$/, '');
+        } else {
+          routeParam = hash;
+        }
+      }
       const validTabs = [
         'dashboard',
         'dashboard_visibility',
@@ -320,8 +351,19 @@ const AdminDashboard = () => {
     const handlePopState = () => {
       if (typeof window !== 'undefined') {
         const pathname = window.location.pathname.toLowerCase();
-        const matchPath = pathname.match(/\/admin\/(.+)/);
-        const routeParam = matchPath ? matchPath[1].replace(/\/$/, '') : window.location.hash.replace(/^#\/?/, '');
+        const hash = window.location.hash.toLowerCase().replace(/^#\/?/, '');
+        let routeParam = '';
+        const matchAdmin = pathname.match(/^\/admin\/(.+)/);
+        if (matchAdmin) {
+          routeParam = matchAdmin[1].replace(/\/$/, '');
+        } else {
+          const matchDirect = pathname.match(/^\/([a-z0-9_\/-]+)/);
+          if (matchDirect && matchDirect[1] !== 'admin') {
+            routeParam = matchDirect[1].replace(/\/$/, '');
+          } else {
+            routeParam = hash;
+          }
+        }
         const validTabs = [
           'dashboard',
           'dashboard_visibility',
@@ -1400,11 +1442,8 @@ const AdminDashboard = () => {
   // Handler: open edit modal for a scanned product
   const handleEditProductFromBarcode = (product) => {
     if (!product) return;
-    // Find the full product in local state by id
     const local = products.find(p => p.id === product.id) || product;
-    setEditingProduct(local);
-    setIsEditModalOpen(true);
-    setActiveTab('products');
+    handleOpenEditProduct(local);
   };
 
   // Hardware barcode scanner support on Products Catalog tab
@@ -2770,416 +2809,33 @@ const AdminDashboard = () => {
         </span>
       </header>
 
-      {/* Mobile Slide-out Drawer */}
-      {isMobileDrawerOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity duration-300"
-          onClick={() => setIsMobileDrawerOpen(false)}
-        >
-          <div
-            className="w-[240px] max-w-[80vw] h-full bg-white shadow-2xl flex flex-col justify-between p-4 overflow-y-auto no-scrollbar animate-fade-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div>
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between mb-5 pb-3 border-b border-pink-100/60">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-[#C2477A] text-white flex items-center justify-center shadow-xs">
-                    <Sparkles size={16} />
-                  </div>
-                  <h1
-                    style={{ fontFamily: "'Great Vibes', cursive" }}
-                    className="text-2xl text-[#C2477A]"
-                  >
-                    Salbeau
-                  </h1>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsMobileDrawerOpen(false)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
-                  aria-label="Close menu"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Drawer Navigation */}
-              <nav className="space-y-3">
-                {filteredNavSections.map((section) => (
-                  <div key={section.title} className="space-y-1">
-                    <div className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-3 py-1 select-none">
-                      {section.title}
-                    </div>
-                    <div className="space-y-0.5">
-                      {section.items.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = isItemActive(item.id);
-                        const hasSubItems = Array.isArray(item.subItems) && item.subItems.length > 0;
-                        const isSubOpen = openSubmenus[item.id] || (hasSubItems && item.subItems.some(sub => isItemActive(sub.id)));
-
-                        return (
-                          <div key={item.id} className="space-y-0.5">
-                            <button
-                              onClick={() => {
-                                if (item.isAction && item.id === 'logout') {
-                                  setIsMobileDrawerOpen(false);
-                                  setIsLogoutModalOpen(true);
-                                  return;
-                                }
-                                if (hasSubItems) {
-                                  setOpenSubmenus(prev => ({
-                                    ...prev,
-                                    [item.id]: !prev[item.id]
-                                  }));
-                                  return;
-                                }
-                                navigateToTab(item.id);
-                                setIsMobileDrawerOpen(false);
-                              }}
-                              className={`w-full px-3 py-2 rounded-xl font-semibold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                                isActive
-                                  ? 'bg-[#FFF5F8] text-[#C2477A] font-bold'
-                                  : 'text-gray-600 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <Icon size={16} className={`shrink-0 ${isActive ? 'text-[#C2477A]' : 'text-gray-500'}`} />
-                                <span className="truncate">{item.label}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {item.badge !== undefined && item.badge !== null && (
-                                  <span
-                                    className={
-                                      item.isPillBadge
-                                        ? item.badgeClass
-                                        : `text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${item.badgeClass || ''}`
-                                    }
-                                  >
-                                    {item.badge}
-                                  </span>
-                                )}
-                                {hasSubItems && (
-                                  <ChevronDown
-                                    size={14}
-                                    className={`text-gray-400 transition-transform ${isSubOpen ? 'rotate-180 text-[#C2477A]' : ''}`}
-                                  />
-                                )}
-                              </div>
-                            </button>
-
-                            {/* Mobile Drawer Sub-items */}
-                            {hasSubItems && isSubOpen && (
-                              <div className="ml-4 pl-2.5 border-l-2 border-pink-100 space-y-0.5 py-1">
-                                {item.subItems.map((sub) => {
-                                  const SubIcon = sub.icon || null;
-                                  const isSubActive = isItemActive(sub.id);
-                                  return (
-                                    <button
-                                      key={sub.id}
-                                      onClick={() => {
-                                        navigateToTab(sub.id);
-                                        setIsMobileDrawerOpen(false);
-                                      }}
-                                      className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
-                                        isSubActive
-                                          ? 'bg-[#FFF5F8] text-[#C2477A] font-bold'
-                                          : 'text-gray-500 hover:bg-[#FFF5F8]/40 hover:text-[#C2477A]'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        {SubIcon && <SubIcon size={13} className="shrink-0" />}
-                                        <span className="truncate">{sub.label}</span>
-                                      </div>
-                                      {sub.badge !== undefined && sub.badge !== null && (
-                                        <span className={sub.badgeClass || 'text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-pink-100 text-[#C2477A]'}>
-                                          {sub.badge}
-                                        </span>
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </nav>
-            </div>
-
-            {/* Drawer Footer */}
-            <div className="pt-3 border-t border-pink-100/60 space-y-2.5 mt-4">
-              <button
-                onClick={() => {
-                  setIsMobileDrawerOpen(false);
-                  setIsLogoutModalOpen(true);
-                }}
-                className="w-full px-3 py-2.5 rounded-xl font-bold text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 flex items-center justify-between transition-all cursor-pointer border border-rose-100/80 shadow-2xs"
-              >
-                <div className="flex items-center gap-2">
-                  <LogOut size={16} />
-                  <span>Log Out</span>
-                </div>
-                <span className="text-[10px] text-[#C2477A] font-bold bg-white px-2 py-0.5 rounded-md border border-pink-100 uppercase">
-                  {currentAuthUser?.role === 'employee' ? 'EMPLOYEE' : 'ADMIN'}
-                </span>
-              </button>
-              <div className="text-[11px] text-gray-400 font-medium px-1">
-                Salbeau Admin v1.0
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Desktop/Tablet Responsive Sidebar */}
-      <aside
-        className={`hidden md:flex flex-col justify-between sticky top-0 h-screen bg-white border-r border-pink-100/70 shadow-2xs flex-shrink-0 z-30 transition-all duration-300 ease-in-out select-none ${
-          isSidebarCollapsed ? 'w-[68px] p-2' : 'w-[230px] p-3.5'
-        }`}
-      >
-        <div className="flex flex-col flex-1 min-h-0">
-          {/* Sidebar Header with Hamburger */}
-          {!isSidebarCollapsed ? (
-            <div className="flex items-center justify-between mb-4 px-1 pb-3 border-b border-pink-100/50">
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <h1
-                  style={{ fontFamily: "'Great Vibes', cursive" }}
-                  className="text-2xl text-[#C2477A] font-normal tracking-wide leading-none truncate select-none"
-                >
-                  Salbeau
-                </h1>
-              </div>
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#C2477A] hover:bg-[#FFF5F8] transition-all cursor-pointer shrink-0"
-                title="Collapse sidebar"
-                aria-label="Collapse sidebar"
-              >
-                <Menu size={18} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2 mb-4 pb-3 border-b border-pink-100/50">
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-600 hover:text-[#C2477A] hover:bg-[#FFF5F8] transition-all border border-pink-100/70 shadow-2xs cursor-pointer"
-                title="Expand sidebar"
-                aria-label="Expand sidebar"
-              >
-                <Menu size={18} />
-              </button>
-            </div>
-          )}
-
-          {/* Navigation Items */}
-          <nav className={`space-y-2 overflow-y-auto no-scrollbar flex-1 -mx-0.5 px-0.5 ${isSidebarCollapsed ? 'flex flex-col items-center' : ''}`}>
-            {filteredNavSections.map((section) => (
-              <div key={section.title} className={isSidebarCollapsed ? 'w-full flex flex-col items-center mb-1' : 'mb-2.5'}>
-                {!isSidebarCollapsed ? (
-                  <div className="text-[9.5px] font-black uppercase tracking-wider text-gray-400 px-3 py-1 select-none">
-                    {section.title}
-                  </div>
-                ) : (
-                  <div className="w-6 border-b border-gray-100 my-1 opacity-70" />
-                )}
-
-                <div className={isSidebarCollapsed ? 'space-y-1 w-full flex flex-col items-center' : 'space-y-0.5'}>
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = isItemActive(item.id);
-                    const hasSubItems = Array.isArray(item.subItems) && item.subItems.length > 0;
-                    const isSubOpen = openSubmenus[item.id] || (hasSubItems && item.subItems.some(sub => isItemActive(sub.id)));
-                    const tooltipBadge = item.badge || (hasSubItems ? item.subItems.find(s => isItemActive(s.id))?.label : null);
-
-                    if (isSidebarCollapsed) {
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            if (item.isAction && item.id === 'logout') {
-                              setIsLogoutModalOpen(true);
-                              return;
-                            }
-                            if (hasSubItems) {
-                              navigateToTab(item.subItems[0].id);
-                              return;
-                            }
-                            navigateToTab(item.id);
-                          }}
-                          onMouseEnter={(e) => handleTooltipEnter(e, item.label, tooltipBadge)}
-                          onMouseLeave={handleTooltipLeave}
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative cursor-pointer group ${
-                            isActive
-                              ? 'bg-[#FFF5F8] text-[#C2477A] shadow-2xs ring-1 ring-[#C2477A]/20'
-                              : 'text-gray-500 hover:bg-[#FFF5F8]/60 hover:text-[#C2477A]'
-                          }`}
-                          aria-label={item.label}
-                        >
-                          <Icon size={18} className={`shrink-0 transition-transform ${isActive ? 'scale-110 text-[#C2477A]' : 'group-hover:scale-110'}`} />
-                          {item.badge !== undefined && item.badge !== null && (
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#C2477A] ring-2 ring-white" />
-                          )}
-                        </button>
-                      );
-                    }
-
-                    return (
-                      <div key={item.id} className="space-y-0.5">
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            if (item.isAction && item.id === 'logout') {
-                              setIsLogoutModalOpen(true);
-                              return;
-                            }
-                            if (hasSubItems) {
-                              setOpenSubmenus(prev => ({
-                                ...prev,
-                                [item.id]: !prev[item.id]
-                              }));
-                              const isCurrentlyInside = item.subItems.some(sub => isItemActive(sub.id));
-                              if (!isCurrentlyInside) {
-                                navigateToTab(item.subItems[0].id);
-                              }
-                              return;
-                            }
-                            navigateToTab(item.id);
-                          }}
-                          className={`w-full px-3 py-2 rounded-xl font-semibold text-xs flex items-center justify-between transition-all cursor-pointer group ${
-                            isActive
-                              ? 'bg-[#FFF5F8] text-[#C2477A] shadow-2xs font-bold'
-                              : 'text-gray-600 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <Icon size={16} className={`shrink-0 transition-transform ${isActive ? 'scale-105 text-[#C2477A]' : 'group-hover:scale-105'}`} />
-                            <span className="truncate">{item.label}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {item.badge !== undefined && item.badge !== null && (
-                              <span
-                                className={
-                                  item.isPillBadge
-                                    ? item.badgeClass
-                                    : `text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${item.badgeClass || ''}`
-                                }
-                              >
-                                {item.badge}
-                              </span>
-                            )}
-                            {hasSubItems && (
-                              <ChevronDown
-                                size={14}
-                                className={`text-gray-400 transition-transform duration-200 ${isSubOpen ? 'rotate-180 text-[#C2477A]' : ''}`}
-                              />
-                            )}
-                          </div>
-                        </button>
-
-                        {/* Nested Sub-items in Expanded Mode */}
-                        {hasSubItems && isSubOpen && (
-                          <div className="ml-4 pl-2.5 border-l-2 border-pink-100 space-y-0.5 py-0.5 animate-fade-in">
-                            {item.subItems.map((sub) => {
-                              const SubIcon = sub.icon || null;
-                              const isSubActive = isItemActive(sub.id);
-                              return (
-                                <button
-                                  key={sub.id}
-                                  onClick={() => navigateToTab(sub.id)}
-                                  className={`w-full px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-between transition-all cursor-pointer ${
-                                    isSubActive
-                                      ? 'bg-[#FFF5F8] text-[#C2477A] font-bold'
-                                      : 'text-gray-500 hover:bg-[#FFF5F8]/40 hover:text-[#C2477A]'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    {SubIcon && <SubIcon size={12} className="shrink-0" />}
-                                    <span className="truncate">{sub.label}</span>
-                                  </div>
-                                  {sub.badge !== undefined && sub.badge !== null && (
-                                    <span className={sub.badgeClass || 'text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-pink-100 text-[#C2477A]'}>
-                                      {sub.badge}
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </nav>
-        </div>
-
-        {/* Desktop Sidebar Footer */}
-        <div className="pt-3 border-t border-pink-100/60 mt-auto">
-          {!isSidebarCollapsed ? (
-            <div className="space-y-2.5">
-              <button
-                onClick={() => setIsLogoutModalOpen(true)}
-                className="w-full px-3 py-2.5 rounded-xl font-bold text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 flex items-center justify-between transition-all cursor-pointer border border-rose-100/80 shadow-2xs active:scale-[0.98]"
-              >
-                <div className="flex items-center gap-2">
-                  <LogOut size={16} />
-                  <span>Log Out</span>
-                </div>
-                <span className="text-[10px] text-rose-500 font-semibold bg-white px-2 py-0.5 rounded-md border border-rose-100">
-                  Active
-                </span>
-              </button>
-
-              <div className="text-[11px] text-gray-400 font-medium flex items-center justify-between px-1">
-                <span>Salbeau Admin v1.0</span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={() => setIsLogoutModalOpen(true)}
-                onMouseEnter={(e) => handleTooltipEnter(e, 'Log Out', 'Active')}
-                onMouseLeave={handleTooltipLeave}
-                className="w-10 h-10 rounded-xl font-bold text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 flex items-center justify-center transition-all cursor-pointer border border-rose-100/80 shadow-2xs active:scale-[0.98]"
-                title="Log Out"
-                aria-label="Log Out"
-              >
-                <LogOut size={16} />
-              </button>
-
-              <span className="text-[10px] text-gray-400 font-semibold tracking-tighter" title="Salbeau Admin v1.0">
-                v1.0
-              </span>
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {/* Floating Tooltip for Collapsed Sidebar */}
-      {hoveredTooltip && isSidebarCollapsed && (
-        <div
-          className="fixed z-[9999] pointer-events-none -translate-y-1/2 flex items-center transition-opacity duration-150 animate-fade-in"
-          style={{ top: hoveredTooltip.top, left: hoveredTooltip.left }}
-        >
-          <div className="w-1.5 h-1.5 bg-gray-900 rotate-45 -mr-1 z-10" />
-          <div className="bg-gray-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-xl flex items-center gap-1.5 border border-gray-700/60 whitespace-nowrap">
-            <span>{hoveredTooltip.label}</span>
-            {hoveredTooltip.badge !== undefined && hoveredTooltip.badge !== null && (
-              <span className="text-[10px] bg-[#C2477A] text-white px-1.5 py-0.2 rounded-full font-bold leading-normal">
-                {hoveredTooltip.badge}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Fully Reorganized, Responsive Luxury Beauty Sidebar & Drawer */}
+      <AdminSidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        toggleSidebar={toggleSidebar}
+        activeTab={activeTab}
+        navigateToTab={navigateToTab}
+        isMobileDrawerOpen={isMobileDrawerOpen}
+        setIsMobileDrawerOpen={setIsMobileDrawerOpen}
+        onLogoutClick={() => setIsLogoutModalOpen(true)}
+        currentAuthUser={currentAuthUser}
+        homeBanners={homeBanners}
+        categories={categories}
+        brands={brands}
+        products={products}
+        orders={orders}
+        employeeOperations={employeeOperations}
+        users={users}
+        b2cUsersCount={b2cUsersCount}
+        b2bUsersCount={b2bUsersCount}
+        searchRequests={searchRequests}
+        abandonedCarts={abandonedCarts}
+        b2bPendingTotal={b2bPendingTotal}
+        b2bPendingSalon={b2bPendingSalon}
+        b2bPendingArtist={b2bPendingArtist}
+        b2bPendingBeautician={b2bPendingBeautician}
+        employees={employees}
+      />
 
       {/* Main Content Area */}
       <main className={`flex-1 min-w-0 transition-all duration-300 ${
@@ -3289,6 +2945,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        <React.Suspense fallback={<PageLoadingFallback />}>
         {/* 1. EXECUTIVE DASHBOARD PAGE */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-fade-in">
@@ -4210,7 +3867,79 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-pink-100/70 shadow-xs overflow-hidden">
+            {/* Mobile Responsive Order Cards (< 768px) */}
+            <div className="block md:hidden space-y-3.5">
+              {filteredOrders.length === 0 ? (
+                <div className="p-8 text-center bg-white rounded-2xl border border-pink-100 text-gray-500 text-xs">
+                  No orders found matching the selected filter.
+                </div>
+              ) : (
+                filteredOrders.map((o) => (
+                  <div key={`mo_${o.id}`} className="bg-white rounded-2xl border border-pink-100 p-4 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[#C2477A] text-xs">{o.id}</span>
+                      <span className="font-extrabold text-sm text-gray-900">
+                        ₹{typeof o.totalAmount === 'number' ? o.totalAmount.toLocaleString('en-IN') : o.totalAmount}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="font-bold text-gray-900">{o.userName}</div>
+                      {o.deliveryType === 'delivery' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          🚚 Delivery
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                          🛍️ Pickup
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Order Items */}
+                    <div className="bg-[#FFF9FB] p-2.5 rounded-xl border border-pink-100/60 space-y-1">
+                      {(o.items || []).map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-[11px]">
+                          <span className="text-gray-800 font-semibold">{item.product?.name || 'Item'} (x{item.quantity})</span>
+                          <span className="text-gray-500 font-medium">₹{(item.unitPrice || 0) * item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {o.deliveryType === 'delivery' && o.deliveryAddress && (
+                      <div className="text-[10.5px] text-gray-500 flex items-center gap-1">
+                        <MapPin size={11} className="text-[#C2477A] shrink-0" />
+                        <span className="line-clamp-1">{o.deliveryAddress}</span>
+                      </div>
+                    )}
+
+                    {/* Status & Actions */}
+                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                      <div className="flex-1">
+                        <FulfillmentStatusSelector
+                          order={o}
+                          onUpdateStatus={updateOrderStatus}
+                          onSuccessToast={(msg) => setDashboardToast(msg)}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedInvoiceOrder(o);
+                          setIsInvoiceModalOpen(true);
+                        }}
+                        className="py-1.5 px-3 bg-white hover:bg-[#FFF5F8] text-[#C2477A] border border-pink-200 rounded-xl font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-2xs"
+                      >
+                        <FileText size={12} /> Invoice
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Table View (>= 768px) */}
+            <div className="hidden md:block bg-white rounded-2xl border border-pink-100/70 shadow-xs overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#FFF2F5] text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100/80">
                   <tr>
@@ -4346,300 +4075,22 @@ const AdminDashboard = () => {
 
 
 
-        {/* 4. ADD BRAND PAGE - Full Width Partner Brand Directory with Popup Modal */}
+        {/* 4. BRAND MANAGEMENT MODULE — Production Ready Dedicated Module */}
         {activeTab === 'add_brand' && (
-          <div className="space-y-6 animate-fade-in">
-            {showBrandSuccess && (
-              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl text-xs font-bold flex items-center justify-between border border-emerald-100 shadow-2xs animate-fade-in">
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={16} />
-                  <span>Partner Brand registered successfully to directory!</span>
-                </div>
-                <button onClick={() => setShowBrandSuccess(false)} className="text-emerald-500 hover:text-emerald-700">
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-
-            {/* Partner Brand Directory Table Container */}
-            <div className="bg-white p-6 rounded-2xl border border-pink-100/80 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-pink-100/60">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
-                    <Store size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase flex items-center gap-2">
-                      <span>Partner Brand Directory</span>
-                    </h3>
-                    <span className="text-xs text-gray-400 font-medium mt-0.5 block">
-                      {filteredBrands.length} partner brands active in store catalog
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2 bg-[#FFF5F8] px-3.5 py-2 rounded-xl border border-pink-100 w-full sm:w-64 focus-within:ring-2 focus-within:ring-[#C2477A]/20 transition-all">
-                    <Search size={14} className="text-[#C2477A]" />
-                    <input
-                      type="text"
-                      placeholder="Search brand name..."
-                      value={brandSearch}
-                      onChange={(e) => {
-                        setBrandSearch(e.target.value);
-                        setBrandCurrentPage(1);
-                      }}
-                      className="bg-transparent text-xs outline-none text-gray-900 w-full font-medium placeholder:text-gray-400"
-                    />
-                    {brandSearch && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBrandSearch('');
-                          setBrandCurrentPage(1);
-                        }}
-                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={handleOpenAddBrand}
-                    className="bg-[#C2477A] hover:bg-[#b83760] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
-                  >
-                    <BadgePlus size={16} />
-                    <span>Add New Brand</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Brand Directory Table Format */}
-              <div className="overflow-x-auto rounded-xl border border-pink-100/70">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#FFF2F5] text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100/80">
-                      <th className="py-4 px-4 text-left">
-                        <div className="flex items-center gap-1.5">
-                          <Tag size={13} className="text-[#C2477A]" />
-                          <span>BRAND & LOGO</span>
-                        </div>
-                      </th>
-                      <th className="py-4 px-4 text-left">
-                        <div className="flex items-center gap-1.5">
-                          <Sparkles size={13} className="text-[#C2477A]" />
-                          <span>CATEGORY</span>
-                        </div>
-                      </th>
-                      <th className="py-4 px-4 text-left">
-                        <div className="flex items-center gap-1.5">
-                          <Package size={13} className="text-[#C2477A]" />
-                          <span>PRODUCTS CATALOG</span>
-                        </div>
-                      </th>
-                      <th className="py-4 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <Eye size={13} className="text-[#C2477A]" />
-                          <span>BRAND VISIBILITY</span>
-                        </div>
-                      </th>
-                      <th className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Edit size={13} className="text-[#C2477A]" />
-                          <span>ACTION</span>
-                        </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100/70">
-                    {paginatedBrands.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-12 px-6 text-center text-gray-400">
-                          <Store size={32} className="mx-auto mb-2 text-gray-300" />
-                          <p className="font-bold text-sm text-gray-600">No partner brands found</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {brands.length === 0
-                              ? 'No partner brands registered yet. Click "Add New Brand" to add your first brand.'
-                              : 'Try adjusting your search query or clear the filter.'}
-                          </p>
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedBrands.map((brand, index) => {
-                        const brandProductsCount = products.filter(p => p.brandName === brand.name).length;
-                        return (
-                          <tr
-                            key={brand.id}
-                            className={`transition-colors ${index % 2 === 1 ? 'bg-[#FFF2F5]/60 hover:bg-[#FFF5F8]' : 'bg-white hover:bg-[#FFF2F5]/30'
-                              }`}
-                          >
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl overflow-hidden border border-pink-100/80 shadow-2xs flex-shrink-0 bg-gray-50">
-                                  <img src={brand.logo} alt={brand.name} className="w-full h-full object-cover" />
-                                </div>
-                                <div>
-                                  <div className="font-bold text-xs text-gray-900">{brand.name}</div>
-                                  <div className="text-[10px] text-gray-400 font-medium">ID: {brand.id}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 whitespace-nowrap">
-                              <span className="text-[10px] font-semibold text-[#8C7078] bg-[#FFF5F8] px-2.5 py-1 rounded-full border border-pink-100/60">
-                                {brand.category}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4 whitespace-nowrap text-gray-700 font-semibold">
-                              <div className="flex items-center gap-1.5">
-                                <Package size={13} className="text-[#C2477A]" />
-                                <span>{brandProductsCount > 0 ? `${brandProductsCount} Items` : 'Catalog Active'}</span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                              <div className="inline-flex items-center gap-2.5">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleBrandStatus(brand.id)}
-                                  className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                    brand.enabled ? 'bg-emerald-500' : 'bg-gray-300'
-                                  }`}
-                                  title={brand.enabled ? 'Click to make Inactive in User App' : 'Click to make Active in User App'}
-                                >
-                                  <span
-                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
-                                      brand.enabled ? 'translate-x-5' : 'translate-x-0'
-                                    }`}
-                                  />
-                                </button>
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                                    brand.enabled
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                      : 'bg-gray-100 text-gray-500 border-gray-200'
-                                  }`}
-                                >
-                                  {brand.enabled ? 'Active' : 'Inactive'}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  onClick={() => handleOpenEditBrand(brand)}
-                                  className="px-3 py-1.5 rounded-xl text-[11px] font-extrabold border border-pink-200 bg-white hover:bg-[#FFF5F8] hover:border-[#C2477A] text-[#C2477A] flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer group active:scale-95"
-                                  title="Edit Brand details and visibility"
-                                >
-                                  <Edit size={12} className="group-hover:scale-110 transition-transform" />
-                                  <span>Edit</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Brand Table Pagination Controls */}
-              <div className="bg-[#FFF8FA] px-6 py-4 mt-3 rounded-2xl border border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-gray-600">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500 font-medium">Rows per page:</span>
-                    <select
-                      value={brandRecordsPerPage}
-                      onChange={(e) => {
-                        setBrandRecordsPerPage(Number(e.target.value));
-                        setBrandCurrentPage(1);
-                      }}
-                      className="px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white text-gray-800 font-bold outline-none cursor-pointer focus:border-[#C2477A]"
-                    >
-                      <option value={15}>15</option>
-                      <option value={20}>20</option>
-                      <option value={30}>30</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
-                  </div>
-
-                  <span className="text-gray-400">|</span>
-
-                  <span>
-                    Showing{' '}
-                    <strong className="text-gray-900 font-bold">
-                      {filteredBrands.length === 0 ? 0 : brandStartIndex + 1}
-                    </strong>
-                    {' '}-{' '}
-                    <strong className="text-gray-900 font-bold">
-                      {Math.min(brandStartIndex + brandRecordsPerPage, filteredBrands.length)}
-                    </strong>
-                    {' '}of{' '}
-                    <strong className="text-gray-900 font-bold">{filteredBrands.length}</strong>
-                  </span>
-                </div>
-
-                {/* Page Navigation Buttons */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setBrandCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={brandCurrentPage <= 1}
-                    className={`p-2 rounded-xl border flex items-center justify-center transition-all ${
-                      brandCurrentPage <= 1
-                        ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                        : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
-                    }`}
-                    title="Previous Page"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-
-                  {Array.from({ length: totalBrandPages }, (_, i) => i + 1)
-                    .filter((page) => {
-                      if (totalBrandPages <= 5) return true;
-                      return (
-                        page === 1 ||
-                        page === totalBrandPages ||
-                        Math.abs(page - effectiveBrandPage) <= 1
-                      );
-                    })
-                    .map((page, idx, arr) => {
-                      const showEllipsis = idx > 0 && page - arr[idx - 1] > 1;
-                      return (
-                        <React.Fragment key={page}>
-                          {showEllipsis && <span className="px-1 text-gray-400">...</span>}
-                          <button
-                            onClick={() => setBrandCurrentPage(page)}
-                            className={`min-w-[32px] h-8 px-2 rounded-xl font-bold text-xs transition-all ${
-                              effectiveBrandPage === page
-                                ? 'bg-[#C2477A] text-white shadow-xs'
-                                : 'bg-white border border-pink-200 text-gray-700 hover:bg-pink-50 cursor-pointer'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        </React.Fragment>
-                      );
-                    })}
-
-                  <button
-                    onClick={() => setBrandCurrentPage((p) => Math.min(totalBrandPages, p + 1))}
-                    disabled={brandCurrentPage >= totalBrandPages}
-                    className={`p-2 rounded-xl border flex items-center justify-center transition-all ${
-                      brandCurrentPage >= totalBrandPages
-                        ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                        : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
-                    }`}
-                    title="Next Page"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <React.Suspense fallback={<PageLoadingFallback />}>
+            <BrandManagementPage
+              brands={brands}
+              categories={categories}
+              products={products}
+              onAddBrand={addBrand}
+              onUpdateBrand={updateBrand}
+              onDeleteBrand={deleteBrand}
+              onToggleBrandStatus={toggleBrandStatus}
+              onBulkImportBrands={bulkImportBrands}
+            />
+          </React.Suspense>
         )}
+
 
         {/* 5B. ADD NEW PRODUCT DEDICATED FULL-PAGE ROUTE (/admin/products/new) */}
         {activeTab === 'products/new' && (
@@ -5812,6 +5263,35 @@ const AdminDashboard = () => {
                 </table>
               </div>
             </div>
+
+            {/* DANGER ZONE: PURGE ALL DATABASE DATA */}
+            <div className="lg:col-span-3 bg-rose-50/80 p-6 rounded-2xl border border-rose-200/90 shadow-xs mt-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-extrabold text-sm text-rose-700 uppercase flex items-center gap-2">
+                    <Trash2 size={16} /> Danger Zone: Factory Reset & Complete Database Wipe
+                  </h3>
+                  <p className="text-xs text-rose-600 mt-1 max-w-2xl leading-relaxed">
+                    Permanently purges all Users, Staff/Admin accounts, Orders, Products, Categories, Brands, Carts, and Verification Records from the Supabase database and clears all browser localStorage caches.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2.5 mt-3 text-[11px] font-semibold text-gray-700">
+                    <span className="px-2.5 py-1 rounded-lg bg-white border border-rose-200 shadow-2xs">Users: <b>{users.length}</b></span>
+                    <span className="px-2.5 py-1 rounded-lg bg-white border border-rose-200 shadow-2xs">Staff: <b>{employees.length}</b></span>
+                    <span className="px-2.5 py-1 rounded-lg bg-white border border-rose-200 shadow-2xs">Products: <b>{products.length}</b></span>
+                    <span className="px-2.5 py-1 rounded-lg bg-white border border-rose-200 shadow-2xs">Orders: <b>{orders.length}</b></span>
+                    <span className="px-2.5 py-1 rounded-lg bg-white border border-rose-200 shadow-2xs">Categories: <b>{categories.length}</b></span>
+                    <span className="px-2.5 py-1 rounded-lg bg-white border border-rose-200 shadow-2xs">Brands: <b>{brands.length}</b></span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPurgeConfirmModal(true)}
+                  className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors cursor-pointer shrink-0 flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={16} /> Wipe Complete Database
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -6677,339 +6157,7 @@ const AdminDashboard = () => {
         )}
 
 
-        {isAddBrandModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-md p-6 relative overflow-hidden animate-fade-in">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between pb-4 mb-5 border-b border-pink-100/70">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
-                    <BadgePlus size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase">
-                      Add Partner Brand
-                    </h3>
-                    <span className="text-[11px] text-gray-400 font-medium block">
-                      Upload brand details and logo image
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsAddBrandModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
 
-              {/* Modal Form */}
-              <form onSubmit={handleAddBrandSubmit} className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
-                    <Tag size={14} className="text-[#C2477A]" />
-                    <span>Brand Name</span>
-                    <span className="text-[#C2477A]">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Nykaa Cosmetics"
-                    value={newBrand.name}
-                    onChange={(e) => setNewBrand({ ...newBrand, name: e.target.value })}
-                    className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all placeholder:text-gray-400 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <ImageField
-                    label="Brand Logo"
-                    sublabel="Drag & drop, paste (Ctrl+V), browse Google, or enter URL"
-                    value={newBrand.logo}
-                    onChange={(newUrl) => setNewBrand(prev => ({ ...prev, logo: newUrl }))}
-                    folder="brands"
-                    filenamePrefix="brand"
-                    entityName={newBrand.name || 'Brand'}
-                    aspectRatio="circle"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-[#C2477A]" />
-                    <span>Category</span>
-                  </label>
-                  <SearchableSelect
-                    options={['Makeup', 'Hair Care', 'Skin Care', 'Lips & Eyes', 'Premium', 'Nails']}
-                    value={newBrand.category}
-                    onChange={(val) => setNewBrand({ ...newBrand, category: val })}
-                    placeholder="Select category..."
-                    searchPlaceholder="Search category..."
-                  />
-                </div>
-
-                {/* Brand Visibility Control */}
-                <div className="pt-2 p-3.5 rounded-2xl bg-[#FFF8FA] border border-pink-100 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-gray-900 font-extrabold text-xs flex items-center gap-1.5">
-                      <Eye size={15} className="text-[#C2477A]" />
-                      <span>Brand Visibility in User App</span>
-                    </label>
-                    <span
-                      className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border transition-all ${
-                        newBrand.enabled
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-gray-100 text-gray-500 border-gray-200'
-                      }`}
-                    >
-                      {newBrand.enabled ? '● Active in App' : '○ Inactive / Hidden'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {/* Active Option */}
-                    <button
-                      type="button"
-                      onClick={() => setNewBrand(prev => ({ ...prev, enabled: true }))}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        newBrand.enabled
-                          ? 'bg-emerald-50/90 border-emerald-300 ring-2 ring-emerald-400/30 shadow-2xs'
-                          : 'bg-white border-gray-200 hover:border-emerald-200 hover:bg-emerald-50/30'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-black flex items-center gap-1.5 ${newBrand.enabled ? 'text-emerald-800' : 'text-gray-600'}`}>
-                          <CheckCircle size={13} className={newBrand.enabled ? 'text-emerald-600' : 'text-gray-400'} />
-                          Active
-                        </span>
-                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${newBrand.enabled ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300'}`}>
-                          {newBrand.enabled && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-gray-500 font-medium mt-1 leading-snug">
-                        Visible to customers in the User App brand catalog and product lists.
-                      </p>
-                    </button>
-
-                    {/* Inactive Option */}
-                    <button
-                      type="button"
-                      onClick={() => setNewBrand(prev => ({ ...prev, enabled: false }))}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        !newBrand.enabled
-                          ? 'bg-rose-50/90 border-rose-300 ring-2 ring-rose-400/30 shadow-2xs'
-                          : 'bg-white border-gray-200 hover:border-rose-200 hover:bg-rose-50/30'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-black flex items-center gap-1.5 ${!newBrand.enabled ? 'text-rose-800' : 'text-gray-600'}`}>
-                          <EyeOff size={13} className={!newBrand.enabled ? 'text-rose-600' : 'text-gray-400'} />
-                          Inactive
-                        </span>
-                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${!newBrand.enabled ? 'border-rose-600 bg-rose-600' : 'border-gray-300'}`}>
-                          {!newBrand.enabled && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-gray-500 font-medium mt-1 leading-snug">
-                        Hidden immediately from customer view across the entire User App.
-                      </p>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddBrandModalOpen(false)}
-                    className="w-1/3 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-2/3 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
-                  >
-                    <BadgePlus size={16} /> Save Brand
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Edit Brand Popup Modal */}
-        {isEditBrandModalOpen && editingBrand && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-md p-6 relative overflow-hidden animate-fade-in">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between pb-4 mb-5 border-b border-pink-100/70">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
-                    <Edit size={18} />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase">
-                      Edit Partner Brand
-                    </h3>
-                    <span className="text-[11px] text-gray-400 font-medium block">
-                      ID: {editingBrand.id}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditBrandModalOpen(false);
-                    setEditingBrand(null);
-                  }}
-                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              {/* Modal Form */}
-              <form onSubmit={handleEditBrandSubmit} className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
-                    <Tag size={14} className="text-[#C2477A]" />
-                    <span>Brand Name</span>
-                    <span className="text-[#C2477A]">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Nykaa Cosmetics"
-                    value={editingBrand.name}
-                    onChange={(e) => setEditingBrand({ ...editingBrand, name: e.target.value })}
-                    className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all placeholder:text-gray-400 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <ImageField
-                    label="Brand Logo Image"
-                    sublabel="Drag & drop, paste (Ctrl+V), browse Google, or enter URL"
-                    value={editingBrand.logo}
-                    onChange={(newUrl) => setEditingBrand(prev => ({ ...prev, logo: newUrl }))}
-                    folder="brands"
-                    filenamePrefix="brand"
-                    entityName={editingBrand.name || 'Brand'}
-                    aspectRatio="circle"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-[#C2477A]" />
-                    <span>Category</span>
-                  </label>
-                  <select
-                    value={editingBrand.category}
-                    onChange={(e) => setEditingBrand({ ...editingBrand, category: e.target.value })}
-                    className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-medium cursor-pointer shadow-2xs text-gray-900 transition-all text-xs"
-                  >
-                    <option value="Makeup">Makeup</option>
-                    <option value="Hair Care">Hair Care</option>
-                    <option value="Skin Care">Skin Care</option>
-                    <option value="Lips & Eyes">Lips & Eyes</option>
-                    <option value="Premium">Premium</option>
-                    <option value="Nails">Nails</option>
-                  </select>
-                </div>
-
-                {/* Brand Visibility Control */}
-                <div className="pt-2 p-3.5 rounded-2xl bg-[#FFF8FA] border border-pink-100 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-gray-900 font-extrabold text-xs flex items-center gap-1.5">
-                      <Eye size={15} className="text-[#C2477A]" />
-                      <span>Brand Visibility in User App</span>
-                    </label>
-                    <span
-                      className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border transition-all ${
-                        editingBrand.enabled
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-gray-100 text-gray-500 border-gray-200'
-                      }`}
-                    >
-                      {editingBrand.enabled ? '● Active in App' : '○ Inactive / Hidden'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {/* Active Option */}
-                    <button
-                      type="button"
-                      onClick={() => setEditingBrand(prev => ({ ...prev, enabled: true }))}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        editingBrand.enabled
-                          ? 'bg-emerald-50/90 border-emerald-300 ring-2 ring-emerald-400/30 shadow-2xs'
-                          : 'bg-white border-gray-200 hover:border-emerald-200 hover:bg-emerald-50/30'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-black flex items-center gap-1.5 ${editingBrand.enabled ? 'text-emerald-800' : 'text-gray-600'}`}>
-                          <CheckCircle size={13} className={editingBrand.enabled ? 'text-emerald-600' : 'text-gray-400'} />
-                          Active
-                        </span>
-                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${editingBrand.enabled ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300'}`}>
-                          {editingBrand.enabled && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-gray-500 font-medium mt-1 leading-snug">
-                        Visible to customers in the User App brand catalog and product lists.
-                      </p>
-                    </button>
-
-                    {/* Inactive Option */}
-                    <button
-                      type="button"
-                      onClick={() => setEditingBrand(prev => ({ ...prev, enabled: false }))}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        !editingBrand.enabled
-                          ? 'bg-rose-50/90 border-rose-300 ring-2 ring-rose-400/30 shadow-2xs'
-                          : 'bg-white border-gray-200 hover:border-rose-200 hover:bg-rose-50/30'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-black flex items-center gap-1.5 ${!editingBrand.enabled ? 'text-rose-800' : 'text-gray-600'}`}>
-                          <EyeOff size={13} className={!editingBrand.enabled ? 'text-rose-600' : 'text-gray-400'} />
-                          Inactive
-                        </span>
-                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${!editingBrand.enabled ? 'border-rose-600 bg-rose-600' : 'border-gray-300'}`}>
-                          {!editingBrand.enabled && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-gray-500 font-medium mt-1 leading-snug">
-                        Hidden immediately from customer view across the entire User App.
-                      </p>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditBrandModalOpen(false);
-                      setEditingBrand(null);
-                    }}
-                    className="w-1/3 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-all text-xs cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-2/3 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
-                  >
-                    <Save size={15} /> Save Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         {/* Add Category Popup Modal */}
         {isAddCategoryModalOpen && (
@@ -7167,6 +6315,76 @@ const AdminDashboard = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Complete Database Purge Confirmation Modal */}
+        {showPurgeConfirmModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl border border-rose-200 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-fade-in">
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-rose-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold shrink-0">
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-gray-900">Confirm Complete Database Wipe</h3>
+                    <span className="text-[11px] text-rose-600 font-semibold block">Irreversible Factory Reset & Purge</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={isPurgingDatabase}
+                  onClick={() => setShowPurgeConfirmModal(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="space-y-3 text-xs text-gray-600 leading-relaxed mb-6">
+                <p className="font-semibold text-rose-700 bg-rose-50 p-3 rounded-xl border border-rose-100">
+                  ⚠️ This action will permanently delete all records from users, staff, admins, products, orders, categories, brands, carts, and verification documents across both Supabase and local browser caches.
+                </p>
+                <p>
+                  Root Administrator (<code className="font-mono text-gray-800">admin@salbeau.com</code>) will retain access to the Admin Panel so you can configure real data from a clean slate.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isPurgingDatabase}
+                  onClick={() => setShowPurgeConfirmModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isPurgingDatabase}
+                  onClick={async () => {
+                    setIsPurgingDatabase(true);
+                    try {
+                      if (purgeCompleteDatabaseAndCaches) {
+                        await purgeCompleteDatabaseAndCaches();
+                      }
+                      setShowPurgeConfirmModal(false);
+                      setDashboardToast({ type: 'success', message: 'Complete database and all local caches successfully wiped clean!' });
+                    } catch (err) {
+                      setDashboardToast({ type: 'error', message: 'Purge note: ' + err.message });
+                    } finally {
+                      setIsPurgingDatabase(false);
+                    }
+                  }}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+                >
+                  {isPurgingDatabase ? (
+                    <><Loader2 size={15} className="animate-spin" /> Purging Everything…</>
+                  ) : (
+                    <><Trash2 size={15} /> Yes, Permanently Delete All Data</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -9045,6 +8263,7 @@ const AdminDashboard = () => {
             </div>
           );
         })()}
+        </React.Suspense>
 
         {/* Floating Success Toast for Status Updates */}
         {dashboardToast && (

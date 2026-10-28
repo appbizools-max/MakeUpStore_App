@@ -40,6 +40,7 @@ import {
 import { ColumnManagerModal } from './ColumnManagerModal';
 import { lookupBarcodeData, detectBarcodeFormat } from '../../services/barcodeLookupService';
 import { extractColorsFromImage, matchBeautyShade, BEAUTY_SHADE_DICTIONARY } from '../../services/aiColorService';
+import { uploadOptimizedImage } from '../../services/imageStorageService';
 import {
   generateProductDescription,
   generateProductHighlights,
@@ -62,9 +63,11 @@ import {
 } from '../../services/productEngineService';
 import {
   generateAndDownloadTemplate,
+  exportStagedProductsToExcel,
   downloadFailedRowsExcel,
   downloadImportReportExcel
 } from '../../utils/excelTemplateGenerator';
+import { matchColumnHeader, COLUMN_SYNONYMS, normalizeRow } from '../../services/excelProcessorService';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../config/supabase';
 
@@ -712,32 +715,96 @@ export const ShadeNameCell = ({
 };
 
 // ============================================================================
-// CLEAN EMPTY PRODUCT ROW FACTORY (Guaranteed 100% empty initial fields)
+// CANONICAL BULK ENTRY COLUMNS CONFIGURATION FOR COLUMN MANAGER (1:1 WITH DOWNLOAD TEMPLATE)
 // ============================================================================
-export const createBlankProductRow = (customId = null) => ({
+export const DEFAULT_COLUMN_CONFIG = [
+  // Controls & Anchors
+  { key: 'index', label: '#', canonicalCol: null, group: 'Controls', visible: true, mandatory: true },
+  { key: 'select', label: 'Select Checkbox', canonicalCol: null, group: 'Controls', visible: true, mandatory: true },
+
+  // Group 1: Product Master Identification (Matching Template Columns 1-10)
+  { key: 'barcode', label: 'Barcode [Col 1]', canonicalCol: 1, canonicalName: 'Barcode', group: 'Product Master', visible: true, mandatory: false },
+  { key: 'images', label: 'Image [Col 2]', canonicalCol: 2, canonicalName: 'Image', group: 'Product Master', visible: true, mandatory: false },
+  { key: 'parentSku', label: 'Parent_SKU [Col 3]', canonicalCol: 3, canonicalName: 'Parent_SKU', group: 'Product Master', visible: true, mandatory: false },
+  { key: 'name', label: 'Product_Name [Col 4]', canonicalCol: 4, canonicalName: 'Product_Name', group: 'Product Master', visible: true, mandatory: true },
+  { key: 'productType', label: 'Product_Type [Col 5]', canonicalCol: 5, canonicalName: 'Product_Type', group: 'Product Master', visible: true, mandatory: false },
+  { key: 'category', label: 'Category [Col 6]', canonicalCol: 6, canonicalName: 'Category', group: 'Product Master', visible: true, mandatory: true },
+  { key: 'subcategory', label: 'Subcategory [Col 7]', canonicalCol: 7, canonicalName: 'Subcategory', group: 'Product Master', visible: true, mandatory: false },
+  { key: 'brand', label: 'Brand [Col 8]', canonicalCol: 8, canonicalName: 'Brand', group: 'Product Master', visible: true, mandatory: true },
+  { key: 'description', label: 'Product_Description [Col 9]', canonicalCol: 9, canonicalName: 'Product_Description', group: 'Product Master', visible: true, mandatory: false },
+  { key: 'highlights', label: 'Highlights [Col 10]', canonicalCol: 10, canonicalName: 'Highlights', group: 'Product Master', visible: true, mandatory: false },
+
+  // Group 2: Variant Details & Swatches (Matching Template Columns 11-16)
+  { key: 'variantSku', label: 'Variant_SKU [Col 11]', canonicalCol: 11, canonicalName: 'Variant_SKU', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'variantName', label: 'Variant_Name [Col 12]', canonicalCol: 12, canonicalName: 'Variant_Name', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'shade', label: 'Shade_Name [Col 13]', canonicalCol: 13, canonicalName: 'Shade_Name', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'shadeCode', label: 'Shade_Code [Col 14]', canonicalCol: 14, canonicalName: 'Shade_Code', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'swatch', label: 'HEX Code & Swatch', canonicalCol: null, canonicalName: 'HEX_Swatch', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'size', label: 'Size_or_Weight [Col 15]', canonicalCol: 15, canonicalName: 'Size_or_Weight', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'variantBarcode', label: 'Variant_Barcode [Col 16]', canonicalCol: 16, canonicalName: 'Variant_Barcode', group: 'Variant Details', visible: true, mandatory: false },
+
+  // Group 3: Four-Tier Role-Based Pricing (Matching Template Columns 17-21)
+  { key: 'mrp', label: 'MRP [Col 17]', canonicalCol: 17, canonicalName: 'MRP', group: 'Role Pricing', visible: true, mandatory: true },
+  { key: 'generalPrice', label: 'General_User_Price [Col 18]', canonicalCol: 18, canonicalName: 'General_User_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'salonPrice', label: 'Salon_Price [Col 19]', canonicalCol: 19, canonicalName: 'Salon_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'artistPrice', label: 'Makeup_Artist_Price [Col 20]', canonicalCol: 20, canonicalName: 'Makeup_Artist_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'beauticianPrice', label: 'Beautician_Price [Col 21]', canonicalCol: 21, canonicalName: 'Beautician_Price', group: 'Role Pricing', visible: true, mandatory: false },
+
+  // Group 4: Category & Cosmetic Attributes (Matching Template Columns 22-24)
+  { key: 'finish', label: 'Finish [Col 22]', canonicalCol: 22, canonicalName: 'Finish', group: 'Attributes', visible: true, mandatory: false },
+  { key: 'skinType', label: 'Skin_Type [Col 23]', canonicalCol: 23, canonicalName: 'Skin_Type', group: 'Attributes', visible: true, mandatory: false },
+  { key: 'coverage', label: 'Coverage [Col 24]', canonicalCol: 24, canonicalName: 'Coverage', group: 'Attributes', visible: true, mandatory: false },
+
+  // Group 5: Publication & Controls (Matching Template Columns 25-27)
+  { key: 'productImageUrl', label: 'Product_Image_URL [Col 25]', canonicalCol: 25, canonicalName: 'Product_Image_URL', group: 'Publication', visible: true, mandatory: false },
+  { key: 'productActive', label: 'Product_Active [Col 26]', canonicalCol: 26, canonicalName: 'Product_Active', group: 'Publication', visible: true, mandatory: false },
+  { key: 'variantActive', label: 'Variant_Active [Col 27]', canonicalCol: 27, canonicalName: 'Variant_Active', group: 'Publication', visible: true, mandatory: false },
+  { key: 'status', label: 'Workflow Status', canonicalCol: null, canonicalName: 'Status', group: 'Publication', visible: true, mandatory: false },
+  { key: 'actions', label: 'Actions', canonicalCol: null, canonicalName: 'Actions', group: 'Controls', visible: true, mandatory: true }
+];
+
+// CLEAN EMPTY PRODUCT ROW FACTORY (Guaranteed 100% empty initial fields with full canonical support)
+// ============================================================================
+export const createBlankProductRow = (customId = null, parent = null) => ({
   _id: customId || ('row_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)),
   barcode: '',
   barcodeStatus: 'manual',
-  name: '',
-  category: '',
-  subcategory: '',
-  brand: '',
-  variantType: '',
+  parentSku: parent ? (parent.parentSku || parent.sku || '') : '',
+  name: parent ? (parent.name || '') : '',
+  productType: parent ? (parent.productType || '') : '',
+  category: parent ? (parent.category || '') : '',
+  subcategory: parent ? (parent.subcategory || '') : '',
+  brand: parent ? (parent.brand || '') : '',
+  variantType: 'Shade',
+  variantSku: '',
+  variantName: '',
   shade: '',
+  shadeCode: '',
   hexColor: '',
   rgb: '',
   size: '',
-  gst: '',
-  netQty: '',
-  mrp: '',
-  generalDiscount: '',
-  salonDiscount: '',
-  artistDiscount: '',
-  beauticianDiscount: '',
+  variantBarcode: '',
+  gst: '18',
+  netQty: '1 N',
+  mrp: parent ? (parent.mrp || '') : '',
+  generalDiscount: parent ? (parent.generalDiscount || '') : '',
+  salonDiscount: parent ? (parent.salonDiscount || '') : '',
+  artistDiscount: parent ? (parent.artistDiscount || '') : '',
+  beauticianDiscount: parent ? (parent.beauticianDiscount || '') : '',
+  generalPrice: '',
+  salonPrice: '',
+  artistPrice: '',
+  beauticianPrice: '',
+  finish: parent ? (parent.finish || '') : '',
+  skinType: parent ? (parent.skinType || '') : '',
+  coverage: parent ? (parent.coverage || '') : '',
   images: [],
-  description: '',
-  highlights: [],
-  attributes: {},
+  productImageUrl: '',
+  productActive: true,
+  variantActive: true,
+  description: parent ? (parent.description || '') : '',
+  highlights: parent ? (parent.highlights || []) : [],
+  attributes: parent ? { ...(parent.attributes || {}) } : {},
   quantityTiers: {
     general: [],
     salon: [],
@@ -745,14 +812,30 @@ export const createBlankProductRow = (customId = null) => ({
     beautician: []
   },
   hasMultipleShades: false,
-  isParent: false,
-  parentId: null,
+  isParent: !parent,
+  parentId: parent ? parent._id : null,
   status: 'draft',
   _adminVerified: false,
   _manualShadeEdited: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString()
 });
+
+// Helper to calculate discount percentage from Rupee selling price
+export const calculateDiscountFromPrice = (mrp, price) => {
+  const numMrp = Number(mrp) || 0;
+  const numPrice = Number(price) || 0;
+  if (numMrp <= 0 || numPrice >= numMrp) return 0;
+  return Math.round(((numMrp - numPrice) / numMrp) * 100);
+};
+
+// Helper to calculate Rupee selling price from discount percentage
+export const calculatePriceFromDiscount = (mrp, discountPct) => {
+  const numMrp = Number(mrp) || 0;
+  const numPct = Number(discountPct) || 0;
+  if (numMrp <= 0) return 0;
+  return Math.round(numMrp * (1 - numPct / 100));
+};
 
 // Helper to calculate role selling prices from MRP and discounts
 export const calculateSellingPrices = (mrp, genPct, salonPct, artistPct, beauticianPct) => {
@@ -806,6 +889,65 @@ export const BulkProductEntryModal = ({
 
   // Real-time Chunked Submission Progress State
   const [submissionProgress, setSubmissionProgress] = useState(null);
+
+  // Table Column Manager Modal State & Column Preferences
+  const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
+  const [columnConfig, setColumnConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('salbeau_bulk_column_prefs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return DEFAULT_COLUMN_CONFIG.map(def => {
+            const match = parsed.find(p => p.key === def.key);
+            return match ? { ...def, visible: def.mandatory ? true : match.visible } : def;
+          });
+        }
+      }
+    } catch (e) {}
+    return DEFAULT_COLUMN_CONFIG;
+  });
+
+  const isColVisible = useCallback((key) => {
+    const col = columnConfig.find(c => c.key === key);
+    return col ? col.visible : true;
+  }, [columnConfig]);
+
+  const handleToggleColumn = (key) => {
+    setColumnConfig(prev => {
+      const next = prev.map(c => c.key === key && !c.mandatory ? { ...c, visible: !c.visible } : c);
+      try {
+        localStorage.setItem('salbeau_bulk_column_prefs', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const handleResetColumns = () => {
+    setColumnConfig(DEFAULT_COLUMN_CONFIG);
+    try {
+      localStorage.removeItem('salbeau_bulk_column_prefs');
+    } catch (e) {}
+  };
+
+  // Draft Recovery State on initial workbench mount
+  const [draftInfo, setDraftInfo] = useState(null);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('salbeau_bulk_draft_rows_v9');
+      const savedAt = localStorage.getItem('salbeau_bulk_draft_saved_at');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setDraftInfo({
+            count: parsed.length,
+            savedAt: savedAt ? new Date(savedAt).toLocaleString('en-IN') : 'Saved Session',
+            data: parsed
+          });
+        }
+      }
+    } catch (e) {}
+  }, []);
 
   // Excel Column Mapping Dialog State
   const [columnMappingModal, setColumnMappingModal] = useState({
@@ -1224,10 +1366,21 @@ export const BulkProductEntryModal = ({
           }
         }
 
-        if (brand && availableBrands.length > 0) {
-          const matchedBrand = findNormalizedMatch(availableBrands, brand);
-          if (!matchedBrand) {
-            warnings.push(`Brand "${brand}" is new (will be added to Master Brands upon import)`);
+        if (brand) {
+          // Match by Brand Number (e.g. BR001), Brand Code (e.g. AGA-001), or normalized Brand Name
+          const brandClean = brand.trim();
+          const matchedBrandObj = (brands || []).find(b => {
+            const bNum = (b.brandNumber || b.brand_number || '').trim().toUpperCase();
+            const bCode = (b.brandCode || b.brand_code || '').trim().toUpperCase();
+            const bName = (b.name || '').trim().toLowerCase();
+            const inputUpper = brandClean.toUpperCase();
+            const inputLower = brandClean.toLowerCase();
+            return bNum === inputUpper || bCode === inputUpper || bName === inputLower;
+          });
+
+          if (!matchedBrandObj && !availableBrands.some(b => normalizeText(b) === normalizeText(brandClean))) {
+            errors.push(`Unknown brand "${brand}". Please select a verified brand from Brand Master.`);
+            fieldErrors.brand = 'Brand not in Brand Master';
           }
         }
 
@@ -1400,26 +1553,33 @@ export const BulkProductEntryModal = ({
     return classifyDataset(rows, refCache);
   }, [rows, refCache]);
 
-  // Logical field order for seamless Tab/Enter auto-advance navigation
+  // Logical field order for seamless Tab/Enter auto-advance navigation matching 27-column template sequence
   const FIELD_ORDER = useMemo(() => [
     'barcode',
+    'parentSku',
     'name',
+    'productType',
     'category',
     'subcategory',
     'brand',
-    'variantType',
-    'shade',
-    'hexColor',
     'description',
     'highlights',
+    'variantSku',
+    'variantName',
+    'shade',
+    'shadeCode',
+    'hexColor',
     'size',
-    'gst',
-    'netQty',
+    'variantBarcode',
     'mrp',
-    'generalDiscount',
-    'salonDiscount',
-    'artistDiscount',
-    'beauticianDiscount'
+    'generalPrice',
+    'salonPrice',
+    'artistPrice',
+    'beauticianPrice',
+    'finish',
+    'skinType',
+    'coverage',
+    'productImageUrl'
   ], []);
 
   // Focus a specific cell by field name and row ID
@@ -1516,7 +1676,7 @@ export const BulkProductEntryModal = ({
     return row;
   }, []);
 
-  // Cell change handler
+  // Cell change handler with bidirectional Rupee price and discount % synchronization
   const handleCellChange = (rowId, field, value) => {
     setRows(prev => prev.map(r => {
       if (r._id !== rowId) return r;
@@ -1528,6 +1688,55 @@ export const BulkProductEntryModal = ({
 
       if (field === 'highlights') {
         updated._manualHighlightsEdited = true;
+      }
+
+      if (field === 'shade') {
+        if (!updated.variantName || updated.variantName === r.shade) {
+          updated.variantName = value;
+        }
+      }
+
+      // Bi-directional MRP & Rupee price / Discount % synchronization
+      if (field === 'mrp') {
+        const numMrp = Number(value) || 0;
+        if (numMrp > 0) {
+          if (updated.generalDiscount !== '') {
+            updated.generalPrice = calculatePriceFromDiscount(numMrp, updated.generalDiscount);
+          }
+          if (updated.salonDiscount !== '') {
+            updated.salonPrice = calculatePriceFromDiscount(numMrp, updated.salonDiscount);
+          }
+          if (updated.artistDiscount !== '') {
+            updated.artistPrice = calculatePriceFromDiscount(numMrp, updated.artistDiscount);
+          }
+          if (updated.beauticianDiscount !== '') {
+            updated.beauticianPrice = calculatePriceFromDiscount(numMrp, updated.beauticianDiscount);
+          }
+        }
+      }
+
+      if (field === 'generalPrice') {
+        updated.generalDiscount = calculateDiscountFromPrice(updated.mrp, value);
+      } else if (field === 'generalDiscount') {
+        updated.generalPrice = calculatePriceFromDiscount(updated.mrp, value);
+      }
+
+      if (field === 'salonPrice') {
+        updated.salonDiscount = calculateDiscountFromPrice(updated.mrp, value);
+      } else if (field === 'salonDiscount') {
+        updated.salonPrice = calculatePriceFromDiscount(updated.mrp, value);
+      }
+
+      if (field === 'artistPrice') {
+        updated.artistDiscount = calculateDiscountFromPrice(updated.mrp, value);
+      } else if (field === 'artistDiscount') {
+        updated.artistPrice = calculatePriceFromDiscount(updated.mrp, value);
+      }
+
+      if (field === 'beauticianPrice') {
+        updated.beauticianDiscount = calculateDiscountFromPrice(updated.mrp, value);
+      } else if (field === 'beauticianDiscount') {
+        updated.beauticianPrice = calculatePriceFromDiscount(updated.mrp, value);
       }
 
       if (field === 'category') {
@@ -1922,24 +2131,58 @@ export const BulkProductEntryModal = ({
     setBulkNotice({ type: 'success', text: `Added ${count} clean empty product rows.` });
   };
 
-  // Add Child Product / Variant under parent — 100% EMPTY without copying or hardcoding
+  // Add Child Product / Variant under parent with explicit Parent SKU and Variant SKU linkages
   const handleAddChildRow = (parentRow) => {
     if (!parentRow) return;
     const newId = 'row_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    const resolvedParentSku = parentRow.parentSku || parentRow.sku || `SKU-${Date.now().toString(36).slice(-5).toUpperCase()}`;
+
+    // Count existing sibling variants sharing this parentSku
+    const siblingCount = rows.filter(r => (r.parentSku && r.parentSku === resolvedParentSku) || r.parentId === parentRow._id).length;
+    const nextVariantNumber = siblingCount + 1;
+    const nextCode = String(nextVariantNumber).padStart(2, '0');
+
     const childRow = {
-      ...createBlankProductRow(newId),
+      ...createBlankProductRow(newId, parentRow),
+      parentSku: resolvedParentSku,
+      name: parentRow.name || '',
+      productType: parentRow.productType || '',
+      brand: parentRow.brand || '',
+      category: parentRow.category || '',
+      subcategory: parentRow.subcategory || '',
+      mrp: parentRow.mrp || '',
+      generalDiscount: parentRow.generalDiscount || '',
+      salonDiscount: parentRow.salonDiscount || '',
+      artistDiscount: parentRow.artistDiscount || '',
+      beauticianDiscount: parentRow.beauticianDiscount || '',
+      generalPrice: parentRow.generalPrice || '',
+      salonPrice: parentRow.salonPrice || '',
+      artistPrice: parentRow.artistPrice || '',
+      beauticianPrice: parentRow.beauticianPrice || '',
+      variantSku: `${resolvedParentSku}-V${nextCode}`,
+      shadeCode: nextCode,
       parentId: parentRow._id,
-      isParent: false
+      isParent: false,
+      hasMultipleShades: true
     };
 
     const parentIdx = rows.findIndex(r => r._id === parentRow._id);
     setRows(prev => {
       const next = [...prev];
+      if (parentIdx !== -1) {
+        // Ensure parent also has resolvedParentSku and is marked as parent
+        next[parentIdx] = {
+          ...next[parentIdx],
+          parentSku: resolvedParentSku,
+          isParent: true,
+          hasMultipleShades: true
+        };
+      }
       next.splice(parentIdx + 1, 0, childRow);
       return next;
     });
     setExpandedRowId(newId);
-    setBulkNotice({ type: 'success', text: `Created new child row` });
+    setBulkNotice({ type: 'success', text: `Created new variant (${childRow.variantSku}) under "${parentRow.name || resolvedParentSku}"` });
   };
 
   // Duplicate Row
@@ -2041,7 +2284,7 @@ export const BulkProductEntryModal = ({
     setIsBulkActionsOpen(false);
   };
 
-  // Export Excel (.xlsx) with actual displayed/selected product data
+  // Export Excel (.xlsx) with actual displayed/selected product data using Canonical 27 Columns
   const handleExportExcel = () => {
     try {
       const targetRows = selectedRowIds.size > 0
@@ -2053,34 +2296,15 @@ export const BulkProductEntryModal = ({
         return;
       }
 
-      const exportData = targetRows.map(r => ({
-        'Barcode': r.barcode || '',
-        'Product Name': r.name || r.product_name || '',
-        'Brand': r.brand || r.brand_name || '',
-        'Category': r.category || '',
-        'Subcategory': r.subcategory || r.subcategory_id || '',
-        'Variant Type': r.variantType || r.variant_type || 'Shade',
-        'Shade Name': r.shade || r.shade_name || '',
-        'HEX Code': r.hexColor || r.hex_color || '#C2182B',
-        'RGB': hexToRgbString(r.hexColor || r.hex_color || '#C2182B'),
-        'Description': r.description || '',
-        'Highlights': Array.isArray(r.highlights) ? r.highlights.join('; ') : (r.highlights || ''),
-        'MRP': Number(r.mrp || 0),
-        'General User Discount %': Number(r.generalDiscount || r.quantityTiers?.roleDiscounts?.general || 5),
-        'Salon Owner Discount %': Number(r.salonDiscount || r.quantityTiers?.roleDiscounts?.salon || 10),
-        'Makeup Artist Discount %': Number(r.artistDiscount || r.quantityTiers?.roleDiscounts?.artist || 12),
-        'Beautician Discount %': Number(r.beauticianDiscount || r.quantityTiers?.roleDiscounts?.beautician || 15),
-        'Quantity Discount Tiers': typeof r.quantityTiers === 'object' ? JSON.stringify(r.quantityTiers) : (r.quantity_tiers || ''),
-        'Status': (r.status || 'active').toUpperCase(),
-        'Created At': r.created_at || new Date().toISOString(),
-        'Updated At': r.updated_at || new Date().toISOString()
-      }));
+      const todayStr = new Date().toISOString().slice(0, 10);
+      exportStagedProductsToExcel(targetRows, {
+        filename: `Salbeau_Staged_Products_${todayStr}.xlsx`
+      });
 
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
-      XLSX.writeFile(workbook, `salbeau_catalog_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
-      setBulkNotice({ type: 'success', text: `Exported ${exportData.length.toLocaleString()} product(s) to Excel successfully.` });
+      setBulkNotice({
+        type: 'success',
+        text: `Exported ${targetRows.length.toLocaleString()} product(s) with full parent-variant SKUs, shades, and 4-tier pricing.`
+      });
     } catch (e) {
       alert('Error exporting Excel: ' + e.message);
     }
@@ -2175,7 +2399,47 @@ export const BulkProductEntryModal = ({
     });
   };
 
-  // Process rows with given column mapping
+  // Automatic Batch Image Optimization for Staged Excel Product Rows
+  const processBatchImageOptimization = async (stagedRows) => {
+    const rowsWithImages = stagedRows.filter(r => (r.images && r.images.length > 0) || r.productImageUrl || r.variantImageUrl);
+    if (rowsWithImages.length === 0) return;
+
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < rowsWithImages.length; i += BATCH_SIZE) {
+      const chunk = rowsWithImages.slice(i, i + BATCH_SIZE);
+      await Promise.all(chunk.map(async (row) => {
+        const rawUrl = (row.images && row.images[0]) || row.productImageUrl || row.variantImageUrl;
+        if (!rawUrl || typeof rawUrl !== 'string') return;
+        if (rawUrl.endsWith('.webp') && rawUrl.includes('supabase')) return;
+
+        try {
+          const uploadRes = await uploadOptimizedImage(rawUrl, 'PRODUCT', {
+            folder: 'products',
+            filenamePrefix: (row.variantSku || row.parentSku || 'prod').toLowerCase(),
+            generateVariants: true,
+            downloadRemote: true
+          });
+
+          if (uploadRes?.url) {
+            setRows(prev => prev.map(r => {
+              if (r._id !== row._id) return r;
+              return {
+                ...r,
+                images: [uploadRes.url, ...(r.images || []).slice(1)],
+                image: uploadRes.url,
+                productImageUrl: uploadRes.url,
+                responsiveVariants: uploadRes.variants
+              };
+            }));
+          }
+        } catch (imgErr) {
+          console.warn(`Excel image batch optimization notice for ${row.name || row._id}:`, imgErr);
+        }
+      }));
+    }
+  };
+
+  // Process rows with given column mapping and establish parent-variant relationships
   const executeParsedExcelRows = (worksheet, mapping) => {
     try {
       const rawObjects = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
@@ -2185,39 +2449,98 @@ export const BulkProductEntryModal = ({
       }
 
       const imported = rawObjects.map((item, idx) => {
-        const remapped = {};
-        for (const [excelHeader, fieldKey] of Object.entries(mapping)) {
-          if (fieldKey && fieldKey !== '_ignore' && item[excelHeader] !== undefined) {
-            remapped[fieldKey] = item[excelHeader];
+        const norm = normalizeRow(item, idx, mapping, existingProducts);
+        const numMrp = Number(norm.mrp) || 0;
+        const genP = Number(norm.generalPrice) || numMrp;
+        const salonP = Number(norm.salonPrice) || Math.round(genP * 0.7);
+        const artistP = Number(norm.artistPrice) || Math.round(genP * 0.65);
+        const beauticianP = Number(norm.beauticianPrice) || Math.round(genP * 0.68);
+
+        return {
+          _id: 'row_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substring(2, 6),
+          barcode: norm.barcode || '',
+          barcodeStatus: (norm.variantBarcode || norm.barcode) ? 'detected' : 'manual',
+          parentSku: norm.parentSku || '',
+          name: norm.productName || '',
+          productType: norm.productType || '',
+          category: norm.category || '',
+          subcategory: norm.subcategory || '',
+          brand: norm.brand || '',
+          description: norm.productDescription || '',
+          highlights: norm.highlights || [],
+          variantSku: norm.variantSku || '',
+          variantName: norm.variantName || norm.shadeName || '',
+          variantType: norm.shadeName ? 'Shade' : (norm.productType || 'Standard'),
+          shade: norm.shadeName || '',
+          shadeCode: norm.shadeCode || '',
+          hexColor: norm.hexColor || '#CE4270',
+          rgb: hexToRgbString(norm.hexColor || '#CE4270'),
+          size: norm.sizeOrWeight || '',
+          variantBarcode: norm.variantBarcode || norm.barcode || '',
+          gst: '18',
+          netQty: '1 N',
+          mrp: numMrp || '',
+          generalDiscount: numMrp > 0 ? calculateDiscountFromPrice(numMrp, genP) : '',
+          salonDiscount: numMrp > 0 ? calculateDiscountFromPrice(numMrp, salonP) : '',
+          artistDiscount: numMrp > 0 ? calculateDiscountFromPrice(numMrp, artistP) : '',
+          beauticianDiscount: numMrp > 0 ? calculateDiscountFromPrice(numMrp, beauticianP) : '',
+          generalPrice: genP || '',
+          salonPrice: salonP || '',
+          artistPrice: artistP || '',
+          beauticianPrice: beauticianP || '',
+          finish: norm.finish || '',
+          skinType: norm.skinType || '',
+          coverage: norm.coverage || '',
+          images: [norm.variantImageUrl || norm.productImageUrl].filter(Boolean),
+          productImageUrl: norm.productImageUrl || '',
+          productActive: norm.productActive !== false,
+          variantActive: norm.variantActive !== false,
+          attributes: norm.attributes || {},
+          quantityTiers: { general: [], salon: [], artist: [], beautician: [] },
+          hasMultipleShades: Boolean(norm.shadeName),
+          isParent: false,
+          parentId: null,
+          status: norm._valid ? 'ready' : 'draft',
+          _adminVerified: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      });
+
+      // Post-process to link child variants to parents sharing the same parentSku
+      const skuGroups = {};
+      imported.forEach(r => {
+        if (r.parentSku) {
+          if (!skuGroups[r.parentSku]) skuGroups[r.parentSku] = [];
+          skuGroups[r.parentSku].push(r);
+        }
+      });
+
+      Object.values(skuGroups).forEach(group => {
+        if (group.length > 1) {
+          const parent = group[0];
+          parent.isParent = true;
+          parent.hasMultipleShades = true;
+          for (let i = 1; i < group.length; i++) {
+            group[i].parentId = parent._id;
+            group[i].isParent = false;
           }
         }
-        // Fallback for unmapped standard keys
-        for (const key of Object.keys(item)) {
-          if (!remapped[key]) remapped[key] = item[key];
-        }
-
-        const normalized = normalizeProduct(remapped, refCache);
-        return {
-          ...normalized,
-          _id: 'row_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substring(2, 6),
-          barcodeStatus: normalized.barcode ? 'detected' : 'manual',
-          _adminVerified: false,
-          status: 'ready'
-        };
       });
 
       setRows(prev => {
         const cleanPrev = prev.filter(r => (r.name || '').trim() || (r.barcode || '').trim() || (r.category || '').trim());
         return [...cleanPrev, ...imported];
       });
-      const classified = classifyDataset(imported, refCache);
+
+      const uniqueParents = Object.keys(skuGroups).length;
       setBulkNotice({
         type: 'success',
-        text: `Successfully staged ${imported.length.toLocaleString()} product(s) from Excel (${classified.summary.newCount.toLocaleString()} New, ${classified.summary.existingCount.toLocaleString()} Existing, ${classified.summary.invalidCount.toLocaleString()} Invalid).`
+        text: `Successfully staged ${imported.length.toLocaleString()} product row(s) from Excel (${uniqueParents} parent product groups, ${imported.length} total variants).`
       });
 
-      // Task 9: Trigger controlled batch barcode lookup if any rows have barcodes needing lookup
       processBatchBarcodeLookups(imported);
+      processBatchImageOptimization(imported);
     } catch (err) {
       setBulkNotice({ type: 'error', text: `Failed to process Excel data: ${err.message}` });
     }
@@ -2240,7 +2563,8 @@ export const BulkProductEntryModal = ({
       try {
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
+        // Prioritize 'Product_Import' sheet if present
+        let sheetName = workbook.SheetNames.find(s => s.toLowerCase() === 'product_import') || workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
 
         const rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
@@ -2249,16 +2573,29 @@ export const BulkProductEntryModal = ({
           return;
         }
 
-        const headers = (rawMatrix[0] || []).map(h => String(h || '').trim()).filter(Boolean);
-        const detectedMapping = mapExcelHeaders(headers);
-        const mappedFields = Object.values(detectedMapping);
-        const hasEssentialNameOrBarcode = mappedFields.includes('name') || mappedFields.includes('barcode');
+        // Find header row (first row with >= 2 non-empty items)
+        let headerRowIdx = 0;
+        for (let i = 0; i < Math.min(5, rawMatrix.length); i++) {
+          const nonEmpties = (rawMatrix[i] || []).filter(c => String(c).trim().length > 0);
+          if (nonEmpties.length >= 2) {
+            headerRowIdx = i;
+            break;
+          }
+        }
 
-        // If headers map cleanly to at least 3 fields including name/barcode, auto-import directly
-        if (hasEssentialNameOrBarcode && mappedFields.length >= 3) {
+        const headers = (rawMatrix[headerRowIdx] || []).map(h => String(h || '').trim()).filter(Boolean);
+        const detectedMapping = {};
+        headers.forEach(h => {
+          const match = matchColumnHeader(h);
+          if (match) detectedMapping[h] = match;
+        });
+
+        const mappedFields = Object.values(detectedMapping);
+        const hasEssentialNameOrBarcode = mappedFields.includes('productName') || mappedFields.includes('barcode') || mappedFields.includes('parentSku');
+
+        if (hasEssentialNameOrBarcode && mappedFields.length >= 2) {
           executeParsedExcelRows(worksheet, detectedMapping);
         } else {
-          // Open interactive Column Mapping Modal
           setColumnMappingModal({
             isOpen: true,
             fileHeaders: headers,
@@ -2348,11 +2685,16 @@ export const BulkProductEntryModal = ({
     }
   };
 
-  // Save as Draft
+  // Save as Draft with persistent timestamp
   const handleSaveDraft = () => {
     try {
       localStorage.setItem('salbeau_bulk_draft_rows_v9', JSON.stringify(rows));
-      setBulkNotice({ type: 'success', text: `Draft saved successfully (${rows.length} products). You can safely close or refresh anytime.` });
+      const nowIso = new Date().toISOString();
+      localStorage.setItem('salbeau_bulk_draft_saved_at', nowIso);
+      setBulkNotice({
+        type: 'success',
+        text: `Draft saved successfully at ${new Date().toLocaleTimeString()} (${rows.length} product row(s) staged). You can safely close or refresh anytime.`
+      });
     } catch (e) {
       alert('Error saving draft: ' + e.message);
     }
@@ -2376,13 +2718,14 @@ export const BulkProductEntryModal = ({
     setExpandedRowId(null);
     try {
       localStorage.removeItem('salbeau_bulk_draft_rows_v9');
+      localStorage.removeItem('salbeau_bulk_draft_saved_at');
       localStorage.removeItem('salbeau_bulk_draft_rows_v8');
       localStorage.removeItem('salbeau_bulk_draft_rows_v7');
     } catch (e) {}
     setBulkNotice({ type: 'success', text: 'All staged products cleared.' });
   };
 
-  // Direct Submission to Database: Only Verified Rows Submitted; Staging Cleared; Redirect to Products Page
+  // Direct Submission to Database: Consolidates rows sharing Parent_SKU into 1 parent product with child shades
   const handleSubmitProducts = async () => {
     const readyRows = evaluatedRows.filter(r => r._isReady);
     const errorRows = evaluatedRows.filter(r => r._isError);
@@ -2408,16 +2751,88 @@ export const BulkProductEntryModal = ({
       current: 0,
       total: readyRows.length,
       percent: 0,
-      text: `Saving ${readyRows.length} verified products directly to database...`
+      text: `Consolidating and submitting ${readyRows.length} verified product row(s) to database...`
     });
 
     try {
+      // 1. Group rows by parentSku (or parentId, or brand + productName)
+      const groups = new Map();
+      readyRows.forEach(row => {
+        let key = '';
+        if (row.parentSku && row.parentSku.trim()) {
+          key = 'sku:::' + row.parentSku.trim().toUpperCase();
+        } else if (row.parentId) {
+          key = 'parent:::' + row.parentId;
+        } else {
+          key = 'item:::' + (row.brand || '').trim().toLowerCase() + ':::' + (row.name || '').trim().toLowerCase();
+        }
+
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(row);
+      });
+
+      // 2. Build consolidated parent product entities with child variants
+      const consolidatedProducts = [];
+      groups.forEach((rowsInGroup) => {
+        const primaryRow = rowsInGroup[0];
+        const prices = calculateSellingPrices(
+          primaryRow.mrp,
+          primaryRow.generalDiscount,
+          primaryRow.salonDiscount,
+          primaryRow.artistDiscount,
+          primaryRow.beauticianDiscount
+        );
+
+        const childShades = rowsInGroup.map((r, sIdx) => {
+          const varPrices = calculateSellingPrices(r.mrp, r.generalDiscount, r.salonDiscount, r.artistDiscount, r.beauticianDiscount);
+          return {
+            id: `var_${Date.now()}_${sIdx + 1}_${Math.random().toString(36).substring(2, 5)}`,
+            name: r.variantName || r.shade || `Variant ${sIdx + 1}`,
+            code: r.shadeCode || String(sIdx + 1).padStart(2, '0'),
+            sku: r.variantSku || (r.parentSku ? `${r.parentSku}-V${sIdx + 1}` : `SKU-${sIdx + 1}`),
+            barcode: r.variantBarcode || r.barcode || null,
+            hexColor: r.hexColor || '#CE4270',
+            hex: r.hexColor || '#CE4270',
+            color_name: r.shade || r.variantName || 'Default',
+            image: r.productImageUrl || (r.images && r.images[0]) || null,
+            images: r.images && r.images.length > 0 ? r.images : (r.productImageUrl ? [r.productImageUrl] : []),
+            mrp: Number(r.mrp || 0),
+            generalPrice: varPrices.genP,
+            salonPrice: varPrices.salonP,
+            artistPrice: varPrices.artistP,
+            beauticianPrice: varPrices.beauticianP,
+            active: r.variantActive !== false,
+            attributes: {
+              ...(r.finish ? { finish: r.finish } : {}),
+              ...(r.skinType ? { skinType: r.skinType } : {}),
+              ...(r.coverage ? { coverage: r.coverage } : {}),
+              ...(r.size ? { size: r.size } : {}),
+              ...(r.attributes || {})
+            }
+          };
+        });
+
+        consolidatedProducts.push({
+          ...primaryRow,
+          sku: primaryRow.parentSku || primaryRow.sku || null,
+          parentSku: primaryRow.parentSku || null,
+          isParent: rowsInGroup.length > 1,
+          hasMultipleShades: rowsInGroup.length > 1 || Boolean(primaryRow.shade),
+          shades: childShades,
+          generalPrice: prices.genP,
+          salonPrice: prices.salonP,
+          artistPrice: prices.artistP,
+          beauticianPrice: prices.beauticianP
+        });
+      });
+
+      // 3. Save to database
       if (onSubmitBulk) {
-        await onSubmitBulk(readyRows, (p) => setSubmissionProgress(p));
+        await onSubmitBulk(consolidatedProducts, (p) => setSubmissionProgress(p));
       } else if (ctxSaveBulk) {
-        await ctxSaveBulk(readyRows, (p) => setSubmissionProgress(p));
+        await ctxSaveBulk(consolidatedProducts, (p) => setSubmissionProgress(p));
       } else {
-        await chunkedBulkSave(readyRows, {
+        await chunkedBulkSave(consolidatedProducts, {
           onProgress: (p) => setSubmissionProgress(p),
           updateExisting: true,
           allowBlankOverwrite: false,
@@ -2425,12 +2840,12 @@ export const BulkProductEntryModal = ({
         });
       }
 
-      // Instantly refresh Supabase query cache and product catalog
+      // 4. Instantly refresh Supabase query cache and product catalog
       if (adminCtx?.refreshData) {
         await adminCtx.refreshData();
       }
 
-      // Immediately remove successfully submitted rows from Bulk Product Entry
+      // 5. Remove submitted rows from Bulk Product Entry
       const submittedIds = new Set(readyRows.map(r => r._id));
       const remainingRows = rows.filter(r => !submittedIds.has(r._id));
 
@@ -2438,16 +2853,17 @@ export const BulkProductEntryModal = ({
       setSelectedRowIds(new Set());
       setExpandedRowId(null);
 
-      // Clear draft storage so submitted products never persist in bulk entry
+      // Clear draft storage so submitted products do not re-appear
       try {
         localStorage.removeItem('salbeau_bulk_draft_rows_v9');
+        localStorage.removeItem('salbeau_bulk_draft_saved_at');
         localStorage.removeItem('salbeau_bulk_draft_rows_v8');
         localStorage.removeItem('salbeau_bulk_draft_rows_v7');
       } catch (e) { }
 
       setBulkNotice({
         type: 'success',
-        text: `Successfully saved ${readyRows.length} product(s) to store catalog. All items are now active on the Products page.`
+        text: `Successfully saved ${consolidatedProducts.length} product(s) (${readyRows.length} variant rows) to store catalog. All items are now active on the Products page.`
       });
 
       // If all rows submitted, navigate immediately to the live Products page
@@ -2565,6 +2981,47 @@ export const BulkProductEntryModal = ({
           </div>
         </div>
 
+        {/* Saved Draft Recovery Banner */}
+        {draftInfo && rows.length === 0 && (
+          <div className="mx-5 sm:mx-7 my-3 p-3.5 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in shrink-0">
+            <div className="flex items-center gap-2.5">
+              <Save className="w-5 h-5 text-indigo-600 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-indigo-950">
+                  Saved draft detected with {draftInfo.count} staged product(s) ({draftInfo.savedAt}).
+                </p>
+                <p className="text-[11px] text-indigo-700 font-medium">
+                  Would you like to resume your saved session or discard it to start fresh?
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setRows(draftInfo.data);
+                  setDraftInfo(null);
+                  setBulkNotice({ type: 'success', text: `Restored ${draftInfo.count} staged product(s) from saved draft.` });
+                }}
+                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-2xs transition-colors cursor-pointer"
+              >
+                Restore Draft
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem('salbeau_bulk_draft_rows_v9');
+                  localStorage.removeItem('salbeau_bulk_draft_saved_at');
+                  setDraftInfo(null);
+                }}
+                className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* =====================================================================
             2. ACTION TOOLBAR (Visible when rows are staged)
             ===================================================================== */}
@@ -2591,9 +3048,9 @@ export const BulkProductEntryModal = ({
 
               <button
                 type="button"
-                onClick={generateAndDownloadTemplate}
+                onClick={() => generateAndDownloadTemplate(categories, brands)}
                 className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-                title="Download Excel template with instructions and sample rows"
+                title="Download Excel template with master data, instructions, and sample rows"
               >
                 <Download className="w-4 h-4 text-emerald-600" />
                 <span>Download Template</span>
@@ -2603,9 +3060,30 @@ export const BulkProductEntryModal = ({
                 type="button"
                 onClick={handleExportExcel}
                 className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                title="Export all staged rows with canonical 27 columns"
               >
                 <Download className="w-4 h-4 text-slate-500" />
                 <span>Export Staged</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                title="Save current staged rows and edits as local draft"
+              >
+                <Save className="w-4 h-4 text-indigo-600" />
+                <span>Save Draft</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsColumnManagerOpen(true)}
+                className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                title="Customize visible table columns"
+              >
+                <Columns className="w-4 h-4 text-purple-600" />
+                <span>Manage Columns</span>
               </button>
 
               {summaryCounters.error > 0 && (
@@ -3061,144 +3539,367 @@ export const BulkProductEntryModal = ({
           >
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
             <table className="w-max min-w-[3400px] divide-y divide-slate-200 border-collapse">
-              {/* Table Header with High-Contrast Color Banded Columns (Normal scrolling as requested) */}
-              <thead className="select-none border-b-2 border-slate-300 text-slate-900 text-xs font-black tracking-wide shadow-xs bg-white">
+              {/* Table Header with High-Contrast Color Banded Columns (1:1 WITH DOWNLOAD TEMPLATE) */}
+              <thead className="select-none sticky top-0 z-30 border-b-2 border-slate-300 text-slate-900 text-xs font-black tracking-wide shadow-xs bg-white">
                 <tr className="divide-x divide-slate-200 h-14">
-                  {/* Column 1: # (Non-sticky as requested) */}
-                  <th className="w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800 font-mono">
-                    #
-                  </th>
-                  {/* Column 2: Checkbox (Non-sticky as requested) */}
-                  <th className="w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800">
-                    <input
-                      type="checkbox"
-                      checked={selectedRowIds.size > 0 && selectedRowIds.size === displayedRows.length}
-                      onChange={handleToggleSelectAll}
-                      className="w-4 h-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                    />
-                  </th>
+                  {/* Column 0A: # */}
+                  {isColVisible('index') && (
+                    <th className="w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800 font-mono">
+                      #
+                    </th>
+                  )}
+                  {/* Column 0B: Checkbox */}
+                  {isColVisible('select') && (
+                    <th className="w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800">
+                      <input
+                        type="checkbox"
+                        checked={selectedRowIds.size > 0 && selectedRowIds.size === displayedRows.length}
+                        onChange={handleToggleSelectAll}
+                        className="w-4 h-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </th>
+                  )}
 
-                  {/* Column 3: Barcode (Non-sticky as requested) */}
-                  <th className="min-w-[210px] px-3.5 text-left bg-white border-r border-slate-300 text-slate-900 shadow-2xs">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BARCODE</div>
-                    <div className="text-[11px] font-bold text-slate-500">Scan / Enter</div>
-                  </th>
-                  {/* Column 4: Image Preview */}
-                  <th className="min-w-[100px] px-2 text-center bg-[#EEF2FF] text-slate-900">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">IMAGE</div>
-                    <div className="text-[11px] font-bold text-slate-600">Thumbnail</div>
-                  </th>
-                  {/* Column 5: Product Name */}
-                  <th className="min-w-[320px] px-3.5 text-left bg-[#EEF2FF] text-slate-900">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT NAME</div>
-                    <div className="text-[11px] font-bold text-slate-600">Catalog / Editable</div>
-                  </th>
+                  {/* =========================================================
+                      GROUP 1: PRODUCT MASTER IDENTIFICATION (Cols 1-10)
+                      ========================================================= */}
 
-                  {/* Group 1: Category, Subcategory, Brand */}
-                  <th className="min-w-[200px] px-3 text-left bg-[#EEF2FF] text-slate-900">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">CATEGORY</div>
-                    <div className="text-[11px] font-bold text-slate-600">Searchable</div>
-                  </th>
-                  <th className="min-w-[200px] px-3 text-left bg-[#EEF2FF] text-slate-900">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SUBCATEGORY</div>
-                    <div className="text-[11px] font-bold text-slate-600">Dependent</div>
-                  </th>
-                  <th className="min-w-[190px] px-3 text-left bg-[#EEF2FF] text-slate-900">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BRAND</div>
-                    <div className="text-[11px] font-bold text-slate-600">Searchable</div>
-                  </th>
+                  {/* Column 1: Barcode */}
+                  {isColVisible('barcode') && (
+                    <th className="min-w-[210px] px-3.5 text-left bg-[#EEF2FF] border-r border-slate-300 text-slate-900 shadow-2xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 1</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BARCODE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Scan / Enter</div>
+                    </th>
+                  )}
 
-                  {/* Group 2: Variant / Shade */}
-                  <th className="min-w-[160px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">VARIANT TYPE</div>
-                    <div className="text-[11px] font-bold text-pink-700">e.g. Shade</div>
-                  </th>
-                  <th className="min-w-[180px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SHADE NAME</div>
-                    <div className="text-[11px] font-bold text-pink-700">e.g. Ruby Red</div>
-                  </th>
-                  <th className="min-w-[140px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">HEX CODE</div>
-                    <div className="text-[11px] font-bold text-pink-700">#RRGGBB</div>
-                  </th>
-                  <th className="min-w-[180px] px-3 text-left bg-[#FDF2F8] text-[#831843]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">COLOR SWATCH & RGB</div>
-                    <div className="text-[11px] font-bold text-pink-700">Preview & RGB</div>
-                  </th>
+                  {/* Column 2: Image Preview */}
+                  {isColVisible('images') && (
+                    <th className="min-w-[105px] px-2 text-center bg-[#EEF2FF] text-slate-900">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 2</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">IMAGE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Thumbnail</div>
+                    </th>
+                  )}
 
-                  {/* Group 2B: Description, Highlights & Attributes */}
-                  <th className="min-w-[280px] px-3 text-left bg-[#F0FDF4] text-[#14532D]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">DESCRIPTION</div>
-                    <div className="text-[11px] font-bold text-emerald-700">Multiline Content</div>
-                  </th>
-                  <th className="min-w-[240px] px-2.5 text-left bg-[#F0FDF4] text-[#14532D]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">HIGHLIGHTS</div>
-                    <div className="text-[11px] font-bold text-emerald-700">Key Features (;)</div>
-                  </th>
-                  <th className="min-w-[220px] px-2.5 text-left bg-[#F0FDF4] text-[#14532D]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">CATEGORY ATTRIBUTES</div>
-                    <div className="text-[11px] font-bold text-emerald-700">Dynamic Attributes</div>
-                  </th>
+                  {/* Column 3: Parent SKU */}
+                  {isColVisible('parentSku') && (
+                    <th className="min-w-[170px] px-3 text-left bg-[#EEF2FF] text-slate-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 3</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PARENT_SKU</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Group Code</div>
+                    </th>
+                  )}
 
-                  {/* Group 2C: Product Dimensions & Tax */}
-                  <th className="min-w-[130px] px-2.5 text-left bg-[#F0FDF4] text-[#14532D]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SIZE</div>
-                    <div className="text-[11px] font-bold text-emerald-700">e.g. 50ml, 30g</div>
-                  </th>
-                  <th className="min-w-[100px] px-2 text-right bg-[#F0FDF4] text-[#14532D]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">GST %</div>
-                    <div className="text-[11px] font-bold text-emerald-700">0, 5, 12, 18, 28</div>
-                  </th>
-                  <th className="min-w-[120px] px-2.5 text-left bg-[#F0FDF4] text-[#14532D]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">NET QTY</div>
-                    <div className="text-[11px] font-bold text-emerald-700">e.g. 1 N, 2 Units</div>
-                  </th>
+                  {/* Column 4: Product Name */}
+                  {isColVisible('name') && (
+                    <th className="min-w-[320px] px-3.5 text-left bg-[#EEF2FF] text-slate-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 4</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT_NAME</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Catalog Title</div>
+                    </th>
+                  )}
 
-                  {/* Group 3: Pricing & Role Base Price */}
-                  <th className="min-w-[130px] px-3 text-right bg-[#FAF5FF] text-[#581C87]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">MRP</div>
-                    <div className="text-[11px] font-bold text-purple-700">₹ Retail</div>
-                  </th>
-                  <th className="min-w-[125px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">GENERAL %</div>
-                    <div className="text-[11px] font-bold text-purple-700">Discount</div>
-                  </th>
-                  <th className="min-w-[125px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SALON %</div>
-                    <div className="text-[11px] font-bold text-purple-700">Discount</div>
-                  </th>
-                  <th className="min-w-[125px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">ARTIST %</div>
-                    <div className="text-[11px] font-bold text-purple-700">Discount</div>
-                  </th>
-                  <th className="min-w-[125px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BEAUTICIAN %</div>
-                    <div className="text-[11px] font-bold text-purple-700">Discount</div>
-                  </th>
+                  {/* Column 5: Product Type */}
+                  {isColVisible('productType') && (
+                    <th className="min-w-[160px] px-3 text-left bg-[#EEF2FF] text-slate-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 5</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT_TYPE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Item Type</div>
+                    </th>
+                  )}
 
-                  {/* Group 4: Quantity Discounts */}
-                  <th className="min-w-[180px] px-3 text-center bg-[#FAF5FF] text-[#581C87]">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">QUANTITY TIERS</div>
-                    <div className="text-[11px] font-bold text-purple-700">Product-Specific</div>
-                  </th>
+                  {/* Column 6: Category */}
+                  {isColVisible('category') && (
+                    <th className="min-w-[200px] px-3 text-left bg-[#EEF2FF] text-slate-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 6</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">CATEGORY</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Main Department</div>
+                    </th>
+                  )}
 
-                  {/* Status, Timestamps & Actions */}
-                  <th className="w-36 min-w-[140px] px-2.5 text-center bg-slate-200 text-slate-900">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">STATUS</div>
-                    <div className="text-[11px] font-bold text-slate-600">Publication</div>
-                  </th>
-                  <th className="w-32 min-w-[130px] px-2 text-center bg-slate-200 text-slate-900">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">CREATED AT</div>
-                    <div className="text-[11px] font-bold text-slate-600">Timestamp</div>
-                  </th>
-                  <th className="w-32 min-w-[130px] px-2 text-center bg-slate-200 text-slate-900">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">UPDATED AT</div>
-                    <div className="text-[11px] font-bold text-slate-600">Timestamp</div>
-                  </th>
-                  <th className="w-32 min-w-[125px] px-2 text-center bg-slate-200 text-slate-900">
-                    <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">ACTIONS</div>
-                    <div className="text-[11px] font-bold text-slate-600">Controls</div>
-                  </th>
+                  {/* Column 7: Subcategory */}
+                  {isColVisible('subcategory') && (
+                    <th className="min-w-[200px] px-3 text-left bg-[#EEF2FF] text-slate-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 7</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SUBCATEGORY</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Leaf Category</div>
+                    </th>
+                  )}
+
+                  {/* Column 8: Brand */}
+                  {isColVisible('brand') && (
+                    <th className="min-w-[190px] px-3 text-left bg-[#EEF2FF] text-slate-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 8</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BRAND</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Manufacturer</div>
+                    </th>
+                  )}
+
+                  {/* Column 9: Product Description */}
+                  {isColVisible('description') && (
+                    <th className="min-w-[280px] px-3 text-left bg-[#EEF2FF] text-slate-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 9</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT_DESCRIPTION</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Marketing Overview</div>
+                    </th>
+                  )}
+
+                  {/* Column 10: Highlights */}
+                  {isColVisible('highlights') && (
+                    <th className="min-w-[240px] px-2.5 text-left bg-[#EEF2FF] text-slate-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 10</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">HIGHLIGHTS</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">Key Features (;)</div>
+                    </th>
+                  )}
+
+                  {/* =========================================================
+                      GROUP 2: VARIANT DETAILS & IDENTIFICATION (Cols 11-16)
+                      ========================================================= */}
+
+                  {/* Column 11: Variant SKU */}
+                  {isColVisible('variantSku') && (
+                    <th className="min-w-[160px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 11</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">VARIANT_SKU</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-pink-700">Child SKU</div>
+                    </th>
+                  )}
+
+                  {/* Column 12: Variant Name */}
+                  {isColVisible('variantName') && (
+                    <th className="min-w-[160px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 12</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">VARIANT_NAME</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-pink-700">Display Name</div>
+                    </th>
+                  )}
+
+                  {/* Column 13: Shade Name */}
+                  {isColVisible('shade') && (
+                    <th className="min-w-[180px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 13</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SHADE_NAME</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-pink-700">Color Name</div>
+                    </th>
+                  )}
+
+                  {/* Column 14: Shade Code */}
+                  {isColVisible('shadeCode') && (
+                    <th className="min-w-[110px] px-2 text-left bg-[#FDF2F8] text-[#831843]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 14</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SHADE_CODE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-pink-700">01, 02...</div>
+                    </th>
+                  )}
+
+                  {/* Swatch & HEX Helper */}
+                  {isColVisible('swatch') && (
+                    <th className="min-w-[180px] px-3 text-left bg-[#FDF2F8] text-[#831843]">
+                      <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">HEX & SWATCH</div>
+                      <div className="text-[11px] font-bold text-pink-700">Color Swatch & RGB</div>
+                    </th>
+                  )}
+
+                  {/* Column 15: Size or Weight */}
+                  {isColVisible('size') && (
+                    <th className="min-w-[130px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 15</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SIZE_OR_WEIGHT</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-pink-700">e.g. 5.6ml, 30g</div>
+                    </th>
+                  )}
+
+                  {/* Column 16: Variant Barcode */}
+                  {isColVisible('variantBarcode') && (
+                    <th className="min-w-[170px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 16</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">VARIANT_BARCODE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-pink-700">Child Barcode</div>
+                    </th>
+                  )}
+
+                  {/* =========================================================
+                      GROUP 3: FOUR-TIER ROLE-BASED PRICING (Cols 17-21)
+                      ========================================================= */}
+
+                  {/* Column 17: MRP */}
+                  {isColVisible('mrp') && (
+                    <th className="min-w-[130px] px-3 text-right bg-[#FAF5FF] text-[#581C87]">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 17</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">MRP</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-purple-700">₹ Retail MRP</div>
+                    </th>
+                  )}
+
+                  {/* Column 18: General User Price */}
+                  {isColVisible('generalPrice') && (
+                    <th className="min-w-[140px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 18</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">GENERAL_USER_PRICE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-purple-700">₹ Price & % Disc</div>
+                    </th>
+                  )}
+
+                  {/* Column 19: Salon Price */}
+                  {isColVisible('salonPrice') && (
+                    <th className="min-w-[140px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 19</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SALON_PRICE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-purple-700">₹ Salon Wholesale</div>
+                    </th>
+                  )}
+
+                  {/* Column 20: Makeup Artist Price */}
+                  {isColVisible('artistPrice') && (
+                    <th className="min-w-[140px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 20</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">MAKEUP_ARTIST_PRICE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-purple-700">₹ Pro MUA Price</div>
+                    </th>
+                  )}
+
+                  {/* Column 21: Beautician Price */}
+                  {isColVisible('beauticianPrice') && (
+                    <th className="min-w-[140px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 21</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BEAUTICIAN_PRICE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-purple-700">₹ Beautician Rate</div>
+                    </th>
+                  )}
+
+                  {/* =========================================================
+                      GROUP 4: CATEGORY & COSMETIC ATTRIBUTES (Cols 22-24)
+                      ========================================================= */}
+
+                  {/* Column 22: Finish */}
+                  {isColVisible('finish') && (
+                    <th className="min-w-[140px] px-2.5 text-left bg-[#F0FDF4] text-[#14532D]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-emerald-100 text-emerald-700">COL 22</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">FINISH</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-emerald-700">Matte / Dewy</div>
+                    </th>
+                  )}
+
+                  {/* Column 23: Skin Type */}
+                  {isColVisible('skinType') && (
+                    <th className="min-w-[140px] px-2.5 text-left bg-[#F0FDF4] text-[#14532D]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-emerald-100 text-emerald-700">COL 23</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SKIN_TYPE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-emerald-700">All / Oily / Dry</div>
+                    </th>
+                  )}
+
+                  {/* Column 24: Coverage */}
+                  {isColVisible('coverage') && (
+                    <th className="min-w-[140px] px-2.5 text-left bg-[#F0FDF4] text-[#14532D]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-emerald-100 text-emerald-700">COL 24</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">COVERAGE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-emerald-700">Full / Medium</div>
+                    </th>
+                  )}
+
+                  {/* =========================================================
+                      GROUP 5: PUBLICATION, STATUS & CONTROLS (Cols 25-27)
+                      ========================================================= */}
+
+                  {/* Column 25: Product Image URL */}
+                  {isColVisible('productImageUrl') && (
+                    <th className="min-w-[190px] px-2.5 text-left bg-slate-200 text-slate-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-slate-300 text-slate-700">COL 25</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT_IMAGE_URL</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">CDN Link</div>
+                    </th>
+                  )}
+
+                  {/* Column 26: Product Active */}
+                  {isColVisible('productActive') && (
+                    <th className="w-28 min-w-[110px] px-2 text-center bg-slate-200 text-slate-900">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-slate-300 text-slate-700">COL 26</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT_ACTIVE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">TRUE / FALSE</div>
+                    </th>
+                  )}
+
+                  {/* Column 27: Variant Active */}
+                  {isColVisible('variantActive') && (
+                    <th className="w-28 min-w-[110px] px-2 text-center bg-slate-200 text-slate-900">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-slate-300 text-slate-700">COL 27</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">VARIANT_ACTIVE</span>
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-600">TRUE / FALSE</div>
+                    </th>
+                  )}
+
+                  {/* Status Dropdown */}
+                  {isColVisible('status') && (
+                    <th className="w-32 min-w-[130px] px-2.5 text-center bg-slate-200 text-slate-900">
+                      <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">STATUS</div>
+                      <div className="text-[11px] font-bold text-slate-600">Draft / Ready</div>
+                    </th>
+                  )}
+
+                  {/* Actions */}
+                  {isColVisible('actions') && (
+                    <th className="w-32 min-w-[125px] px-2 text-center bg-slate-200 text-slate-900">
+                      <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">ACTIONS</div>
+                      <div className="text-[11px] font-bold text-slate-600">Row Controls</div>
+                    </th>
+                  )}
                 </tr>
               </thead>
 
@@ -3206,7 +3907,7 @@ export const BulkProductEntryModal = ({
               <tbody className="divide-y divide-slate-100 bg-white">
                 {displayedRows.length === 0 && (
                   <tr>
-                    <td colSpan={28} className="py-20 text-center text-slate-500 bg-white">
+                    <td colSpan={40} className="py-20 text-center text-slate-500 bg-white">
                       <div className="max-w-sm mx-auto space-y-3">
                         <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                           <Package className="w-6 h-6" />
@@ -3237,7 +3938,7 @@ export const BulkProductEntryModal = ({
                 )}
                 {virtualScroll.paddingTop > 0 && (
                   <tr key="virtual-top-spacer" className="p-0 m-0 border-0 pointer-events-none">
-                    <td colSpan={28} style={{ height: `${virtualScroll.paddingTop}px`, padding: 0, border: 0 }} />
+                    <td colSpan={40} style={{ height: `${virtualScroll.paddingTop}px`, padding: 0, border: 0 }} />
                   </tr>
                 )}
                 {displayedRows.slice(virtualScroll.startIndex, virtualScroll.endIndex).map((row) => {
@@ -3264,685 +3965,888 @@ export const BulkProductEntryModal = ({
                                   : 'hover:bg-slate-50/70'
                           }`}
                       >
-                        {/* Column 1: # (Non-sticky as requested) */}
-                        <td className="w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center font-mono font-bold text-slate-700 text-xs bg-slate-100 border-r border-slate-200">
-                          {row._rowIndex}
-                        </td>
+                        {/* Column 0A: # */}
+                        {isColVisible('index') && (
+                          <td className="w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center font-mono font-bold text-slate-700 text-xs bg-slate-100 border-r border-slate-200">
+                            {row._rowIndex}
+                          </td>
+                        )}
 
-                        {/* Column 2: Checkbox (Non-sticky as requested) */}
-                        <td className="w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center bg-slate-100 border-r border-slate-200">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleSelectRow(row._id)}
-                            className="w-4 h-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                          />
-                        </td>
-
-                        {/* Column 3: Barcode (Non-sticky as requested) */}
-                        <td className="min-w-[210px] px-3 py-2 font-mono bg-white border-r border-slate-300 shadow-2xs">
-                          <div className="relative flex items-center">
+                        {/* Column 0B: Checkbox */}
+                        {isColVisible('select') && (
+                          <td className="w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center bg-slate-100 border-r border-slate-200">
                             <input
-                              id={`cell_barcode_${row._id}`}
-                              type="text"
-                              value={row.barcode || ''}
-                              onChange={(e) => handleCellChange(row._id, 'barcode', e.target.value)}
-                              onBlur={(e) => handleLookupRowBarcode(row._id, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleLookupRowBarcode(row._id, e.target.value);
-                                handleCellKeyDown(e, row._id, 'barcode');
-                              }}
-                              placeholder="Enter barcode..."
-                              className={`w-full h-9 pl-2.5 pr-7 bg-white border rounded-lg font-mono text-xs font-bold outline-none shadow-2xs placeholder:text-slate-400 placeholder:font-normal ${row._fieldErrors?.barcode
-                                  ? 'border-rose-400 bg-rose-50/40 ring-1 ring-rose-200 text-rose-900'
-                                  : 'border-slate-300 text-slate-900 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100'
-                                }`}
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleSelectRow(row._id)}
+                              className="w-4 h-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                             />
-                            <button
-                              type="button"
-                              onClick={() => handleLookupRowBarcode(row._id, row.barcode)}
-                              title="Scan / Search Barcode"
-                              className="absolute right-2 text-slate-400 hover:text-indigo-600 cursor-pointer p-1"
-                            >
-                              <ScanBarcode className="w-4 h-4" />
-                            </button>
-                          </div>
+                          </td>
+                        )}
 
-                          {/* Task 3: Product Matching Options (Use API Data / Update Existing / Create New Variant / Manual Entry) */}
-                          {row._matchingOption && (
-                            <div className="mt-2 p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11px] shadow-sm animate-in fade-in">
-                              <div className="font-extrabold text-amber-900 flex items-center gap-1.5 mb-1.5 leading-tight">
-                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                <span>Found in Catalog: "{row._matchingOption.existingProduct.name}"</span>
-                              </div>
-                              <div className="grid grid-cols-2 gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleApplyMatchingOption(row._id, 'api')}
-                                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10.5px] font-bold cursor-pointer text-center transition-colors shadow-2xs"
-                                >
-                                  Use API Data
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApplyMatchingOption(row._id, 'update')}
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10.5px] font-bold cursor-pointer text-center transition-colors shadow-2xs"
-                                >
-                                  Update Existing
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApplyMatchingOption(row._id, 'variant')}
-                                  className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10.5px] font-bold cursor-pointer text-center transition-colors shadow-2xs"
-                                >
-                                  Create Variant
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApplyMatchingOption(row._id, 'manual')}
-                                  className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[10.5px] font-bold cursor-pointer text-center transition-colors shadow-2xs"
-                                >
-                                  Manual Entry
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                        {/* =========================================================
+                            GROUP 1: PRODUCT MASTER IDENTIFICATION (Cols 1-10)
+                            ========================================================= */}
 
-                          {row._fieldErrors?.barcode && (
-                            <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
-                              <AlertCircle className="w-3 h-3 shrink-0" />
-                              <span>{row._fieldErrors.barcode}</span>
-                            </div>
-                          )}
-                          {row.barcodeStatus === 'detected' && !row._fieldErrors?.barcode && !row._matchingOption && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 mt-1">
-                              <Check className="w-3 h-3" /> Detected
-                            </span>
-                          )}
-                          {row.barcodeStatus === 'searching' && !row._fieldErrors?.barcode && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 mt-1">
-                              <RefreshCw className="w-3 h-3 animate-spin" /> Searching...
-                            </span>
-                          )}
-                          {row.barcodeStatus === 'not_found' && !row._fieldErrors?.barcode && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 mt-1">
-                              ⚠ New Barcode
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Column 4: Product Image Thumbnail */}
-                        <td className="min-w-[100px] px-2 py-2 text-center">
-                          <div
-                            onClick={() => {
-                              setExpandedRowId(row._id);
-                              setActiveDetailTab('Images');
-                            }}
-                            className="inline-flex items-center justify-center gap-1 cursor-pointer group/img"
-                            title="Manage Product Images"
-                          >
-                            <div className="w-11 h-11 rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center shadow-2xs group-hover/img:border-indigo-500 transition-colors">
-                              {row.images && row.images[0] ? (
-                                <img src={row.images[0]} alt="Product" className="w-full h-full object-cover" />
-                              ) : (
-                                <Plus className="w-5 h-5 text-slate-400 group-hover/img:text-indigo-600" />
-                              )}
-                            </div>
-                            {row.images && row.images.length > 1 && (
-                              <span className="text-xs font-black text-slate-600 font-mono">
-                                +{row.images.length - 1}
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-0.5">
-                            <a
-                              href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(`${row.brand || ''} ${row.name || ''} ${row.shade || ''}`.trim() || 'Cosmetics')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Search Images on Google in new tab"
-                              className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-0.5"
-                            >
-                              Google ↗
-                            </a>
-                          </div>
-                        </td>
-
-                        {/* Column 5: Product Name with Catalog Matching & Tree */}
-                        <td className="min-w-[320px] px-3 py-2">
-                          <div className="flex items-center gap-1.5">
-                            {row.parentId && (
-                              <span className="text-indigo-600 text-xs font-bold font-mono shrink-0 select-none" title="Child Variant">
-                                {isLastChild ? '└─' : '├─'}
-                              </span>
-                            )}
-                            {!row.parentId && hasChildren && (
-                              <span className="text-indigo-700 text-xs font-bold shrink-0 select-none mr-0.5" title="Parent Product">
-                                ▾
-                              </span>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <ProductNameCell
-                                id={`cell_name_${row._id}`}
-                                row={row}
-                                onNameChange={(val) => handleCellChange(row._id, 'name', val)}
-                                onApplyExistingProduct={(prod) => {
-                                  setRows(prev => prev.map(r => {
-                                    if (r._id !== row._id) return r;
-                                    const merged = {
-                                      ...r,
-                                      name: prod.name,
-                                      brand: prod.brandName || prod.brand || r.brand,
-                                      category: prod.category || r.category,
-                                      subcategory: prod.subcategory || r.subcategory,
-                                      mrp: prod.mrp || r.mrp,
-                                      images: prod.image ? [prod.image] : r.images,
-                                      description: prod.description || r.description,
-                                      highlights: prod.highlights || r.highlights
-                                    };
-                                    return autoEnrichRowWithDescriptionAndHighlights(merged);
-                                  }));
-                                  setBulkNotice({ type: 'success', text: `Loaded catalog information for "${prod.name}"` });
-                                }}
-                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'name')}
-                                existingProducts={existingProducts}
-                              />
-                            </div>
-                          </div>
-                          {row._fieldErrors?.name && (
-                            <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
-                              <AlertCircle className="w-3 h-3 shrink-0" />
-                              <span>{row._fieldErrors.name}</span>
-                            </div>
-                          )}
-                          {!row.parentId && hasChildren && (
-                            <div className="flex items-center justify-between text-[10.5px] font-bold text-indigo-700 mt-1 pl-3">
-                              <span>Parent • {childCount} shade{childCount > 1 ? 's' : ''}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleAddChildRow(row)}
-                                className="text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
-                              >
-                                + Add Shade
-                              </button>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Category (Searchable + Manual Entry) */}
-                        <td className="px-3 py-2">
-                          <SearchableCombobox
-                            id={`cell_category_${row._id}`}
-                            value={row.category || ''}
-                            onChange={(val) => handleCellChange(row._id, 'category', val)}
-                            onCreateNew={handleCreateCategory}
-                            onNextFocus={() => focusField(row._id, 'subcategory')}
-                            options={availableCategories}
-                            placeholder="Select Category"
-                            searchPlaceholder="Search category..."
-                            manualLabel="Enter Category"
-                          />
-                          {row._fieldErrors?.category && (
-                            <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
-                              <AlertCircle className="w-3 h-3 shrink-0" />
-                              <span>{row._fieldErrors.category}</span>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Subcategory (Filtered by Category + Manual Entry) */}
-                        <td className="px-3 py-2">
-                          <SearchableCombobox
-                            id={`cell_subcategory_${row._id}`}
-                            value={row.subcategory || ''}
-                            onChange={(val) => handleCellChange(row._id, 'subcategory', val)}
-                            onCreateNew={(sub) => handleCreateSubcategory(row.category, sub)}
-                            onNextFocus={() => focusField(row._id, 'brand')}
-                            options={getSubcategoriesForCategory(row.category)}
-                            placeholder={row.category ? "Select Subcategory" : "Select Category First"}
-                            searchPlaceholder="Search subcategory..."
-                            manualLabel="Enter Subcategory"
-                            disabled={!row.category}
-                          />
-                        </td>
-
-                        {/* Brand (Searchable + Manual Entry) */}
-                        <td className="px-3 py-2">
-                          <SearchableCombobox
-                            id={`cell_brand_${row._id}`}
-                            value={row.brand || ''}
-                            onChange={(val) => handleCellChange(row._id, 'brand', val)}
-                            onCreateNew={handleCreateBrand}
-                            onNextFocus={() => focusField(row._id, 'variantType')}
-                            options={availableBrands}
-                            placeholder="Select Brand"
-                            searchPlaceholder="Search brand..."
-                            manualLabel="Add New Brand"
-                          />
-                          {row._fieldErrors?.brand && (
-                            <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
-                              <AlertCircle className="w-3 h-3 shrink-0" />
-                              <span>{row._fieldErrors.brand}</span>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Variant Type */}
-                        <td className="px-2.5 py-2">
-                          <SearchableCombobox
-                            id={`cell_variantType_${row._id}`}
-                            value={row.variantType || ''}
-                            onChange={(val) => handleCellChange(row._id, 'variantType', val)}
-                            onCreateNew={handleCreateVariantType}
-                            onNextFocus={() => focusField(row._id, 'shade')}
-                            options={getVariantTypesForCategory(row.category)}
-                            placeholder="Select Variant Type"
-                            searchPlaceholder="Search type..."
-                            manualLabel="Add Variant Type"
-                            minWidth="140px"
-                          />
-                        </td>
-
-                        {/* Shade Name (Search / Select / Match + Manual) */}
-                        <td className="px-2.5 py-2">
-                          {rowHasShades ? (
-                            <ShadeNameCell
-                              id={`cell_shade_${row._id}`}
-                              row={row}
-                              onShadeChange={(val) => {
-                                setRows(prev => prev.map(r => r._id === row._id ? {
-                                  ...r,
-                                  shade: val,
-                                  _manualShadeEdited: Boolean(val && val.trim().length > 0),
-                                  updatedAt: new Date().toISOString()
-                                } : r));
-                              }}
-                              onApplyShade={(shadeObj) => {
-                                setRows(prev => prev.map(r => r._id === row._id ? {
-                                  ...r,
-                                  shade: shadeObj.name,
-                                  hexColor: shadeObj.hex || r.hexColor,
-                                  rgb: shadeObj.hex ? hexToRgbString(shadeObj.hex) : r.rgb,
-                                  images: shadeObj.image && (!r.images || r.images.length === 0) ? [shadeObj.image] : r.images,
-                                  _manualShadeEdited: true,
-                                  updatedAt: new Date().toISOString()
-                                } : r));
-                                setBulkNotice({ type: 'success', text: `Loaded shade details for "${shadeObj.name}"` });
-                              }}
-                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'shade')}
-                              existingProducts={existingProducts}
-                            />
-                          ) : (
-                            <div className="h-9 px-2.5 py-1.5 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold text-slate-400 flex items-center justify-center italic">
-                              N/A (Non-Shade)
-                            </div>
-                          )}
-                        </td>
-
-                        {/* HEX Code (#RRGGBB) with validation & copy */}
-                        <td className="px-2.5 py-2 font-mono">
-                          {rowHasShades ? (
+                        {/* Column 1: Barcode */}
+                        {isColVisible('barcode') && (
+                          <td className="min-w-[210px] px-3 py-2 font-mono bg-white border-r border-slate-300 shadow-2xs">
                             <div className="relative flex items-center">
                               <input
-                                id={`cell_hexColor_${row._id}`}
+                                id={`cell_barcode_${row._id}`}
                                 type="text"
-                                value={row.hexColor || ''}
-                                onChange={(e) => {
-                                  let val = e.target.value.toUpperCase();
-                                  if (val && !val.startsWith('#')) val = '#' + val;
-                                  handleColorSwatchChange(row._id, val);
+                                value={row.barcode || ''}
+                                onChange={(e) => handleCellChange(row._id, 'barcode', e.target.value)}
+                                onBlur={(e) => handleLookupRowBarcode(row._id, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleLookupRowBarcode(row._id, e.target.value);
+                                  handleCellKeyDown(e, row._id, 'barcode');
                                 }}
-                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'hexColor')}
-                                placeholder="#C2182B"
-                                className={`w-full h-9 pl-2 pr-6 py-1.5 bg-white border rounded-lg text-xs font-mono font-bold outline-none shadow-2xs ${row._fieldErrors?.hexColor
-                                    ? 'border-rose-400 text-rose-700 bg-rose-50/40 ring-1 ring-rose-200'
+                                placeholder="Enter barcode..."
+                                className={`w-full h-9 pl-2.5 pr-7 bg-white border rounded-lg font-mono text-xs font-bold outline-none shadow-2xs placeholder:text-slate-400 placeholder:font-normal ${row._fieldErrors?.barcode
+                                    ? 'border-rose-400 bg-rose-50/40 ring-1 ring-rose-200 text-rose-900'
                                     : 'border-slate-300 text-slate-900 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100'
                                   }`}
                               />
                               <button
                                 type="button"
-                                onClick={() => {
-                                  if (row.hexColor) {
-                                    navigator.clipboard.writeText(row.hexColor);
-                                    setBulkNotice({ type: 'info', text: `Copied ${row.hexColor} to clipboard` });
+                                onClick={() => handleLookupRowBarcode(row._id, row.barcode)}
+                                title="Scan / Search Barcode"
+                                className="absolute right-2 text-slate-400 hover:text-indigo-600 cursor-pointer p-1"
+                              >
+                                <ScanBarcode className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            {/* Product Matching Options */}
+                            {row._matchingOption && (
+                              <div className="mt-2 p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11px] shadow-sm animate-in fade-in">
+                                <div className="font-extrabold text-amber-900 flex items-center gap-1.5 mb-1.5 leading-tight">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  <span>Found in Catalog: "{row._matchingOption.existingProduct.name}"</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApplyMatchingOption(row._id, 'api')}
+                                    className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10.5px] font-bold cursor-pointer text-center transition-colors shadow-2xs"
+                                  >
+                                    Use API Data
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApplyMatchingOption(row._id, 'update')}
+                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10.5px] font-bold cursor-pointer text-center transition-colors shadow-2xs"
+                                  >
+                                    Update Existing
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApplyMatchingOption(row._id, 'variant')}
+                                    className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10.5px] font-bold cursor-pointer text-center transition-colors shadow-2xs"
+                                  >
+                                    Create Variant
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApplyMatchingOption(row._id, 'manual')}
+                                    className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[10.5px] font-bold cursor-pointer text-center transition-colors shadow-2xs"
+                                  >
+                                    Manual Entry
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {row._fieldErrors?.barcode && (
+                              <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
+                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                <span>{row._fieldErrors.barcode}</span>
+                              </div>
+                            )}
+                            {row.barcodeStatus === 'detected' && !row._fieldErrors?.barcode && !row._matchingOption && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 mt-1">
+                                <Check className="w-3 h-3" /> Detected
+                              </span>
+                            )}
+                            {row.barcodeStatus === 'searching' && !row._fieldErrors?.barcode && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 mt-1">
+                                <RefreshCw className="w-3 h-3 animate-spin" /> Searching...
+                              </span>
+                            )}
+                            {row.barcodeStatus === 'not_found' && !row._fieldErrors?.barcode && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 mt-1">
+                                ⚠ New Barcode
+                              </span>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Column 2: Image Preview & Search */}
+                        {isColVisible('images') && (
+                          <td className="min-w-[105px] px-2 py-2 text-center bg-white">
+                            <div
+                              onClick={() => {
+                                setExpandedRowId(row._id);
+                                setActiveDetailTab('Images');
+                              }}
+                              className="inline-flex items-center justify-center gap-1 cursor-pointer group/img"
+                              title="Manage Product Images"
+                            >
+                              <div className="w-11 h-11 rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center shadow-2xs group-hover/img:border-indigo-500 transition-colors">
+                                {row.images && row.images[0] ? (
+                                  <img src={row.images[0]} alt="Product" className="w-full h-full object-cover" />
+                                ) : (
+                                  <Plus className="w-5 h-5 text-slate-400 group-hover/img:text-indigo-600" />
+                                )}
+                              </div>
+                              {row.images && row.images.length > 1 && (
+                                <span className="text-xs font-black text-slate-600 font-mono">
+                                  +{row.images.length - 1}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-0.5">
+                              <a
+                                href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(`${row.brand || ''} ${row.name || ''} ${row.shade || ''}`.trim() || 'Cosmetics')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Search Images on Google in new tab"
+                                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-0.5"
+                              >
+                                Google ↗
+                              </a>
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Column 3: Parent SKU */}
+                        {isColVisible('parentSku') && (
+                          <td className="min-w-[170px] px-2.5 py-2 font-mono bg-white">
+                            <input
+                              id={`cell_parentSku_${row._id}`}
+                              type="text"
+                              value={row.parentSku || ''}
+                              onChange={(e) => handleCellChange(row._id, 'parentSku', e.target.value.toUpperCase())}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'parentSku')}
+                              placeholder="e.g. LAK-MATTE-LIP"
+                              className="w-full h-9 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* Column 4: Product Name */}
+                        {isColVisible('name') && (
+                          <td className="min-w-[320px] px-3 py-2 bg-white">
+                            <div className="flex items-center gap-1.5">
+                              {row.parentId && (
+                                <span className="text-pink-600 text-xs font-bold font-mono shrink-0 select-none flex items-center gap-0.5" title="Child Variant">
+                                  <GitBranch className="w-3.5 h-3.5" />
+                                  {isLastChild ? '└─' : '├─'}
+                                </span>
+                              )}
+                              {!row.parentId && hasChildren && (
+                                <span className="text-indigo-700 text-xs font-bold shrink-0 select-none mr-0.5" title="Parent Product">
+                                  ▾
+                                </span>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <ProductNameCell
+                                  id={`cell_name_${row._id}`}
+                                  row={row}
+                                  onNameChange={(val) => handleCellChange(row._id, 'name', val)}
+                                  onApplyExistingProduct={(prod) => {
+                                    setRows(prev => prev.map(r => {
+                                      if (r._id !== row._id) return r;
+                                      const merged = {
+                                        ...r,
+                                        name: prod.name,
+                                        brand: prod.brandName || prod.brand || r.brand,
+                                        category: prod.category || r.category,
+                                        subcategory: prod.subcategory || r.subcategory,
+                                        mrp: prod.mrp || r.mrp,
+                                        images: prod.image ? [prod.image] : r.images,
+                                        description: prod.description || r.description,
+                                        highlights: prod.highlights || r.highlights
+                                      };
+                                      return autoEnrichRowWithDescriptionAndHighlights(merged);
+                                    }));
+                                    setBulkNotice({ type: 'success', text: `Loaded catalog information for "${prod.name}"` });
+                                  }}
+                                  onKeyDown={(e) => handleCellKeyDown(e, row._id, 'name')}
+                                  existingProducts={existingProducts}
+                                />
+                              </div>
+                            </div>
+                            {row._fieldErrors?.name && (
+                              <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
+                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                <span>{row._fieldErrors.name}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-[10.5px] font-bold mt-1 pl-1">
+                              {row.parentId ? (
+                                <span className="text-pink-700 bg-pink-50 border border-pink-200 px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1">
+                                  <GitBranch className="w-3 h-3" />
+                                  Variant {row.parentSku ? `of ${row.parentSku}` : ''}
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-[10px]">
+                                    Parent {row.parentSku ? `(${row.parentSku})` : ''} {hasChildren ? `• ${childCount} variant${childCount > 1 ? 's' : ''}` : ''}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddChildRow(row)}
+                                    className="text-indigo-600 hover:text-indigo-800 font-bold inline-flex items-center gap-0.5 cursor-pointer hover:underline"
+                                    title="Add a variant under this parent product"
+                                  >
+                                    <Plus className="w-3 h-3" /> Add Variant
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Column 5: Product Type */}
+                        {isColVisible('productType') && (
+                          <td className="min-w-[160px] px-2.5 py-2 bg-white">
+                            <input
+                              id={`cell_productType_${row._id}`}
+                              type="text"
+                              value={row.productType || ''}
+                              onChange={(e) => handleCellChange(row._id, 'productType', e.target.value)}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'productType')}
+                              placeholder="e.g. Lipstick / Serum"
+                              className="w-full h-9 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* Column 6: Category */}
+                        {isColVisible('category') && (
+                          <td className="min-w-[200px] px-3 py-2 bg-white">
+                            <SearchableCombobox
+                              id={`cell_category_${row._id}`}
+                              value={row.category || ''}
+                              onChange={(val) => handleCellChange(row._id, 'category', val)}
+                              onCreateNew={handleCreateCategory}
+                              onNextFocus={() => focusField(row._id, 'subcategory')}
+                              options={availableCategories}
+                              placeholder="Select Category"
+                              searchPlaceholder="Search category..."
+                              manualLabel="Enter Category"
+                            />
+                            {row._fieldErrors?.category && (
+                              <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
+                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                <span>{row._fieldErrors.category}</span>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Column 7: Subcategory */}
+                        {isColVisible('subcategory') && (
+                          <td className="min-w-[200px] px-3 py-2 bg-white">
+                            <SearchableCombobox
+                              id={`cell_subcategory_${row._id}`}
+                              value={row.subcategory || ''}
+                              onChange={(val) => handleCellChange(row._id, 'subcategory', val)}
+                              onCreateNew={(sub) => handleCreateSubcategory(row.category, sub)}
+                              onNextFocus={() => focusField(row._id, 'brand')}
+                              options={getSubcategoriesForCategory(row.category)}
+                              placeholder={row.category ? "Select Subcategory" : "Select Category First"}
+                              searchPlaceholder="Search subcategory..."
+                              manualLabel="Enter Subcategory"
+                              disabled={!row.category}
+                            />
+                          </td>
+                        )}
+
+                        {/* Column 8: Brand */}
+                        {isColVisible('brand') && (
+                          <td className="min-w-[190px] px-3 py-2 bg-white">
+                            <SearchableCombobox
+                              id={`cell_brand_${row._id}`}
+                              value={row.brand || ''}
+                              onChange={(val) => handleCellChange(row._id, 'brand', val)}
+                              onCreateNew={handleCreateBrand}
+                              onNextFocus={() => focusField(row._id, 'description')}
+                              options={availableBrands}
+                              placeholder="Select Brand"
+                              searchPlaceholder="Search brand..."
+                              manualLabel="Add New Brand"
+                            />
+                            {row._fieldErrors?.brand && (
+                              <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
+                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                <span>{row._fieldErrors.brand}</span>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Column 9: Product Description */}
+                        {isColVisible('description') && (
+                          <td className="min-w-[280px] px-2.5 py-2 bg-white">
+                            <div className="relative w-full">
+                              <textarea
+                                id={`cell_description_${row._id}`}
+                                rows={2}
+                                value={row.description || ''}
+                                onChange={(e) => handleCellChange(row._id, 'description', e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleCellKeyDown(e, row._id, 'description');
                                   }
                                 }}
-                                title="Copy HEX Code"
-                                className="absolute right-1 text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer"
+                                placeholder="Enter product description..."
+                                className="w-full h-9 py-1 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 leading-normal resize-none focus:h-24 focus:absolute focus:top-0 focus:left-0 focus:z-30 focus:shadow-xl transition-all"
+                              />
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Column 10: Highlights */}
+                        {isColVisible('highlights') && (
+                          <td className="min-w-[240px] px-2.5 py-2 bg-white">
+                            <input
+                              id={`cell_highlights_${row._id}`}
+                              type="text"
+                              value={Array.isArray(row.highlights) ? row.highlights.join('; ') : (row.highlights || '')}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const list = val.split(';').map(s => s.trim()).filter(Boolean);
+                                handleCellChange(row._id, 'highlights', list);
+                              }}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'highlights')}
+                              placeholder="e.g. Matte Finish; Waterproof"
+                              className="w-full h-9 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400"
+                            />
+                          </td>
+                        )}
+
+                        {/* =========================================================
+                            GROUP 2: VARIANT DETAILS & IDENTIFICATION (Cols 11-16)
+                            ========================================================= */}
+
+                        {/* Column 11: Variant SKU */}
+                        {isColVisible('variantSku') && (
+                          <td className="min-w-[160px] px-2.5 py-2 font-mono bg-[#FFF8FA]">
+                            <input
+                              id={`cell_variantSku_${row._id}`}
+                              type="text"
+                              value={row.variantSku || ''}
+                              onChange={(e) => handleCellChange(row._id, 'variantSku', e.target.value.toUpperCase())}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'variantSku')}
+                              placeholder="e.g. LAK-MATTE-01"
+                              className="w-full h-9 px-2.5 py-1.5 bg-pink-50/40 border border-pink-200 rounded-lg text-xs font-mono font-bold text-pink-950 outline-none focus:border-pink-600 focus:ring-2 focus:ring-pink-100 shadow-2xs placeholder:text-pink-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* Column 12: Variant Name */}
+                        {isColVisible('variantName') && (
+                          <td className="min-w-[160px] px-2.5 py-2 bg-[#FFF8FA]">
+                            <input
+                              id={`cell_variantName_${row._id}`}
+                              type="text"
+                              value={row.variantName || ''}
+                              onChange={(e) => handleCellChange(row._id, 'variantName', e.target.value)}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'variantName')}
+                              placeholder="e.g. Red Carpet"
+                              className="w-full h-9 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* Column 13: Shade Name */}
+                        {isColVisible('shade') && (
+                          <td className="min-w-[180px] px-2.5 py-2 bg-[#FFF8FA]">
+                            {rowHasShades ? (
+                              <ShadeNameCell
+                                id={`cell_shade_${row._id}`}
+                                row={row}
+                                onShadeChange={(val) => {
+                                  setRows(prev => prev.map(r => r._id === row._id ? {
+                                    ...r,
+                                    shade: val,
+                                    _manualShadeEdited: Boolean(val && val.trim().length > 0),
+                                    updatedAt: new Date().toISOString()
+                                  } : r));
+                                }}
+                                onApplyShade={(shadeObj) => {
+                                  setRows(prev => prev.map(r => r._id === row._id ? {
+                                    ...r,
+                                    shade: shadeObj.name,
+                                    hexColor: shadeObj.hex || r.hexColor,
+                                    rgb: shadeObj.hex ? hexToRgbString(shadeObj.hex) : r.rgb,
+                                    images: shadeObj.image && (!r.images || r.images.length === 0) ? [shadeObj.image] : r.images,
+                                    _manualShadeEdited: true,
+                                    updatedAt: new Date().toISOString()
+                                  } : r));
+                                  setBulkNotice({ type: 'success', text: `Loaded shade details for "${shadeObj.name}"` });
+                                }}
+                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'shade')}
+                                existingProducts={existingProducts}
+                              />
+                            ) : (
+                              <div className="h-9 px-2.5 py-1.5 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold text-slate-400 flex items-center justify-center italic">
+                                N/A (Non-Shade)
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Column 14: Shade Code */}
+                        {isColVisible('shadeCode') && (
+                          <td className="min-w-[110px] px-2 py-2 font-mono bg-[#FFF8FA]">
+                            <input
+                              id={`cell_shadeCode_${row._id}`}
+                              type="text"
+                              value={row.shadeCode || ''}
+                              onChange={(e) => handleCellChange(row._id, 'shadeCode', e.target.value)}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'shadeCode')}
+                              placeholder="01"
+                              className="w-full h-9 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* Swatch & HEX Helper */}
+                        {isColVisible('swatch') && (
+                          <td className="min-w-[180px] px-2.5 py-2 bg-[#FFF8FA]">
+                            {rowHasShades ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="color"
+                                  value={row.hexColor || '#C2182B'}
+                                  onInput={(e) => handleColorSwatchChange(row._id, e.target.value)}
+                                  onChange={(e) => handleColorSwatchChange(row._id, e.target.value)}
+                                  className="w-8 h-8 rounded-lg cursor-pointer border border-slate-300 p-0 shadow-2xs shrink-0"
+                                  title="Click or drag to pick swatch color in real-time"
+                                />
+                                <div className="flex flex-col text-left leading-tight select-all">
+                                  <span className="font-mono text-xs font-black text-slate-900">
+                                    {row.hexColor || '—'}
+                                  </span>
+                                  <span className="font-mono text-[10.5px] font-bold text-slate-700">
+                                    {row.rgb || (row.hexColor ? hexToRgbString(row.hexColor) : '—')}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="h-9 px-2.5 py-1.5 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold text-slate-400 flex items-center justify-center italic">
+                                —
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Column 15: Size or Weight */}
+                        {isColVisible('size') && (
+                          <td className="min-w-[130px] px-2.5 py-2 font-medium bg-[#FFF8FA]">
+                            <input
+                              id={`cell_size_${row._id}`}
+                              type="text"
+                              value={row.size || ''}
+                              onChange={(e) => handleCellChange(row._id, 'size', e.target.value)}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'size')}
+                              placeholder="e.g. 5.6ml, 30g"
+                              className="w-full h-9 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* Column 16: Variant Barcode */}
+                        {isColVisible('variantBarcode') && (
+                          <td className="min-w-[170px] px-2.5 py-2 font-mono bg-[#FFF8FA]">
+                            <input
+                              id={`cell_variantBarcode_${row._id}`}
+                              type="text"
+                              value={row.variantBarcode || ''}
+                              onChange={(e) => handleCellChange(row._id, 'variantBarcode', e.target.value)}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'variantBarcode')}
+                              placeholder="Child Barcode"
+                              className="w-full h-9 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* =========================================================
+                            GROUP 3: FOUR-TIER ROLE-BASED PRICING (Cols 17-21)
+                            ========================================================= */}
+
+                        {/* Column 17: MRP */}
+                        {isColVisible('mrp') && (
+                          <td className="min-w-[130px] px-2.5 py-2 text-right font-mono bg-[#FAF5FF]">
+                            <div className="relative flex items-center">
+                              <span className="absolute left-2 text-slate-400 font-bold text-xs">₹</span>
+                              <input
+                                id={`cell_mrp_${row._id}`}
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={row.mrp !== undefined && row.mrp !== null ? row.mrp : ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || (Number(val) >= 0 && !isNaN(Number(val)))) {
+                                    handleCellChange(row._id, 'mrp', val);
+                                  }
+                                }}
+                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'mrp')}
+                                placeholder="0"
+                                className={`w-full h-9 pl-5 pr-2 py-1.5 text-right bg-white border rounded-lg text-xs font-mono font-black outline-none shadow-2xs ${row._fieldErrors?.mrp
+                                    ? 'border-rose-400 bg-rose-50/40 ring-1 ring-rose-200 text-rose-900'
+                                    : 'border-slate-300 text-slate-900 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100'
+                                  }`}
+                              />
+                            </div>
+                            {row._fieldErrors?.mrp && (
+                              <div className="text-[10px] font-bold text-rose-600 mt-1">{row._fieldErrors.mrp}</div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Column 18: General User Price */}
+                        {isColVisible('generalPrice') && (
+                          <td className="min-w-[140px] px-2 py-2 font-mono bg-[#FAF5FF]">
+                            <div className="flex items-center gap-1">
+                              <div className="relative flex items-center flex-1">
+                                <span className="absolute left-1.5 text-slate-400 font-bold text-[11px]">₹</span>
+                                <input
+                                  id={`cell_generalPrice_${row._id}`}
+                                  type="number"
+                                  min="0"
+                                  value={row.generalPrice !== undefined && row.generalPrice !== null ? row.generalPrice : (row.mrp ? rowPrices.genP : '')}
+                                  onChange={(e) => handleCellChange(row._id, 'generalPrice', e.target.value)}
+                                  placeholder="₹"
+                                  title="General Selling Price (₹)"
+                                  className="w-full h-9 pl-4 pr-1 text-right bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
+                                />
+                              </div>
+                              <div className="relative flex items-center w-14">
+                                <input
+                                  id={`cell_generalDiscount_${row._id}`}
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={row.generalDiscount !== undefined && row.generalDiscount !== null ? row.generalDiscount : ''}
+                                  onChange={(e) => handleCellChange(row._id, 'generalDiscount', e.target.value)}
+                                  onKeyDown={(e) => handleCellKeyDown(e, row._id, 'generalDiscount')}
+                                  placeholder="0"
+                                  title="General Discount %"
+                                  className="w-full h-9 pr-3.5 pl-1 text-right bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-700 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
+                                />
+                                <span className="absolute right-1 text-slate-400 font-bold text-[10px]">%</span>
+                              </div>
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Column 19: Salon Price */}
+                        {isColVisible('salonPrice') && (
+                          <td className="min-w-[140px] px-2 py-2 font-mono bg-[#FAF5FF]">
+                            <div className="flex items-center gap-1">
+                              <div className="relative flex items-center flex-1">
+                                <span className="absolute left-1.5 text-purple-400 font-bold text-[11px]">₹</span>
+                                <input
+                                  id={`cell_salonPrice_${row._id}`}
+                                  type="number"
+                                  min="0"
+                                  value={row.salonPrice !== undefined && row.salonPrice !== null ? row.salonPrice : (row.mrp ? rowPrices.salonP : '')}
+                                  onChange={(e) => handleCellChange(row._id, 'salonPrice', e.target.value)}
+                                  placeholder="₹"
+                                  title="Salon Owner Price (₹)"
+                                  className="w-full h-9 pl-4 pr-1 text-right bg-purple-50/50 border border-purple-200 rounded-lg text-xs font-mono font-black text-purple-950 outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100 shadow-2xs"
+                                />
+                              </div>
+                              <div className="relative flex items-center w-14">
+                                <input
+                                  id={`cell_salonDiscount_${row._id}`}
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={row.salonDiscount !== undefined && row.salonDiscount !== null ? row.salonDiscount : ''}
+                                  onChange={(e) => handleCellChange(row._id, 'salonDiscount', e.target.value)}
+                                  onKeyDown={(e) => handleCellKeyDown(e, row._id, 'salonDiscount')}
+                                  placeholder="0"
+                                  title="Salon Discount %"
+                                  className="w-full h-9 pr-3.5 pl-1 text-right bg-purple-50/50 border border-purple-200 rounded-lg text-xs font-mono font-bold text-purple-900 outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100 shadow-2xs"
+                                />
+                                <span className="absolute right-1 text-purple-400 font-bold text-[10px]">%</span>
+                              </div>
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Column 20: Makeup Artist Price */}
+                        {isColVisible('artistPrice') && (
+                          <td className="min-w-[140px] px-2 py-2 font-mono bg-[#FAF5FF]">
+                            <div className="flex items-center gap-1">
+                              <div className="relative flex items-center flex-1">
+                                <span className="absolute left-1.5 text-blue-400 font-bold text-[11px]">₹</span>
+                                <input
+                                  id={`cell_artistPrice_${row._id}`}
+                                  type="number"
+                                  min="0"
+                                  value={row.artistPrice !== undefined && row.artistPrice !== null ? row.artistPrice : (row.mrp ? rowPrices.artistP : '')}
+                                  onChange={(e) => handleCellChange(row._id, 'artistPrice', e.target.value)}
+                                  placeholder="₹"
+                                  title="Makeup Artist Price (₹)"
+                                  className="w-full h-9 pl-4 pr-1 text-right bg-blue-50/50 border border-blue-200 rounded-lg text-xs font-mono font-bold text-blue-950 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
+                                />
+                              </div>
+                              <div className="relative flex items-center w-14">
+                                <input
+                                  id={`cell_artistDiscount_${row._id}`}
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={row.artistDiscount !== undefined && row.artistDiscount !== null ? row.artistDiscount : ''}
+                                  onChange={(e) => handleCellChange(row._id, 'artistDiscount', e.target.value)}
+                                  onKeyDown={(e) => handleCellKeyDown(e, row._id, 'artistDiscount')}
+                                  placeholder="0"
+                                  title="Artist Discount %"
+                                  className="w-full h-9 pr-3.5 pl-1 text-right bg-blue-50/50 border border-blue-200 rounded-lg text-xs font-mono font-bold text-blue-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
+                                />
+                                <span className="absolute right-1 text-blue-400 font-bold text-[10px]">%</span>
+                              </div>
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Column 21: Beautician Price */}
+                        {isColVisible('beauticianPrice') && (
+                          <td className="min-w-[140px] px-2 py-2 font-mono bg-[#FAF5FF]">
+                            <div className="flex items-center gap-1">
+                              <div className="relative flex items-center flex-1">
+                                <span className="absolute left-1.5 text-amber-400 font-bold text-[11px]">₹</span>
+                                <input
+                                  id={`cell_beauticianPrice_${row._id}`}
+                                  type="number"
+                                  min="0"
+                                  value={row.beauticianPrice !== undefined && row.beauticianPrice !== null ? row.beauticianPrice : (row.mrp ? rowPrices.beauticianP : '')}
+                                  onChange={(e) => handleCellChange(row._id, 'beauticianPrice', e.target.value)}
+                                  placeholder="₹"
+                                  title="Beautician Price (₹)"
+                                  className="w-full h-9 pl-4 pr-1 text-right bg-amber-50/50 border border-amber-200 rounded-lg text-xs font-mono font-bold text-amber-950 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
+                                />
+                              </div>
+                              <div className="relative flex items-center w-14">
+                                <input
+                                  id={`cell_beauticianDiscount_${row._id}`}
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={row.beauticianDiscount !== undefined && row.beauticianDiscount !== null ? row.beauticianDiscount : ''}
+                                  onChange={(e) => handleCellChange(row._id, 'beauticianDiscount', e.target.value)}
+                                  onKeyDown={(e) => handleCellKeyDown(e, row._id, 'beauticianDiscount')}
+                                  placeholder="0"
+                                  title="Beautician Discount %"
+                                  className="w-full h-9 pr-3.5 pl-1 text-right bg-amber-50/50 border border-amber-200 rounded-lg text-xs font-mono font-bold text-amber-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
+                                />
+                                <span className="absolute right-1 text-amber-400 font-bold text-[10px]">%</span>
+                              </div>
+                            </div>
+                          </td>
+                        )}
+
+                        {/* =========================================================
+                            GROUP 4: CATEGORY & COSMETIC ATTRIBUTES (Cols 22-24)
+                            ========================================================= */}
+
+                        {/* Column 22: Finish */}
+                        {isColVisible('finish') && (
+                          <td className="min-w-[140px] px-2.5 py-2 bg-[#F0FDF4]">
+                            <input
+                              id={`cell_finish_${row._id}`}
+                              type="text"
+                              value={row.finish || ''}
+                              onChange={(e) => handleCellChange(row._id, 'finish', e.target.value)}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'finish')}
+                              placeholder="e.g. Matte / Dewy"
+                              className="w-full h-9 px-2.5 py-1.5 bg-emerald-50/40 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-950 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 shadow-2xs placeholder:text-emerald-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* Column 23: Skin Type */}
+                        {isColVisible('skinType') && (
+                          <td className="min-w-[140px] px-2.5 py-2 bg-[#F0FDF4]">
+                            <input
+                              id={`cell_skinType_${row._id}`}
+                              type="text"
+                              value={row.skinType || ''}
+                              onChange={(e) => handleCellChange(row._id, 'skinType', e.target.value)}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'skinType')}
+                              placeholder="e.g. All / Oily"
+                              className="w-full h-9 px-2.5 py-1.5 bg-emerald-50/40 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-950 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 shadow-2xs placeholder:text-emerald-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* Column 24: Coverage */}
+                        {isColVisible('coverage') && (
+                          <td className="min-w-[140px] px-2.5 py-2 bg-[#F0FDF4]">
+                            <input
+                              id={`cell_coverage_${row._id}`}
+                              type="text"
+                              value={row.coverage || ''}
+                              onChange={(e) => handleCellChange(row._id, 'coverage', e.target.value)}
+                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'coverage')}
+                              placeholder="e.g. Full / Medium"
+                              className="w-full h-9 px-2.5 py-1.5 bg-emerald-50/40 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-950 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 shadow-2xs placeholder:text-emerald-400 placeholder:font-normal"
+                            />
+                          </td>
+                        )}
+
+                        {/* =========================================================
+                            GROUP 5: PUBLICATION & CONTROLS (Cols 25-27)
+                            ========================================================= */}
+
+                        {/* Column 25: Product Image URL */}
+                        {isColVisible('productImageUrl') && (
+                          <td className="min-w-[190px] px-2.5 py-2 font-mono bg-slate-50">
+                            <div className="relative flex items-center">
+                              <input
+                                id={`cell_productImageUrl_${row._id}`}
+                                type="url"
+                                value={row.productImageUrl || (row.images && row.images[0]) || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  handleCellChange(row._id, 'productImageUrl', val);
+                                  if (val && (!row.images || row.images.length === 0)) {
+                                    handleCellChange(row._id, 'images', [val]);
+                                  }
+                                }}
+                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'productImageUrl')}
+                                placeholder="https://..."
+                                className="w-full h-9 pl-2.5 pr-7 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400"
+                              />
+                              {Boolean(row.productImageUrl || (row.images && row.images[0])) && (
+                                <a
+                                  href={row.productImageUrl || row.images[0]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Open Image URL"
+                                  className="absolute right-2 text-slate-400 hover:text-indigo-600"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                        )}
+
+                        {/* Column 26: Product Active */}
+                        {isColVisible('productActive') && (
+                          <td className="w-28 min-w-[110px] px-2 py-2 text-center bg-slate-50">
+                            <button
+                              type="button"
+                              onClick={() => handleCellChange(row._id, 'productActive', row.productActive === false ? true : false)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-black transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1 mx-auto ${
+                                row.productActive !== false
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                                  : 'bg-slate-200 text-slate-600 border border-slate-300 hover:bg-slate-300'
+                              }`}
+                              title="Toggle Product Active status"
+                            >
+                              {row.productActive !== false ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
+                                  <span>TRUE</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-3.5 h-3.5 text-slate-500 stroke-[3]" />
+                                  <span>FALSE</span>
+                                </>
+                              )}
+                            </button>
+                          </td>
+                        )}
+
+                        {/* Column 27: Variant Active */}
+                        {isColVisible('variantActive') && (
+                          <td className="w-28 min-w-[110px] px-2 py-2 text-center bg-slate-50">
+                            <button
+                              type="button"
+                              onClick={() => handleCellChange(row._id, 'variantActive', row.variantActive === false ? true : false)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-black transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1 mx-auto ${
+                                row.variantActive !== false
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                                  : 'bg-slate-200 text-slate-600 border border-slate-300 hover:bg-slate-300'
+                              }`}
+                              title="Toggle Variant Active status"
+                            >
+                              {row.variantActive !== false ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
+                                  <span>TRUE</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-3.5 h-3.5 text-slate-500 stroke-[3]" />
+                                  <span>FALSE</span>
+                                </>
+                              )}
+                            </button>
+                          </td>
+                        )}
+
+                        {/* Status Dropdown */}
+                        {isColVisible('status') && (
+                          <td className="w-32 min-w-[130px] px-2 py-2 text-center bg-slate-50">
+                            <select
+                              value={row.status || 'draft'}
+                              onChange={(e) => handleCellChange(row._id, 'status', e.target.value)}
+                              className="w-full h-9 px-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none cursor-pointer focus:border-indigo-600 shadow-2xs"
+                            >
+                              <option value="ready">Ready</option>
+                              <option value="draft">Draft</option>
+                              <option value="review">Needs Review</option>
+                              <option value="error">Error</option>
+                              <option value="ai_analyzed">AI Analyzed</option>
+                            </select>
+                          </td>
+                        )}
+
+                        {/* Actions */}
+                        {isColVisible('actions') && (
+                          <td className="w-32 min-w-[125px] px-2 py-2 text-center bg-slate-50">
+                            <div className="flex items-center justify-center gap-1 text-slate-400">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedRowId(isExpanded ? null : row._id)}
+                                title={isExpanded ? "Collapse Details" : "View / Edit Full Details"}
+                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isExpanded ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100 text-slate-600'
+                                  }`}
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDuplicateRow(row._id)}
+                                title="Duplicate Row"
+                                className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-purple-600 rounded-lg transition-colors cursor-pointer"
                               >
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteRow(row._id)}
+                                title="Delete Row"
+                                className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                          ) : (
-                            <div className="h-9 px-2.5 py-1.5 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold text-slate-400 flex items-center justify-center italic">
-                              —
-                            </div>
-                          )}
-                          {row._fieldErrors?.hexColor && (
-                            <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
-                              <AlertCircle className="w-3 h-3 shrink-0" />
-                              <span>{row._fieldErrors.hexColor}</span>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Color Swatch: Preview, Real-Time Color Generation & RGB */}
-                        <td className="min-w-[170px] px-2.5 py-2">
-                          {rowHasShades ? (
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="color"
-                                value={row.hexColor || '#C2182B'}
-                                onInput={(e) => handleColorSwatchChange(row._id, e.target.value)}
-                                onChange={(e) => handleColorSwatchChange(row._id, e.target.value)}
-                                className="w-8 h-8 rounded-lg cursor-pointer border border-slate-300 p-0 shadow-2xs shrink-0"
-                                title="Click or drag to pick swatch color in real-time"
-                              />
-                              <div className="flex flex-col text-left leading-tight select-all">
-                                <span className="font-mono text-xs font-black text-slate-900">
-                                  {row.hexColor || '—'}
-                                </span>
-                                <span className="font-mono text-[10.5px] font-bold text-slate-700">
-                                  {row.rgb || (row.hexColor ? hexToRgbString(row.hexColor) : '—')}
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="h-9 px-2.5 py-1.5 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold text-slate-400 flex items-center justify-center italic">
-                              —
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Description Column (Multiline editable) */}
-                        <td className="min-w-[260px] px-2.5 py-2">
-                          <div className="relative w-full">
-                            <textarea
-                              id={`cell_description_${row._id}`}
-                              rows={2}
-                              value={row.description || ''}
-                              onChange={(e) => handleCellChange(row._id, 'description', e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  handleCellKeyDown(e, row._id, 'description');
-                                }
-                              }}
-                              placeholder="Enter product description..."
-                              className="w-full h-9 py-1 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 leading-normal resize-none focus:h-24 focus:absolute focus:top-0 focus:left-0 focus:z-30 focus:shadow-xl transition-all"
-                            />
-                          </div>
-                        </td>
-
-                        {/* Highlights Column */}
-                        <td className="min-w-[220px] px-2.5 py-2">
-                          <input
-                            id={`cell_highlights_${row._id}`}
-                            type="text"
-                            value={Array.isArray(row.highlights) ? row.highlights.join('; ') : (row.highlights || '')}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              const list = val.split(';').map(s => s.trim()).filter(Boolean);
-                              handleCellChange(row._id, 'highlights', list);
-                            }}
-                            onKeyDown={(e) => handleCellKeyDown(e, row._id, 'highlights')}
-                            placeholder="e.g. Matte Finish; Waterproof"
-                            className="w-full h-9 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400"
-                          />
-                        </td>
-
-                        {/* Category Attributes Column */}
-                        <td className="min-w-[190px] px-2.5 py-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExpandedRowId(row._id);
-                              setActiveDetailTab('Description & Attributes');
-                            }}
-                            className="w-full h-9 px-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-800 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 cursor-pointer shadow-2xs transition-colors"
-                          >
-                            <span className="truncate">
-                              {Object.keys(row.attributes || {}).length > 0
-                                ? `${Object.keys(row.attributes || {}).length} attrs configured`
-                                : '+ Attributes'}
-                            </span>
-                            <Tag className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                          </button>
-                        </td>
-
-                        {/* Size Column */}
-                        <td className="min-w-[110px] px-2 py-2 font-medium">
-                          <input
-                            id={`cell_size_${row._id}`}
-                            type="text"
-                            value={row.size || ''}
-                            onChange={(e) => handleCellChange(row._id, 'size', e.target.value)}
-                            onKeyDown={(e) => handleCellKeyDown(e, row._id, 'size')}
-                            placeholder="e.g. 50ml, 30g"
-                            className="w-full h-9 px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
-                          />
-                        </td>
-
-                        {/* GST % Column */}
-                        <td className="min-w-[85px] px-2 py-2 text-right font-mono">
-                          <input
-                            id={`cell_gst_${row._id}`}
-                            type="number"
-                            min="0"
-                            max="28"
-                            value={row.gst !== undefined && row.gst !== null ? row.gst : ''}
-                            onChange={(e) => handleCellChange(row._id, 'gst', e.target.value === '' ? '' : Number(e.target.value))}
-                            onKeyDown={(e) => handleCellKeyDown(e, row._id, 'gst')}
-                            placeholder="0"
-                            className={`w-full h-9 px-2 py-1.5 text-right bg-white border rounded-lg text-xs font-black text-slate-900 outline-none shadow-2xs ${row._fieldErrors?.gst
-                                ? 'border-rose-400 bg-rose-50/40 ring-1 ring-rose-200 text-rose-900'
-                                : 'border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100'
-                              }`}
-                          />
-                          {row._fieldErrors?.gst && (
-                            <div className="text-[10px] font-bold text-rose-600 mt-1">{row._fieldErrors.gst}</div>
-                          )}
-                        </td>
-
-                        {/* Net Qty Column */}
-                        <td className="min-w-[105px] px-2 py-2 font-medium">
-                          <input
-                            id={`cell_netQty_${row._id}`}
-                            type="text"
-                            value={row.netQty || ''}
-                            onChange={(e) => handleCellChange(row._id, 'netQty', e.target.value)}
-                            onKeyDown={(e) => handleCellKeyDown(e, row._id, 'netQty')}
-                            placeholder="e.g. 1 N, 2 Units"
-                            className="w-full h-9 px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
-                          />
-                        </td>
-
-                        {/* MRP (₹) */}
-                        <td className="min-w-[115px] px-2.5 py-2 text-right font-mono">
-                          <div className="relative flex items-center">
-                            <span className="absolute left-2 text-slate-400 font-bold text-xs">₹</span>
-                            <input
-                              id={`cell_mrp_${row._id}`}
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={row.mrp !== undefined && row.mrp !== null ? row.mrp : ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === '' || (Number(val) >= 0 && !isNaN(Number(val)))) {
-                                  handleCellChange(row._id, 'mrp', val);
-                                }
-                              }}
-                              onKeyDown={(e) => handleCellKeyDown(e, row._id, 'mrp')}
-                              placeholder="0"
-                              className={`w-full h-9 pl-5 pr-2 py-1.5 text-right bg-white border rounded-lg text-xs font-mono font-black outline-none shadow-2xs ${row._fieldErrors?.mrp
-                                  ? 'border-rose-400 bg-rose-50/40 ring-1 ring-rose-200 text-rose-900'
-                                  : 'border-slate-300 text-slate-900 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100'
-                                }`}
-                            />
-                          </div>
-                          {row._fieldErrors?.mrp && (
-                            <div className="text-[10px] font-bold text-rose-600 mt-1">{row._fieldErrors.mrp}</div>
-                          )}
-                        </td>
-
-                        {/* General User % */}
-                        <td className="min-w-[115px] px-2 py-2 text-right font-mono">
-                          <div className="flex flex-col items-end">
-                            <div className="relative flex items-center w-full">
-                              <input
-                                id={`cell_generalDiscount_${row._id}`}
-                                type="number"
-                                value={row.generalDiscount !== undefined && row.generalDiscount !== null ? row.generalDiscount : ''}
-                                onChange={(e) => handleCellChange(row._id, 'generalDiscount', e.target.value)}
-                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'generalDiscount')}
-                                placeholder="0"
-                                className="w-full h-9 pr-4 pl-1.5 text-right bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
-                              />
-                              <span className="absolute right-1.5 text-slate-400 font-bold text-[11px]">%</span>
-                            </div>
-                            <span className="text-[10.5px] font-bold text-emerald-700 mt-0.5">
-                              {row.mrp && row.generalDiscount !== '' ? `₹${rowPrices.genP}` : '—'}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Salon Owner % */}
-                        <td className="min-w-[115px] px-2 py-2 text-right font-mono">
-                          <div className="flex flex-col items-end">
-                            <div className="relative flex items-center w-full">
-                              <input
-                                id={`cell_salonDiscount_${row._id}`}
-                                type="number"
-                                value={row.salonDiscount !== undefined && row.salonDiscount !== null ? row.salonDiscount : ''}
-                                onChange={(e) => handleCellChange(row._id, 'salonDiscount', e.target.value)}
-                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'salonDiscount')}
-                                placeholder="0"
-                                className="w-full h-9 pr-4 pl-1.5 text-right bg-purple-50/50 border border-purple-200 rounded-lg text-xs font-mono font-black text-purple-950 outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100 shadow-2xs"
-                              />
-                              <span className="absolute right-1.5 text-purple-400 font-bold text-[11px]">%</span>
-                            </div>
-                            <span className="text-[10.5px] font-bold text-purple-800 mt-0.5">
-                              {row.mrp && row.salonDiscount !== '' ? `₹${rowPrices.salonP}` : '—'}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Makeup Artist % */}
-                        <td className="min-w-[115px] px-2 py-2 text-right font-mono">
-                          <div className="flex flex-col items-end">
-                            <div className="relative flex items-center w-full">
-                              <input
-                                id={`cell_artistDiscount_${row._id}`}
-                                type="number"
-                                value={row.artistDiscount !== undefined && row.artistDiscount !== null ? row.artistDiscount : ''}
-                                onChange={(e) => handleCellChange(row._id, 'artistDiscount', e.target.value)}
-                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'artistDiscount')}
-                                placeholder="0"
-                                className="w-full h-9 pr-4 pl-1.5 text-right bg-blue-50/50 border border-blue-200 rounded-lg text-xs font-mono font-bold text-blue-950 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
-                              />
-                              <span className="absolute right-1.5 text-slate-400 font-bold text-[11px]">%</span>
-                            </div>
-                            <span className="text-[10.5px] font-bold text-blue-800 mt-0.5">
-                              {row.mrp && row.artistDiscount !== '' ? `₹${rowPrices.artistP}` : '—'}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Beautician % */}
-                        <td className="min-w-[115px] px-2 py-2 text-right font-mono">
-                          <div className="flex flex-col items-end">
-                            <div className="relative flex items-center w-full">
-                              <input
-                                id={`cell_beauticianDiscount_${row._id}`}
-                                type="number"
-                                value={row.beauticianDiscount !== undefined && row.beauticianDiscount !== null ? row.beauticianDiscount : ''}
-                                onChange={(e) => handleCellChange(row._id, 'beauticianDiscount', e.target.value)}
-                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'beauticianDiscount')}
-                                placeholder="0"
-                                className="w-full h-9 pr-4 pl-1.5 text-right bg-amber-50/50 border border-amber-200 rounded-lg text-xs font-mono font-bold text-amber-950 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
-                              />
-                              <span className="absolute right-1.5 text-slate-400 font-bold text-[11px]">%</span>
-                            </div>
-                            <span className="text-[10.5px] font-bold text-amber-800 mt-0.5">
-                              {row.mrp && row.beauticianDiscount !== '' ? `₹${rowPrices.beauticianP}` : '—'}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Quantity Discounts: Set Tiers */}
-                        <td className="min-w-[150px] px-2.5 py-2 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExpandedRowId(row._id);
-                              setActiveDetailTab('Pricing & Discounts');
-                            }}
-                            className="w-full h-9 px-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
-                          >
-                            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
-                            <span>Qty Tiers ({row.quantityTiers?.salon?.length || 4})</span>
-                          </button>
-                        </td>
-
-                        {/* Status Dropdown / Badge */}
-                        <td className="min-w-[120px] px-2 py-2 text-center">
-                          <select
-                            value={row.status || 'draft'}
-                            onChange={(e) => handleCellChange(row._id, 'status', e.target.value)}
-                            className="w-full h-9 px-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none cursor-pointer focus:border-indigo-600 shadow-2xs"
-                          >
-                            <option value="ready">Ready</option>
-                            <option value="draft">Draft</option>
-                            <option value="review">Needs Review</option>
-                            <option value="error">Error</option>
-                            <option value="ai_analyzed">AI Analyzed</option>
-                          </select>
-                        </td>
-
-                        {/* Created At Timestamp */}
-                        <td className="min-w-[110px] px-2 py-2 text-center">
-                          <div className="h-9 px-1.5 bg-slate-50 border border-slate-200 rounded-lg font-mono text-[11px] font-bold text-slate-700 flex items-center justify-center shadow-2xs" title={row.createdAt || row.created_at}>
-                            {formatDateDisplay(row.createdAt || row.created_at)}
-                          </div>
-                        </td>
-
-                        {/* Updated At Timestamp */}
-                        <td className="min-w-[110px] px-2 py-2 text-center">
-                          <div className="h-9 px-1.5 bg-slate-50 border border-slate-200 rounded-lg font-mono text-[11px] font-bold text-slate-700 flex items-center justify-center shadow-2xs" title={row.updatedAt || row.updated_at}>
-                            {formatDateDisplay(row.updatedAt || row.updated_at)}
-                          </div>
-                        </td>
-
-                        {/* Actions */}
-                        <td className="min-w-[110px] px-2 py-2 text-center">
-                          <div className="flex items-center justify-center gap-1 text-slate-400">
-                            <button
-                              type="button"
-                              onClick={() => setExpandedRowId(isExpanded ? null : row._id)}
-                              title={isExpanded ? "Collapse Details" : "View / Edit Full Details"}
-                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isExpanded ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100 text-slate-600'
-                                }`}
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDuplicateRow(row._id)}
-                              title="Duplicate Row"
-                              className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-purple-600 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteRow(row._id)}
-                              title="Delete Row"
-                              className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
+                          </td>
+                        )}
                       </tr>
 
                       {/* =====================================================================
@@ -3950,7 +4854,7 @@ export const BulkProductEntryModal = ({
                           ===================================================================== */}
                       {isExpanded && (
                         <tr className="bg-[#FAFBFD] animate-in fade-in duration-150">
-                          <td colSpan={29} className="p-3 border-y border-indigo-200/80 bg-slate-50/50">
+                          <td colSpan={40} className="p-3 border-y border-indigo-200/80 bg-slate-50/50">
                             <div className="max-w-5xl bg-white rounded-2xl border border-slate-200 shadow-xl p-4 space-y-3.5">
 
                               {/* Tabs Header */}
@@ -4631,14 +5535,14 @@ export const BulkProductEntryModal = ({
                 })}
                 {virtualScroll.paddingBottom > 0 && (
                   <tr key="virtual-bottom-spacer" className="p-0 m-0 border-0 pointer-events-none">
-                    <td colSpan={29} style={{ height: `${virtualScroll.paddingBottom}px`, padding: 0, border: 0 }} />
+                    <td colSpan={40} style={{ height: `${virtualScroll.paddingBottom}px`, padding: 0, border: 0 }} />
                   </tr>
                 )}
 
                 {/* Dedicated in-table '+ Add Row' button row (Normal scroll as requested) */}
                 {displayedRows.length > 0 && (
                   <tr className="bg-slate-50/90 hover:bg-indigo-50/50 transition-colors border-t-2 border-dashed border-indigo-200">
-                    <td colSpan={29} className="py-3 px-4">
+                    <td colSpan={40} className="py-3 px-4">
                       <div className="inline-flex items-center gap-3">
                         <button
                           type="button"
@@ -4971,6 +5875,17 @@ export const BulkProductEntryModal = ({
             </div>
           </div>
         )}
+
+        {/* =====================================================================
+            9. COLUMN MANAGER MODAL
+            ===================================================================== */}
+        <ColumnManagerModal
+          isOpen={isColumnManagerOpen}
+          onClose={() => setIsColumnManagerOpen(false)}
+          columns={columnConfig}
+          onToggleColumn={handleToggleColumn}
+          onResetColumns={handleResetColumns}
+        />
 
       </div>
     </div>

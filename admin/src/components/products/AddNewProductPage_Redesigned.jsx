@@ -79,6 +79,7 @@ import { Table, FileSpreadsheet } from 'lucide-react';
 import { BulkProductEntryModal } from './BulkProductEntryModal';
 import { ExcelImportModal } from './ExcelImportModal';
 import { BarcodeLookupReviewModal } from './BarcodeLookupReviewModal';
+import BrandFormModal from '../brands/BrandFormModal';
 import { lookupBarcodeData } from '../../services/barcodeLookupService';
 import { extractColorsFromImage, matchBeautyShade } from '../../services/aiColorService';
 import {
@@ -105,6 +106,7 @@ export default function AddNewProductPage({
     brands = [],
     categories = [],
     addProduct,
+    addBrand,
     saveBulkProducts,
     updateProduct,
     checkBarcodeInSupabase,
@@ -112,6 +114,8 @@ export default function AddNewProductPage({
     DEFAULT_PRICING_RULES: contextDefaultPricingRules,
     pricingRules
   } = useAdmin();
+
+  const [isInlineAddBrandOpen, setIsInlineAddBrandOpen] = useState(false);
 
   // Master Entry & Enrichment Modals State
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -149,7 +153,7 @@ export default function AddNewProductPage({
     status: editingProduct ? (editingProduct.status || editingProduct.additionalInfo?.status || 'published') : 'published',
     isFeatured: editingProduct ? Boolean(editingProduct.isFeatured || editingProduct.additionalInfo?.isFeatured) : true,
     featuredPriority: editingProduct ? Number(editingProduct.featuredPriority || editingProduct.additionalInfo?.featuredPriority || 0) : 0,
-    isTrending: editingProduct ? Boolean(editingProduct.isTrending || editingProduct.additionalInfo?.isTrending) : false,
+    isTrending: editingProduct ? Boolean(editingProduct.isTrending || editingProduct.additionalInfo?.trendingPriority || 0) : false,
     trendingPriority: editingProduct ? Number(editingProduct.trendingPriority || editingProduct.additionalInfo?.trendingPriority || 0) : 0,
     rating: editingProduct ? Number(editingProduct.rating || editingProduct.additionalInfo?.rating || 4.5) : 4.8,
     reviewCount: editingProduct ? Number(editingProduct.reviewCount || editingProduct.additionalInfo?.reviewCount || 120) : 120,
@@ -171,6 +175,13 @@ export default function AddNewProductPage({
     metaDescription: '',
     urlSlug: ''
   });
+
+  // Active Brands list for dropdown: includes active brands plus current selection
+  const activeBrandOptions = useMemo(() => {
+    return (brands || []).filter(b => {
+      return b.enabled !== false || b.id === formData.brandId || b.name === formData.brandName;
+    });
+  }, [brands, formData.brandId, formData.brandName]);
 
   // Role discount percentages for all 4 roles
   const [roleDiscounts, setRoleDiscounts] = useState({
@@ -619,8 +630,8 @@ export default function AddNewProductPage({
       setTimeout(() => setHardwareScanAlert(null), 4000);
 
       if (isBarcodeScannerOpen && barcodeScannerTarget !== null) {
-        if (typeof barcodeScannerTarget === 'number' && formData.shades[barcodeScannerTarget]) {
-          handleUpdateShade(barcodeScannerTarget, { ...formData.shades[barcodeScannerTarget], barcode: cleanCode });
+        if (typeof barcodeScannerTarget === 'number' && childProducts && childProducts[barcodeScannerTarget]) {
+          handleUpdateChildField(barcodeScannerTarget, 'barcode', cleanCode);
         }
         setIsBarcodeScannerOpen(false);
         setBarcodeScannerTarget(null);
@@ -836,16 +847,28 @@ export default function AddNewProductPage({
     }
   };
 
-  const handleAddFromUrl = () => {
+  const handleAddFromUrl = async () => {
     const trimmed = imageUrlInput.trim();
     if (!trimmed) return;
     if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
       setImageError('Please enter a valid image URL starting with http:// or https://');
       return;
     }
-    handleAddImageUrl(trimmed);
-    setImageUrlInput('');
-    setShowUrlInput(false);
+    setIsUploadingImage(true);
+    try {
+      if (uploadProductImage) {
+        const optimizedUrl = await uploadProductImage(trimmed);
+        handleAddImageUrl(optimizedUrl || trimmed);
+      } else {
+        handleAddImageUrl(trimmed);
+      }
+    } catch (e) {
+      handleAddImageUrl(trimmed);
+    } finally {
+      setIsUploadingImage(false);
+      setImageUrlInput('');
+      setShowUrlInput(false);
+    }
   };
 
   const handleOpenImageSearch = () => {
@@ -1355,119 +1378,6 @@ export default function AddNewProductPage({
       savedRecord = res?.product || payload;
     }
 
-    // PERSIST ALL CHILD PRODUCTS AS REAL INDEPENDENT SELLABLE RECORDS IN SUPABASE
-    if (savedRecord?.id && isParentProduct && childProducts.length > 0) {
-      for (let cIdx = 0; cIdx < childProducts.length; cIdx++) {
-        const child = childProducts[cIdx];
-        try {
-          const childSku = child.sku ? child.sku.trim() : `${autoSku}-C${cIdx + 1}`;
-          const childImages = Array.isArray(child.images) && child.images.length > 0
-            ? child.images
-            : (child.image ? [child.image] : allImages);
-          const childPrimaryImage = childImages[0] || primaryImage;
-          const childNormalizedTiers = normalizeQuantityTiers(child.quantityTiers);
-
-          const childPayload = {
-            name: `${payload.name} - ${child.name}`,
-            brandId: payload.brandId,
-            brandName: payload.brandName,
-            category: payload.category,
-            subcategory: payload.subcategory,
-            productType: payload.variantType || payload.productType || 'Standard',
-            productGroup: payload.name,
-            sku: childSku,
-            barcode: child.barcode ? child.barcode.trim() : '',
-            barcode_format: child.barcode_format || '',
-            mrp: Number(child.mrp || payload.mrp),
-            generalPrice: child.generalPrice !== undefined && child.generalPrice !== '' ? Number(child.generalPrice) : generalPriceNum,
-            salonPrice: child.salonPrice !== undefined && child.salonPrice !== '' ? Number(child.salonPrice) : salonPriceNum,
-            artistPrice: child.artistPrice !== undefined && child.artistPrice !== '' ? Number(child.artistPrice) : artistPriceNum,
-            beauticianPrice: child.beauticianPrice !== undefined && child.beauticianPrice !== '' ? Number(child.beauticianPrice) : beauticianPriceNum,
-            image: childPrimaryImage,
-            images: childImages,
-            status: payload.status,
-            parent_id: savedRecord.id,
-            isParentProduct: false,
-            size: child.size || payload.size,
-            gst: Number(payload.gst) || 18,
-            discountPercentages: child.roleDiscounts || payload.discountPercentages,
-            quantityTiers: {
-              ...childNormalizedTiers,
-              roleDiscounts: child.roleDiscounts || payload.discountPercentages
-            },
-            specifications: {
-              ...(child.attributes || {}),
-              shadeName: child.name,
-              hexColor: child.hexColor,
-              size: child.size
-            },
-            additionalInfo: {
-              parent_id: savedRecord.id,
-              parent_product_id: savedRecord.id,
-              sku: childSku,
-              shade_name: child.name,
-              color_name: child.attributes?.Color || child.attributes?.Shade || child.name,
-              hex_color: child.hexColor || null,
-              color_family: child.colorFamily || null,
-              product_group: payload.name,
-              status: payload.status,
-              isParentProduct: false
-            }
-          };
-
-          await addProduct(childPayload).catch(e => {
-            console.warn('Child product record save note:', e?.message || e);
-          });
-        } catch (childErr) {
-          console.warn('Non-fatal error creating child product:', childErr);
-        }
-      }
-    } else if (savedRecord?.id && sanitizedShades.length > 0) {
-      for (let sIdx = 0; sIdx < sanitizedShades.length; sIdx++) {
-        const shade = sanitizedShades[sIdx];
-        try {
-          const variantSku = shade.sku || `${autoSku}-${shade.code || (sIdx + 1)}`;
-          const childPayload = {
-            name: `${payload.name} - ${shade.name}`,
-            brandId: payload.brandId,
-            brandName: payload.brandName,
-            category: payload.category,
-            subcategory: payload.subcategory,
-            productType: payload.productType,
-            productGroup: payload.name,
-            sku: variantSku,
-            barcode: shade.barcode || '',
-            mrp: Number(shade.mrp || payload.mrp),
-            generalPrice: Number(shade.generalPrice || payload.generalPrice),
-            salonPrice: Number(shade.salonPrice || payload.salonPrice),
-            artistPrice: Number(shade.artistPrice || payload.artistPrice),
-            beauticianPrice: Number(shade.beauticianPrice || payload.beauticianPrice),
-            image: shade.image || payload.image,
-            images: shade.image ? [shade.image] : payload.images,
-            status: payload.status,
-            parent_id: savedRecord.id,
-            additionalInfo: {
-              parent_id: savedRecord.id,
-              parent_product_id: savedRecord.id,
-              sku: variantSku,
-              shade_name: shade.name,
-              color_name: shade.attributes?.Color || shade.attributes?.Shade || shade.name,
-              hex_color: shade.hexColor || null,
-              color_family: shade.colorFamily || null,
-              product_group: payload.name,
-              status: payload.status
-            }
-          };
-
-          await addProduct(childPayload).catch(e => {
-            console.warn('Child variant record save note:', e?.message || e);
-          });
-        } catch (childErr) {
-          console.warn('Non-fatal error creating child variant product:', childErr);
-        }
-      }
-    }
-
     if (savedRecord?.id) {
       setFormData(prev => ({ ...prev, id: savedRecord.id, sku: autoSku, status: finalStatus }));
     } else {
@@ -1478,6 +1388,7 @@ export default function AddNewProductPage({
 
   // 1. DRAFT Action Handler: saves as draft to DB & localStorage without requiring full form completion
   const handleSaveDraft = async () => {
+    if (isSubmitting) return;
     setFormError(null);
     setIsSubmitting(true);
     try {
@@ -1501,6 +1412,7 @@ export default function AddNewProductPage({
 
   // 2. SAVE PRODUCT Action Handler: validates & saves to catalog without navigating away
   const handleSaveProduct = async () => {
+    if (isSubmitting) return;
     setFormError(null);
     if (!validateForm()) return;
     setIsSubmitting(true);
@@ -1520,6 +1432,7 @@ export default function AddNewProductPage({
   // 3. SUBMIT Action Handler: validates, saves to database, updates Products list, and navigates back
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (isSubmitting) return;
     setFormError(null);
     if (!validateForm()) return;
     setIsSubmitting(true);
@@ -1779,14 +1692,87 @@ export default function AddNewProductPage({
                 </div>
 
                 <div>
-                  <label className="block text-gray-800 font-bold mb-1.5 text-xs">
-                    Brand <span className="text-[#E11D48]">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-gray-800 font-bold text-xs flex items-center gap-1">
+                      <span>Brand</span>
+                      <span className="text-[#E11D48]">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsInlineAddBrandOpen(true)}
+                      className="text-[#C2477A] hover:text-[#b83760] font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Plus size={12} strokeWidth={2.5} />
+                      <span>Add Brand</span>
+                    </button>
+                  </div>
                   <SearchableSelect
-                    options={brands}
+                    options={activeBrandOptions}
                     value={formData.brandName}
+                    searchKeys={['name', 'brandNumber', 'brandCode']}
+                    renderTrigger={(selected) => {
+                      if (!selected) {
+                        return <span className="text-gray-400 font-normal">Select Brand...</span>;
+                      }
+                      const brandNum = selected.brandNumber || selected.brand_number || '';
+                      const brandCode = selected.brandCode || selected.brand_code || '';
+                      return (
+                        <div className="flex items-center gap-2 overflow-hidden truncate">
+                          {selected.logo ? (
+                            <img src={selected.logo} alt="" className="w-5 h-5 rounded-md object-contain shrink-0 bg-white border border-gray-200" />
+                          ) : (
+                            <Store size={14} className="text-[#C2477A] shrink-0" />
+                          )}
+                          <span className="font-extrabold text-gray-900 truncate">
+                            {selected.name}
+                          </span>
+                          {brandNum && (
+                            <span className="text-[10px] font-mono font-bold text-[#C2477A] bg-pink-50 px-1.5 py-0.5 rounded border border-pink-200 shrink-0">
+                              {brandNum}
+                            </span>
+                          )}
+                          {brandCode && (
+                            <span className="text-[10px] font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 shrink-0">
+                              {brandCode}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }}
+                    renderOption={(opt, isSelected) => {
+                      const brandNum = opt.brandNumber || opt.brand_number || '';
+                      const brandCode = opt.brandCode || opt.brand_code || '';
+                      return (
+                        <div className="flex items-center justify-between w-full py-0.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-6 h-6 rounded-md bg-white border border-gray-200 p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                              {opt.logo ? (
+                                <img src={opt.logo} alt="" className="w-full h-full object-contain" />
+                              ) : (
+                                <Store size={12} className="text-gray-300" />
+                              )}
+                            </div>
+                            <span className="font-bold text-xs truncate text-gray-900">
+                              {opt.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            {brandNum && (
+                              <span className="text-[10px] font-mono font-bold text-[#C2477A] bg-[#FFF0F4] px-1.5 py-0.5 rounded border border-pink-200">
+                                {brandNum}
+                              </span>
+                            )}
+                            {brandCode && (
+                              <span className="text-[10px] font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                                {brandCode}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }}
                     onChange={(selectedName, selectedObj) => {
-                      const selected = selectedObj || brands.find(b => b.name === selectedName);
+                      const selected = selectedObj || activeBrandOptions.find(b => b.name === selectedName);
                       setFormData({
                         ...formData,
                         brandName: selectedName,
@@ -1795,8 +1781,8 @@ export default function AddNewProductPage({
                       });
                     }}
                     placeholder="Select Brand..."
-                    searchPlaceholder="Search brand..."
-                    emptyMessage="No brands found"
+                    searchPlaceholder="Search brand name, number (BR001), or code (AGA-001)..."
+                    emptyMessage="No matching brands found"
                     labelKey="name"
                     valueKey="name"
                   />
@@ -4044,6 +4030,24 @@ export default function AddNewProductPage({
         categories={categories}
         brands={brands}
       />
+
+      {isInlineAddBrandOpen && (
+        <BrandFormModal
+          isOpen={isInlineAddBrandOpen}
+          onClose={() => setIsInlineAddBrandOpen(false)}
+          existingBrands={brands}
+          masterCategories={categories}
+          onSaveBrand={async (newBrand) => {
+            const saved = await addBrand(newBrand);
+            setFormData(prev => ({
+              ...prev,
+              brandName: saved.name,
+              brandId: saved.id
+            }));
+            setIsInlineAddBrandOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

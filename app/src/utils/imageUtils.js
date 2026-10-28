@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { supabase } from '../config/supabase.js';
 
 // Neutral empty beauty category fallbacks - no default images
 export const DEFAULT_CATEGORY_FALLBACKS = {
@@ -103,8 +103,41 @@ export const getSafeImageSource = (imageInput, fallbackUri = '') => {
   return { uri: safeUri || '' };
 };
 
+/**
+ * Returns the most appropriate responsive image variant (thumbnail, small, medium, large, logo)
+ * based on device display requirement, saving mobile bandwidth and accelerating loading.
+ */
+export const getResponsiveImageUri = (input, variant = 'medium', fallback = '') => {
+  if (!input) return getSafeImageUri(fallback, '');
+
+  if (typeof input === 'object') {
+    const variants = input.variants || input.responsiveVariants;
+    if (variants && typeof variants === 'object') {
+      if (variant === 'thumbnail') {
+        const u = variants.thumbnail || variants.small || variants.medium || variants.large;
+        if (u) return getSafeImageUri(u, fallback);
+      } else if (variant === 'small') {
+        const u = variants.small || variants.medium || variants.thumbnail || variants.large;
+        if (u) return getSafeImageUri(u, fallback);
+      } else if (variant === 'medium') {
+        const u = variants.medium || variants.large || variants.small;
+        if (u) return getSafeImageUri(u, fallback);
+      } else if (variant === 'large') {
+        const u = variants.large || variants.medium;
+        if (u) return getSafeImageUri(u, fallback);
+      } else if (variant === 'logo') {
+        const u = variants.logo || variants.small || variants.medium;
+        if (u) return getSafeImageUri(u, fallback);
+      }
+    }
+  }
+
+  return getSafeImageUri(input, fallback);
+};
+
 export default {
   getSafeImageUri,
   getSafeImageSource,
+  getResponsiveImageUri,
   DEFAULT_CATEGORY_FALLBACKS
 };

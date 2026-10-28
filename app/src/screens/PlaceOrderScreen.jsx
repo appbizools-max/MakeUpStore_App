@@ -21,16 +21,19 @@ export const PlaceOrderScreen = () => {
   const [customAddress, setCustomAddress] = useState(userProfile.address || '');
   const [orderNotes, setOrderNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState(null);
 
   const activeAddrObj = addresses.find(a => a.id === selectedAddressId);
   const finalAddressText = deliveryType === 'pickup'
     ? `Pickup from ${selectedBranch}`
     : (activeAddrObj ? activeAddrObj.text : customAddress);
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
+    setOrderError(null);
     try {
-      const createdOrder = placeOrder({
+      const createdOrder = await placeOrder({
         deliveryType,
         address: finalAddressText,
         branch: selectedBranch,
@@ -38,7 +41,12 @@ export const PlaceOrderScreen = () => {
       });
       if (createdOrder) {
         setCurrentScreen('confirmation');
+      } else {
+        setOrderError('Unable to place order. Please check your cart and try again.');
       }
+    } catch (err) {
+      console.error('Order placement exception:', err);
+      setOrderError(err.message || 'An error occurred during order confirmation.');
     } finally {
       setIsSubmitting(false);
     }
@@ -212,14 +220,23 @@ export const PlaceOrderScreen = () => {
           </div>
         </div>
 
+        {/* Order Error Alert (if any) */}
+        {orderError && (
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{orderError}</span>
+          </div>
+        )}
+
         {/* Confirmation Button */}
         <button
-          disabled={isSubmitting}
+          type="button"
+          disabled={isSubmitting || cart.length === 0}
           onClick={handleConfirmOrder}
-          className="w-full py-4 bg-[#C2477A] hover:bg-[#a83765] text-white font-bold text-xs rounded-2xl shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full py-4 bg-[#C2477A] hover:bg-[#a83765] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-2xl shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
         >
           <CheckCircle size={16} />
-          {isSubmitting ? 'Submitting Order...' : `Confirm & Place Order — ₹${cartSubtotal}`}
+          {isSubmitting ? 'Securing & Placing Order...' : `Confirm & Place Order — ₹${cartSubtotal}`}
         </button>
       </div>
     </div>

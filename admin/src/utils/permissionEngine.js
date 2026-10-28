@@ -314,10 +314,95 @@ export function hasActionPermission(permissions, moduleKey, actionKey, userRole 
 }
 
 /**
- * Generates formatted sequential Employee code (e.g. EMP-0001, EMP-0002)
+ * Sensitive permissions that require elevated caution
  */
-export function generateEmployeeCode(existingCount = 0) {
-  const num = (Number(existingCount) || 0) + 1;
+export const SENSITIVE_ACTIONS = new Set([
+  'delete',
+  'refund',
+  'cancel',
+  'export',
+  'disable',
+  'permissions',
+  'assign'
+]);
+
+/**
+ * Account Lifecycle States and Metadata
+ */
+export const ACCOUNT_STATES = {
+  INVITATION_PENDING: 'invitation_pending',
+  ACTIVE: 'active',
+  SUSPENDED: 'suspended',
+  DEACTIVATED: 'deactivated',
+  LOCKED: 'locked',
+};
+
+export const ACCOUNT_STATE_META = {
+  invitation_pending: {
+    label: 'Invitation Pending',
+    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    description: 'Invitation sent; waiting for employee to establish login credentials.',
+    canLogin: false,
+  },
+  active: {
+    label: 'Active',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    description: 'Employee account active and authorized for system login.',
+    canLogin: true,
+  },
+  suspended: {
+    label: 'Suspended',
+    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
+    description: 'Temporarily blocked from signing in by administrator.',
+    canLogin: false,
+  },
+  deactivated: {
+    label: 'Deactivated',
+    badgeClass: 'bg-gray-100 text-gray-600 border-gray-300',
+    description: 'Permanently deactivated; all sessions revoked.',
+    canLogin: false,
+  },
+  locked: {
+    label: 'Locked',
+    badgeClass: 'bg-orange-50 text-orange-700 border-orange-200',
+    description: 'Account locked due to security policy or excessive failed logins.',
+    canLogin: false,
+  },
+};
+
+/**
+ * Validates allowed lifecycle status transitions
+ */
+export function isValidStatusTransition(currentStatus, targetStatus) {
+  if (currentStatus === targetStatus) return true;
+  const allowed = {
+    invitation_pending: ['active', 'deactivated'],
+    active: ['suspended', 'deactivated', 'locked'],
+    suspended: ['active', 'deactivated'],
+    locked: ['active', 'deactivated'],
+    deactivated: ['active'],
+  };
+  return Boolean(allowed[currentStatus]?.includes(targetStatus));
+}
+
+/**
+ * Generates concurrency-safe sequential Employee Code (e.g. EMP-0001)
+ * Scans all existing codes and produces the strictly next integer
+ */
+export function generateEmployeeCode(existingEmployeesOrCount = 0) {
+  if (Array.isArray(existingEmployeesOrCount)) {
+    let maxNum = 0;
+    for (const emp of existingEmployeesOrCount) {
+      const code = emp.employee_code || emp.employeeCode || emp.id || '';
+      const match = String(code).match(/EMP-(\d+)/i);
+      if (match && match[1]) {
+        const val = parseInt(match[1], 10);
+        if (val > maxNum) maxNum = val;
+      }
+    }
+    return `EMP-${String(maxNum + 1).padStart(4, '0')}`;
+  }
+  const num = (Number(existingEmployeesOrCount) || 0) + 1;
   return `EMP-${String(num).padStart(4, '0')}`;
 }
 
@@ -336,7 +421,57 @@ export const EMPLOYEE_DEPARTMENTS = [
 ];
 
 /**
- * Standard designation options
+ * Designation mappings per department
+ */
+export const DEPARTMENT_DESIGNATIONS_MAP = {
+  'Operations': [
+    'Operations Lead',
+    'Operations Associate',
+    'Store Manager',
+    'Inventory Supervisor',
+  ],
+  'Catalog & Merchandising': [
+    'Catalog Lead',
+    'Catalog Specialist',
+    'Product Merchandiser',
+    'Pricing & Tier Analyst',
+  ],
+  'Order Fulfillment': [
+    'Fulfillment Specialist',
+    'Packing & Quality Supervisor',
+    'Dispatch Coordinator',
+    'Store Executive',
+  ],
+  'Customer Support': [
+    'Support Team Lead',
+    'Customer Support Representative',
+    'Escalation & Grievance Specialist',
+  ],
+  'Marketing & Growth': [
+    'Marketing Executive',
+    'Campaign & Banner Specialist',
+    'Social & Promotions Lead',
+    'SEO & Content Strategist',
+  ],
+  'Finance & Accounting': [
+    'Finance Manager',
+    'Accounts & Reconciliation Specialist',
+    'Billing & Refunds Executive',
+  ],
+  'Logistics & Dispatch': [
+    'Logistics Manager',
+    'Fleet & Dispatch Lead',
+    'Delivery Associate',
+  ],
+  'IT & Systems': [
+    'Systems Administrator',
+    'Platform Security Specialist',
+    'Technical Support Engineer',
+  ],
+};
+
+/**
+ * Flat designation options fallback
  */
 export const EMPLOYEE_DESIGNATIONS = [
   'Store Manager',
@@ -348,3 +483,189 @@ export const EMPLOYEE_DESIGNATIONS = [
   'Logistics Associate',
   'Executive Staff',
 ];
+
+/**
+ * Employment Types
+ */
+export const EMPLOYMENT_TYPES = [
+  'Full-time',
+  'Part-time',
+  'Contract',
+  'Intern',
+];
+
+/**
+ * Standard Work Locations
+ */
+export const WORK_LOCATIONS = [
+  'Visakhapatnam Main Store & Headquarters',
+  'Gajuwaka Fulfillment Center (Branch 2)',
+  'Madhurawada Express Hub (Branch 3)',
+  'Central Logistics Warehouse',
+  'Remote / Work From Home',
+];
+
+/**
+ * Supported Country Codes
+ */
+export const COUNTRY_CODES = [
+  { code: '+91', country: 'India', flag: '🇮🇳' },
+  { code: '+1', country: 'USA / Canada', flag: '🇺🇸' },
+  { code: '+44', country: 'United Kingdom', flag: '🇬🇧' },
+  { code: '+971', country: 'United Arab Emirates', flag: '🇦🇪' },
+  { code: '+65', country: 'Singapore', flag: '🇸🇬' },
+  { code: '+61', country: 'Australia', flag: '🇦🇺' },
+  { code: '+49', country: 'Germany', flag: '🇩🇪' },
+];
+
+/**
+ * Generates a cryptographically secure random temporary password
+ * Guaranteed to satisfy policy: Uppercase, Lowercase, Number, Special symbol, min 10 chars
+ */
+export function generateSecureTemporaryPassword() {
+  const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lowers = 'abcdefghijkmnopqrstuvwxyz';
+  const numbers = '23456789';
+  const symbols = '!@#$%&*';
+
+  const getRandomChar = (charset) => {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint32Array(1);
+      window.crypto.getRandomValues(arr);
+      return charset[arr[0] % charset.length];
+    }
+    return charset[Math.floor(Math.random() * charset.length)];
+  };
+
+  // Ensure at least 2 of each class
+  let result = [
+    getRandomChar(uppers),
+    getRandomChar(uppers),
+    getRandomChar(lowers),
+    getRandomChar(lowers),
+    getRandomChar(numbers),
+    getRandomChar(numbers),
+    getRandomChar(symbols),
+    getRandomChar(symbols),
+  ];
+
+  const allChars = uppers + lowers + numbers + symbols;
+  for (let i = 0; i < 4; i++) {
+    result.push(getRandomChar(allChars));
+  }
+
+  // Shuffle array using Fisher-Yates
+  for (let i = result.length - 1; i > 0; i--) {
+    let j;
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint32Array(1);
+      window.crypto.getRandomValues(arr);
+      j = arr[0] % (i + 1);
+    } else {
+      j = Math.floor(Math.random() * (i + 1));
+    }
+    const temp = result[i];
+    result[i] = result[j];
+    result[j] = temp;
+  }
+
+  return result.join('');
+}
+
+/**
+ * Validates password against enterprise policy
+ */
+export function validatePasswordPolicy(password) {
+  const errors = [];
+  if (!password || password.length < 8) {
+    errors.push('Must be at least 8 characters long');
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Must contain at least one uppercase letter (A-Z)');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Must contain at least one lowercase letter (a-z)');
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('Must contain at least one number (0-9)');
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push('Must contain at least one special character (!@#$%^&*)');
+  }
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Ensures permission dependencies are respected:
+ * - If any mutation action is enabled, 'view' must be true.
+ * - If 'view' is disabled, all actions in that module must be false.
+ */
+export function ensurePermissionDependencies(permissions) {
+  if (!permissions || typeof permissions !== 'object') return permissions;
+  const sanitized = JSON.parse(JSON.stringify(permissions));
+
+  Object.keys(sanitized).forEach((modKey) => {
+    const mod = sanitized[modKey];
+    if (!mod || !mod.actions) return;
+
+    const actionKeys = Object.keys(mod.actions);
+
+    if (!mod.enabled) {
+      // If module master switch is disabled, disable all sub-actions
+      mod.enabled = false;
+      actionKeys.forEach((act) => {
+        mod.actions[act] = false;
+      });
+    } else {
+      // If module is enabled, check action dependencies
+      const nonViewActions = actionKeys.filter((act) => act !== 'view');
+      const hasAnyMutationTrue = nonViewActions.some((act) => Boolean(mod.actions[act]));
+
+      if (hasAnyMutationTrue) {
+        // If any mutation action is granted, view MUST be granted
+        mod.actions.view = true;
+      } else if (!mod.actions.view) {
+        // If view is disabled and no mutation actions active, turn module off
+        mod.enabled = false;
+        actionKeys.forEach((act) => {
+          mod.actions[act] = false;
+        });
+      }
+    }
+  });
+
+  return sanitized;
+}
+
+/**
+ * Computes summary count of enabled modules and actions
+ */
+export function countPermissionsSummary(permissions) {
+  let enabledModules = 0;
+  let totalActions = 0;
+  let sensitiveActionsCount = 0;
+
+  if (permissions && typeof permissions === 'object') {
+    Object.keys(permissions).forEach((modKey) => {
+      const mod = permissions[modKey];
+      if (mod?.enabled) {
+        enabledModules += 1;
+        if (mod.actions) {
+          Object.keys(mod.actions).forEach((actKey) => {
+            if (mod.actions[actKey]) {
+              totalActions += 1;
+              if (SENSITIVE_ACTIONS.has(actKey)) {
+                sensitiveActionsCount += 1;
+              }
+            }
+          });
+        }
+      }
+    });
+  }
+
+  return { enabledModules, totalActions, sensitiveActionsCount };
+}

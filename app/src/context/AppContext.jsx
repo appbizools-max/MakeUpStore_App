@@ -506,7 +506,7 @@ export const AppProvider = ({ children }) => {
 
   const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(() => getCachedData('salbeau_cache_orders', []));
   const [orderStatusNotification, setOrderStatusNotification] = useState(null);
   const dismissOrderStatusNotification = useCallback(() => setOrderStatusNotification(null), []);
   const [consecutiveCancels, setConsecutiveCancels] = useState(0);
@@ -1910,7 +1910,11 @@ export const AppProvider = ({ children }) => {
       items: orderItems
     };
 
-    setOrders(prev => [formattedOrder, ...prev]);
+    setOrders(prev => {
+      const updated = [formattedOrder, ...prev];
+      setCachedData('salbeau_cache_orders', updated);
+      return updated;
+    });
 
     try {
       const orderPayload = {

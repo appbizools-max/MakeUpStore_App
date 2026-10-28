@@ -27,7 +27,7 @@ import {
   Power
 } from 'lucide-react';
 import { useAdmin } from '../../../context/AdminContext';
-import { EMPLOYEE_DEPARTMENTS } from '../../../utils/permissionEngine';
+import { EMPLOYEE_DEPARTMENTS, ACCOUNT_STATE_META } from '../../../utils/permissionEngine';
 
 export default function AllEmployeesPage({ onNavigate }) {
   const {
@@ -312,28 +312,34 @@ export default function AllEmployeesPage({ onNavigate }) {
                         </span>
                       </td>
 
-                      {/* Department & Designation */}
+                      {/* Department, Designation & Location */}
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-gray-900">{emp.department || 'Operations'}</div>
-                        <div className="text-[11px] text-gray-400">{emp.designation || 'Staff'}</div>
+                        <div className="text-[11px] text-gray-500">{emp.designation || 'Staff'}</div>
+                        {emp.work_location && (
+                          <div className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[180px]">
+                            📍 {emp.work_location}
+                          </div>
+                        )}
                       </td>
 
-                      {/* Status */}
+                      {/* Account Lifecycle Status */}
                       <td className="py-3.5 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                            emp.status === 'active'
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : 'bg-rose-100 text-rose-800 border border-rose-300'
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              emp.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
-                            }`}
-                          />
-                          <span>{emp.status}</span>
-                        </span>
+                        {(() => {
+                          const stateKey = emp.account_status || emp.status || 'active';
+                          const meta = ACCOUNT_STATE_META[stateKey] || {
+                            label: stateKey,
+                            badgeClass: 'bg-gray-100 text-gray-700 border-gray-300'
+                          };
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border shadow-2xs ${meta.badgeClass}`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                              <span>{meta.label}</span>
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Last Login */}

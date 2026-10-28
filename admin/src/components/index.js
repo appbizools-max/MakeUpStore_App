@@ -23,6 +23,12 @@ export { default as GeneratedDataPanel } from './products/GeneratedDataPanel';
 export { default as MainCategoriesManager, generateSlug } from './categories/MainCategoriesManager';
 export { default as AttributesMasterPage } from './categories/AttributesMasterPage';
 
+// Brands Module
+export { default as BrandManagementPage } from './brands/BrandManagementPage';
+export { default as BrandFormModal } from './brands/BrandFormModal';
+export { default as BrandImportModal } from './brands/BrandImportModal';
+export { default as BrandLogoSearchModal } from './brands/BrandLogoSearchModal';
+
 // Media & Asset Module
 export { default as ImageManagerModal } from './media/ImageManagerModal';
 export { default as ImageDropzoneUploader } from './media/ImageDropzoneUploader';

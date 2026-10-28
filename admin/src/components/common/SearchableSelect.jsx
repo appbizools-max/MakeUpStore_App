@@ -27,7 +27,10 @@ export default function SearchableSelect({
   buttonClassName = '',
   compact = false,
   id,
-  name
+  // Support multi-key searching and custom option rendering
+  renderOption = null,
+  renderTrigger = null,
+  searchKeys = []
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,23 +69,40 @@ export default function SearchableSelect({
       });
     }
 
-    // Support partial matching from beginning, middle, or end (e.g. 'aga', 'air', 'aj')
+    // Support partial matching from beginning, middle, or end across primary label and searchKeys
     const startsWithMatches = [];
     const containsMatches = [];
 
     options.forEach(opt => {
       const label = getOptionLabel(opt);
       const lowerLabel = label.toLowerCase();
-      if (lowerLabel.startsWith(query)) {
+
+      // Check if primary label or any searchKey matches
+      let isPrefix = lowerLabel.startsWith(query);
+      let isSubstring = lowerLabel.includes(query);
+
+      if (!isPrefix && !isSubstring && searchKeys.length > 0 && typeof opt === 'object' && opt !== null) {
+        for (const k of searchKeys) {
+          const val = String(opt[k] || '').toLowerCase();
+          if (val.startsWith(query)) {
+            isPrefix = true;
+            break;
+          } else if (val.includes(query)) {
+            isSubstring = true;
+          }
+        }
+      }
+
+      if (isPrefix) {
         startsWithMatches.push(opt);
-      } else if (lowerLabel.includes(query)) {
+      } else if (isSubstring) {
         containsMatches.push(opt);
       }
     });
 
     // Rank prefix matches first, followed by substring matches
     return [...startsWithMatches, ...containsMatches];
-  }, [options, searchQuery, getOptionLabel]);
+  }, [options, searchQuery, getOptionLabel, searchKeys]);
 
   // Find currently selected option object or string
   const selectedOption = useMemo(() => {
@@ -193,9 +213,13 @@ export default function SearchableSelect({
         onClick={() => !disabled && setIsOpen(prev => !prev)}
         className={`w-full ${compact ? 'px-3 py-2 text-xs' : 'p-3 text-xs'} rounded-xl border border-pink-100 bg-white font-semibold text-gray-900 shadow-2xs transition-all cursor-pointer flex items-center justify-between text-left outline-none hover:border-[#CE4270]/40 focus:border-[#CE4270] focus:ring-2 focus:ring-[#CE4270]/20 disabled:bg-gray-100 disabled:cursor-not-allowed ${buttonClassName} ${className}`}
       >
-        <span className={`truncate mr-2 ${selectedDisplayLabel ? 'text-gray-900 font-bold' : 'text-gray-400 font-normal'}`}>
-          {selectedDisplayLabel || placeholder}
-        </span>
+        {renderTrigger ? (
+          renderTrigger(selectedOption)
+        ) : (
+          <span className={`truncate mr-2 ${selectedDisplayLabel ? 'text-gray-900 font-bold' : 'text-gray-400 font-normal'}`}>
+            {selectedDisplayLabel || placeholder}
+          </span>
+        )}
         <ChevronDown
           size={compact ? 13 : 16}
           className={`text-gray-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#CE4270]' : ''}`}
@@ -267,7 +291,11 @@ export default function SearchableSelect({
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <span className="truncate pr-2">{optLabel}</span>
+                    {renderOption ? (
+                      renderOption(opt, isSelected)
+                    ) : (
+                      <span className="truncate pr-2">{optLabel}</span>
+                    )}
                     {isSelected && (
                       <Check size={14} className="text-[#CE4270] shrink-0" strokeWidth={2.5} />
                     )}

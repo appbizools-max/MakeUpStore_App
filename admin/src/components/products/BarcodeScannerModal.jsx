@@ -324,7 +324,8 @@ export default function BarcodeScannerModal({
       // Method 1: Browser native BarcodeDetector (high speed & multi-format support if present)
       if ('BarcodeDetector' in window) {
         try {
-          const imageBitmap = await createImageBitmap(file);
+          const imageBitmap = window.createImageBitmap ? await window.createImageBitmap(file) : null;
+          if (!imageBitmap) throw new Error('createImageBitmap not available');
           const supported = await window.BarcodeDetector.getSupportedFormats?.().catch(() => []);
           const detector = new window.BarcodeDetector(
             supported && supported.length > 0 ? { formats: supported } : undefined

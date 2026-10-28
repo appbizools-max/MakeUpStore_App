@@ -99,12 +99,13 @@ export const normalizeQuantityTiers = (raw) => {
     }
   }
 
-  // Already role-keyed object: { general: [...], salon: [...], artist: [...], beautician: [...] }
+  // Role-keyed object or legacy wrapper with nested quantityTiers
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const sharedTiers = Array.isArray(parsed.quantityTiers) ? parsed.quantityTiers : (Array.isArray(parsed.quantity_tiers) ? parsed.quantity_tiers : null);
     const result = {};
 
     for (const r of ALL_ROLE_KEYS) {
-      const roleTiers = Array.isArray(parsed[r]) ? parsed[r] : [];
+      const roleTiers = Array.isArray(parsed[r]) ? parsed[r] : (sharedTiers || []);
       result[r] = roleTiers.map((t, idx) => ({
         id: t.id || `${r}_${Date.now()}_${idx}`,
         role: r,

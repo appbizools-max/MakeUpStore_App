@@ -10,9 +10,9 @@
  * 6. Intelligent Excel header mapping
  */
 
-import { supabase } from '../config/supabase';
-import { validateBarcodeChecksum, detectBarcodeFormat } from './barcodeLookupService';
-import { matchBeautyShade } from './aiColorService';
+import { supabase } from '../config/supabase.js';
+import { validateBarcodeChecksum, detectBarcodeFormat } from './barcodeLookupService.js';
+import { matchBeautyShade } from './aiColorService.js';
 
 // ==============================================================================
 // 1. CANONICAL PRODUCT SCHEMA DEFINITION
@@ -673,22 +673,58 @@ export const toSupabaseProductPayload = (p) => {
   const shadeApplies = isShadeApplicable(p.category, p.subcategory);
 
   const shadesJson = (Array.isArray(p.shades) && p.shades.length > 0)
-    ? p.shades
+    ? p.shades.map((s, idx) => ({
+        id: s.id || `var_${Date.now()}_${idx + 1}`,
+        name: s.name || s.shadeName || `Variant ${idx + 1}`,
+        code: s.code || s.shadeCode || String(idx + 1).padStart(2, '0'),
+        sku: s.sku || s.variantSku || `${p.sku || 'SKU'}-V${idx + 1}`,
+        barcode: s.barcode || s.variantBarcode || null,
+        hexColor: s.hexColor || s.hex || '#CE4270',
+        hex: s.hex || s.hexColor || '#CE4270',
+        color_name: s.color_name || s.name || 'Default',
+        image: s.image || s.variantImageUrl || p.image || null,
+        images: Array.isArray(s.images) && s.images.length > 0 ? s.images : (s.image ? [s.image] : (p.image ? [p.image] : [])),
+        mrp: Number(s.mrp || p.mrp || 0),
+        generalPrice: Number(s.generalPrice !== undefined ? s.generalPrice : (s.general_price !== undefined ? s.general_price : (p.generalPrice || p.mrp || 0))),
+        general_price: Number(s.general_price !== undefined ? s.general_price : (s.generalPrice !== undefined ? s.generalPrice : (p.generalPrice || p.mrp || 0))),
+        salonPrice: Number(s.salonPrice !== undefined ? s.salonPrice : (s.salon_price !== undefined ? s.salon_price : (p.salonPrice || p.mrp || 0))),
+        salon_price: Number(s.salon_price !== undefined ? s.salon_price : (s.salonPrice !== undefined ? s.salonPrice : (p.salonPrice || p.mrp || 0))),
+        artistPrice: Number(s.artistPrice !== undefined ? s.artistPrice : (s.artist_price !== undefined ? s.artist_price : (p.artistPrice || p.mrp || 0))),
+        artist_price: Number(s.artist_price !== undefined ? s.artist_price : (s.artistPrice !== undefined ? s.artistPrice : (p.artistPrice || p.mrp || 0))),
+        beauticianPrice: Number(s.beauticianPrice !== undefined ? s.beauticianPrice : (s.beautician_price !== undefined ? s.beautician_price : (p.beauticianPrice || p.mrp || 0))),
+        beautician_price: Number(s.beautician_price !== undefined ? s.beautician_price : (s.beauticianPrice !== undefined ? s.beauticianPrice : (p.beauticianPrice || p.mrp || 0))),
+        active: s.active !== false,
+        attributes: s.attributes || {}
+      }))
     : (shadeApplies && (p.hasMultipleShades || p.shade) ? [{
         id: p.id + '_shade_1',
         name: p.shade || 'Default Shade',
+        code: '01',
+        sku: p.sku ? `${p.sku}-V1` : `SKU-${Date.now()}-V1`,
+        hexColor: p.hexColor || '#C2182B',
         hex: p.hexColor || '#C2182B',
         color_name: p.shade || 'Default',
         barcode: p.barcode || null,
         image: p.image || null,
-        mrp: p.mrp || 0,
-        salon_price: p.salonPrice || 0,
-        artist_price: p.artistPrice || 0,
-        beautician_price: p.beauticianPrice || 0
+        images: p.image ? [p.image] : [],
+        mrp: Number(p.mrp || 0),
+        generalPrice: Number(p.generalPrice || p.mrp || 0),
+        general_price: Number(p.generalPrice || p.mrp || 0),
+        salonPrice: Number(p.salonPrice || p.mrp || 0),
+        salon_price: Number(p.salonPrice || p.mrp || 0),
+        artistPrice: Number(p.artistPrice || p.mrp || 0),
+        artist_price: Number(p.artistPrice || p.mrp || 0),
+        beauticianPrice: Number(p.beauticianPrice || p.mrp || 0),
+        beautician_price: Number(p.beauticianPrice || p.mrp || 0),
+        active: true,
+        attributes: p.attributes || {}
       }] : []);
 
   const addInfo = {
     ...(p.additionalInfo || {}),
+    sku: p.sku || null,
+    parent_sku: p.parentSku || p.sku || null,
+    is_parent: (shadesJson.length > 1),
     size: p.size || null,
     gst_percent: p.gst !== undefined ? p.gst : (p.gstPercent || 18),
     net_qty: p.netQty || null,
@@ -760,10 +796,6 @@ export const toSupabaseProductPayload = (p) => {
 // 5. HIGH-PERFORMANCE CHUNKED BULK SUBMISSION (UP TO 100,000+ PRODUCTS)
 // ==============================================================================
 
-/**
- * Merges new payload with existing record without overwriting with blank Excel cells
- * (Prompt Section 14: Never overwrite existing values with blank Excel cells unless explicitly enabled)
- */
 export const mergeNonBlankRecord = (newPayload, existingRecord, allowBlankOverwrite = false) => {
   if (allowBlankOverwrite || !existingRecord) return newPayload;
 
@@ -776,9 +808,9 @@ export const mergeNonBlankRecord = (newPayload, existingRecord, allowBlankOverwr
 
   // Core fields to guard from blank overwrite
   const protectedFields = [
-    'name', 'brand_name', 'category', 'image', 'mrp', 'general_price',
-    'salon_price', 'artist_price', 'beautician_price', 'how_to_use',
-    'product_type', 'highlights', 'specifications', 'quantity_tiers'
+    'name', 'brand_name', 'category', 'subcategory', 'image', 'mrp', 'general_price',
+    'salon_price', 'artist_price', 'beautician_price', 'how_to_use', 'description',
+    'product_type', 'highlights', 'specifications', 'quantity_tiers', 'ingredients'
   ];
 
   for (const field of protectedFields) {
@@ -799,8 +831,48 @@ export const mergeNonBlankRecord = (newPayload, existingRecord, allowBlankOverwr
     };
   }
 
-  // Guard shades array from blank overwrite
-  if ((!merged.shades || merged.shades.length === 0) && Array.isArray(existingRecord.shades) && existingRecord.shades.length > 0) {
+  // Intelligently merge child shades/variants:
+  // If existing record has shades and new payload has shades, merge by variant SKU/barcode/name
+  if (Array.isArray(newPayload.shades) && newPayload.shades.length > 0) {
+    if (Array.isArray(existingRecord.shades) && existingRecord.shades.length > 0) {
+      const mergedShades = [...existingRecord.shades];
+
+      newPayload.shades.forEach(incomingShade => {
+        const matchIdx = mergedShades.findIndex(es =>
+          (incomingShade.sku && es.sku && String(es.sku).trim().toLowerCase() === String(incomingShade.sku).trim().toLowerCase()) ||
+          (incomingShade.barcode && es.barcode && String(es.barcode).trim() === String(incomingShade.barcode).trim()) ||
+          (incomingShade.name && es.name && String(es.name).trim().toLowerCase() === String(incomingShade.name).trim().toLowerCase())
+        );
+
+        if (matchIdx >= 0) {
+          const es = mergedShades[matchIdx];
+          mergedShades[matchIdx] = {
+            ...es,
+            ...incomingShade,
+            id: es.id || incomingShade.id, // keep stable id
+            mrp: incomingShade.mrp || es.mrp,
+            generalPrice: incomingShade.generalPrice || incomingShade.general_price || es.generalPrice || es.general_price,
+            general_price: incomingShade.general_price || incomingShade.generalPrice || es.general_price || es.generalPrice,
+            salonPrice: incomingShade.salonPrice || incomingShade.salon_price || es.salonPrice || es.salon_price,
+            salon_price: incomingShade.salon_price || incomingShade.salonPrice || es.salon_price || es.salonPrice,
+            artistPrice: incomingShade.artistPrice || incomingShade.artist_price || es.artistPrice || es.artist_price,
+            artist_price: incomingShade.artist_price || incomingShade.artistPrice || es.artist_price || es.artistPrice,
+            beauticianPrice: incomingShade.beauticianPrice || incomingShade.beautician_price || es.beauticianPrice || es.beautician_price,
+            beautician_price: incomingShade.beautician_price || incomingShade.beauticianPrice || es.beautician_price || es.beauticianPrice,
+            image: incomingShade.image || es.image,
+            attributes: { ...(es.attributes || {}), ...(incomingShade.attributes || {}) }
+          };
+        } else {
+          // Append as a new variant
+          mergedShades.push(incomingShade);
+        }
+      });
+
+      merged.shades = mergedShades;
+    } else {
+      merged.shades = newPayload.shades;
+    }
+  } else if (Array.isArray(existingRecord.shades) && existingRecord.shades.length > 0) {
     merged.shades = existingRecord.shades;
   }
 
