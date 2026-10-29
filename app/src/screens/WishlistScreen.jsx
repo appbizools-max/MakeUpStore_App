@@ -9,7 +9,8 @@ import {
   ArrowRight,
   Star
 } from 'lucide-react';
-
+// hftyivdydtydtsdth
+//bjhfvyu
 export const WishlistScreen = () => {
   const {
     favorites = [],
