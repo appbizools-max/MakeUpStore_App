@@ -21,6 +21,7 @@ import {
   Percent,
   FileText,
   Clock,
+  UserPlus,
   SlidersHorizontal,
   LogOut,
   ChevronDown,
@@ -28,6 +29,7 @@ import {
   X,
   Sparkle
 } from 'lucide-react';
+import { canAccessTab } from '../../utils/permissionEngine';
 
 /**
  * Salbeau Luxury Theme Badge helper
@@ -347,13 +349,9 @@ export const AdminSidebar = ({
           badgeVariant: 'brand',
           subItems: [
             { id: 'employees', label: 'All Employees', icon: Users },
+            { id: 'employees/new', label: 'Add Employee', icon: UserPlus },
             { id: 'employees/activity', label: 'Employee Activity', icon: Clock }
           ]
-        },
-        {
-          id: 'audit_trail',
-          label: 'Audit Trail',
-          icon: FileText
         }
       ]
     },
@@ -386,33 +384,26 @@ export const AdminSidebar = ({
     activeEmployeesCount
   ]);
 
-  // Role and Permission Filter
+  // Role and Permission Filter — strictly permits only pages explicitly authorized by Administrator
   const filteredNavSections = useMemo(() => {
-    if (!currentAuthUser || currentAuthUser.role === 'admin') {
+    if (!currentAuthUser || currentAuthUser.role === 'admin' || currentAuthUser.id === 'admin_root') {
       return navSections;
     }
-    const perms = currentAuthUser.permissions || {};
+
     return navSections.map(sec => {
-      const filteredItems = sec.items.filter(item => {
-        if (item.id === 'dashboard') return perms.dashboard?.enabled !== false;
-        if (item.id === 'dashboard_visibility') return perms.settings?.enabled !== false;
-        if (item.id === 'home_banners') return perms.settings?.enabled !== false || currentAuthUser?.role === 'admin';
-        if (item.id === 'categories') return perms.categories?.enabled !== false;
-        if (item.id === 'add_brand') return perms.brands?.enabled !== false;
-        if (item.id === 'products' || item.id === 'attributes' || item.id === 'products/bulk') return perms.products?.enabled !== false;
-        if (item.id === 'order_updated') return perms.orders?.enabled !== false;
-        if (item.id === 'approval_center') return currentAuthUser?.role === 'admin' || perms.approvals?.enabled !== false;
-        if (item.id === 'users') return perms.customers?.enabled !== false;
-        if (item.id === 'search_requests') return perms.products?.enabled !== false || perms.customers?.enabled !== false;
-        if (item.id === 'abandoned_carts') return perms.orders?.enabled !== false;
-        if (item.id.startsWith('b2b')) return currentAuthUser?.role === 'admin' || perms.customers?.enabled !== false || perms.approvals?.enabled !== false;
-        if (item.id === 'cancel_fee') return perms.payments?.enabled !== false;
-        if (item.id === 'pricing_rules') return perms.offers?.enabled !== false;
-        if (item.id === 'employees') return perms.employees?.enabled !== false;
-        if (item.id === 'audit_trail') return currentAuthUser?.role === 'admin' || perms.employees?.enabled !== false;
-        if (item.id === 'quick_panel') return true;
-        return false;
-      });
+      const filteredItems = sec.items.map(item => {
+        // If item has sub-items (e.g. Users, Employees), strictly filter each sub-item
+        if (Array.isArray(item.subItems) && item.subItems.length > 0) {
+          const allowedSubItems = item.subItems.filter(sub => canAccessTab(sub.id, currentAuthUser));
+          if (allowedSubItems.length === 0) return null;
+          return {
+            ...item,
+            subItems: allowedSubItems
+          };
+        }
+        return canAccessTab(item.id, currentAuthUser) ? item : null;
+      }).filter(Boolean);
+
       return { ...sec, items: filteredItems };
     }).filter(sec => sec.items.length > 0);
   }, [navSections, currentAuthUser]);
@@ -446,16 +437,14 @@ export const AdminSidebar = ({
       {/* 1. DESKTOP / TABLET RESPONSIVE SIDEBAR                                    */}
       {/* ========================================================================= */}
       <aside
-        className={`hidden md:flex flex-col justify-between sticky top-0 h-screen max-h-screen bg-white border-r border-pink-100/70 shadow-xs flex-shrink-0 z-30 transition-all duration-300 ease-in-out select-none ${
-          isSidebarCollapsed ? 'w-[72px] p-2' : 'w-[260px] p-3.5'
-        }`}
+        className={`hidden md:flex flex-col justify-between sticky top-0 h-screen max-h-screen bg-white border-r border-pink-100/70 shadow-xs flex-shrink-0 z-30 transition-all duration-300 ease-in-out select-none ${isSidebarCollapsed ? 'w-[72px] p-2' : 'w-[260px] p-3.5'
+          }`}
         aria-label="Admin Navigation Sidebar"
       >
         <div className="flex flex-col flex-1 min-h-0">
           {/* Brand Header */}
-          <div className={`shrink-0 flex items-center mb-3 pb-3 border-b border-pink-100/60 ${
-            isSidebarCollapsed ? 'justify-center px-0' : 'justify-between px-1'
-          }`}>
+          <div className={`shrink-0 flex items-center mb-3 pb-3 border-b border-pink-100/60 ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-between px-1'
+            }`}>
             {!isSidebarCollapsed ? (
               <div className="flex items-center gap-2 overflow-hidden">
                 <span
@@ -464,8 +453,8 @@ export const AdminSidebar = ({
                 >
                   Salbeau
                 </span>
-                <span className="text-[10px] font-bold tracking-wider uppercase text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                  Admin
+                <span className="text-[10px] font-bold tracking-wider uppercase text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                  {currentAuthUser?.role === 'employee' ? (currentAuthUser.designation || 'Staff') : 'Admin'}
                 </span>
               </div>
             ) : (
@@ -493,9 +482,8 @@ export const AdminSidebar = ({
           {/* Scrollable Navigation Items with Coordinated Brand Scrollbar */}
           <nav
             id="admin-sidebar-nav"
-            className={`space-y-3.5 overflow-y-auto flex-1 -mx-1 px-1 pr-1.5 pb-6 ${
-              isSidebarCollapsed ? 'flex flex-col items-center' : ''
-            }`}
+            className={`space-y-3.5 overflow-y-auto flex-1 -mx-1 px-1 pr-1.5 pb-6 ${isSidebarCollapsed ? 'flex flex-col items-center' : ''
+              }`}
             tabIndex={0}
             aria-label="Main Navigation Menu"
           >
@@ -526,6 +514,10 @@ export const AdminSidebar = ({
                           key={item.id}
                           type="button"
                           onClick={() => {
+                            if (item.id === 'logout' || item.isAction) {
+                              onLogoutClick();
+                              return;
+                            }
                             if (hasSubItems) {
                               navigateToTab(item.subItems[0].id);
                               return;
@@ -534,11 +526,10 @@ export const AdminSidebar = ({
                           }}
                           onMouseEnter={(e) => handleTooltipEnter(e, item.label, tooltipBadge)}
                           onMouseLeave={handleTooltipLeave}
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${
-                            isActive
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isActive
                               ? 'bg-[#FFF0F4] text-[#C2477A] shadow-2xs ring-1 ring-[#C2477A]/30 font-bold'
                               : 'text-slate-500 hover:bg-[#FFF5F8] hover:text-[#C2477A]'
-                          }`}
+                            }`}
                           aria-label={item.label}
                         >
                           <Icon size={18} className={`shrink-0 transition-transform ${isActive ? 'scale-105 text-[#C2477A]' : 'group-hover:scale-105'}`} />
@@ -555,6 +546,10 @@ export const AdminSidebar = ({
                         <button
                           type="button"
                           onClick={() => {
+                            if (item.id === 'logout' || item.isAction) {
+                              onLogoutClick();
+                              return;
+                            }
                             if (hasSubItems) {
                               toggleSubmenu(item.id);
                               const isCurrentlyInside = item.subItems.some(sub => isItemActive(sub.id));
@@ -566,11 +561,10 @@ export const AdminSidebar = ({
                             navigateToTab(item.id);
                           }}
                           aria-expanded={hasSubItems ? isSubOpen : undefined}
-                          className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${
-                            isActive
+                          className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isActive
                               ? 'bg-[#FFF0F4] text-[#C2477A] font-semibold shadow-2xs relative before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-1 before:bg-[#C2477A] before:rounded-r-full'
                               : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <Icon size={18} className={`shrink-0 transition-transform ${isActive ? 'scale-105 text-[#C2477A]' : 'text-slate-500 group-hover:scale-105 group-hover:text-[#C2477A]'}`} />
@@ -603,11 +597,10 @@ export const AdminSidebar = ({
                                   key={sub.id}
                                   type="button"
                                   onClick={() => navigateToTab(sub.id)}
-                                  className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${
-                                    isSubActive
+                                  className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isSubActive
                                       ? 'bg-[#FFF5F8] text-[#C2477A] font-semibold'
                                       : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
-                                  }`}
+                                    }`}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     {SubIcon && <SubIcon size={13} className={`shrink-0 ${isSubActive ? 'text-[#C2477A]' : 'text-slate-400'}`} />}
@@ -635,7 +628,7 @@ export const AdminSidebar = ({
         {/* Desktop Sidebar Persistent Footer */}
         <div className="shrink-0 pt-3 border-t border-pink-100/70 mt-auto bg-white">
           {!isSidebarCollapsed ? (
-            <div className="space-y-2">
+            <div>
               <button
                 type="button"
                 onClick={onLogoutClick}
@@ -650,17 +643,9 @@ export const AdminSidebar = ({
                   {currentAuthUser?.role === 'employee' ? 'Staff' : 'Admin'}
                 </span>
               </button>
-
-              <div className="flex items-center justify-between px-1.5 text-[11px] text-slate-400 font-medium">
-                <span>Salbeau Store</span>
-                <span className="flex items-center gap-1.5 text-emerald-600 font-semibold text-[10.5px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  v1.0.0
-                </span>
-              </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center">
               <button
                 type="button"
                 onClick={onLogoutClick}
@@ -672,9 +657,6 @@ export const AdminSidebar = ({
               >
                 <LogOut size={16} />
               </button>
-              <span className="text-[9.5px] text-slate-400 font-bold" title="Salbeau Admin v1.0.0">
-                v1.0
-              </span>
             </div>
           )}
         </div>
@@ -722,8 +704,8 @@ export const AdminSidebar = ({
                 >
                   Salbeau
                 </span>
-                <span className="text-[10px] font-bold uppercase text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                  Admin
+                <span className="text-[10px] font-bold uppercase text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                  {currentAuthUser?.role === 'employee' ? (currentAuthUser.designation || 'Staff') : 'Admin'}
                 </span>
               </div>
               <button
@@ -755,6 +737,11 @@ export const AdminSidebar = ({
                           <button
                             type="button"
                             onClick={() => {
+                              if (item.id === 'logout' || item.isAction) {
+                                setIsMobileDrawerOpen(false);
+                                onLogoutClick();
+                                return;
+                              }
                               if (hasSubItems) {
                                 toggleSubmenu(item.id);
                                 return;
@@ -762,11 +749,10 @@ export const AdminSidebar = ({
                               navigateToTab(item.id);
                               setIsMobileDrawerOpen(false);
                             }}
-                            className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-colors cursor-pointer ${
-                              isActive
+                            className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-colors cursor-pointer ${isActive
                                 ? 'bg-[#FFF0F4] text-[#C2477A] font-semibold'
                                 : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <Icon size={18} className={`shrink-0 ${isActive ? 'text-[#C2477A]' : 'text-slate-500'}`} />
@@ -801,11 +787,10 @@ export const AdminSidebar = ({
                                       navigateToTab(sub.id);
                                       setIsMobileDrawerOpen(false);
                                     }}
-                                    className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                                      isSubActive
+                                    className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${isSubActive
                                         ? 'bg-[#FFF5F8] text-[#C2477A] font-semibold'
                                         : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex items-center gap-2 min-w-0">
                                       {SubIcon && <SubIcon size={13} className={`shrink-0 ${isSubActive ? 'text-[#C2477A]' : 'text-slate-400'}`} />}
@@ -830,7 +815,7 @@ export const AdminSidebar = ({
             </nav>
 
             {/* Mobile Drawer Footer */}
-            <div className="shrink-0 p-4 border-t border-pink-100/70 space-y-2.5 mt-auto bg-white">
+            <div className="shrink-0 p-4 border-t border-pink-100/70 mt-auto bg-white">
               <button
                 type="button"
                 onClick={() => {
@@ -847,10 +832,6 @@ export const AdminSidebar = ({
                   {currentAuthUser?.role === 'employee' ? 'Staff' : 'Admin'}
                 </span>
               </button>
-              <div className="text-[11px] text-slate-400 font-medium px-1 flex items-center justify-between">
-                <span>Salbeau Store</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">v1.0.0</span>
-              </div>
             </div>
           </div>
         </div>

@@ -140,9 +140,9 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
               </div>
 
               <p className="text-xs font-semibold text-gray-600 flex items-center gap-2">
-                <span>{employee.designation || 'Staff'}</span>
+                <span className="text-[#CE4270] font-extrabold uppercase">{employee.designation || 'Staff'}</span>
                 <span>•</span>
-                <span className="text-[#CE4270] font-bold">{employee.department}</span>
+                <span className="text-gray-500 font-medium">{employee.role === 'admin' ? 'Admin Access' : 'Employee Access'}</span>
               </p>
 
               <div className="flex items-center gap-4 text-xs text-gray-400 pt-1 flex-wrap">

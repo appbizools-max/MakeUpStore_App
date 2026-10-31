@@ -437,11 +437,11 @@ export default function ProductsCatalogMatrix({
             <p className="font-bold text-sm text-gray-700">No products found</p>
           </div>
         ) : (
-          paginatedProducts.map((p) => {
+          paginatedProducts.map((p, pIdx) => {
             const pImage = p.imageUrl || p.image;
             const variantsList = getSafeActiveVariants(p);
             return (
-              <div key={`m_${p.id}`} className="bg-white rounded-2xl border border-pink-100 p-4 shadow-sm space-y-3">
+              <div key={`m_${p.id || p._id || p.barcode || pIdx}`} className="bg-white rounded-2xl border border-pink-100 p-4 shadow-sm space-y-3">
                 <div className="flex gap-3">
                   <div
                     onClick={() => pImage && setActiveImagePreview(pImage)}
@@ -637,7 +637,7 @@ export default function ProductsCatalogMatrix({
                   : [];
 
                 return (
-                  <React.Fragment key={p.id}>
+                  <React.Fragment key={p.id || p._id || p.barcode || index}>
                     <tr
                       className={`transition-colors border-b border-pink-100/50 ${
                         isExpandedDetails

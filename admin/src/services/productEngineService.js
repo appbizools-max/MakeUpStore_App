@@ -13,6 +13,7 @@
 import { supabase } from '../config/supabase.js';
 import { validateBarcodeChecksum, detectBarcodeFormat } from './barcodeLookupService.js';
 import { matchBeautyShade } from './aiColorService.js';
+import { DEFAULT_GST_SLAB } from './excelHeaderValidator.js';
 
 // ==============================================================================
 // 1. CANONICAL PRODUCT SCHEMA DEFINITION
@@ -438,9 +439,9 @@ export const normalizeProduct = (raw, cache = null) => {
   }
 
   // Size, GST %, and Net Qty
-  const size = String(raw.size || raw.Size || raw['Size'] || raw.specifications?.size || raw.additional_info?.size || '').trim();
-  const rawGst = raw.gst ?? raw.gstPercent ?? raw.gst_percent ?? raw['GST %'] ?? raw.GST ?? '';
-  const gst = rawGst === '' ? '' : (isNaN(Number(rawGst)) ? '' : Number(rawGst));
+  // Confirm correct GST slab with accountant.
+  const rawGst = raw.gst ?? raw.gstPercent ?? raw.gst_percent ?? raw['GST %'] ?? raw.GST ?? DEFAULT_GST_SLAB;
+  const gst = rawGst === '' ? DEFAULT_GST_SLAB : (isNaN(Number(rawGst)) ? DEFAULT_GST_SLAB : Number(rawGst));
   const netQty = String(raw.netQty || raw.net_qty || raw['Net Qty'] || raw['Net Quantity'] || raw.additional_info?.net_qty || '').trim();
 
   const rawMrp = raw.mrp ?? raw.MRP ?? '';
@@ -587,8 +588,9 @@ export const validateProduct = (p, rowIndex = 1) => {
     });
   }
 
-  // 5. GST % validation (0 - 28%)
-  if (p.gst !== undefined && p.gst !== null && (isNaN(Number(p.gst)) || Number(p.gst) < 0 || Number(p.gst) > 28)) {
+  // 5. GST % validation (Optional: 0 - 28%)
+  // Confirm correct GST slab with accountant.
+  if (p.gst !== undefined && p.gst !== null && p.gst !== '' && (isNaN(Number(p.gst)) || Number(p.gst) < 0 || Number(p.gst) > 28)) {
     issues.push({
       rowNumber: rowIndex,
       field: 'GST %',
@@ -726,7 +728,8 @@ export const toSupabaseProductPayload = (p) => {
     parent_sku: p.parentSku || p.sku || null,
     is_parent: (shadesJson.length > 1),
     size: p.size || null,
-    gst_percent: p.gst !== undefined ? p.gst : (p.gstPercent || 18),
+    // Confirm correct GST slab with accountant.
+    gst_percent: p.gst !== undefined && p.gst !== '' ? Number(p.gst) : (p.gstPercent ? Number(p.gstPercent) : DEFAULT_GST_SLAB),
     net_qty: p.netQty || null,
     subcategory: p.subcategory || null,
     variant_type: p.variantType || (shadeApplies ? 'Shade' : 'Standard'),
@@ -744,20 +747,20 @@ export const toSupabaseProductPayload = (p) => {
     ...(p.specifications || {}),
     size: p.size || null,
     net_quantity: p.netQty || null,
-    gst_percent: p.gst !== undefined ? p.gst : 18,
+    // Confirm correct GST slab with accountant.
+    gst_percent: p.gst !== undefined && p.gst !== '' ? Number(p.gst) : DEFAULT_GST_SLAB,
     ...(p.attributes || {})
   };
 
   return {
-    id: p.id,
+    id: p.id || p._id || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     name: p.name,
-    parent_id: p.parentId || p.parent_id || null,
     brand_id: p.brandId || null,
     brand_name: p.brand || 'General',
     category: p.category || 'General',
     subcategory: p.subcategory || p.sub_category || null,
     variant_type: p.variantType || (shadeApplies ? 'Shade' : 'Standard'),
-    barcode: p.barcode || null,
+    barcode: p.barcode ? String(p.barcode).trim() : null,
     mrp: Number(p.mrp || 0),
     general_price: Number(p.generalPrice || p.mrp || 0),
     salon_price: Number(p.salonPrice || p.mrp || 0),
@@ -785,6 +788,7 @@ export const toSupabaseProductPayload = (p) => {
     description: p.description || p.howToUse || '',
     how_to_use: p.description || p.howToUse || '',
     product_type: p.variantType || (shadeApplies ? 'Shade' : 'Standard'),
+    product_family: p.parentSku || p.parentId || null,
     enabled: true,
     status: p.status || 'published',
     created_at: p.createdAt || new Date().toISOString(),
@@ -932,108 +936,94 @@ export const chunkedBulkSave = async (products, options = {}) => {
         const withoutBarcode = payloads.filter(p => !p.barcode);
 
         if (withBarcode.length > 0) {
-          // If allowBlankOverwrite is false, fetch existing data to merge safely
-          if (!allowBlankOverwrite) {
-            const barcodesInChunk = withBarcode.map(p => p.barcode);
-            const { data: existingData } = await supabase
-              .from('products')
-              .select('id, barcode, name, brand_name, category, mrp, general_price, salon_price, artist_price, beautician_price, image, shades, additional_info')
-              .in('barcode', barcodesInChunk);
+          const barcodesInChunk = withBarcode.map(p => p.barcode).filter(Boolean);
+          const { data: existingData } = await supabase
+            .from('products')
+            .select('id, barcode, name, brand_name, category, mrp, general_price, salon_price, artist_price, beautician_price, image, shades, additional_info')
+            .in('barcode', barcodesInChunk);
 
-            const existingByBarcode = new Map();
-            (existingData || []).forEach(e => existingByBarcode.set(e.barcode, e));
+          const existingByBarcode = new Map();
+          (existingData || []).forEach(e => existingByBarcode.set(e.barcode, e));
 
-            for (const item of withBarcode) {
-              const existingRecord = existingByBarcode.get(item.barcode);
-              const finalPayload = mergeNonBlankRecord(item, existingRecord, false);
-              
-              const { error: upsertSingleErr } = await supabase
+          for (const item of withBarcode) {
+            const existingRecord = existingByBarcode.get(item.barcode);
+            if (existingRecord) {
+              const finalPayload = allowBlankOverwrite ? item : mergeNonBlankRecord(item, existingRecord, false);
+              finalPayload.id = existingRecord.id;
+
+              const { error: updErr } = await supabase
                 .from('products')
-                .upsert(finalPayload, { onConflict: 'barcode', ignoreDuplicates: false });
+                .upsert(finalPayload, { onConflict: 'id' });
 
-              if (upsertSingleErr) {
+              if (updErr) {
                 failed++;
-                failedRows.push({ ...item, _error: upsertSingleErr.message });
-                errors.push(`Row "${item.name}": ${upsertSingleErr.message}`);
-              } else if (existingRecord) {
+                failedRows.push({ ...item, _error: updErr.message });
+                errors.push(`Row "${item.name}": ${updErr.message}`);
+              } else {
                 updated++;
+              }
+            } else {
+              // New product with barcode
+              if (!item.id) {
+                item.id = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+              }
+              const { error: insErr } = await supabase
+                .from('products')
+                .insert([item]);
+
+              if (insErr) {
+                failed++;
+                failedRows.push({ ...item, _error: insErr.message });
+                errors.push(`Row "${item.name}": ${insErr.message}`);
               } else {
                 inserted++;
               }
-            }
-          } else {
-            const { error: upsertErr } = await supabase
-              .from('products')
-              .upsert(withBarcode, { onConflict: 'barcode', ignoreDuplicates: false });
-
-            if (upsertErr) {
-              console.warn(`Upsert batch ${chunkNumber} warning, falling back to per-row safe upsert:`, upsertErr);
-              for (const item of withBarcode) {
-                const { error: singleErr } = await supabase.from('products').upsert(item, { onConflict: 'barcode' });
-                if (singleErr) {
-                  failed++;
-                  failedRows.push({ ...item, _error: singleErr.message });
-                  errors.push(`Row "${item.name}": ${singleErr.message}`);
-                } else {
-                  updated++;
-                }
-              }
-            } else {
-              updated += withBarcode.length;
             }
           }
         }
 
         if (withoutBarcode.length > 0) {
-          const { error: insErr } = await supabase
-            .from('products')
-            .insert(withoutBarcode);
-
-          if (insErr) {
-            for (const item of withoutBarcode) {
-              const { error: singleErr } = await supabase.from('products').insert(item);
-              if (singleErr) {
-                failed++;
-                failedRows.push({ ...item, _error: singleErr.message });
-                errors.push(`Row "${item.name}": ${singleErr.message}`);
-              } else {
-                inserted++;
-              }
+          for (const item of withoutBarcode) {
+            if (!item.id) {
+              item.id = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
             }
-          } else {
-            inserted += withoutBarcode.length;
+            const { error: singleErr } = await supabase
+              .from('products')
+              .insert([item]);
+
+            if (singleErr) {
+              failed++;
+              failedRows.push({ ...item, _error: singleErr.message });
+              errors.push(`Row "${item.name}": ${singleErr.message}`);
+            } else {
+              inserted++;
+            }
           }
         }
       } else {
-        // Skip existing duplicates on conflict
-        const { error: insertErr } = await supabase
-          .from('products')
-          .insert(payloads);
-
-        if (insertErr) {
-          // If batch insert has duplicate key or conflict, handle row by row
-          for (const item of payloads) {
-            try {
-              const { error: singleErr } = await supabase.from('products').insert(item);
-              if (singleErr) {
-                if (singleErr.code === '23505' || singleErr.message?.includes('duplicate key') || singleErr.message?.includes('unique constraint')) {
-                  skipped++;
-                } else {
-                  failed++;
-                  failedRows.push({ ...item, _error: singleErr.message });
-                  errors.push(`Row "${item.name}": ${singleErr.message}`);
-                }
-              } else {
-                inserted++;
-              }
-            } catch (singleEx) {
-              failed++;
-              failedRows.push({ ...item, _error: singleEx.message });
-              errors.push(`Row "${item.name}": ${singleEx.message}`);
-            }
+        // Skip existing duplicates / insert only
+        for (const item of payloads) {
+          if (!item.id) {
+            item.id = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
           }
-        } else {
-          inserted += payloads.length;
+          try {
+            const { error: singleErr } = await supabase.from('products').insert([item]);
+            if (singleErr) {
+              if (singleErr.code === '23505' || singleErr.message?.includes('duplicate key') || singleErr.message?.includes('unique constraint')) {
+                skipped++;
+              } else {
+                failed++;
+                failedRows.push({ ...item, _error: singleErr.message });
+                errors.push(`Row "${item.name}": ${singleErr.message}`);
+              }
+            } else {
+              inserted++;
+            }
+          } catch (singleEx) {
+            failed++;
+            failedRows.push({ ...item, _error: singleEx.message });
+            errors.push(`Row "${item.name}": ${singleEx.message}`);
+          }
         }
       }
     } catch (chunkEx) {

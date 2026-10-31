@@ -28,19 +28,25 @@ import {
 } from 'lucide-react';
 import BrandFormModal from './BrandFormModal';
 import BrandImportModal from './BrandImportModal';
-import { exportBrandsToExcel } from '../../utils/brandUtils';
+import {
+  exportBrandsToExcel,
+  resolveBrandNumber,
+  resolveBrandCode,
+  parseBrandNumberSeq,
+  formatBrandNumber
+} from '../../utils/brandUtils';
 
 /**
  * BrandManagementPage Component
  * 
  * Strict Specification Compliance:
- * - Table contains EXACTLY the six columns in required order:
- *   1. Brand Number (BR001, BR002...)
- *   2. Brand Logo
- *   3. Brand Name
- *   4. Brand Code (AGA-001, AIK-002...)
- *   5. Categories (Multi-category badges)
- *   6. Action (Active/Inactive Toggle, Edit, Delete)
+ * - Table contains EXACTLY the required order:
+ *   1. BRAND NUMBER (BR001, BR002...)
+ *   2. BRAND NAME
+ *   3. BRAND LOGO
+ *   4. BRAND CODE (AGA-001, AIK-002...)
+ *   5. CATEGORIES (Multi-category badges)
+ *   6. ACTION (Active/Inactive Toggle, Edit, Delete)
  * - Completely removes any Product Count, Products Catalog, or Total Products columns.
  * - Concurrency-safe permanent Brand Number and mnemonic Brand Code.
  * - Excel Import and Export (brand_master_YYYY-MM-DD.xlsx).
@@ -94,13 +100,16 @@ export default function BrandManagementPage({
   // Filtered & Sorted Brands Computation
   const filteredBrands = useMemo(() => {
     return (brands || []).filter(b => {
-      // 1. Search Query Match (searches Brand Number, Brand Name, Brand Code)
+      // 1. Search Query Match (searches Brand Number, Sequence, Brand Name, Brand Code)
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
-        const num = (b.brandNumber || b.brand_number || '').toLowerCase();
+        const brandNum = resolveBrandNumber(b, brands);
+        const num = brandNum.toLowerCase();
+        const seq = String(parseBrandNumberSeq(brandNum));
         const name = (b.name || '').toLowerCase();
-        const code = (b.brandCode || b.brand_code || '').toLowerCase();
-        const match = num.includes(q) || name.includes(q) || code.includes(q);
+        const brandCode = resolveBrandCode(b, brands, brandNum);
+        const code = brandCode.toLowerCase();
+        const match = num.includes(q) || seq.includes(q) || name.includes(q) || code.includes(q);
         if (!match) return false;
       }
 
@@ -133,14 +142,21 @@ export default function BrandManagementPage({
       let valB = '';
 
       if (sortField === 'brandNumber') {
-        valA = a.brandNumber || a.brand_number || '';
-        valB = b.brandNumber || b.brand_number || '';
+        const numA = resolveBrandNumber(a, brands);
+        const numB = resolveBrandNumber(b, brands);
+        const seqA = parseBrandNumberSeq(numA);
+        const seqB = parseBrandNumberSeq(numB);
+        if (seqA && seqB) {
+          return sortDirection === 'asc' ? seqA - seqB : seqB - seqA;
+        }
+        valA = numA;
+        valB = numB;
       } else if (sortField === 'name') {
         valA = a.name || '';
         valB = b.name || '';
       } else if (sortField === 'brandCode') {
-        valA = a.brandCode || a.brand_code || '';
-        valB = b.brandCode || b.brand_code || '';
+        valA = resolveBrandCode(a, brands, a.brandNumber);
+        valB = resolveBrandCode(b, brands, b.brandNumber);
       } else if (sortField === 'createdAt') {
         valA = a.createdAt || a.created_at || '';
         valB = b.createdAt || b.created_at || '';
@@ -516,17 +532,17 @@ export default function BrandManagementPage({
                   </div>
                 </th>
 
-                {/* COLUMN 2: Brand Logo */}
-                <th className="py-4 px-3 text-center w-24">
-                  <span>BRAND LOGO</span>
-                </th>
-
-                {/* COLUMN 3: Brand Name */}
+                {/* COLUMN 2: Brand Name */}
                 <th className="py-4 px-4 text-left cursor-pointer hover:bg-pink-100/60 transition-colors" onClick={() => handleSort('name')}>
                   <div className="flex items-center gap-1.5">
                     <span>BRAND NAME</span>
                     <ArrowUpDown size={11} className={sortField === 'name' ? 'text-[#C2477A]' : 'text-gray-400'} />
                   </div>
+                </th>
+
+                {/* COLUMN 3: Brand Logo */}
+                <th className="py-4 px-3 text-center w-24">
+                  <span>BRAND LOGO</span>
                 </th>
 
                 {/* COLUMN 4: Brand Code */}
@@ -563,8 +579,9 @@ export default function BrandManagementPage({
                 </tr>
               ) : (
                 paginatedBrands.map((brand, index) => {
-                  const brandNum = brand.brandNumber || brand.brand_number || 'BR000';
-                  const brandCode = brand.brandCode || brand.brand_code || '---';
+                  const brandNum = resolveBrandNumber(brand, brands);
+                  const brandSeq = parseBrandNumberSeq(brandNum);
+                  const brandCode = resolveBrandCode(brand, brands, brandNum);
                   const isSelected = selectedBrandIds.has(brand.id);
                   const isEnabled = brand.enabled !== false;
 
@@ -595,12 +612,31 @@ export default function BrandManagementPage({
 
                       {/* COLUMN 1: Brand Number */}
                       <td className="py-3 px-3 whitespace-nowrap font-mono font-extrabold text-[#C2477A] text-xs">
-                        <span className="px-2 py-0.5 rounded-lg bg-[#FFF0F4] border border-pink-200/80 shadow-2xs">
-                          {brandNum}
-                        </span>
+                        <div className="inline-flex items-center gap-1.5">
+                          <span className="px-2.5 py-1 rounded-lg bg-[#FFF0F4] border border-pink-200/90 shadow-2xs font-mono font-black text-[#C2477A]">
+                            {brandNum}
+                          </span>
+                          {brandSeq > 0 && (
+                            <span className="text-[10px] text-gray-400 font-bold font-mono" title={`Order sequence #${brandSeq}`}>
+                              #{brandSeq}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      {/* COLUMN 2: Brand Logo */}
+                      {/* COLUMN 2: Brand Name */}
+                      <td className="py-3 px-4">
+                        <div className="font-extrabold text-xs text-gray-900 leading-snug">
+                          {brand.name}
+                        </div>
+                        {brand.description && (
+                          <div className="text-[10px] text-gray-400 line-clamp-1 max-w-xs mt-0.5">
+                            {brand.description}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* COLUMN 3: Brand Logo */}
                       <td className="py-3 px-3 text-center whitespace-nowrap">
                         <div className="w-10 h-10 rounded-xl bg-white border border-pink-100/90 shadow-2xs overflow-hidden mx-auto p-0.5 flex items-center justify-center">
                           {brand.logo ? (
@@ -617,18 +653,6 @@ export default function BrandManagementPage({
                             <span className="text-[10px] font-black text-gray-300">NO LOGO</span>
                           )}
                         </div>
-                      </td>
-
-                      {/* COLUMN 3: Brand Name */}
-                      <td className="py-3 px-4">
-                        <div className="font-extrabold text-xs text-gray-900 leading-snug">
-                          {brand.name}
-                        </div>
-                        {brand.description && (
-                          <div className="text-[10px] text-gray-400 line-clamp-1 max-w-xs mt-0.5">
-                            {brand.description}
-                          </div>
-                        )}
                       </td>
 
                       {/* COLUMN 4: Brand Code */}

@@ -131,12 +131,12 @@ export default function AddNewProductPage({
     brandId: '',
     category: initialCategory || '',
     subcategory: initialSubcategory || '',
-    variantType: 'Standard',
+    variantType: '',
     shadeName: '',
     hexColor: '',
     rgb: '',
     size: '',
-    gstPercent: '18',
+    gstPercent: '',
     netQty: '',
     categoryAttributes: {},
     description: '',
@@ -392,26 +392,7 @@ export default function AddNewProductPage({
     return suggestion.defaultAutoSelect || [];
   }, [formData.name, formData.category, formData.subcategory]);
 
-  // Initial brand selection
-  useEffect(() => {
-    if (brands && brands.length > 0 && !formData.brandName) {
-      setFormData(prev => ({
-        ...prev,
-        brandName: brands[0].name,
-        brandId: brands[0].id || ''
-      }));
-    }
-  }, [brands]);
 
-  // Initial category selection
-  useEffect(() => {
-    if (categories && categories.length > 0 && !formData.category) {
-      setFormData(prev => ({
-        ...prev,
-        category: categories[0].name || categories[0].title || 'Makeup'
-      }));
-    }
-  }, [categories]);
 
   // Sync editing product if passed
   useEffect(() => {
@@ -1773,12 +1754,12 @@ export default function AddNewProductPage({
                     }}
                     onChange={(selectedName, selectedObj) => {
                       const selected = selectedObj || activeBrandOptions.find(b => b.name === selectedName);
-                      setFormData({
-                        ...formData,
+                      setFormData(prev => ({
+                        ...prev,
                         brandName: selectedName,
                         brandId: selected?.id || '',
-                        category: selected?.category || formData.category
-                      });
+                        category: selected?.category || prev.category
+                      }));
                     }}
                     placeholder="Select Brand..."
                     searchPlaceholder="Search brand name, number (BR001), or code (AGA-001)..."
@@ -1800,7 +1781,7 @@ export default function AddNewProductPage({
                         ...prev,
                         category: selectedName,
                         subcategory: '',
-                        variantType: selectedName === 'Makeup' ? 'Shade / Swatch' : 'Volume / Size',
+                        variantType: prev.variantType || '',
                         categoryAttributes: {}
                       }));
                     }}
@@ -1817,7 +1798,7 @@ export default function AddNewProductPage({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
                 <div>
                   <label className="block text-gray-800 font-bold mb-1.5 text-xs">
-                    Subcategory ({formData.category || 'All'}) <span className="text-[#E11D48]">*</span>
+                    Subcategory {formData.category ? `(${formData.category})` : ''} <span className="text-[#E11D48]">*</span>
                   </label>
                   <SearchableSelect
                     options={availableSubcategories}
@@ -1826,10 +1807,10 @@ export default function AddNewProductPage({
                       setFormData(prev => ({
                         ...prev,
                         subcategory: selectedSub,
-                        variantType: prev.category === 'Makeup' ? 'Shade / Swatch' : 'Volume / Size'
+                        variantType: prev.variantType || ''
                       }));
                     }}
-                    placeholder={`Select ${formData.category || ''} Subcategory...`}
+                    placeholder={formData.category ? `Select ${formData.category} Subcategory...` : 'Select Subcategory...'}
                     searchPlaceholder="Search subcategory or type..."
                     emptyMessage="No subcategories found"
                     labelKey="name"
@@ -2557,13 +2538,14 @@ export default function AddNewProductPage({
                     <select
                       value={formData.gstPercent}
                       onChange={(e) => setFormData(prev => ({ ...prev, gstPercent: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-pink-100 bg-white font-bold text-gray-900 text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15 appearance-none cursor-pointer"
+                      className={`w-full px-3 py-2.5 rounded-xl border border-pink-100 bg-white ${formData.gstPercent ? 'font-bold text-gray-900' : 'font-normal text-gray-400'} text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15 appearance-none cursor-pointer`}
                     >
-                      <option value="18">18% (Standard Beauty &amp; Cosmetics GST)</option>
-                      <option value="12">12% (Ayurvedic / Specialized Skincare)</option>
-                      <option value="5">5% (Essential Healthcare / Herbal)</option>
-                      <option value="28">28% (Luxury / Premium Fragrance)</option>
-                      <option value="0">0% (Nil / Exempted)</option>
+                      <option value="" disabled className="text-gray-400 font-normal">Select GST Rate...</option>
+                      <option value="18" className="text-gray-900 font-medium">18% (Standard Beauty &amp; Cosmetics GST)</option>
+                      <option value="12" className="text-gray-900 font-medium">12% (Ayurvedic / Specialized Skincare)</option>
+                      <option value="5" className="text-gray-900 font-medium">5% (Essential Healthcare / Herbal)</option>
+                      <option value="28" className="text-gray-900 font-medium">28% (Luxury / Premium Fragrance)</option>
+                      <option value="0" className="text-gray-900 font-medium">0% (Nil / Exempted)</option>
                     </select>
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                   </div>
@@ -2619,7 +2601,7 @@ export default function AddNewProductPage({
                       required
                       min="0"
                       step="any"
-                      placeholder="799.00"
+                      placeholder="Enter MRP"
                       value={formData.mrp}
                       onChange={(e) => handleMrpChange(e.target.value)}
                       onWheel={(e) => e.target.blur()}
@@ -2651,7 +2633,7 @@ export default function AddNewProductPage({
                       type="number"
                       min="0"
                       step="any"
-                      placeholder="699.00"
+                      placeholder="Enter General Price"
                       value={formData.generalPrice}
                       onChange={(e) => handleRolePriceChange('general', e.target.value)}
                       onWheel={(e) => e.target.blur()}
@@ -2681,7 +2663,7 @@ export default function AddNewProductPage({
                       type="number"
                       min="0"
                       step="any"
-                      placeholder="649.00"
+                      placeholder="Enter Salon Price"
                       value={formData.salonPrice}
                       onChange={(e) => handleRolePriceChange('salon', e.target.value)}
                       onWheel={(e) => e.target.blur()}
@@ -2708,7 +2690,7 @@ export default function AddNewProductPage({
                       type="number"
                       min="0"
                       step="any"
-                      placeholder="629.00"
+                      placeholder="Enter Artist Price"
                       value={formData.artistPrice}
                       onChange={(e) => handleRolePriceChange('artist', e.target.value)}
                       onWheel={(e) => e.target.blur()}
@@ -2735,7 +2717,7 @@ export default function AddNewProductPage({
                       type="number"
                       min="0"
                       step="any"
-                      placeholder="599.00"
+                      placeholder="Enter Beautician Price"
                       value={formData.beauticianPrice}
                       onChange={(e) => handleRolePriceChange('beautician', e.target.value)}
                       onWheel={(e) => e.target.blur()}
@@ -2868,6 +2850,7 @@ export default function AddNewProductPage({
                                     <input
                                       type="number"
                                       min="1"
+                                      placeholder="Min Qty"
                                       value={tier.minQty}
                                       onChange={(e) => handleUpdateTierField(activeTierRole, idx, 'minQty', e.target.value)}
                                       className="w-18 px-2 py-1.5 rounded-lg border border-pink-200 bg-white font-bold text-gray-900 text-xs outline-none focus:border-[#E11D48]"
@@ -2895,6 +2878,7 @@ export default function AddNewProductPage({
                                       min="0"
                                       max="100"
                                       step="any"
+                                      placeholder="Disc %"
                                       value={tier.additionalDiscount}
                                       onChange={(e) => handleUpdateTierField(activeTierRole, idx, 'additionalDiscount', e.target.value)}
                                       className="w-full pl-2 pr-6 py-1.5 rounded-lg border border-pink-200 bg-white font-bold text-[#E11D48] text-xs outline-none focus:border-[#E11D48]"
@@ -3108,7 +3092,7 @@ export default function AddNewProductPage({
                                     <label className="text-[10.5px] font-bold text-gray-600 block mb-0.5">MRP</label>
                                     <input
                                       type="number"
-                                      placeholder={formData.mrp || '799'}
+                                      placeholder={formData.mrp ? `₹${formData.mrp}` : 'Enter MRP'}
                                       value={child.mrp}
                                       onChange={(e) => handleUpdateChildField(cIdx, 'mrp', e.target.value)}
                                       className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
@@ -3118,7 +3102,7 @@ export default function AddNewProductPage({
                                     <label className="text-[10.5px] font-bold text-teal-700 block mb-0.5">General</label>
                                     <input
                                       type="number"
-                                      placeholder={formData.generalPrice || '699'}
+                                      placeholder={formData.generalPrice ? `₹${formData.generalPrice}` : 'General'}
                                       value={child.generalPrice}
                                       onChange={(e) => handleChildRolePriceChange(cIdx, 'general', e.target.value)}
                                       className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
@@ -3128,7 +3112,7 @@ export default function AddNewProductPage({
                                     <label className="text-[10.5px] font-bold text-pink-700 block mb-0.5">Salon</label>
                                     <input
                                       type="number"
-                                      placeholder={formData.salonPrice || '649'}
+                                      placeholder={formData.salonPrice ? `₹${formData.salonPrice}` : 'Salon'}
                                       value={child.salonPrice}
                                       onChange={(e) => handleChildRolePriceChange(cIdx, 'salon', e.target.value)}
                                       className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
@@ -3138,7 +3122,7 @@ export default function AddNewProductPage({
                                     <label className="text-[10.5px] font-bold text-purple-700 block mb-0.5">Artist</label>
                                     <input
                                       type="number"
-                                      placeholder={formData.artistPrice || '629'}
+                                      placeholder={formData.artistPrice ? `₹${formData.artistPrice}` : 'Artist'}
                                       value={child.artistPrice}
                                       onChange={(e) => handleChildRolePriceChange(cIdx, 'artist', e.target.value)}
                                       className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
@@ -3148,7 +3132,7 @@ export default function AddNewProductPage({
                                     <label className="text-[10.5px] font-bold text-rose-700 block mb-0.5">Beautician</label>
                                     <input
                                       type="number"
-                                      placeholder={formData.beauticianPrice || '599'}
+                                      placeholder={formData.beauticianPrice ? `₹${formData.beauticianPrice}` : 'Beautician'}
                                       value={child.beauticianPrice}
                                       onChange={(e) => handleChildRolePriceChange(cIdx, 'beautician', e.target.value)}
                                       className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
@@ -3251,6 +3235,7 @@ export default function AddNewProductPage({
                                                 <input
                                                   type="number"
                                                   min="1"
+                                                  placeholder="Min"
                                                   value={tier.minQty}
                                                   onChange={(e) => handleChildUpdateTierField(cIdx, childRole, tIdx, 'minQty', e.target.value)}
                                                   className="w-14 p-1 rounded border border-gray-200 font-bold"
@@ -3271,6 +3256,7 @@ export default function AddNewProductPage({
                                                   type="number"
                                                   min="0"
                                                   max="100"
+                                                  placeholder="Disc %"
                                                   value={tier.additionalDiscount}
                                                   onChange={(e) => handleChildUpdateTierField(cIdx, childRole, tIdx, 'additionalDiscount', e.target.value)}
                                                   className="w-14 p-1 rounded border border-gray-200 font-bold text-[#E11D48]"

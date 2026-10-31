@@ -12,256 +12,154 @@
  */
 
 import * as XLSX from 'xlsx';
+import { REQUIRED_HEADERS } from '../services/excelHeaderValidator.js';
 
-export const CANONICAL_TEMPLATE_COLUMNS = [
-  // 1-10: Product Identification & Core Info
-  'Barcode',
-  'Image',
-  'Parent_SKU',
-  'Product_Name',
-  'Product_Type',
-  'Category',
-  'Subcategory',
-  'Brand',
-  'Product_Description',
-  'Highlights',
-
-  // 11-16: Variant Identification
-  'Variant_SKU',
-  'Variant_Name',
-  'Shade_Name',
-  'Shade_Code',
-  'Size_or_Weight',
-  'Variant_Barcode',
-
-  // 17-21: Four-Tier Role-Based Pricing
-  'MRP',
-  'General_User_Price',
-  'Salon_Price',
-  'Makeup_Artist_Price',
-  'Beautician_Price',
-
-  // 22-24: Category Attributes
-  'Finish',
-  'Skin_Type',
-  'Coverage',
-
-  // 25-27: Media & Status
-  'Product_Image_URL',
-  'Product_Active',
-  'Variant_Active'
-];
+export const CANONICAL_TEMPLATE_COLUMNS = [...REQUIRED_HEADERS];
 
 /**
- * Generates and triggers browser download of the Master Excel Product Import Template (3-Sheet Structure)
+ * Generates and triggers browser download of the Master Excel Product Import Template (18 Strict Columns)
+ * Sheet 1: 'Bulk Product Upload' (Strict 18 headers, sample rows)
+ * Sheet 2: 'Field Guide' (Notes and guidance only, ignored by import)
  */
 export const generateAndDownloadTemplate = (categories = [], brands = [], options = {}) => {
-  const headers = [...CANONICAL_TEMPLATE_COLUMNS];
+  const headers = [...REQUIRED_HEADERS];
 
   const sampleRows = [
     // Sample 1: Parent-Child Variant Row 1 (Lakmé Liquid Lipstick - Shade 01 Red Carpet)
     [
-      '8901030383811',           // Barcode
-      'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800', // Image
-      'LAK-MATTE-LIP',           // Parent_SKU
-      'Lakmé Forever Matte Liquid Lip Colour', // Product_Name
-      'Liquid Lipstick',         // Product_Type
-      'Makeup',                  // Category
-      'Lips',                    // Subcategory
-      'Lakmé',                   // Brand
-      'Intense matte liquid lip colour that lasts up to 16 hours with a lightweight, comfortable feel.', // Product_Description
-      '16hr longwear; Smudge-proof; Ultra-lightweight', // Highlights
-      'LAK-MATTE-01',            // Variant_SKU
-      '01 Red Carpet',           // Variant_Name
-      'Red Carpet',              // Shade_Name
-      '01',                      // Shade_Code
-      '5.6 ml',                  // Size_or_Weight
-      '8901030383811',           // Variant_Barcode
-      399,                       // MRP
-      349,                       // General_User_Price
-      280,                       // Salon_Price
-      260,                       // Makeup_Artist_Price
-      245,                       // Beautician_Price
-      'Matte',                   // Finish
-      'All Skin Types',          // Skin_Type
-      'Full Coverage',           // Coverage
-      'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800', // Product_Image_URL
-      'TRUE',                    // Product_Active
-      'TRUE'                     // Variant_Active
+      '8901030383811',                                                           // BARCODE
+      'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800',     // IMAGE
+      'LAK-MATTE-LIP',                                                           // PARENT_SKU
+      'Lakmé Forever Matte Liquid Lip Colour',                                   // PRODUCT_NAME
+      'Makeup',                                                                  // CATEGORY
+      'Lips',                                                                    // SUBCATEGORY
+      'Lakmé',                                                                   // BRAND
+      'LAK-MATTE-01',                                                            // VARIANT_SKU
+      '01 Red Carpet',                                                           // SHADE_NAME
+      '#C71585',                                                                 // HEX & SWATCH
+      '5.6 ml',                                                                  // SIZE_OR_WEIGHT
+      399,                                                                       // MRP
+      349,                                                                       // GENERAL_USER_PRICE
+      280,                                                                       // SALON_PRICE
+      260,                                                                       // MAKEUP_ARTIST_PRICE
+      245,                                                                       // BEAUTICIAN_PRICE
+      'TRUE',                                                                    // PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // STATUS
     ],
-    // Sample 2: Parent-Child Variant Row 2 (Lakmé Liquid Lipstick - Shade 02 Nude Myth sharing Parent_SKU)
+    // Sample 2: Parent-Child Variant Row 2 (Lakmé Liquid Lipstick - Shade 02 Nude Myth)
     [
-      '8901030383828',           // Barcode
-      'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800', // Image
-      'LAK-MATTE-LIP',           // Parent_SKU (Same Parent SKU as Row 1 -> Grouped together!)
-      'Lakmé Forever Matte Liquid Lip Colour', // Product_Name
-      'Liquid Lipstick',         // Product_Type
-      'Makeup',                  // Category
-      'Lips',                    // Subcategory
-      'Lakmé',                   // Brand
-      'Intense matte liquid lip colour that lasts up to 16 hours with a lightweight, comfortable feel.', // Product_Description
-      '16hr longwear; Smudge-proof; Ultra-lightweight', // Highlights
-      'LAK-MATTE-02',            // Variant_SKU (Unique Variant SKU)
-      '02 Nude Myth',            // Variant_Name
-      'Nude Myth',               // Shade_Name
-      '02',                      // Shade_Code
-      '5.6 ml',                  // Size_or_Weight
-      '8901030383828',           // Variant_Barcode
-      399,                       // MRP
-      349,                       // General_User_Price
-      280,                       // Salon_Price
-      260,                       // Makeup_Artist_Price
-      245,                       // Beautician_Price
-      'Matte',                   // Finish
-      'All Skin Types',          // Skin_Type
-      'Full Coverage',           // Coverage
-      'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800', // Product_Image_URL
-      'TRUE',                    // Product_Active
-      'TRUE'                     // Variant_Active
+      '8901030383828',                                                           // BARCODE
+      'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800',     // IMAGE
+      'LAK-MATTE-LIP',                                                           // PARENT_SKU (Same parent SKU groups variants)
+      'Lakmé Forever Matte Liquid Lip Colour',                                   // PRODUCT_NAME
+      'Makeup',                                                                  // CATEGORY
+      'Lips',                                                                    // SUBCATEGORY
+      'Lakmé',                                                                   // BRAND
+      'LAK-MATTE-02',                                                            // VARIANT_SKU
+      '02 Nude Myth',                                                            // SHADE_NAME
+      '#D2691E',                                                                 // HEX & SWATCH
+      '5.6 ml',                                                                  // SIZE_OR_WEIGHT
+      399,                                                                       // MRP
+      349,                                                                       // GENERAL_USER_PRICE
+      280,                                                                       // SALON_PRICE
+      260,                                                                       // MAKEUP_ARTIST_PRICE
+      245,                                                                       // BEAUTICIAN_PRICE
+      'TRUE',                                                                    // PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // STATUS
     ],
-    // Sample 3: Standalone Single Product (Face Serum without shades/variants)
+    // Sample 3: Standalone Single Product (Face Serum without shades)
     [
-      '8901030492812',           // Barcode
-      'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800', // Image
-      'LOR-REVIT-30ML',          // Parent_SKU
-      'L\'Oréal Paris Revitalift 1.5% Hyaluronic Acid Serum', // Product_Name
-      'Face Serum',              // Product_Type
-      'Skincare',                // Category
-      'Face Serums',             // Subcategory
-      'L\'Oréal Paris',          // Brand
-      'Intensive hydrating face serum with 1.5% pure Hyaluronic Acid for plump, radiant, youthful skin.', // Product_Description
-      '1.5% Pure Hyaluronic Acid; Deep hydration; Radiant glow', // Highlights
-      'LOR-REVIT-30ML',          // Variant_SKU (Same as Parent_SKU -> Standalone Product)
-      '30 ml Bottle',            // Variant_Name
-      '',                        // Shade_Name (Blank for non-shade)
-      '',                        // Shade_Code (Blank for non-shade)
-      '30 ml',                   // Size_or_Weight
-      '8901030492812',           // Variant_Barcode
-      999,                       // MRP
-      899,                       // General_User_Price
-      720,                       // Salon_Price
-      680,                       // Makeup_Artist_Price
-      640,                       // Beautician_Price
-      'Dewy',                    // Finish
-      'All Skin Types',          // Skin_Type
-      'Sheer',                   // Coverage
-      'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800', // Product_Image_URL
-      'TRUE',                    // Product_Active
-      'TRUE'                     // Variant_Active
+      '8901030492812',                                                           // BARCODE
+      'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800',     // IMAGE
+      'LOR-REVIT-30ML',                                                          // PARENT_SKU
+      "L'Oréal Paris Revitalift 1.5% Hyaluronic Acid Serum",                     // PRODUCT_NAME
+      'Skincare',                                                                // CATEGORY
+      'Face Serums',                                                             // SUBCATEGORY
+      "L'Oréal Paris",                                                           // BRAND
+      'LOR-REVIT-30ML',                                                          // VARIANT_SKU
+      '',                                                                        // SHADE_NAME
+      '',                                                                        // HEX & SWATCH
+      '30 ml',                                                                   // SIZE_OR_WEIGHT
+      999,                                                                       // MRP
+      899,                                                                       // GENERAL_USER_PRICE
+      720,                                                                       // SALON_PRICE
+      680,                                                                       // MAKEUP_ARTIST_PRICE
+      640,                                                                       // BEAUTICIAN_PRICE
+      'TRUE',                                                                    // PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // STATUS
     ]
   ];
 
   // ---------------------------------------------------------------------------
-  // SHEET 1: Product_Import (Primary Staging Sheet)
+  // SHEET 1: Bulk Product Upload (Strict 18 Headers)
   // ---------------------------------------------------------------------------
   const wsTemplateData = [headers, ...sampleRows];
   const wsTemplate = XLSX.utils.aoa_to_sheet(wsTemplateData);
 
   wsTemplate['!cols'] = [
-    { wch: 18 }, // Barcode
-    { wch: 35 }, // Image
-    { wch: 18 }, // Parent_SKU
-    { wch: 38 }, // Product_Name
-    { wch: 18 }, // Product_Type
-    { wch: 16 }, // Category
-    { wch: 20 }, // Subcategory
-    { wch: 22 }, // Brand
-    { wch: 45 }, // Product_Description
-    { wch: 35 }, // Highlights
-    { wch: 18 }, // Variant_SKU
-    { wch: 22 }, // Variant_Name
-    { wch: 18 }, // Shade_Name
-    { wch: 14 }, // Shade_Code
-    { wch: 16 }, // Size_or_Weight
-    { wch: 18 }, // Variant_Barcode
+    { wch: 18 }, // BARCODE
+    { wch: 35 }, // IMAGE
+    { wch: 18 }, // PARENT_SKU
+    { wch: 38 }, // PRODUCT_NAME
+    { wch: 16 }, // CATEGORY
+    { wch: 20 }, // SUBCATEGORY
+    { wch: 20 }, // BRAND
+    { wch: 18 }, // VARIANT_SKU
+    { wch: 18 }, // SHADE_NAME
+    { wch: 16 }, // HEX & SWATCH
+    { wch: 16 }, // SIZE_OR_WEIGHT
     { wch: 12 }, // MRP
-    { wch: 20 }, // General_User_Price
-    { wch: 16 }, // Salon_Price
-    { wch: 22 }, // Makeup_Artist_Price
-    { wch: 18 }, // Beautician_Price
-    { wch: 16 }, // Finish
-    { wch: 18 }, // Skin_Type
-    { wch: 16 }, // Coverage
-    { wch: 35 }, // Product_Image_URL
-    { wch: 16 }, // Product_Active
-    { wch: 16 }  // Variant_Active
+    { wch: 20 }, // GENERAL_USER_PRICE
+    { wch: 16 }, // SALON_PRICE
+    { wch: 22 }, // MAKEUP_ARTIST_PRICE
+    { wch: 18 }, // BEAUTICIAN_PRICE
+    { wch: 16 }, // PRODUCT_ACTIVE
+    { wch: 14 }  // STATUS
   ];
 
-  // Freeze top header row so it stays visible during vertical scroll
+  // Freeze top header row
   wsTemplate['!views'] = [{ state: 'frozen', ySplit: 1 }];
   wsTemplate['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
 
-  // Enable Auto-filter on the header row across all 27 canonical columns
-  wsTemplate['!autofilter'] = { ref: `A1:AA${sampleRows.length + 1}` };
+  // Auto-filter across all 18 headers
+  wsTemplate['!autofilter'] = { ref: `A1:R${sampleRows.length + 1}` };
 
   // ---------------------------------------------------------------------------
-  // SHEET 2: Instructions (User Manual & Formatting Rules)
+  // SHEET 2: Field Guide (Notes & Formatting Rules - Ignored during import)
   // ---------------------------------------------------------------------------
   const instructionsData = [
-    ['SALBEAU MAKEUPSTORE — BULK PRODUCT IMPORT INSTRUCTIONS & COLUMN GUIDE'],
+    ['SALBEAU MAKEUPSTORE — BULK PRODUCT IMPORT FIELD GUIDE'],
+    ['NOTE: This sheet is a reference guide only and is completely ignored by the import engine.'],
+    ['All product data must be placed in the "Bulk Product Upload" sheet.'],
     [''],
-    ['RULE 1: PARENT–CHILD PRODUCT RELATIONSHIPS & AUTO-SKU DETECTION'],
-    ['* Rows sharing the SAME Parent_SKU (or sharing Brand + Product Name if Parent_SKU is left blank) are automatically grouped under a SINGLE parent product.'],
-    ['* If Parent_SKU or Variant_SKU is left blank, Salbeau automatically detects and generates clean alphanumeric SKUs following beauty retail standards.'],
-    ['* For standalone products without variants, set Variant_SKU equal to Parent_SKU or leave Shade_Name blank.'],
-    [''],
-    ['RULE 2: BARCODES & SKUs'],
-    ['* Always format barcodes as TEXT to prevent Excel from dropping leading zeros (e.g. 0890123456789).'],
-    ['* If provided, Variant_SKU must be unique across all variants in your catalog.'],
-    ['* If Variant_SKU is left blank, unique variant SKUs are automatically generated using shade codes, sizes, or sequential numbering.'],
-    ['* Variant_Barcode must be unique across all purchasable items.'],
-    [''],
-    ['RULE 3: FOUR-TIER ROLE-BASED PRICING'],
-    ['* MRP: Maximum Retail Price in rupees (e.g. 399). Must be greater than 0.'],
-    ['* General_User_Price: Standard retail consumer selling price (Must be <= MRP).'],
-    ['* Salon_Price: Verified B2B Salon wholesale trade price (Must be <= General_User_Price).'],
-    ['* Makeup_Artist_Price: Verified B2B Makeup Artist wholesale trade price.'],
-    ['* Beautician_Price: Verified B2B Beautician wholesale trade price.'],
-    [''],
-    ['RULE 4: ZERO INVENTORY POLICY'],
-    ['* Salbeau MakeUpStore explicitly DOES NOT track finite stock counts, warehouse ledgers, or low-stock alerts.'],
-    ['* Product availability is controlled by Product_Active (TRUE/FALSE) and Variant_Active (TRUE/FALSE).'],
-    [''],
-    ['RULE 5: IMAGES'],
-    ['* Image / Product_Image_URL: Public HTTP/HTTPS URL for the product family thumbnail and gallery.'],
-    [''],
-    ['CANONICAL COLUMN REFERENCE TABLE:'],
-    ['Column Header', 'Required?', 'Data Type', 'Description / Validation'],
-    ['Barcode', 'Optional', 'Text', 'Primary EAN-13 / UPC barcode for parent item'],
-    ['Image', 'Optional', 'URL', 'Public image link for product'],
-    ['Parent_SKU', 'Optional (Auto-Generated if blank)', 'Text', 'Parent code used to group variants. Auto-generates from Brand + Name if blank.'],
-    ['Product_Name', 'REQUIRED', 'Text', 'Title of the parent product (e.g. Lakmé Forever Matte Lipstick)'],
-    ['Product_Type', 'Optional', 'Text', 'Specific item type (e.g. Liquid Lipstick, Face Serum)'],
-    ['Category', 'REQUIRED', 'Text', 'Main category (e.g. Makeup, Skincare, Hair Care)'],
-    ['Subcategory', 'Optional', 'Text', 'Subcategory (e.g. Lips, Face Serums, Shampoo)'],
-    ['Brand', 'REQUIRED', 'Text', 'Brand name (e.g. Lakmé, L\'Oréal Paris, Maybelline)'],
-    ['Product_Description', 'Optional', 'Text', 'Full product overview and marketing copy'],
-    ['Highlights', 'Optional', 'Text', 'Key features separated by semicolons (;)'],
-    ['Variant_SKU', 'Optional (Auto-Generated if blank)', 'Text', 'Unique SKU for this variant. Auto-generates from Parent SKU + Shade/Size if blank.'],
-    ['Variant_Name', 'Optional', 'Text', 'Display name for variant (e.g. 01 Red Carpet, 30 ml)'],
-    ['Shade_Name', 'Optional', 'Text', 'Shade name for cosmetics (e.g. Ruby Velvet)'],
-    ['Shade_Code', 'Optional', 'Text', 'Numerical or short code for shade (e.g. 01, 220)'],
-    ['Size_or_Weight', 'Optional', 'Text', 'Volume, net quantity, or weight (e.g. 5 ml, 30 ml, 50g)'],
-    ['Variant_Barcode', 'Optional', 'Text', 'Variant-specific barcode for scanner and checkout'],
-    ['MRP', 'REQUIRED', 'Number', 'Maximum Retail Price in rupees (e.g. 499)'],
-    ['General_User_Price', 'REQUIRED', 'Number', 'Retail customer price (Must be <= MRP)'],
-    ['Salon_Price', 'Optional', 'Number', 'Discounted price for verified salon owners'],
-    ['Makeup_Artist_Price', 'Optional', 'Number', 'Discounted price for verified makeup artists'],
-    ['Beautician_Price', 'Optional', 'Number', 'Discounted price for verified beauticians'],
-    ['Finish', 'Optional', 'Text', 'Cosmetic finish: Matte, Glossy, Dewy, Satin, Shimmer'],
-    ['Skin_Type', 'Optional', 'Text', 'Target skin type: All Skin Types, Oily, Dry, Sensitive'],
-    ['Coverage', 'Optional', 'Text', 'Level of coverage: Full, Medium, Sheer, Buildable'],
-    ['Product_Image_URL', 'Optional', 'URL', 'Public image URL for parent product'],
-    ['Product_Active', 'Optional', 'TRUE/FALSE', 'Whether parent product is published and visible'],
-    ['Variant_Active', 'Optional', 'TRUE/FALSE', 'Whether this child variant is purchasable']
+    ['18 FIXED REQUIRED COLUMNS REFERENCE:'],
+    ['Column Header', 'Required?', 'Sample Value', 'Description & Rules'],
+    ['BARCODE', 'Optional', '8901030383811', 'EAN-13, UPC, or custom barcode for scanner checkout. Format as text.'],
+    ['IMAGE', 'Optional', 'https://images.unsplash.com/...', 'Direct HTTP/HTTPS link to product image.'],
+    ['PARENT_SKU', 'Required for Variants', 'LAK-MATTE-LIP', 'Parent SKU grouping related variants. Items with same PARENT_SKU belong to one product family.'],
+    ['PRODUCT_NAME', 'REQUIRED', 'Lakmé Forever Matte Liquid Lip Colour', 'Full display name of the product.'],
+    ['CATEGORY', 'REQUIRED', 'Makeup', 'Master product category (e.g. Makeup, Skincare, Hair Care).'],
+    ['SUBCATEGORY', 'Optional', 'Lips', 'Subcategory under category (e.g. Lips, Eyes, Face).'],
+    ['BRAND', 'REQUIRED', 'Lakmé', 'Brand name matching your catalog.'],
+    ['VARIANT_SKU', 'REQUIRED', 'LAK-MATTE-01', 'Unique SKU for this specific item/variant.'],
+    ['SHADE_NAME', 'Optional', '01 Red Carpet', 'Shade name for cosmetic products (leave empty for non-shade items).'],
+    ['HEX & SWATCH', 'Optional', '#C71585', 'Hex color code for shade swatch circle (e.g. #C71585 or #D2691E).'],
+    ['SIZE_OR_WEIGHT', 'Optional', '5.6 ml', 'Volume or net weight (e.g. 5.6 ml, 30 ml, 50 g).'],
+    ['MRP', 'REQUIRED', '399', 'Maximum Retail Price in rupees (must be > 0).'],
+    ['GENERAL_USER_PRICE', 'Optional', '349', 'Selling price for retail shoppers. If left empty, defaults to MRP.'],
+    ['SALON_PRICE', 'Optional', '280', 'Selling price for verified salon owners. If left empty, auto-calculated at 30% discount.'],
+    ['MAKEUP_ARTIST_PRICE', 'Optional', '260', 'Selling price for verified makeup artists. If left empty, auto-calculated at 35% discount.'],
+    ['BEAUTICIAN_PRICE', 'Optional', '245', 'Selling price for verified beauticians. If left empty, auto-calculated at 32% discount.'],
+    ['PRODUCT_ACTIVE', 'Optional', 'TRUE', 'TRUE or FALSE. Controls product catalog visibility.'],
+    ['STATUS', 'Optional', 'ACTIVE', 'ACTIVE, PUBLISHED, or DRAFT.']
   ];
 
   const wsInstructions = XLSX.utils.aoa_to_sheet(instructionsData);
   wsInstructions['!cols'] = [
-    { wch: 26 },
+    { wch: 24 },
     { wch: 14 },
-    { wch: 16 },
-    { wch: 75 }
+    { wch: 28 },
+    { wch: 80 }
   ];
 
   // ---------------------------------------------------------------------------
@@ -339,11 +237,11 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
   ];
 
   // ---------------------------------------------------------------------------
-  // Assemble 3-Sheet Workbook
+  // Assemble Workbook: 'Bulk Product Upload' + 'Field Guide' (+ 'Dropdown_Values')
   // ---------------------------------------------------------------------------
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, wsTemplate, 'Product_Import');
-  XLSX.utils.book_append_sheet(workbook, wsInstructions, 'Instructions');
+  XLSX.utils.book_append_sheet(workbook, wsTemplate, 'Bulk Product Upload');
+  XLSX.utils.book_append_sheet(workbook, wsInstructions, 'Field Guide');
   XLSX.utils.book_append_sheet(workbook, wsDropdowns, 'Dropdown_Values');
 
   if (options && options.returnWorkbook) {
@@ -356,7 +254,7 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
 };
 
 /**
- * Exports currently staged preparation records using the EXACT 27 canonical columns.
+ * Exports currently staged preparation records using the EXACT 18 required columns.
  * Guarantees 100% round-trip fidelity between Staging -> Export -> Re-import.
  */
 export const exportStagedProductsToExcel = (stagedRows = [], options = {}) => {
@@ -383,61 +281,56 @@ export const exportStagedProductsToExcel = (stagedRows = [], options = {}) => {
       ? Number(r.beauticianPrice)
       : (r.beauticianDiscount ? Math.round(numMrp * (1 - Number(r.beauticianDiscount) / 100)) : Math.round(numMrp * 0.68));
 
-    const highlightsStr = Array.isArray(r.highlights)
-      ? r.highlights.join('; ')
-      : (r.highlights || '');
-
-    const finishVal = r.finish || r.attributes?.Finish || r.attributes?.finish || '';
-    const skinTypeVal = r.skinType || r.attributes?.['Skin Type'] || r.attributes?.skin_type || '';
-    const coverageVal = r.coverage || r.attributes?.Coverage || r.attributes?.coverage || '';
-
     const firstImage = Array.isArray(r.images) && r.images.length > 0
       ? r.images[0]
       : (r.image || r.productImageUrl || '');
 
     return {
-      'Barcode': String(r.barcode || '').trim(),
-      'Image': firstImage,
-      'Parent_SKU': r.parentSku || r.parent_sku || r.sku || '',
-      'Product_Name': r.name || r.productName || r.product_name || '',
-      'Product_Type': r.productType || r.product_type || r.variantType || '',
-      'Category': r.category || '',
-      'Subcategory': r.subcategory || '',
-      'Brand': r.brand || r.brand_name || '',
-      'Product_Description': r.description || r.productDescription || '',
-      'Highlights': highlightsStr,
-      'Variant_SKU': r.variantSku || r.sku || r.parentSku || '',
-      'Variant_Name': r.variantName || r.shade || (r.size ? `${r.size}` : 'Standard Variant'),
-      'Shade_Name': r.shade || r.shadeName || '',
-      'Shade_Code': r.shadeCode || r.code || '',
-      'Size_or_Weight': r.size || r.sizeOrWeight || '',
-      'Variant_Barcode': String(r.variantBarcode || r.barcode || '').trim(),
+      'BARCODE': String(r.barcode || r.variantBarcode || '').trim(),
+      'IMAGE': firstImage,
+      'PARENT_SKU': r.parentSku || r.parent_sku || r.sku || '',
+      'PRODUCT_NAME': r.name || r.productName || r.product_name || '',
+      'CATEGORY': r.category || '',
+      'SUBCATEGORY': r.subcategory || '',
+      'BRAND': r.brand || r.brand_name || '',
+      'VARIANT_SKU': r.variantSku || r.sku || r.parentSku || '',
+      'SHADE_NAME': r.shade || r.shadeName || '',
+      'HEX & SWATCH': r.hexColor || '',
+      'SIZE_OR_WEIGHT': r.size || r.sizeOrWeight || '',
       'MRP': numMrp,
-      'General_User_Price': genP,
-      'Salon_Price': salonP,
-      'Makeup_Artist_Price': artistP,
-      'Beautician_Price': beauticianP,
-      'Finish': finishVal,
-      'Skin_Type': skinTypeVal,
-      'Coverage': coverageVal,
-      'Product_Image_URL': firstImage,
-      'Product_Active': (r.status !== 'draft' && r.productActive !== false) ? 'TRUE' : 'FALSE',
-      'Variant_Active': r.variantActive !== false ? 'TRUE' : 'FALSE'
+      'GENERAL_USER_PRICE': genP,
+      'SALON_PRICE': salonP,
+      'MAKEUP_ARTIST_PRICE': artistP,
+      'BEAUTICIAN_PRICE': beauticianP,
+      'PRODUCT_ACTIVE': (r.status !== 'draft' && r.productActive !== false) ? 'TRUE' : 'FALSE',
+      'STATUS': (r.status || 'ACTIVE').toUpperCase()
     };
   });
 
-  const worksheet = XLSX.utils.json_to_sheet(exportData, { header: CANONICAL_TEMPLATE_COLUMNS });
+  const worksheet = XLSX.utils.json_to_sheet(exportData, { header: REQUIRED_HEADERS });
   worksheet['!cols'] = [
-    { wch: 18 }, { wch: 35 }, { wch: 18 }, { wch: 38 }, { wch: 18 },
-    { wch: 16 }, { wch: 20 }, { wch: 22 }, { wch: 45 }, { wch: 35 },
-    { wch: 18 }, { wch: 22 }, { wch: 18 }, { wch: 14 }, { wch: 16 },
-    { wch: 18 }, { wch: 12 }, { wch: 20 }, { wch: 16 }, { wch: 22 },
-    { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 35 },
-    { wch: 16 }, { wch: 16 }
+    { wch: 18 }, // BARCODE
+    { wch: 35 }, // IMAGE
+    { wch: 18 }, // PARENT_SKU
+    { wch: 38 }, // PRODUCT_NAME
+    { wch: 16 }, // CATEGORY
+    { wch: 20 }, // SUBCATEGORY
+    { wch: 20 }, // BRAND
+    { wch: 18 }, // VARIANT_SKU
+    { wch: 18 }, // SHADE_NAME
+    { wch: 16 }, // HEX & SWATCH
+    { wch: 16 }, // SIZE_OR_WEIGHT
+    { wch: 12 }, // MRP
+    { wch: 20 }, // GENERAL_USER_PRICE
+    { wch: 16 }, // SALON_PRICE
+    { wch: 22 }, // MAKEUP_ARTIST_PRICE
+    { wch: 18 }, // BEAUTICIAN_PRICE
+    { wch: 16 }, // PRODUCT_ACTIVE
+    { wch: 14 }  // STATUS
   ];
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Product_Import');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Bulk Product Upload');
 
   const filename = options.filename || `Salbeau_Staged_Products_${new Date().toISOString().slice(0, 10)}.xlsx`;
   if (options.returnWorkbook) {

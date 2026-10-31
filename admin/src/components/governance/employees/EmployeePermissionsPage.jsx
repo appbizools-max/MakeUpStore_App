@@ -221,9 +221,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap">
-              <span>{employee.department}</span>
-              <span>•</span>
-              <span>{employee.designation}</span>
+              <span className="text-[#CE4270] font-extrabold uppercase">{employee.designation || 'Staff'}</span>
               <span>•</span>
               <span className="font-mono text-gray-400">{employee.email}</span>
             </p>

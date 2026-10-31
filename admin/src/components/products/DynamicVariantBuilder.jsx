@@ -1021,7 +1021,7 @@ export default function DynamicVariantBuilder({
                           </div>
                           <input
                             type="number"
-                            placeholder={baseProduct.mrp || 'MRP'}
+                            placeholder={baseProduct.mrp ? `₹${baseProduct.mrp}` : 'Enter MRP'}
                             value={v.mrp !== undefined ? v.mrp : ''}
                             onChange={(e) => handleVariantMrpChange(v.id, e.target.value)}
                             onWheel={(e) => e.target.blur()}
@@ -1042,7 +1042,7 @@ export default function DynamicVariantBuilder({
                           </div>
                           <input
                             type="number"
-                            placeholder={baseProduct.generalPrice || 'Gen'}
+                            placeholder={baseProduct.generalPrice ? `₹${baseProduct.generalPrice}` : 'General Price'}
                             value={v.generalPrice !== undefined ? v.generalPrice : ''}
                             onChange={(e) => handleUpdateVariantField(v.id, 'generalPrice', e.target.value)}
                             onWheel={(e) => e.target.blur()}
@@ -1063,7 +1063,7 @@ export default function DynamicVariantBuilder({
                           </div>
                           <input
                             type="number"
-                            placeholder={baseProduct.salonPrice || 'Salon'}
+                            placeholder={baseProduct.salonPrice ? `₹${baseProduct.salonPrice}` : 'Salon Price'}
                             value={v.salonPrice !== undefined ? v.salonPrice : ''}
                             onChange={(e) => handleUpdateVariantField(v.id, 'salonPrice', e.target.value)}
                             onWheel={(e) => e.target.blur()}
@@ -1084,7 +1084,7 @@ export default function DynamicVariantBuilder({
                           </div>
                           <input
                             type="number"
-                            placeholder={baseProduct.artistPrice || 'Artist'}
+                            placeholder={baseProduct.artistPrice ? `₹${baseProduct.artistPrice}` : 'Artist Price'}
                             value={v.artistPrice !== undefined ? v.artistPrice : ''}
                             onChange={(e) => handleUpdateVariantField(v.id, 'artistPrice', e.target.value)}
                             onWheel={(e) => e.target.blur()}
@@ -1105,7 +1105,7 @@ export default function DynamicVariantBuilder({
                           </div>
                           <input
                             type="number"
-                            placeholder={baseProduct.beauticianPrice || 'Beautician'}
+                            placeholder={baseProduct.beauticianPrice ? `₹${baseProduct.beauticianPrice}` : 'Beautician Price'}
                             value={v.beauticianPrice !== undefined ? v.beauticianPrice : ''}
                             onChange={(e) => handleUpdateVariantField(v.id, 'beauticianPrice', e.target.value)}
                             onWheel={(e) => e.target.blur()}

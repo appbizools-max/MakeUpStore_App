@@ -39,6 +39,17 @@ export const MODULE_DEFINITIONS = [
     ],
   },
   {
+    key: 'brands',
+    name: 'Brands',
+    description: 'Brand partners, sequential brand numbers (BR001...), and logos',
+    actions: [
+      { key: 'view', label: 'View Brands' },
+      { key: 'add', label: 'Add Brand' },
+      { key: 'edit', label: 'Edit Brand' },
+      { key: 'delete', label: 'Delete Brand' },
+    ],
+  },
+  {
     key: 'categories',
     name: 'Categories',
     description: 'Catalog categories and sorting order',
@@ -266,11 +277,92 @@ export function createEmptyPermissions() {
   return permissions;
 }
 
+export const EMPLOYEE_DESIGNATIONS = [
+  '(admin)',
+  'manager',
+  'account',
+  'employee'
+];
+
+export const getPresetForDesignation = (designation) => {
+  if (!designation) return 'employee';
+  const lower = designation.toLowerCase().trim();
+  if (lower.includes('admin')) return 'admin';
+  if (lower.includes('manag')) return 'manager';
+  if (lower.includes('account')) return 'account';
+  return 'employee';
+};
+
+export const getDepartmentForDesignation = (designation) => {
+  return '';
+};
+
 /**
  * Generates full permissions for a given preset
  */
 export function applyPreset(presetId) {
   const base = createEmptyPermissions();
+
+  // 1. (admin): Full access to ALL modules and ALL actions!
+  if (presetId === 'admin' || presetId === '(admin)' || presetId === 'Admin (Main Access)' || presetId === 'super_admin') {
+    MODULE_DEFINITIONS.forEach((mod) => {
+      base[mod.key] = {
+        enabled: true,
+        actions: {},
+      };
+      mod.actions.forEach((act) => {
+        base[mod.key].actions[act.key] = true;
+      });
+    });
+    return base;
+  }
+
+  // 2. manager: Full business management access
+  if (presetId === 'manager' || presetId === 'Manager') {
+    const managerModules = ['dashboard', 'products', 'brands', 'categories', 'subcategories', 'customers', 'orders', 'banners', 'offers', 'reports', 'payments'];
+    MODULE_DEFINITIONS.forEach((mod) => {
+      const isMgr = managerModules.includes(mod.key);
+      base[mod.key] = {
+        enabled: isMgr,
+        actions: {},
+      };
+      mod.actions.forEach((act) => {
+        base[mod.key].actions[act.key] = isMgr;
+      });
+    });
+    return base;
+  }
+
+  // 3. account: Finance, payments, orders & reports
+  if (presetId === 'account' || presetId === 'Account' || presetId === 'finance') {
+    const accountModules = ['dashboard', 'orders', 'payments', 'reports', 'settings'];
+    MODULE_DEFINITIONS.forEach((mod) => {
+      const isAcc = accountModules.includes(mod.key);
+      base[mod.key] = {
+        enabled: isAcc,
+        actions: {},
+      };
+      mod.actions.forEach((act) => {
+        base[mod.key].actions[act.key] = isAcc;
+      });
+    });
+    return base;
+  }
+
+  // 4. employee: Standard operations & order fulfillment
+  if (presetId === 'employee' || presetId === 'Employee' || presetId === 'employees' || presetId === 'Employees' || presetId === 'operations') {
+    base.dashboard = { enabled: true, actions: { view: true } };
+    if (base.products) base.products = { enabled: true, actions: { view: true, add: false, edit: false, delete: false, publish: false } };
+    if (base.categories) base.categories = { enabled: true, actions: { view: true, add: false, edit: false, delete: false } };
+    if (base.orders) {
+      base.orders = {
+        enabled: true,
+        actions: { view: true, create: true, edit: true, confirm: true, process: true, dispatch: true, cancel: false, refund: false, assign: false }
+      };
+    }
+    return base;
+  }
+
   const preset = PERMISSION_PRESETS.find((p) => p.id === presetId);
   if (!preset || !preset.modules) return base;
 
@@ -293,12 +385,12 @@ export function applyPreset(presetId) {
  * Checks if the current user has access to view a module
  * ADMIN always has access!
  */
-export function hasModuleAccess(permissions, moduleKey, userRole = 'admin') {
+export function hasModuleAccess(permissions, moduleKey, userRole = null) {
   if (userRole === 'admin') return true;
   if (!permissions || typeof permissions !== 'object') return false;
   const mod = permissions[moduleKey];
   if (!mod) return false;
-  return Boolean(mod.enabled && mod.actions?.view);
+  return Boolean(mod.enabled);
 }
 
 /**
@@ -470,19 +562,6 @@ export const DEPARTMENT_DESIGNATIONS_MAP = {
   ],
 };
 
-/**
- * Flat designation options fallback
- */
-export const EMPLOYEE_DESIGNATIONS = [
-  'Store Manager',
-  'Operations Lead',
-  'Fulfillment Specialist',
-  'Catalog Specialist',
-  'Customer Support Representative',
-  'Marketing Executive',
-  'Logistics Associate',
-  'Executive Staff',
-];
 
 /**
  * Employment Types
@@ -573,24 +652,12 @@ export function generateSecureTemporaryPassword() {
 }
 
 /**
- * Validates password against enterprise policy
+ * Validates password: any normal password is valid
  */
 export function validatePasswordPolicy(password) {
   const errors = [];
-  if (!password || password.length < 8) {
-    errors.push('Must be at least 8 characters long');
-  }
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Must contain at least one uppercase letter (A-Z)');
-  }
-  if (!/[a-z]/.test(password)) {
-    errors.push('Must contain at least one lowercase letter (a-z)');
-  }
-  if (!/[0-9]/.test(password)) {
-    errors.push('Must contain at least one number (0-9)');
-  }
-  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-    errors.push('Must contain at least one special character (!@#$%^&*)');
+  if (!password || !password.trim()) {
+    errors.push('Password cannot be empty');
   }
   return {
     isValid: errors.length === 0,
@@ -668,4 +735,124 @@ export function countPermissionsSummary(permissions) {
   }
 
   return { enabledModules, totalActions, sensitiveActionsCount };
+}
+
+/**
+ * Checks whether an actor (admin or employee) has permission to access a specific navigation tab or page.
+ */
+export function canAccessTab(tabId, user) {
+  if (!user) return false;
+  // System administrator has unrestricted access to all modules and routes
+  if (user.role === 'admin' || user.id === 'admin_root') return true;
+
+  const perms = user.permissions || {};
+
+  switch (tabId) {
+    case 'dashboard':
+      return Boolean(perms.dashboard?.enabled);
+    case 'order_updated':
+      return Boolean(perms.orders?.enabled);
+    case 'approval_center':
+      return Boolean(perms.approvals?.enabled || perms.orders?.actions?.assign);
+    case 'products':
+    case 'attributes':
+      return Boolean(perms.products?.enabled);
+    case 'products/new':
+      return Boolean(perms.products?.enabled && (perms.products?.actions?.add || perms.products?.actions?.create));
+    case 'products/bulk':
+      return Boolean(perms.products?.enabled && perms.products?.actions?.add);
+    case 'add_brand':
+    case 'brands':
+      return Boolean(perms.brands?.enabled);
+    case 'categories':
+    case 'categories_order':
+      return Boolean(perms.categories?.enabled);
+    case 'home_banners':
+      return Boolean(perms.banners?.enabled || perms.settings?.enabled);
+    case 'users':
+    case 'user':
+    case 'users/b2c':
+    case 'user/b2c':
+    case 'users/b2b':
+    case 'user/b2b':
+      return Boolean(perms.customers?.enabled);
+    case 'search_requests':
+      return Boolean(perms.customers?.enabled || perms.reports?.enabled || perms.products?.enabled);
+    case 'abandoned_carts':
+      return Boolean(perms.orders?.enabled);
+    case 'b2b-verification':
+    case 'b2b_verification':
+    case 'b2b-verification/salon':
+    case 'b2b_verification/salon':
+    case 'b2b-verification/makeup-artist':
+    case 'b2b_verification/makeup-artist':
+    case 'b2b_verification/makeup_artist':
+    case 'b2b-verification/beautician':
+    case 'b2b_verification/beautician':
+      return Boolean(perms.customers?.enabled || perms.approvals?.enabled);
+    case 'cancel_fee':
+      return Boolean(perms.payments?.enabled);
+    case 'pricing_rules':
+      return Boolean(perms.offers?.enabled);
+    case 'employees':
+      return Boolean(perms.employees?.enabled);
+    case 'employees/new':
+      return Boolean(perms.employees?.enabled && perms.employees?.actions?.add);
+    case 'employees/activity':
+    case 'audit_trail':
+      return Boolean(perms.employees?.enabled || perms.reports?.enabled);
+    case 'dashboard_visibility':
+    case 'settings':
+      return Boolean(perms.settings?.enabled);
+    case 'quick_panel': {
+      if (user.role === 'admin' || user.id === 'admin_root') return true;
+      const desig = (user.designation || '').toLowerCase();
+      const preset = (user.rolePreset || user.role || '').toLowerCase();
+      return desig.includes('manager') || preset.includes('manager');
+    }
+    default:
+      if (tabId.startsWith('employees/')) {
+        return Boolean(perms.employees?.enabled);
+      }
+      return false;
+  }
+}
+
+/**
+ * Resolves the primary landing tab for an authenticated user based on their specific granted permissions.
+ */
+export function getFirstAccessibleTab(user) {
+  if (!user) return 'dashboard';
+  if (user.role === 'admin' || user.id === 'admin_root') return 'dashboard';
+
+  const candidateTabs = [
+    'dashboard',
+    'order_updated',
+    'products',
+    'categories',
+    'add_brand',
+    'users/b2c',
+    'users',
+    'b2b-verification',
+    'search_requests',
+    'abandoned_carts',
+    'home_banners',
+    'pricing_rules',
+    'cancel_fee',
+    'employees',
+    'employees/activity',
+    'audit_trail',
+    'approval_center',
+    'dashboard_visibility',
+    'quick_panel'
+  ];
+
+  for (const tab of candidateTabs) {
+    if (canAccessTab(tab, user)) {
+      return tab;
+    }
+  }
+
+  // Safe fallback if no candidate matched
+  return 'order_updated';
 }

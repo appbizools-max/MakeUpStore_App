@@ -35,7 +35,8 @@ import {
   CornerDownRight,
   GitBranch,
   Layers,
-  Loader2
+  Loader2,
+  HelpCircle
 } from 'lucide-react';
 import { ColumnManagerModal } from './ColumnManagerModal';
 import { lookupBarcodeData, detectBarcodeFormat } from '../../services/barcodeLookupService';
@@ -67,7 +68,13 @@ import {
   downloadFailedRowsExcel,
   downloadImportReportExcel
 } from '../../utils/excelTemplateGenerator';
-import { matchColumnHeader, COLUMN_SYNONYMS, normalizeRow } from '../../services/excelProcessorService';
+import {
+  REQUIRED_HEADERS,
+  DEFAULT_GST_SLAB,
+  validateExcelHeaders,
+  selectUploadSheet,
+  normalizeStrictImportRow
+} from '../../services/excelHeaderValidator';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../config/supabase';
 
@@ -949,13 +956,18 @@ export const BulkProductEntryModal = ({
     } catch (e) {}
   }, []);
 
-  // Excel Column Mapping Dialog State
-  const [columnMappingModal, setColumnMappingModal] = useState({
+  // Strict Excel Header Validation Error Dialog State
+  const [headerErrorModal, setHeaderErrorModal] = useState({
     isOpen: false,
-    fileHeaders: [],
-    detectedMapping: {},
-    worksheet: null,
-    onConfirm: null
+    sheetName: '',
+    headersFound: [],
+    headersExpected: [...REQUIRED_HEADERS],
+    missing: [],
+    extra: [],
+    duplicates: [],
+    hints: [],
+    failedCheck: null,
+    errors: []
   });
 
   // Access Supabase admin methods safely from context
@@ -2439,114 +2451,7 @@ export const BulkProductEntryModal = ({
     }
   };
 
-  // Process rows with given column mapping and establish parent-variant relationships
-  const executeParsedExcelRows = (worksheet, mapping) => {
-    try {
-      const rawObjects = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-      if (!rawObjects || rawObjects.length === 0) {
-        setBulkNotice({ type: 'warning', text: 'Spreadsheet has no data rows.' });
-        return;
-      }
-
-      const imported = rawObjects.map((item, idx) => {
-        const norm = normalizeRow(item, idx, mapping, existingProducts);
-        const numMrp = Number(norm.mrp) || 0;
-        const genP = Number(norm.generalPrice) || numMrp;
-        const salonP = Number(norm.salonPrice) || Math.round(genP * 0.7);
-        const artistP = Number(norm.artistPrice) || Math.round(genP * 0.65);
-        const beauticianP = Number(norm.beauticianPrice) || Math.round(genP * 0.68);
-
-        return {
-          _id: 'row_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substring(2, 6),
-          barcode: norm.barcode || '',
-          barcodeStatus: (norm.variantBarcode || norm.barcode) ? 'detected' : 'manual',
-          parentSku: norm.parentSku || '',
-          name: norm.productName || '',
-          productType: norm.productType || '',
-          category: norm.category || '',
-          subcategory: norm.subcategory || '',
-          brand: norm.brand || '',
-          description: norm.productDescription || '',
-          highlights: norm.highlights || [],
-          variantSku: norm.variantSku || '',
-          variantName: norm.variantName || norm.shadeName || '',
-          variantType: norm.shadeName ? 'Shade' : (norm.productType || 'Standard'),
-          shade: norm.shadeName || '',
-          shadeCode: norm.shadeCode || '',
-          hexColor: norm.hexColor || '#CE4270',
-          rgb: hexToRgbString(norm.hexColor || '#CE4270'),
-          size: norm.sizeOrWeight || '',
-          variantBarcode: norm.variantBarcode || norm.barcode || '',
-          gst: '18',
-          netQty: '1 N',
-          mrp: numMrp || '',
-          generalDiscount: numMrp > 0 ? calculateDiscountFromPrice(numMrp, genP) : '',
-          salonDiscount: numMrp > 0 ? calculateDiscountFromPrice(numMrp, salonP) : '',
-          artistDiscount: numMrp > 0 ? calculateDiscountFromPrice(numMrp, artistP) : '',
-          beauticianDiscount: numMrp > 0 ? calculateDiscountFromPrice(numMrp, beauticianP) : '',
-          generalPrice: genP || '',
-          salonPrice: salonP || '',
-          artistPrice: artistP || '',
-          beauticianPrice: beauticianP || '',
-          finish: norm.finish || '',
-          skinType: norm.skinType || '',
-          coverage: norm.coverage || '',
-          images: [norm.variantImageUrl || norm.productImageUrl].filter(Boolean),
-          productImageUrl: norm.productImageUrl || '',
-          productActive: norm.productActive !== false,
-          variantActive: norm.variantActive !== false,
-          attributes: norm.attributes || {},
-          quantityTiers: { general: [], salon: [], artist: [], beautician: [] },
-          hasMultipleShades: Boolean(norm.shadeName),
-          isParent: false,
-          parentId: null,
-          status: norm._valid ? 'ready' : 'draft',
-          _adminVerified: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-      });
-
-      // Post-process to link child variants to parents sharing the same parentSku
-      const skuGroups = {};
-      imported.forEach(r => {
-        if (r.parentSku) {
-          if (!skuGroups[r.parentSku]) skuGroups[r.parentSku] = [];
-          skuGroups[r.parentSku].push(r);
-        }
-      });
-
-      Object.values(skuGroups).forEach(group => {
-        if (group.length > 1) {
-          const parent = group[0];
-          parent.isParent = true;
-          parent.hasMultipleShades = true;
-          for (let i = 1; i < group.length; i++) {
-            group[i].parentId = parent._id;
-            group[i].isParent = false;
-          }
-        }
-      });
-
-      setRows(prev => {
-        const cleanPrev = prev.filter(r => (r.name || '').trim() || (r.barcode || '').trim() || (r.category || '').trim());
-        return [...cleanPrev, ...imported];
-      });
-
-      const uniqueParents = Object.keys(skuGroups).length;
-      setBulkNotice({
-        type: 'success',
-        text: `Successfully staged ${imported.length.toLocaleString()} product row(s) from Excel (${uniqueParents} parent product groups, ${imported.length} total variants).`
-      });
-
-      processBatchBarcodeLookups(imported);
-      processBatchImageOptimization(imported);
-    } catch (err) {
-      setBulkNotice({ type: 'error', text: `Failed to process Excel data: ${err.message}` });
-    }
-  };
-
-  // Import Excel (.xlsx / .xls / .csv) with Intelligent Synonym Column Mapping
+  // Import Excel (.xlsx / .xls / .csv) strictly adhering to the fixed 18-column template
   const handleImportExcel = (fileOrEvent) => {
     let file = null;
     if (fileOrEvent instanceof File) {
@@ -2563,52 +2468,130 @@ export const BulkProductEntryModal = ({
       try {
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        // Prioritize 'Product_Import' sheet if present
-        let sheetName = workbook.SheetNames.find(s => s.toLowerCase() === 'product_import') || workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
 
-        const rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-        if (!rawMatrix || rawMatrix.length < 2) {
-          setBulkNotice({ type: 'warning', text: 'The selected Excel file has no product data rows.' });
+        // 1. Sheet selection: Pick 'Bulk Product Upload', or first sheet, always ignoring 'Field Guide'
+        const sheetResult = selectUploadSheet(workbook);
+        if (sheetResult.error || !sheetResult.worksheet) {
+          setHeaderErrorModal({
+            isOpen: true,
+            sheetName: sheetResult.sheetName || 'Unknown Sheet',
+            headersFound: [],
+            headersExpected: [...REQUIRED_HEADERS],
+            missing: [],
+            extra: [],
+            duplicates: [],
+            hints: [],
+            failedCheck: 'SHEET_SELECTION',
+            errors: [sheetResult.error || 'No valid sheet found in workbook.']
+          });
           return;
         }
 
-        // Find header row (first row with >= 2 non-empty items)
-        let headerRowIdx = 0;
-        for (let i = 0; i < Math.min(5, rawMatrix.length); i++) {
-          const nonEmpties = (rawMatrix[i] || []).filter(c => String(c).trim().length > 0);
-          if (nonEmpties.length >= 2) {
-            headerRowIdx = i;
-            break;
-          }
-        }
+        const worksheet = sheetResult.worksheet;
+        const currentSheetName = sheetResult.sheetName;
 
-        const headers = (rawMatrix[headerRowIdx] || []).map(h => String(h || '').trim()).filter(Boolean);
-        const detectedMapping = {};
-        headers.forEach(h => {
-          const match = matchColumnHeader(h);
-          if (match) detectedMapping[h] = match;
+        // 2. Strict Header Validation runs FIRST before reading any data rows
+        const validation = validateExcelHeaders(worksheet, currentSheetName);
+        const isValidationPassed = Boolean(validation.valid ?? validation.isValid);
+
+        console.log('[Bulk Import Excel Upload]', {
+          sheetName: currentSheetName,
+          headersFound: validation.headersFound,
+          headersExpected: REQUIRED_HEADERS,
+          missing: validation.missing,
+          extra: validation.extra,
+          duplicates: validation.duplicates,
+          failedCheck: validation.failedCheck,
+          isValid: isValidationPassed
         });
 
-        const mappedFields = Object.values(detectedMapping);
-        const hasEssentialNameOrBarcode = mappedFields.includes('productName') || mappedFields.includes('barcode') || mappedFields.includes('parentSku');
-
-        if (hasEssentialNameOrBarcode && mappedFields.length >= 2) {
-          executeParsedExcelRows(worksheet, detectedMapping);
-        } else {
-          setColumnMappingModal({
+        if (!isValidationPassed) {
+          // BLOCK the upload completely. Do not load any rows into the table.
+          setHeaderErrorModal({
             isOpen: true,
-            fileHeaders: headers,
-            detectedMapping,
-            worksheet,
-            onConfirm: (finalMapping) => {
-              executeParsedExcelRows(worksheet, finalMapping);
-              setColumnMappingModal(prev => ({ ...prev, isOpen: false }));
-            }
+            sheetName: currentSheetName,
+            headersFound: validation.headersFound || [],
+            headersExpected: [...REQUIRED_HEADERS],
+            missing: validation.missing || [],
+            extra: validation.extra || [],
+            duplicates: validation.duplicates || [],
+            hints: validation.hints || [],
+            failedCheck: validation.failedCheck || 'HEADER_VALIDATION_FAILED',
+            errors: validation.errors || []
           });
+          return;
         }
+
+        // 3. Validation passed! Continue directly to loading table with NO popup
+        const rawObjects = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        if (!rawObjects || rawObjects.length === 0) {
+          setHeaderErrorModal({
+            isOpen: true,
+            sheetName: currentSheetName,
+            headersFound: validation.headersFound || [],
+            headersExpected: [...REQUIRED_HEADERS],
+            missing: [],
+            extra: [],
+            duplicates: [],
+            hints: [],
+            failedCheck: 'NO_DATA_ROWS',
+            errors: ['The selected sheet contains headers but has no product data rows.']
+          });
+          return;
+        }
+
+        const imported = rawObjects.map((item, idx) => {
+          return normalizeStrictImportRow(item, idx);
+        });
+
+        // Group child variants to parents sharing the same parentSku
+        const skuGroups = {};
+        imported.forEach(r => {
+          if (r.parentSku) {
+            if (!skuGroups[r.parentSku]) skuGroups[r.parentSku] = [];
+            skuGroups[r.parentSku].push(r);
+          }
+        });
+
+        Object.values(skuGroups).forEach(group => {
+          if (group.length > 1) {
+            const parent = group[0];
+            parent.isParent = true;
+            parent.hasMultipleShades = true;
+            for (let i = 1; i < group.length; i++) {
+              group[i].parentId = parent._id;
+              group[i].isParent = false;
+            }
+          }
+        });
+
+        setRows(prev => {
+          const cleanPrev = prev.filter(r => (r.name || '').trim() || (r.barcode || '').trim() || (r.category || '').trim());
+          return [...cleanPrev, ...imported];
+        });
+
+        const uniqueParents = Object.keys(skuGroups).length;
+        setBulkNotice({
+          type: 'success',
+          text: `Successfully staged ${imported.length.toLocaleString()} product row(s) from Excel (${uniqueParents} parent product groups, ${imported.length} total variants).`
+        });
+
+        processBatchBarcodeLookups(imported);
+        processBatchImageOptimization(imported);
       } catch (err) {
-        setBulkNotice({ type: 'error', text: `Failed to read Excel workbook: ${err.message}` });
+        console.error('[Bulk Import Error]', err);
+        setHeaderErrorModal({
+          isOpen: true,
+          sheetName: '',
+          headersFound: [],
+          headersExpected: [...REQUIRED_HEADERS],
+          missing: [],
+          extra: [],
+          duplicates: [],
+          hints: [],
+          failedCheck: 'READ_ERROR',
+          errors: [`Failed to read Excel workbook: ${err.message}`]
+        });
       } finally {
         if (fileOrEvent?.target) fileOrEvent.target.value = '';
       }
@@ -5647,99 +5630,183 @@ export const BulkProductEntryModal = ({
         )}
 
         {/* =====================================================================
-            6. INTERACTIVE EXCEL COLUMN MAPPING MODAL
+            6. STRICT EXCEL HEADER VALIDATION ERROR MODAL
             ===================================================================== */}
-        {columnMappingModal.isOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                <div>
-                  <h3 className="text-base font-black text-slate-900">Map Excel Columns to Product Catalog</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Match spreadsheet headers with our canonical product fields.</p>
+        {headerErrorModal.isOpen && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl border border-rose-200 w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95">
+              {/* Header */}
+              <div className="px-6 py-4.5 border-b border-rose-100 flex items-center justify-between bg-gradient-to-r from-rose-50 to-pink-50/40">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-black shadow-inner">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 tracking-tight">Excel Template Validation Failed</h3>
+                    <p className="text-xs text-rose-700 font-medium mt-0.5">
+                      Upload blocked. Only the official 18-column template is accepted.
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setColumnMappingModal(prev => ({ ...prev, isOpen: false }))}
-                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200"
+                  onClick={() => setHeaderErrorModal({
+                    isOpen: false,
+                    sheetName: '',
+                    headersFound: [],
+                    headersExpected: [...REQUIRED_HEADERS],
+                    missing: [],
+                    extra: [],
+                    duplicates: [],
+                    hints: [],
+                    failedCheck: null,
+                    errors: []
+                  })}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-200/60 transition-colors cursor-pointer"
+                  title="Close"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-6 overflow-y-auto max-h-[60vh] space-y-3">
-                <div className="grid grid-cols-2 text-[11px] font-black uppercase text-slate-400 tracking-wider pb-1 border-b border-slate-100">
-                  <span>Excel Spreadsheet Column</span>
-                  <span>System Product Field</span>
+              {/* Scrollable Issues List with Full Diagnostics */}
+              <div className="p-6 overflow-y-auto max-h-[65vh] space-y-4">
+                {/* 1. Sheet Read & Failed Check Diagnostic Banner */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-2.5 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <span className="font-bold text-slate-500 uppercase tracking-wide text-[10px]">Sheet Read:</span>
+                    <span className="font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-300">
+                      "{headerErrorModal.sheetName || 'Bulk Product Upload'}"
+                    </span>
+                  </div>
+                  <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 flex items-center justify-between">
+                    <span className="font-bold text-rose-600 uppercase tracking-wide text-[10px]">Failed Check:</span>
+                    <span className="font-black text-rose-800 bg-white px-2 py-0.5 rounded border border-rose-300">
+                      {headerErrorModal.failedCheck || (headerErrorModal.errors.length > 0 ? 'VALIDATION_FAILED' : 'HEADER_CHECK_FAILED')}
+                    </span>
+                  </div>
                 </div>
-                {columnMappingModal.fileHeaders.map((header, idx) => {
-                  const currentMapped = columnMappingModal.detectedMapping[header] || '';
-                  return (
-                    <div key={idx} className="grid grid-cols-2 gap-4 items-center py-1.5 border-b border-slate-50">
-                      <div className="font-bold text-xs text-slate-800 font-mono truncate" title={header}>
-                        {header}
-                      </div>
-                      <select
-                        value={currentMapped}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setColumnMappingModal(prev => ({
-                            ...prev,
-                            detectedMapping: {
-                              ...prev.detectedMapping,
-                              [header]: val
-                            }
-                          }));
-                        }}
-                        className="py-1.5 px-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-                      >
-                        <option value="">-- Select Field --</option>
-                        <option value="name">Product Name (Required)</option>
-                        <option value="barcode">Barcode</option>
-                        <option value="brand">Brand</option>
-                        <option value="category">Category</option>
-                        <option value="subcategory">Subcategory</option>
-                        <option value="variantType">Variant Type</option>
-                        <option value="shade">Shade Name</option>
-                        <option value="hexColor">Color HEX Code</option>
-                        <option value="rgb">Color RGB</option>
-                        <option value="mrp">MRP Price (Required)</option>
-                        <option value="generalDiscount">General User Discount %</option>
-                        <option value="salonDiscount">Salon Owner Discount %</option>
-                        <option value="artistDiscount">Makeup Artist Discount %</option>
-                        <option value="beauticianDiscount">Beautician Discount %</option>
-                        <option value="quantityTiers">Quantity Discount Tiers (JSON)</option>
-                        <option value="size">Size (e.g. 50ml, 30g)</option>
-                        <option value="gst">GST % (0, 5, 12, 18, 28)</option>
-                        <option value="netQty">Net Quantity (e.g. 1 N)</option>
-                        <option value="description">Product Description</option>
-                        <option value="highlights">Product Highlights / Features</option>
-                        <option value="image">Product Image URL</option>
-                        <option value="status">Status (published/draft)</option>
-                        <option value="_ignore">-- Do Not Import (Ignore) --</option>
-                      </select>
+
+                {/* 2. Detailed Error Messages */}
+                {headerErrorModal.errors.length > 0 && (
+                  <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl space-y-1.5">
+                    <div className="text-xs font-bold text-rose-800 flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>Validation Failure Summary</span>
                     </div>
-                  );
-                })}
+                    <ul className="text-xs text-rose-700 list-disc list-inside space-y-1 pl-1 font-medium">
+                      {headerErrorModal.errors.map((err, idx) => (
+                        <li key={idx}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* 3. Missing Columns */}
+                <div className="space-y-1">
+                  <div className="text-xs font-black text-rose-700 uppercase tracking-wider flex items-center justify-between">
+                    <span>Missing Columns ({headerErrorModal.missing.length}):</span>
+                    <span className="text-[10px] font-mono text-rose-500">Required 18 Template Columns</span>
+                  </div>
+                  <div className="p-2.5 bg-rose-50/60 border border-rose-200 rounded-xl font-mono text-xs text-rose-900 break-all select-all">
+                    {headerErrorModal.missing.length > 0
+                      ? `[ ${headerErrorModal.missing.map(m => `"${m}"`).join(', ')} ]`
+                      : '[ ] (None - all required columns are present)'}
+                  </div>
+                </div>
+
+                {/* 4. Extra Columns Not Allowed */}
+                <div className="space-y-1">
+                  <div className="text-xs font-black text-amber-800 uppercase tracking-wider flex items-center justify-between">
+                    <span>Extra Columns Not Allowed ({headerErrorModal.extra.length}):</span>
+                    <span className="text-[10px] font-mono text-amber-600">Must Be Removed</span>
+                  </div>
+                  <div className="p-2.5 bg-amber-50/60 border border-amber-200 rounded-xl font-mono text-xs text-amber-900 break-all select-all">
+                    {headerErrorModal.extra.length > 0
+                      ? `[ ${headerErrorModal.extra.map(e => `"${e}"`).join(', ')} ]`
+                      : '[ ] (None - no unexpected columns)'}
+                  </div>
+                </div>
+
+                {/* 5. Duplicate Columns */}
+                <div className="space-y-1">
+                  <div className="text-xs font-black text-purple-800 uppercase tracking-wider flex items-center justify-between">
+                    <span>Duplicate Columns ({headerErrorModal.duplicates.length}):</span>
+                    <span className="text-[10px] font-mono text-purple-600">Must Appear Only Once</span>
+                  </div>
+                  <div className="p-2.5 bg-purple-50/60 border border-purple-200 rounded-xl font-mono text-xs text-purple-900 break-all select-all">
+                    {headerErrorModal.duplicates.length > 0
+                      ? `[ ${headerErrorModal.duplicates.map(d => `"${d}"`).join(', ')} ]`
+                      : '[ ] (None - all headers are unique)'}
+                  </div>
+                </div>
+
+                {/* 6. Did You Mean Hints */}
+                {headerErrorModal.hints && headerErrorModal.hints.length > 0 && (
+                  <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1.5">
+                    <div className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                      <HelpCircle className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span>Header Suggestions (Did you mean?)</span>
+                    </div>
+                    <ul className="text-xs text-blue-800 space-y-1 font-medium pl-1 list-disc list-inside">
+                      {headerErrorModal.hints.map((hint, idx) => (
+                        <li key={idx}>{hint}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* 7. Headers Found in the File (Each in Quotes to Reveal Spaces) */}
+                <div className="space-y-1">
+                  <div className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                    <span>Headers Found in File ({headerErrorModal.headersFound.length}):</span>
+                    <span className="text-[10px] font-mono text-slate-500">Each in quotes (spaces visible)</span>
+                  </div>
+                  <div className="p-2.5 bg-slate-900 text-emerald-400 rounded-xl font-mono text-xs max-h-28 overflow-y-auto break-all select-all">
+                    {headerErrorModal.headersFound.length > 0
+                      ? `[ ${headerErrorModal.headersFound.map(h => `"${h}"`).join(', ')} ]`
+                      : '[ ] (No headers found in row 1)'}
+                  </div>
+                </div>
+
+                {/* 8. Expected Headers (REQUIRED_HEADERS) */}
+                <div className="space-y-1">
+                  <div className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                    Headers Expected (REQUIRED_HEADERS, {headerErrorModal.headersExpected.length}):
+                  </div>
+                  <div className="p-2.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl font-mono text-xs max-h-28 overflow-y-auto break-all select-all">
+                    [ {headerErrorModal.headersExpected.map(h => `"${h}"`).join(', ')} ]
+                  </div>
+                </div>
               </div>
 
-              <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2.5">
+              {/* Action Buttons: [Download Template] and [Close] */}
+              <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setColumnMappingModal(prev => ({ ...prev, isOpen: false }))}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-bold cursor-pointer"
+                  onClick={() => generateAndDownloadTemplate(categories, brands)}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                 >
-                  Cancel
+                  <Download className="w-4 h-4" />
+                  <span>Download Template</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (columnMappingModal.onConfirm) {
-                      columnMappingModal.onConfirm(columnMappingModal.detectedMapping);
-                    }
-                  }}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold shadow-sm cursor-pointer"
+                  onClick={() => setHeaderErrorModal({
+                    isOpen: false,
+                    sheetName: '',
+                    headersFound: [],
+                    headersExpected: [...REQUIRED_HEADERS],
+                    missing: [],
+                    extra: [],
+                    duplicates: [],
+                    hints: [],
+                    failedCheck: null,
+                    errors: []
+                  })}
+                  className="px-5 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
-                  Confirm Mapping & Import
+                  Close
                 </button>
               </div>
             </div>

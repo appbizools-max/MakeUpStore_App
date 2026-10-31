@@ -24,21 +24,23 @@ import {
   Building2,
   Lock,
   RefreshCw,
-  Power
+  Power,
+  Trash2
 } from 'lucide-react';
 import { useAdmin } from '../../../context/AdminContext';
-import { EMPLOYEE_DEPARTMENTS, ACCOUNT_STATE_META } from '../../../utils/permissionEngine';
+import { ACCOUNT_STATE_META } from '../../../utils/permissionEngine';
 
 export default function AllEmployeesPage({ onNavigate }) {
   const {
     employees = [],
     toggleEmployeeStatus,
     resetEmployeePassword,
+    deleteEmployee,
     isLoading
   } = useAdmin();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [designationFilter, setDesignationFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Quick reset password state
@@ -59,12 +61,12 @@ export default function AllEmployeesPage({ onNavigate }) {
         (emp.phone || '').includes(term) ||
         (emp.designation || '').toLowerCase().includes(term);
 
-      const matchesDept = departmentFilter === 'all' || emp.department === departmentFilter;
+      const matchesDesig = designationFilter === 'all' || (emp.designation || '').toLowerCase() === designationFilter.toLowerCase();
       const matchesStatus = statusFilter === 'all' || emp.status === statusFilter;
 
-      return matchesSearch && matchesDept && matchesStatus;
+      return matchesSearch && matchesDesig && matchesStatus;
     });
-  }, [employees, searchTerm, departmentFilter, statusFilter]);
+  }, [employees, searchTerm, designationFilter, statusFilter]);
 
   // Real KPI metrics from actual database records
   const stats = useMemo(() => {
@@ -94,6 +96,20 @@ export default function AllEmployeesPage({ onNavigate }) {
         setTimeout(() => setActionSuccess(null), 3000);
       } catch (err) {
         alert(err.message || 'Failed to update employee status');
+      }
+    }
+  };
+
+  // Handle delete employee
+  const handleDeleteEmployee = async (emp) => {
+    const empName = emp.full_name || emp.name || 'this employee';
+    if (window.confirm(`Are you sure you want to permanently delete ${empName}? This action cannot be undone.`)) {
+      try {
+        await deleteEmployee(emp.id);
+        setActionSuccess(`Employee ${empName} has been permanently deleted.`);
+        setTimeout(() => setActionSuccess(null), 3000);
+      } catch (err) {
+        alert(err.message || 'Failed to delete employee');
       }
     }
   };
@@ -213,14 +229,15 @@ export default function AllEmployeesPage({ onNavigate }) {
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
           <select
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
+            value={designationFilter}
+            onChange={(e) => setDesignationFilter(e.target.value)}
             className="flex-1 md:flex-initial px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#C2477A] outline-none bg-white"
           >
-            <option value="all">All Departments</option>
-            {EMPLOYEE_DEPARTMENTS.map((dept) => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
+            <option value="all">All Designations</option>
+            <option value="(admin)">1) (admin)</option>
+            <option value="manager">2) manager</option>
+            <option value="account">3) account</option>
+            <option value="employee">4) employee</option>
           </select>
 
           <select
@@ -244,7 +261,7 @@ export default function AllEmployeesPage({ onNavigate }) {
               <tr className="bg-gray-50/70 border-b border-gray-100 text-gray-400 font-extrabold uppercase tracking-wider text-[10px]">
                 <th className="py-4 px-5">Employee</th>
                 <th className="py-4 px-4">Employee ID</th>
-                <th className="py-4 px-4">Department & Role</th>
+                <th className="py-4 px-4">Designation & Role</th>
                 <th className="py-4 px-4">Status</th>
                 <th className="py-4 px-4">Last Login</th>
                 <th className="py-4 px-4">Permissions</th>
@@ -293,7 +310,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                             <button
                               type="button"
                               onClick={() => onNavigate(`employees/${emp.id}`)}
-                              className="font-bold text-gray-900 hover:text-[#C2477A] text-left truncate block transition-colors"
+                              className="font-bold text-gray-900 hover:text-[#C2477A] text-left truncate block transition-colors cursor-pointer"
                             >
                               {emp.full_name}
                             </button>
@@ -312,15 +329,14 @@ export default function AllEmployeesPage({ onNavigate }) {
                         </span>
                       </td>
 
-                      {/* Department, Designation & Location */}
+                      {/* Designation & Role */}
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-gray-900">{emp.department || 'Operations'}</div>
-                        <div className="text-[11px] text-gray-500">{emp.designation || 'Staff'}</div>
-                        {emp.work_location && (
-                          <div className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[180px]">
-                            📍 {emp.work_location}
-                          </div>
-                        )}
+                        <div className="font-extrabold text-[#CE4270] uppercase tracking-wide text-xs">
+                          {emp.designation || 'employee'}
+                        </div>
+                        <div className="text-[11px] text-gray-400 font-medium">
+                          {emp.role === 'admin' ? 'Admin Access' : 'Employee Access'}
+                        </div>
                       </td>
 
                       {/* Account Lifecycle Status */}
@@ -417,6 +433,15 @@ export default function AllEmployeesPage({ onNavigate }) {
                             title={emp.status === 'active' ? 'Disable Employee Account' : 'Re-enable Employee Account'}
                           >
                             <Power size={15} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEmployee(emp)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Delete Employee Account"
+                          >
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>

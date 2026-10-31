@@ -24,12 +24,19 @@ export const normalizeBrandName = (name) => {
 };
 
 /**
- * Extracts integer sequence from a Brand Number (e.g. 'BR001' -> 1, 'BR365' -> 365)
+ * Extracts integer sequence from a Brand Number (e.g. 'BR001' -> 1, 'BR365' -> 365, 'b_256' -> 256, 12 -> 12)
  */
 export const parseBrandNumberSeq = (brandNum) => {
-  if (!brandNum) return 0;
-  const match = brandNum.toString().trim().match(/^BR0*(\d+)$/i);
-  return match ? parseInt(match[1], 10) : 0;
+  if (!brandNum && brandNum !== 0) return 0;
+  if (typeof brandNum === 'number') return brandNum;
+  const str = brandNum.toString().trim();
+  const brMatch = str.match(/^BR0*(\d+)$/i);
+  if (brMatch) return parseInt(brMatch[1], 10);
+  const bMatch = str.match(/^b_(\d+)$/i);
+  if (bMatch) return parseInt(bMatch[1], 10);
+  const numMatch = str.match(/^#?0*(\d+)$/);
+  if (numMatch) return parseInt(numMatch[1], 10);
+  return 0;
 };
 
 /**
@@ -43,6 +50,63 @@ export const formatBrandNumber = (num) => {
   }
   return `BR${n}`;
 };
+
+/**
+ * Resolves and formats a Brand Number deterministically:
+ * 1. Checks existing brandNumber / brand_number (if valid and not BR000)
+ * 2. Matches brand name against approved 365 brand master
+ * 3. Checks numeric suffix in ID (e.g. b_256 -> BR256)
+ * 4. Checks sort_order / sortOrder (e.g. 1 -> BR001)
+ * 5. Falls back to sequential generator
+ */
+export const resolveBrandNumber = (brand, existingBrands = []) => {
+  if (!brand) return 'BR001';
+  const rawNum = brand.brandNumber || brand.brand_number;
+  if (rawNum && rawNum !== 'BR000') {
+    const seq = parseBrandNumberSeq(rawNum);
+    if (seq > 0) return formatBrandNumber(seq);
+  }
+
+  const clean = normalizeBrandName(brand.name).toLowerCase();
+  if (clean) {
+    const masterMatch = APPROVED_BRAND_MASTER.find(m => (m.name || '').trim().toLowerCase() === clean);
+    if (masterMatch && masterMatch.brandNumber) {
+      return masterMatch.brandNumber;
+    }
+  }
+
+  if (brand.id) {
+    const idMatch = brand.id.toString().match(/b_(\d+)$/i);
+    if (idMatch) {
+      const seq = parseInt(idMatch[1], 10);
+      if (seq > 0) return formatBrandNumber(seq);
+    }
+  }
+
+  const orderNum = parseInt(brand.sort_order || brand.sortOrder, 10);
+  if (!isNaN(orderNum) && orderNum > 0) {
+    return formatBrandNumber(orderNum);
+  }
+
+  return generateNextBrandNumber(existingBrands);
+};
+
+/**
+ * Resolves a Brand Code deterministically:
+ * 1. Checks existing brandCode / brand_code
+ * 2. Generates proposed code from mnemonic and brand number
+ */
+export const resolveBrandCode = (brand, existingBrands = [], assignedBrandNumber = '') => {
+  if (!brand) return 'BRD-001';
+  if (brand.brandCode && brand.brandCode !== '---') {
+    return brand.brandCode.toUpperCase();
+  }
+  if (brand.brand_code && brand.brand_code !== '---') {
+    return brand.brand_code.toUpperCase();
+  }
+  return generateProposedBrandCode(brand.name, existingBrands, assignedBrandNumber);
+};
+
 
 /**
  * Concurrency-Safe Sequential Brand Number Generator

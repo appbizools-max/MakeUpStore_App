@@ -7,15 +7,17 @@ import {
   AlertCircle,
   Loader2,
   Shield,
-  Building2,
-  Calendar,
   Phone,
   Mail,
-  User
+  User,
+  Key,
+  Eye,
+  EyeOff,
+  Sparkles
 } from 'lucide-react';
 import { useAdmin } from '../../../context/AdminContext';
 import ImageField from '../../media/ImageField';
-import { EMPLOYEE_DEPARTMENTS, EMPLOYEE_DESIGNATIONS } from '../../../utils/permissionEngine';
+import { generateSecureTemporaryPassword } from '../../../utils/permissionEngine';
 
 export default function EditEmployeePage({ employeeId, onNavigate }) {
   const {
@@ -31,31 +33,43 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
     fullName: '',
     employeeCode: '',
     phone: '',
-    department: 'Operations',
-    designation: '',
+    designation: 'manager',
+    password: '',
     profilePhoto: '',
-    joiningDate: '',
     status: 'active',
   });
 
+  const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     if (employee) {
+      // Map existing designation to one of the 4 exact options
+      let desig = employee.designation || 'manager';
+      if (desig.toLowerCase().includes('admin')) desig = '(admin)';
+      else if (desig.toLowerCase().includes('manage')) desig = 'manager';
+      else if (desig.toLowerCase().includes('account')) desig = 'account';
+      else if (desig.toLowerCase().includes('employ') || desig.toLowerCase().includes('staff')) desig = 'employee';
+
       setFormData({
         fullName: employee.full_name || '',
         employeeCode: employee.employee_code || '',
         phone: employee.phone || '',
-        department: employee.department || 'Operations',
-        designation: employee.designation || '',
+        designation: desig,
+        password: employee.password || '',
         profilePhoto: employee.profile_photo || '',
-        joiningDate: employee.joining_date || new Date().toISOString().split('T')[0],
         status: employee.status || 'active',
       });
     }
   }, [employee]);
+
+  const handleGeneratePassword = () => {
+    const newPass = generateSecureTemporaryPassword();
+    setFormData((prev) => ({ ...prev, password: newPass }));
+    setShowPassword(true);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,20 +85,22 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
 
     try {
       await updateEmployee(employee.id, {
+        fullName: formData.fullName.trim(),
         full_name: formData.fullName.trim(),
+        employeeCode: formData.employeeCode.trim(),
         employee_code: formData.employeeCode.trim(),
         phone: formData.phone.trim(),
-        department: formData.department,
-        designation: formData.designation.trim(),
+        designation: formData.designation,
+        password: formData.password.trim(),
+        profilePhoto: formData.profilePhoto,
         profile_photo: formData.profilePhoto,
-        joining_date: formData.joiningDate,
         status: formData.status,
       });
 
-      setSuccessMessage('Employee information updated successfully!');
+      setSuccessMessage('Employee details and login credentials updated successfully!');
       setTimeout(() => {
         onNavigate(`employees/${employee.id}`);
-      }, 800);
+      }, 900);
     } catch (err) {
       console.error('Failed to update employee:', err);
       setErrorMessage(err.message || 'Failed to update employee details.');
@@ -101,7 +117,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
         <button
           type="button"
           onClick={() => onNavigate('employees')}
-          className="mt-4 px-4 py-2 bg-[#CE4270] text-white rounded-xl text-xs font-bold"
+          className="mt-4 px-4 py-2 bg-[#CE4270] text-white rounded-xl text-xs font-bold cursor-pointer"
         >
           ← Return to All Employees
         </button>
@@ -134,7 +150,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
               Edit Employee: {employee.full_name}
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              Modify personal details, organization designation, and account status.
+              Update credentials, login password, designation, contact info, and portal status.
             </p>
           </div>
         </div>
@@ -155,11 +171,11 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-3xl border border-pink-100 shadow-2xs space-y-6">
+      <form onSubmit={handleSubmit} autoComplete="off" className="bg-white p-6 sm:p-8 rounded-3xl border border-pink-100 shadow-2xs space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {/* Full Name */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
+            <label className="block text-xs font-bold text-gray-700 mb-1.5">
               Full Name <span className="text-[#CE4270]">*</span>
             </label>
             <input
@@ -167,102 +183,119 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
               required
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              className="w-full p-3 rounded-xl border border-gray-200 text-xs font-medium text-gray-900 focus:border-[#CE4270] outline-none"
+              className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#CE4270] outline-none shadow-2xs"
             />
           </div>
 
           {/* Employee Code */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
+            <label className="block text-xs font-bold text-gray-700 mb-1.5">
               Employee ID Code <span className="text-[#CE4270]">*</span>
             </label>
             <input
               type="text"
               required
               value={formData.employeeCode}
-              onChange={(e) => setFormData({ ...formData, employeeCode: e.target.value })}
-              className="w-full p-3 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-900 focus:border-[#CE4270] outline-none"
+              onChange={(e) => setFormData({ ...formData, employeeCode: e.target.value.toUpperCase() })}
+              className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-900 focus:border-[#CE4270] outline-none shadow-2xs"
             />
           </div>
 
           {/* Email (Readonly) */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
+            <label className="block text-xs font-bold text-gray-700 mb-1.5">
               Login Email (System Auth ID)
             </label>
-            <input
-              type="email"
-              disabled
-              value={employee.email}
-              className="w-full p-3 rounded-xl border border-gray-100 text-xs font-medium text-gray-400 bg-gray-50 cursor-not-allowed"
-            />
+            <div className="relative">
+              <input
+                type="email"
+                disabled
+                value={employee.email}
+                className="w-full p-3.5 pl-10 rounded-xl border border-gray-100 text-xs font-mono font-semibold text-gray-500 bg-gray-50 cursor-not-allowed shadow-2xs"
+              />
+              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
             <span className="text-[10px] text-gray-400 mt-1 block">Login email cannot be changed directly</span>
+          </div>
+
+          {/* Login Password */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-gray-700">
+                Login Password
+              </label>
+              <button
+                type="button"
+                onClick={handleGeneratePassword}
+                className="text-[11px] font-bold text-[#CE4270] hover:text-[#b83760] flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles size={11} /> Auto-Generate
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                autoComplete="new-password"
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="Enter new password"
+                className="w-full p-3.5 pl-10 pr-10 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-900 focus:border-[#CE4270] outline-none shadow-2xs"
+              />
+              <Key size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           {/* Phone */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
+            <label className="block text-xs font-bold text-gray-700 mb-1.5">
               Phone Number
             </label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full p-3 rounded-xl border border-gray-200 text-xs font-medium text-gray-900 focus:border-[#CE4270] outline-none"
-            />
+            <div className="relative">
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '') })}
+                placeholder="9876543210"
+                className="w-full p-3.5 pl-10 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#CE4270] outline-none shadow-2xs"
+              />
+              <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
           </div>
 
-          {/* Department */}
+          {/* Designation (Dropdown with exact 4 options) */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              Department
+            <label className="block text-xs font-bold text-gray-700 mb-1.5">
+              Designation <span className="text-[#CE4270]">*</span>
             </label>
             <select
-              value={formData.department}
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              className="w-full p-3 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#CE4270] outline-none bg-white"
+              value={formData.designation}
+              onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+              className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-[#FFF8FA] cursor-pointer shadow-2xs"
             >
-              {EMPLOYEE_DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
+              <option value="(admin)">1) (admin)</option>
+              <option value="manager">2) manager</option>
+              <option value="account">3) account</option>
+              <option value="employee">4) employee</option>
             </select>
           </div>
 
-          {/* Designation */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              Designation
-            </label>
-            <input
-              type="text"
-              value={formData.designation}
-              onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-              className="w-full p-3 rounded-xl border border-gray-200 text-xs font-medium text-gray-900 focus:border-[#CE4270] outline-none"
-            />
-          </div>
-
-          {/* Joining Date */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              Joining Date
-            </label>
-            <input
-              type="date"
-              value={formData.joiningDate}
-              onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
-              className="w-full p-3 rounded-xl border border-gray-200 text-xs font-medium text-gray-900 focus:border-[#CE4270] outline-none"
-            />
-          </div>
-
           {/* Account Status */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-bold text-gray-700 mb-1.5">
               Account Status
             </label>
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full p-3 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#CE4270] outline-none bg-white"
+              className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#CE4270] outline-none bg-white shadow-2xs"
             >
               <option value="active">Active (Full Portal Access)</option>
               <option value="inactive">Inactive (Temporarily Disabled)</option>
@@ -289,14 +322,14 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
           <button
             type="button"
             onClick={() => onNavigate(`employees/${employee.id}`)}
-            className="px-5 py-2.5 border border-gray-200 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-50 transition-colors"
+            className="px-5 py-2.5 border border-gray-200 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSaving}
-            className="px-6 py-2.5 bg-gradient-to-r from-[#CE4270] to-[#E25586] hover:from-[#b83760] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-2.5 bg-gradient-to-r from-[#CE4270] to-[#E25586] hover:from-[#b83760] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {isSaving ? (
               <>
