@@ -44,6 +44,28 @@ const SectionHeader = ({ title, subtitle, ctaText = 'View All →', onCtaPress, 
   </div>
 );
 
+// Skeleton Loading Placeholders for seamless Zero-Flicker Cold Starts
+const SkeletonCategoryCard = () => (
+  <div className="bg-white rounded-2xl border border-[#FCE4EC] p-2 flex flex-col items-center shadow-2xs w-[88px] shrink-0 animate-pulse">
+    <div className="w-16 h-16 rounded-xl mb-1.5 bg-[#FFF0F5]" />
+    <div className="w-12 h-2.5 rounded bg-[#FCE4EC] mb-1" />
+    <div className="w-8 h-2 rounded bg-[#FCE4EC]/60" />
+  </div>
+);
+
+const SkeletonProductCard = () => (
+  <div className="w-36 shrink-0 bg-white rounded-2xl p-2.5 shadow-2xs border border-[#FCE4EC] flex flex-col animate-pulse">
+    <div className="w-full h-28 rounded-xl mb-2 bg-[#FFF0F5]" />
+    <div className="w-14 h-2 rounded bg-[#FCE4EC] mb-1.5" />
+    <div className="w-24 h-3 rounded bg-[#FCE4EC] mb-2" />
+    <div className="w-16 h-3.5 rounded bg-[#FCE4EC]/70" />
+  </div>
+);
+
+const SkeletonBrandCircle = () => (
+  <div className="w-[72px] h-[72px] shrink-0 rounded-full bg-[#FFF0F5] border border-[#FCE4EC] shadow-xs animate-pulse" />
+);
+
 // Reusable Universal Product Card Component
 const ProductCard = React.memo(({
   product,
@@ -179,6 +201,7 @@ export const HomeScreen = () => {
     userRole,
     getRolePrice,
     setSelectedProduct,
+    selectedCategory,
     setSelectedCategory,
     setCurrentScreen,
     cart = [],
@@ -197,6 +220,8 @@ export const HomeScreen = () => {
     productSalesCounts = {},
     homeBanners = [],
     activeBanners = [],
+    isCatalogLoading = false,
+    unreadNotificationsCount = 0,
   } = useApp();
 
   // Cart quantity lookup map for instant O(1) checks
@@ -253,76 +278,124 @@ export const HomeScreen = () => {
     setCurrentScreen('product');
   }, [setSelectedProduct, setCurrentScreen]);
 
-  // Home Banners state & router
-  const [activeSlide, setActiveSlide] = useState(0);
+  // Home Banners state & router — Infinite Continuous Loop
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(true);
+  const [isBannerPaused, setIsBannerPaused] = useState(false);
+  const touchStartXRef = useRef(null);
+  const touchEndXRef = useRef(null);
+
   const displayBanners = useMemo(() => {
     if (activeBanners && activeBanners.length > 0) return activeBanners;
     if (homeBanners && homeBanners.length > 0) return homeBanners.filter(b => b.isActive !== false);
     return [];
   }, [activeBanners, homeBanners]);
 
-  const handleBannerClick = useCallback((banner) => {
-    if (!banner) return;
-    const destType = (banner.destinationType || '').toUpperCase();
-    const destId = banner.destinationId || '';
+  // Append clone of first banner to create seamless zero-jump infinite track
+  const bannersWithClone = useMemo(() => {
+    if (!displayBanners || displayBanners.length === 0) return [];
+    if (displayBanners.length === 1) return displayBanners;
+    return [...displayBanners, displayBanners[0]];
+  }, [displayBanners]);
 
-    switch (destType) {
-      case 'BEST_SELLERS':
-        setSearchQuery('');
-        setSelectedCategory('Best Sellers');
-        setCurrentScreen('search');
-        break;
-      case 'CATEGORY':
-        if (destId) {
-          const matched = (categories || []).find(c =>
-            c.id?.toLowerCase() === destId.toLowerCase() ||
-            c.name?.toLowerCase() === destId.toLowerCase()
-          );
-          setSelectedCategory(matched?.name || destId);
-        }
-        setCurrentScreen('category');
-        break;
-      case 'SUBCATEGORY':
-        if (destId) setSelectedCategory(destId);
-        setCurrentScreen('category');
-        break;
-      case 'BRAND':
-        if (destId) {
-          const matched = (brands || []).find(b =>
-            b.id?.toLowerCase() === destId.toLowerCase() ||
-            b.name?.toLowerCase() === destId.toLowerCase()
-          );
-          if (matched) setCurrentScreen('brand');
-        }
-        break;
-      case 'PRODUCT':
-        if (destId) {
-          const matched = (activeProducts || []).find(p => p.id === destId || p.barcode === destId);
-          if (matched) {
-            handleProductSelect(matched);
-            return;
-          }
-        }
-        setCurrentScreen('product');
-        break;
-      default:
-        if (destId) {
-          setSelectedCategory(destId);
-          setCurrentScreen('category');
-        } else {
-          setCurrentScreen('search');
-        }
-        break;
+  const handleBannerClick = useCallback((banner) => {
+    if (!banner) {
+      setCurrentScreen('category');
+      return;
     }
-  }, [categories, brands, activeProducts, setSelectedCategory, setSearchQuery, setCurrentScreen, handleProductSelect]);
+    const destType = (banner.destinationType || '').toUpperCase();
+    const destId = banner.destinationId || banner.category || '';
+
+    // Ultra thinking: Match target category from destinationId, destinationType, category property or banner title
+    let matchedCategory = null;
+    if (destId) {
+      matchedCategory = (categories || []).find(c =>
+        c.id?.toLowerCase() === destId.toLowerCase() ||
+        c.name?.toLowerCase() === destId.toLowerCase()
+      );
+    }
+    if (!matchedCategory && banner.title) {
+      matchedCategory = (categories || []).find(c =>
+        c.name?.toLowerCase().includes(banner.title.toLowerCase()) ||
+        banner.title.toLowerCase().includes(c.name?.toLowerCase())
+      );
+    }
+
+    if (matchedCategory) {
+      setSelectedCategory(matchedCategory.name);
+    } else if (destId && (destType === 'CATEGORY' || destType === 'SUBCATEGORY')) {
+      setSelectedCategory(destId);
+    } else if (categories && categories.length > 0 && !selectedCategory) {
+      // Default to first active category if none selected
+      setSelectedCategory(categories[0].name);
+    }
+
+    // Always navigate directly to categories page
+    setCurrentScreen('category');
+  }, [categories, selectedCategory, setSelectedCategory, setCurrentScreen]);
+
+  // Continuous infinite scroll interval with pause-on-hover/touch
+  useEffect(() => {
+    if (displayBanners.length <= 1 || isBannerPaused) return;
+
+    const timer = setInterval(() => {
+      setCurrentSlide(prev => prev + 1);
+      setIsTransitioning(true);
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [displayBanners.length, isBannerPaused]);
+
+  // Seamless zero-jump wrap when reaching cloned end
+  const handleBannerTransitionEnd = () => {
+    if (currentSlide === displayBanners.length) {
+      setIsTransitioning(false);
+      setCurrentSlide(0);
+    }
+  };
 
   useEffect(() => {
-    if (displayBanners.length <= 1) return;
-    const timer = setInterval(() => {
-      setActiveSlide(prev => (prev + 1) % displayBanners.length);
-    }, 4500);
-    return () => clearInterval(timer);
-  }, [displayBanners.length]);
+    if (!isTransitioning) {
+      const raf = requestAnimationFrame(() => {
+        setIsTransitioning(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [isTransitioning]);
+
+  const handleBannerTouchStart = (e) => {
+    setIsBannerPaused(true);
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleBannerTouchMove = (e) => {
+    touchEndXRef.current = e.touches[0].clientX;
+  };
+
+  const handleBannerTouchEnd = () => {
+    setIsBannerPaused(false);
+    if (!touchStartXRef.current || !touchEndXRef.current) return;
+    const diff = touchStartXRef.current - touchEndXRef.current;
+    if (diff > 45) {
+      setCurrentSlide(prev => (prev < bannersWithClone.length - 1 ? prev + 1 : prev));
+      setIsTransitioning(true);
+    } else if (diff < -45) {
+      if (currentSlide === 0) {
+        setIsTransitioning(false);
+        setCurrentSlide(displayBanners.length - 1);
+      } else {
+        setCurrentSlide(prev => prev - 1);
+        setIsTransitioning(true);
+      }
+    }
+    touchStartXRef.current = null;
+    touchEndXRef.current = null;
+  };
+
+  const handleDotClick = (idx) => {
+    setIsTransitioning(true);
+    setCurrentSlide(idx);
+  };
 
   // 1. Shop by Category — Pure database categories
   const displayCategories = useMemo(() => {
@@ -365,6 +438,16 @@ export const HomeScreen = () => {
     const list = activeBrands && activeBrands.length > 0 ? activeBrands : brands.filter(b => b.enabled !== false);
     return list.filter(b => b.name && !b.id.startsWith('app_') && !b.id.startsWith('salbeau_')).slice(0, 12);
   }, [activeBrands, brands]);
+
+  // Continuous infinite loop duplicate list for seamless 50% translation wrap
+  const infiniteBrands = useMemo(() => {
+    if (!topBrandsList || topBrandsList.length === 0) return [];
+    let base = [...topBrandsList];
+    while (base.length < 8) {
+      base = [...base, ...topBrandsList];
+    }
+    return [...base, ...base];
+  }, [topBrandsList]);
 
   // 4. New Arrivals — Automatic by publishedAt / created_at DESC
   const newArrivals = useMemo(() => {
@@ -456,11 +539,16 @@ export const HomeScreen = () => {
         </h1>
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => setCurrentScreen('orders')}
-            className="w-9 h-9 rounded-full bg-[#FFF5F8] flex items-center justify-center border border-[#FCE4EC] text-[#C2477A] hover:bg-[#FCE4EC] transition-colors cursor-pointer"
-            title="Notifications & Orders"
+            onClick={() => setCurrentScreen('notifications')}
+            className="relative w-9 h-9 rounded-full bg-[#FFF5F8] flex items-center justify-center border border-[#FCE4EC] text-[#C2477A] hover:bg-[#FCE4EC] transition-colors cursor-pointer"
+            title="Notification Center"
           >
             <Bell size={18} />
+            {unreadNotificationsCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#C2477A] text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white animate-pulse">
+                {unreadNotificationsCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setCurrentScreen('wishlist')}
@@ -505,206 +593,272 @@ export const HomeScreen = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. HERO BANNER (DYNAMIC 5-BANNER CAROUSEL) */}
+      {/* 3. HERO BANNER (INFINITE CONTINUOUS LOOP CAROUSEL) */}
       {/* ========================================================================= */}
-      <div className="px-4 mb-6">
-        <div className="relative w-full aspect-[2.56/1] rounded-3xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FDE8EF]">
-          {displayBanners.map((banner, idx) => (
+      {displayBanners.length > 0 && (
+        <div className="px-4 mb-6">
+          <div
+            className="relative w-full aspect-[2.56/1] rounded-3xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FDE8EF] select-none"
+            onMouseEnter={() => setIsBannerPaused(true)}
+            onMouseLeave={() => setIsBannerPaused(false)}
+            onTouchStart={handleBannerTouchStart}
+            onTouchMove={handleBannerTouchMove}
+            onTouchEnd={handleBannerTouchEnd}
+          >
+            {/* Sliding Track (1, 2, 3, 4, 5, 1...) */}
             <div
-              key={banner.id || idx}
-              onClick={() => handleBannerClick(banner)}
-              className={`absolute inset-0 w-full h-full cursor-pointer transition-opacity duration-700 ${
-                activeSlide === idx ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
-              }`}
+              className="flex w-full h-full"
+              onTransitionEnd={handleBannerTransitionEnd}
+              style={{
+                transform: `translateX(-${currentSlide * 100}%)`,
+                transition: isTransitioning ? 'transform 600ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
+                willChange: 'transform'
+              }}
             >
-              {banner.imageUrl && (
-                <img
-                  src={banner.imageUrl}
-                  alt={banner.title || 'Banner'}
-                  className="w-full h-full object-cover"
-                />
-              )}
-              {/* Interactive CTA Pill */}
-              <div className="absolute left-3.5 bottom-3 bg-[#C2477A] hover:bg-[#a83765] text-white text-[10.5px] font-black tracking-wide px-3.5 py-1.5 rounded-full shadow-xs transition-colors">
-                {banner.ctaText || banner.ctaLabel || 'Shop Now →'}
-              </div>
-            </div>
-          ))}
-
-          {/* Carousel Pagination Dots */}
-          {displayBanners.length > 1 && (
-            <div className="absolute bottom-2.5 right-4 flex items-center gap-1.5 z-20">
-              {displayBanners.map((banner, idx) => (
-                <button
-                  key={banner.id || idx}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveSlide(idx);
-                  }}
-                  className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                    activeSlide === idx ? 'w-4 bg-[#C2477A]' : 'w-1.5 bg-black/30'
-                  }`}
-                />
+              {bannersWithClone.map((banner, idx) => (
+                <div
+                  key={`${banner.id || 'banner'}-${idx}`}
+                  onClick={() => handleBannerClick(banner)}
+                  className="min-w-full w-full h-full relative cursor-pointer shrink-0"
+                >
+                  {banner.imageUrl ? (
+                    <img
+                      src={banner.imageUrl}
+                      alt={banner.title || 'Banner'}
+                      className="w-full h-full object-cover select-none pointer-events-none"
+                      loading={idx === 0 ? 'eager' : 'lazy'}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-[#FFF0F5] to-[#FCE4EC] border border-[#FCE4EC] flex flex-col justify-center px-6">
+                      {banner.badge && (
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#C2477A] mb-1">
+                          {banner.badge}
+                        </span>
+                      )}
+                      <h3 className="text-lg font-black text-[#3A2430] leading-tight">
+                        {banner.title}
+                      </h3>
+                      {banner.subtitle && (
+                        <p className="text-xs text-[#8C7078] font-medium mt-1">
+                          {banner.subtitle}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
-          )}
+
+            {/* Carousel Pagination Dots */}
+            {displayBanners.length > 1 && (
+              <div className="absolute bottom-2.5 right-4 flex items-center gap-1.5 z-20">
+                {displayBanners.map((banner, idx) => {
+                  const isActive = (currentSlide % displayBanners.length) === idx;
+                  return (
+                    <button
+                      key={banner.id || idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDotClick(idx);
+                      }}
+                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                        isActive ? 'w-4 bg-[#C2477A]' : 'w-1.5 bg-black/35 hover:bg-black/50'
+                      }`}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 4. SHOP BY CATEGORY (HORIZONTAL CAROUSEL) */}
       {/* ========================================================================= */}
-      <SectionHeader
-        title="Shop by Category"
-        ctaText="View All →"
-        onCtaPress={() => setCurrentScreen('category')}
-      />
-      <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
-        {displayCategories.map((cat) => (
-          <div
-            key={cat.id}
-            onClick={() => {
-              setSelectedCategory(cat);
-              setCurrentScreen('category');
-            }}
-            className="bg-white rounded-2xl border border-[#FCE4EC] p-2 flex flex-col items-center shadow-2xs w-[88px] shrink-0 cursor-pointer hover:border-[#C2477A]/50 transition-colors"
-          >
-            <div className="w-16 h-16 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#FCE4EC]/50 flex items-center justify-center">
-              <img
-                src={cat.image || ''}
-                alt={cat.name}
-                onError={(e) => { e.target.style.display = 'none'; }}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <span className="text-[11px] font-bold text-[#3A2430] text-center truncate w-full">
-              {cat.name}
-            </span>
-            <span className="text-[9px] font-medium text-[#8C7078] text-center mt-0.5">
-              {cat.countText}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 5. TRENDING NOW (HORIZONTAL PRODUCT CAROUSEL) */}
-      {/* ========================================================================= */}
-      <SectionHeader
-        title="🔥 Trending Now"
-        ctaText="View All →"
-        onCtaPress={() => setCurrentScreen('search')}
-      />
-      <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
-        {trendingProducts.map((item) => (
-          <ProductCard
-            key={item.id}
-            product={item}
-            badgeText="NEW"
-            userRole={userRole}
-            getRolePrice={getRolePrice}
-            isLiked={isFavorite(item.id)}
-            onToggleFavorite={toggleFavorite}
-            onSelectProduct={handleProductSelect}
-            cartQty={getProductCartQuantity(item.id)}
-            onAddToCart={(prod) => addToCart(prod, 1)}
-            onUpdateCartQty={updateCartQuantity}
-          />
-        ))}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 6. TOP BRANDS (CIRCULAR BRAND CAROUSEL) */}
-      {/* ========================================================================= */}
-      {topBrandsList.length > 0 && (
+      {(displayCategories.length > 0 || isCatalogLoading) && (
         <>
           <SectionHeader
-            title="Top Brands"
+            title="Shop by Category"
             ctaText="View All →"
-            onCtaPress={() => setCurrentScreen('search')}
+            onCtaPress={() => setCurrentScreen('category')}
           />
           <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
-            {topBrandsList.map((brand) => (
-              <button
-                key={brand.id}
-                onClick={() => {
-                  const brandQuery = (brand.name || '').replace('\n', ' ');
-                  if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
-                  setSearchQuery(brandQuery);
-                  setCurrentScreen('search');
-                }}
-                className="w-[72px] h-[72px] shrink-0 rounded-full bg-white border border-[#FCE4EC] shadow-xs flex items-center justify-center p-1.5 hover:border-[#C2477A] transition-colors cursor-pointer overflow-hidden"
-              >
-                {brand.logo && typeof brand.logo === 'string' && brand.logo.startsWith('http') ? (
-                  <img
-                    src={brand.logo}
-                    alt={brand.name}
-                    className="w-4/5 h-4/5 object-contain"
-                  />
-                ) : (
-                  <span
-                    className="text-[9.5px] font-black text-center tracking-tight text-[#1F2937] line-clamp-2"
+            {displayCategories.length > 0
+              ? displayCategories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      setCurrentScreen('category');
+                    }}
+                    className="bg-white rounded-2xl border border-[#FCE4EC] p-2 flex flex-col items-center shadow-2xs w-[88px] shrink-0 cursor-pointer hover:border-[#C2477A]/50 transition-colors"
                   >
-                    {brand.name}
-                  </span>
-                )}
-              </button>
-            ))}
+                    <div className="w-16 h-16 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#FCE4EC]/50 flex items-center justify-center">
+                      <img
+                        src={cat.image || ''}
+                        alt={cat.name}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="text-[11px] font-bold text-[#3A2430] text-center truncate w-full">
+                      {cat.name}
+                    </span>
+                    <span className="text-[9px] font-medium text-[#8C7078] text-center mt-0.5">
+                      {cat.countText}
+                    </span>
+                  </div>
+                ))
+              : [1, 2, 3, 4, 5].map((k) => <SkeletonCategoryCard key={`sk_cat_${k}`} />)}
           </div>
         </>
       )}
 
       {/* ========================================================================= */}
+      {/* 5. TRENDING NOW (HORIZONTAL PRODUCT CAROUSEL) */}
+      {/* ========================================================================= */}
+      {(trendingProducts.length > 0 || isCatalogLoading) && (
+        <>
+          <SectionHeader
+            title="🔥 Trending Now"
+            ctaText="View All →"
+            onCtaPress={() => setCurrentScreen('search')}
+          />
+          <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
+            {trendingProducts.length > 0
+              ? trendingProducts.map((item) => (
+                  <ProductCard
+                    key={item.id}
+                    product={item}
+                    badgeText="NEW"
+                    userRole={userRole}
+                    getRolePrice={getRolePrice}
+                    isLiked={isFavorite(item.id)}
+                    onToggleFavorite={toggleFavorite}
+                    onSelectProduct={handleProductSelect}
+                    cartQty={getProductCartQuantity(item.id)}
+                    onAddToCart={(prod) => addToCart(prod, 1)}
+                    onUpdateCartQty={updateCartQuantity}
+                  />
+                ))
+              : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_trend_${k}`} />)}
+          </div>
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. TOP BRANDS (INFINITE CONTINUOUS LOOP CAROUSEL) */}
+      {/* ========================================================================= */}
+      {(topBrandsList.length > 0 || isCatalogLoading) && (
+        <div className="mb-6">
+          <SectionHeader
+            title="Top Brands"
+            ctaText="View All →"
+            onCtaPress={() => setCurrentScreen('search')}
+          />
+          <div className="relative w-full overflow-hidden pb-1">
+            {topBrandsList.length > 0 ? (
+              <div className="animate-brand-marquee flex gap-3 px-4 py-1">
+                {infiniteBrands.map((brand, idx) => (
+                  <button
+                    key={`${brand.id}-${idx}`}
+                    onClick={() => {
+                      const brandQuery = (brand.name || '').replace('\n', ' ');
+                      if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
+                      setSearchQuery(brandQuery);
+                      setCurrentScreen('search');
+                    }}
+                    className="w-[72px] h-[72px] shrink-0 rounded-full bg-white border border-[#FCE4EC] shadow-xs flex items-center justify-center p-1.5 hover:border-[#C2477A] hover:scale-105 active:scale-95 transition-all cursor-pointer overflow-hidden group shrink-0"
+                    title={brand.name}
+                  >
+                    {brand.logo && typeof brand.logo === 'string' && brand.logo.startsWith('http') ? (
+                      <img
+                        src={brand.logo}
+                        alt={brand.name}
+                        className="w-4/5 h-4/5 object-contain group-hover:scale-110 transition-transform"
+                      />
+                    ) : (
+                      <span className="text-[9.5px] font-black text-center tracking-tight text-[#1F2937] line-clamp-2 px-1">
+                        {brand.name}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-3 px-4 py-1">
+                {[1, 2, 3, 4, 5].map((k) => <SkeletonBrandCircle key={`sk_brand_${k}`} />)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* 7. NEW ARRIVALS (HORIZONTAL PRODUCT CAROUSEL) */}
       {/* ========================================================================= */}
-      <SectionHeader
-        title="New Arrivals"
-        ctaText="View All →"
-        onCtaPress={() => setCurrentScreen('search')}
-      />
-      <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
-        {newArrivals.map((item) => (
-          <ProductCard
-            key={`na_${item.id}`}
-            product={item}
-            badgeText="NEW"
-            userRole={userRole}
-            getRolePrice={getRolePrice}
-            isLiked={isFavorite(item.id)}
-            onToggleFavorite={toggleFavorite}
-            onSelectProduct={handleProductSelect}
-            cartQty={getProductCartQuantity(item.id)}
-            onAddToCart={(prod) => addToCart(prod, 1)}
-            onUpdateCartQty={updateCartQuantity}
+      {(newArrivals.length > 0 || isCatalogLoading) && (
+        <>
+          <SectionHeader
+            title="New Arrivals"
+            ctaText="View All →"
+            onCtaPress={() => setCurrentScreen('search')}
           />
-        ))}
-      </div>
+          <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
+            {newArrivals.length > 0
+              ? newArrivals.map((item) => (
+                  <ProductCard
+                    key={`na_${item.id}`}
+                    product={item}
+                    badgeText="NEW"
+                    userRole={userRole}
+                    getRolePrice={getRolePrice}
+                    isLiked={isFavorite(item.id)}
+                    onToggleFavorite={toggleFavorite}
+                    onSelectProduct={handleProductSelect}
+                    cartQty={getProductCartQuantity(item.id)}
+                    onAddToCart={(prod) => addToCart(prod, 1)}
+                    onUpdateCartQty={updateCartQuantity}
+                  />
+                ))
+              : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_na_${k}`} />)}
+          </div>
+        </>
+      )}
 
       {/* ========================================================================= */}
       {/* 8. BEST SELLERS (HORIZONTAL PRODUCT CAROUSEL) */}
       {/* ========================================================================= */}
-      <SectionHeader
-        title="Best Sellers"
-        ctaText="View All →"
-        onCtaPress={() => setCurrentScreen('search')}
-      />
-      <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
-        {bestSellers.map((item) => (
-          <ProductCard
-            key={`bs_${item.id}`}
-            product={item}
-            badgeText="NEW"
-            userRole={userRole}
-            getRolePrice={getRolePrice}
-            isLiked={isFavorite(item.id)}
-            onToggleFavorite={toggleFavorite}
-            onSelectProduct={handleProductSelect}
-            cartQty={getProductCartQuantity(item.id)}
-            onAddToCart={(prod) => addToCart(prod, 1)}
-            onUpdateCartQty={updateCartQuantity}
+      {(bestSellers.length > 0 || isCatalogLoading) && (
+        <>
+          <SectionHeader
+            title="Best Sellers"
+            ctaText="View All →"
+            onCtaPress={() => setCurrentScreen('search')}
           />
-        ))}
-      </div>
+          <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 mb-6 pb-1">
+            {bestSellers.length > 0
+              ? bestSellers.map((item) => (
+                  <ProductCard
+                    key={`bs_${item.id}`}
+                    product={item}
+                    badgeText="NEW"
+                    userRole={userRole}
+                    getRolePrice={getRolePrice}
+                    isLiked={isFavorite(item.id)}
+                    onToggleFavorite={toggleFavorite}
+                    onSelectProduct={handleProductSelect}
+                    cartQty={getProductCartQuantity(item.id)}
+                    onAddToCart={(prod) => addToCart(prod, 1)}
+                    onUpdateCartQty={updateCartQuantity}
+                  />
+                ))
+              : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_bs_${k}`} />)}
+          </div>
+        </>
+      )}
 
       {/* ========================================================================= */}
       {/* 9. BEAUTY EDIT (EDITORIAL BANNER CARD) */}
@@ -852,41 +1006,6 @@ export const HomeScreen = () => {
           </div>
         </>
       )}
-
-      {/* ========================================================================= */}
-      {/* 13. SEASONAL COLLECTION (FULL-WIDTH PROMO CARD) */}
-      {/* ========================================================================= */}
-      <SectionHeader
-        title="Seasonal Collection"
-        showCta={false}
-      />
-      <div className="px-4 mb-4">
-        <div className="rounded-3xl overflow-hidden border border-[#FCE4EC] bg-[#FFF8F3] shadow-xs">
-          <div className="relative w-full h-24 bg-gradient-to-r from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center">
-            <div className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-pink-100">
-              <span className="text-[#C2477A] text-[8px] font-black uppercase tracking-wider block">
-                SEASONAL COLLECTION
-              </span>
-            </div>
-          </div>
-          <div className="p-3.5 flex items-center justify-between">
-            <div className="flex-1 pr-2">
-              <h4 className="text-xs font-black text-[#3A2430]">
-                Luxe Bridal & Salon Master Series
-              </h4>
-              <p className="text-[9.5px] text-[#8C7078] font-medium mt-0.5">
-                Professional bridal kits with extended durability formulas.
-              </p>
-            </div>
-            <button
-              onClick={() => setCurrentScreen('search')}
-              className="bg-[#C2477A] hover:bg-[#a83765] text-white text-[10px] font-black px-3.5 py-1.5 rounded-full shadow-xs transition-colors cursor-pointer shrink-0"
-            >
-              Explore →
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* 14. STICKY VIEW CART BAR (WHEN ITEMS IN CART) */}

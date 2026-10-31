@@ -64,6 +64,18 @@ export const IMAGE_PROFILES = {
     preserveTransparency: true,
     colorAccuracy: true,
     upscaling: false
+  },
+  VERIFICATION_DOC: {
+    name: 'Verification Document',
+    format: 'image/webp',
+    maxWidth: 1600,
+    maxHeight: 1600,
+    quality: 0.85,
+    targetSizeKB: [50, 250],
+    maxProcessedSizeKB: 300,
+    fitMode: 'contain',
+    preserveTransparency: false,
+    upscaling: false
   }
 };
 
@@ -456,4 +468,33 @@ export async function optimizeImageForWebP(source, options = {}) {
     preferredFormat: 'image/webp'
   });
   return result.file;
+}
+
+/**
+ * Ensures an image input is optimized to HD WebP before database persistence.
+ * If input is already an external persistent URL (http/https), returns it as-is.
+ * If input is a raw data URL, blob, or file, optimizes it to high-efficiency WebP.
+ */
+export async function ensureOptimizedImage(source, profile = 'PRODUCT') {
+  if (!source) return '';
+  if (typeof source === 'string') {
+    const trimmed = source.trim();
+    if (!trimmed) return '';
+    // If it's already an uploaded CDN or remote URL, no recompression needed
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    // If it's a data URL that is already a lightweight WebP (under 120KB), keep it
+    if (trimmed.startsWith('data:image/webp') && trimmed.length < 160000) {
+      return trimmed;
+    }
+  }
+
+  try {
+    const result = await optimizeImage(source, profile);
+    return result.dataUrl || source;
+  } catch (err) {
+    console.warn('ensureOptimizedImage fallback:', err);
+    return typeof source === 'string' ? source : '';
+  }
 }

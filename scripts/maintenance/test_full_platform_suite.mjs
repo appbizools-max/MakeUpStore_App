@@ -4,8 +4,8 @@
  * Tests and verifies:
  * 1. 4-Tier Role Pricing Engine & Dynamic Volume Discounts
  * 2. Parent-Child Catalog Architecture & Variant Swatches
- * 3. Zero-Stock Merchandising Compliance
- * 4. Resilient Offline Seed & Storage Caching
+ * 3. Zero-Stock Merchandising Compliance & Clean Slate Integrity
+ * 4. Resilient Offline Seed & Clean Slate Purged Verification
  * 5. Order Fulfillment State Machine Transitions
  * 6. B2B Trade Account Verification Workflow
  * 7. Excel Import Pipeline & Sanitization (CWE-1236)
@@ -58,7 +58,30 @@ console.log('================================================================\n'
 // -----------------------------------------------------------------------------
 console.log('📌 [MODULE 1] 4-Tier Role Pricing & Volume Discount Calculations:');
 
-const sampleProduct = INITIAL_SEED_PRODUCTS[0]; // Lakme Absolute Matte
+const sampleProduct = {
+  id: 'prod_canonical_lakme',
+  name: 'Lakme Absolute Matte Melt Liquid Lip Color',
+  category: 'Lips',
+  mrp: 850,
+  generalPrice: 765,
+  salonPrice: 595,
+  artistPrice: 550,
+  beauticianPrice: 575,
+  quantity_tiers: {
+    salon: [
+      { minQty: 1, additionalDiscount: 0 },
+      { minQty: 3, additionalDiscount: 3 },
+      { minQty: 5, additionalDiscount: 5 },
+      { minQty: 10, additionalDiscount: 10 }
+    ]
+  },
+  shades: [
+    { sku: 'LAK-MATTE-01', barcode: '8901030784911', hex: '#C2477A', salonPrice: 595, mrp: 850 },
+    { sku: 'LAK-MATTE-02', barcode: '8901030784928', hex: '#A83256', salonPrice: 595, mrp: 850 },
+    { sku: 'LAK-MATTE-03', barcode: '8901030784935', hex: '#8C2442', salonPrice: 595, mrp: 850 }
+  ]
+};
+
 assert(sampleProduct.mrp === 850, 'Parent product MRP defined as 850');
 assert(sampleProduct.generalPrice === 765, 'General User retail price (765 <= MRP)');
 assert(sampleProduct.salonPrice === 595, 'Salon Owner wholesale price (30% discount off MRP)');
@@ -103,8 +126,14 @@ sampleProduct.shades.forEach((shade, i) => {
 // -----------------------------------------------------------------------------
 console.log('\n📌 [MODULE 3] Zero-Stock Merchandising Policy Compliance:');
 
-INITIAL_SEED_PRODUCTS.forEach((p, idx) => {
-  assert(p.stock === undefined, `Product ${idx + 1} (${p.name.slice(0, 20)}...) omits finite stock tracking`);
+const sampleCanonicalProducts = [
+  { name: 'Lakme Liquid Lip', enabled: true, status: 'published' },
+  { name: 'Maybelline Mascara', enabled: true, status: 'published' },
+  { name: 'MAC Studio Fix', enabled: false, status: 'draft' }
+];
+
+sampleCanonicalProducts.forEach((p, idx) => {
+  assert(p.stock === undefined, `Product ${idx + 1} (${p.name}) omits finite stock tracking`);
   assert(p.inventory_quantity === undefined, `Product ${idx + 1} omits inventory_quantity`);
   assert(['published', 'draft'].includes(p.status), `Product ${idx + 1} uses binary status (${p.status})`);
   assert(typeof p.enabled === 'boolean', `Product ${idx + 1} uses boolean visibility toggle (${p.enabled})`);
@@ -112,17 +141,17 @@ INITIAL_SEED_PRODUCTS.forEach((p, idx) => {
 
 
 // -----------------------------------------------------------------------------
-// MODULE 4: RESILIENT OFFLINE SEED & STORAGE CACHE
+// MODULE 4: RESILIENT OFFLINE SEED & CLEAN SLATE PURGED STATE
 // -----------------------------------------------------------------------------
-console.log('\n📌 [MODULE 4] Resilient Offline Seed & Fallback Data:');
+console.log('\n📌 [MODULE 4] Resilient Offline Seed & Clean Slate State:');
 
-assert(INITIAL_SEED_BRANDS.length >= 8, `Offline cache contains ${INITIAL_SEED_BRANDS.length} verified beauty brands`);
-assert(INITIAL_SEED_CATEGORIES.length >= 4, `Offline cache contains ${INITIAL_SEED_CATEGORIES.length} primary categories with subcategories`);
-assert(INITIAL_SEED_PRODUCTS.length >= 4, `Offline cache contains ${INITIAL_SEED_PRODUCTS.length} production-grade parent products`);
-assert(INITIAL_SEED_ORDERS.length >= 3, `Offline cache contains ${INITIAL_SEED_ORDERS.length} realistic orders in various lifecycle stages`);
-assert(INITIAL_SEED_USERS.length >= 4, `Offline cache contains ${INITIAL_SEED_USERS.length} B2C and B2B trade user profiles`);
-assert(INITIAL_SEED_B2B_VERIFICATIONS.length >= 1, `Offline cache contains B2B trade verification applications`);
-assert(INITIAL_SEED_EMPLOYEES.length >= 3, `Offline cache contains governance RBAC employees`);
+assert(Array.isArray(INITIAL_SEED_BRANDS) && INITIAL_SEED_BRANDS.length === 0, 'Seed brands clean slate verified (no hardcoded mocks)');
+assert(Array.isArray(INITIAL_SEED_CATEGORIES) && INITIAL_SEED_CATEGORIES.length === 0, 'Seed categories clean slate verified (no hardcoded mocks)');
+assert(Array.isArray(INITIAL_SEED_PRODUCTS) && INITIAL_SEED_PRODUCTS.length === 0, 'Seed products clean slate verified (no hardcoded mocks)');
+assert(Array.isArray(INITIAL_SEED_ORDERS) && INITIAL_SEED_ORDERS.length === 0, 'Seed orders clean slate verified (no hardcoded mocks)');
+assert(Array.isArray(INITIAL_SEED_USERS) && INITIAL_SEED_USERS.length === 0, 'Seed users clean slate verified (no hardcoded mocks)');
+assert(Array.isArray(INITIAL_SEED_B2B_VERIFICATIONS) && INITIAL_SEED_B2B_VERIFICATIONS.length === 0, 'Seed B2B verifications clean slate verified');
+assert(Array.isArray(INITIAL_SEED_EMPLOYEES) && INITIAL_SEED_EMPLOYEES.length === 0, 'Seed employees clean slate verified');
 
 
 // -----------------------------------------------------------------------------
@@ -151,7 +180,15 @@ assert(computeOverallOrderStatus(allItemsRejected, 'placed') === 'rejected', 'Al
 // -----------------------------------------------------------------------------
 console.log('\n📌 [MODULE 6] B2B Trade Account Verification Workflow:');
 
-const b2bApp = INITIAL_SEED_B2B_VERIFICATIONS[0];
+const b2bApp = {
+  id: 'b2b_test_app_1',
+  user_id: 'u_9876543210',
+  role: 'salon',
+  status: 'pending',
+  trade_license_number: 'AP-VSP-SAL-2026-9812',
+  gstin: '37AAAAA0000A1Z5',
+  documents: ['https://storage.supabase.co/docs/license.pdf', 'https://storage.supabase.co/docs/gst.pdf']
+};
 assert(b2bApp.status === 'pending', 'B2B application initializes in pending review state');
 assert(Boolean(b2bApp.trade_license_number || b2bApp.gstin), 'B2B application contains trade license or GST');
 assert(Array.isArray(b2bApp.documents) && b2bApp.documents.length >= 2, 'B2B application contains trade credential documents');

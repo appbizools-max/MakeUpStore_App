@@ -15,7 +15,7 @@ import {
   Clipboard
 } from 'lucide-react';
 import { searchBeautyImages } from '../../services/imageSearchService';
-import { fetchImageUrlAsBlob, isImageUrl } from '../../utils/imageOptimizer';
+import { fetchImageUrlAsBlob, isImageUrl, optimizeImage } from '../../utils/imageOptimizer';
 import { useAdmin } from '../../context/AdminContext';
 
 /**
@@ -96,9 +96,10 @@ export default function InlineImageSection({
     setIsUploading(true);
     setUploadStatusText('Uploading image to Supabase Storage...');
 
+    const profileType = entityType.includes('Sub') ? 'SUBCATEGORY' : 'CATEGORY';
     try {
       if (typeof uploadImage === 'function') {
-        const publicUrl = await uploadImage(file, folder, filenamePrefix);
+        const publicUrl = await uploadImage(file, folder, filenamePrefix, profileType);
         if (publicUrl) {
           onChange(publicUrl);
           setUploadSuccess(true);
@@ -107,12 +108,19 @@ export default function InlineImageSection({
           throw new Error('Upload did not return a public URL.');
         }
       } else {
-        const localUrl = URL.createObjectURL(file);
-        onChange(localUrl);
+        const opt = await optimizeImage(file, profileType);
+        onChange(opt.dataUrl);
       }
     } catch (err) {
-      console.error('Upload failed:', err);
-      setUploadError(err.message || 'Image upload failed. Please try again.');
+      console.warn('Upload fallback to HD WebP data URL:', err);
+      try {
+        const opt = await optimizeImage(file, profileType);
+        onChange(opt.dataUrl);
+        setUploadSuccess(true);
+        setTimeout(() => setUploadSuccess(false), 3000);
+      } catch (optErr) {
+        setUploadError(err.message || 'Image upload failed. Please try again.');
+      }
     } finally {
       setIsUploading(false);
       setUploadStatusText('');

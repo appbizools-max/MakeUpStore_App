@@ -170,7 +170,6 @@ export const ProductDetailScreen = () => {
       const pImg = baseProduct?.imageUrl || baseProduct?.image;
       if (pImg && !list.includes(pImg)) list.push(pImg);
     }
-    }
     return list;
   }, [baseProduct, selectedShade]);
 

@@ -25,6 +25,7 @@ import {
   SlidersHorizontal,
   Package
 } from 'lucide-react';
+import { optimizeImage } from '../../utils/imageOptimizer';
 import {
   ATTRIBUTE_GROUPS,
   loadAttributeMasterFromDb,
@@ -484,7 +485,7 @@ export default function DynamicVariantBuilder({
     onChangeVariants(variants.filter(v => v.id !== varId));
   };
 
-  // Handle Variant Image Upload (uploads via uploadProductImage if provided, without duplicating fallback image)
+  // Handle Variant Image Upload (uploads via uploadProductImage if provided, compresses to HD WebP on fallback)
   const handleVariantImageUpload = async (varId, file) => {
     if (!file) return;
     setUploadingVariantId(varId);
@@ -497,20 +498,19 @@ export default function DynamicVariantBuilder({
           return;
         }
       }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        handleUpdateVariantField(varId, 'image', e.target.result);
-        setUploadingVariantId(null);
-      };
-      reader.readAsDataURL(file);
+      // HD compression fallback: compress image with PRODUCT profile (1200x1200, WebP HD 0.88)
+      const opt = await optimizeImage(file, 'PRODUCT', { filename: `var_${varId}.webp` });
+      handleUpdateVariantField(varId, 'image', opt.dataUrl);
     } catch (err) {
-      console.warn('Variant image upload failed, fallback to data URL:', err);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        handleUpdateVariantField(varId, 'image', e.target.result);
-        setUploadingVariantId(null);
-      };
-      reader.readAsDataURL(file);
+      console.warn('Variant image upload notice, direct HD optimization fallback:', err);
+      try {
+        const opt = await optimizeImage(file, 'PRODUCT', { filename: `var_${varId}.webp` });
+        handleUpdateVariantField(varId, 'image', opt.dataUrl);
+      } catch (optErr) {
+        console.error('All variant image optimization attempts failed:', optErr);
+      }
+    } finally {
+      setUploadingVariantId(null);
     }
   };
 

@@ -10,6 +10,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 function sanitizeCellFormula(val) {
   if (typeof val !== 'string') return val;
@@ -135,7 +136,8 @@ async function runSecurityAudit() {
 
   // TEST 4: Sensitive Secret Leak Scanner across Repository
   console.log('\n--- TEST 4: Source Code Secret Leak Scanner ---');
-  const baseDir = path.resolve('../..'); // e:\MakeUpStore_App-main\MakeUpStore_App
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const baseDir = path.resolve(__dirname, '../..'); // e:\MakeUpStore_App-main\MakeUpStore_App
   const leaks = scanForSecretLeaks(baseDir);
   assert('No hardcoded service_role keys or private certificates found in codebase', leaks.length === 0);
   if (leaks.length > 0) {

@@ -19,6 +19,7 @@ import {
   VERIFICATION_STATUSES,
   isUserB2BVerified
 } from '../../utils/b2bVerificationService';
+import { getSafeImageSource } from '../../utils/imageUtils';
 
 export const VerificationStatusScreen = () => {
   const {
@@ -144,20 +145,22 @@ export const VerificationStatusScreen = () => {
               Your professional account details have been submitted successfully. Our admin team is reviewing your documents and information.
             </Text>
 
-            <View className="w-full bg-white rounded-2xl p-4 border border-blue-100 space-y-2">
-              <View className="flex-row justify-between py-1 border-b border-blue-50">
+            <View className="w-full bg-white rounded-2xl p-4 border border-blue-100">
+              <View className="flex-row justify-between items-center py-2 border-b border-blue-50">
                 <Text className="text-xs text-stone-500 font-medium">Selected Role</Text>
-                <Text className="text-xs font-bold text-stone-900">{roleTitle}</Text>
+                <Text className="text-xs font-bold text-stone-900 flex-1 text-right ml-2">{roleTitle}</Text>
               </View>
 
-              <View className="flex-row justify-between py-1 border-b border-blue-50">
+              <View className="flex-row justify-between items-center py-2 border-b border-blue-50">
                 <Text className="text-xs text-stone-500 font-medium">Submitted Date</Text>
-                <Text className="text-xs font-bold text-stone-900">{submittedDate}</Text>
+                <Text className="text-xs font-bold text-stone-900 flex-1 text-right ml-2">{submittedDate}</Text>
               </View>
 
-              <View className="flex-row justify-between py-1">
-                <Text className="text-xs text-stone-500 font-medium">Current Catalog Pricing</Text>
-                <Text className="text-xs font-bold text-amber-600">Standard Retail (Until Approved)</Text>
+              <View className="pt-2.5 pb-1">
+                <Text className="text-xs text-stone-500 font-medium mb-1.5">Current Catalog Pricing</Text>
+                <View className="self-start bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+                  <Text className="text-xs font-bold text-amber-700">Standard Retail (Until Approved)</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -294,11 +297,17 @@ export const VerificationStatusScreen = () => {
                 className="bg-white border border-stone-200 rounded-xl p-3 mb-2 flex-row items-center justify-between"
               >
                 <View className="flex-row items-center gap-2.5 flex-1 mr-2">
-                  <Image
-                    source={{ uri: doc.file_url || doc.url }}
-                    className="w-10 h-10 rounded-lg bg-stone-100"
-                    resizeMode="cover"
-                  />
+                  {((doc.file_url || doc.url) && typeof (doc.file_url || doc.url) === 'string' && !(doc.file_url || doc.url).toLowerCase().includes('.pdf')) ? (
+                    <Image
+                      source={getSafeImageSource(doc.file_url || doc.url)}
+                      className="w-10 h-10 rounded-lg bg-stone-100"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View className="w-10 h-10 rounded-lg bg-[#FFF0F5] items-center justify-center border border-[#FCE4EC]">
+                      <Ionicons name="document-text" size={20} color="#C2477A" />
+                    </View>
+                  )}
                   <View className="flex-1">
                     <Text className="text-xs font-bold text-stone-800" numberOfLines={1}>
                       {doc.file_name || doc.name}

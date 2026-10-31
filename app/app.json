@@ -7,16 +7,21 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#FFF8FA",
     "splash": {
+      "image": "./Assets/Logo.png",
+      "resizeMode": "contain",
       "backgroundColor": "#FFF8FA"
     },
     "android": {
-      "package": "com.salbeau.app",
+      "package": "com.Salbeau",
       "adaptiveIcon": {
+        "foregroundImage": "./Assets/Logo.png",
         "backgroundColor": "#FFF8FA"
-      }
+      },
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "icon": "./Assets/Logo.png"
   }
 }

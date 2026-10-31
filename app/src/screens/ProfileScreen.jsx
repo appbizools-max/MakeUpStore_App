@@ -430,7 +430,7 @@ export const ProfileScreen = () => {
               </button>
             </div>
           );
-        })()}   )}
+        })()}
 
         {/* Personal & Business Info Section */}
         <div className="p-4 bg-white rounded-3xl border border-[#F0E6EC] shadow-xs space-y-3">

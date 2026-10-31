@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StatusBar, Platform, Image } from 'react-native';
 import { useFonts } from 'expo-font';
 import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
 import { useApp } from '../../context/AppContext';
@@ -25,7 +25,7 @@ export const SplashScreen = () => {
     }
     const timer = setTimeout(() => {
       handleProceed();
-    }, 1200);
+    }, 1500);
     return () => clearTimeout(timer);
   }, [userProfile?.isProfileComplete]);
 
@@ -48,7 +48,15 @@ export const SplashScreen = () => {
         <StatusBar barStyle="dark-content" backgroundColor="#FDEAF1" />
 
         {/* Main Centered Brand Content */}
-        <View className="items-center justify-center -mt-10">
+        <View className="items-center justify-center -mt-8">
+          {/* Approved Brand Logo */}
+          <View className="w-24 h-24 rounded-3xl bg-white/90 p-2.5 items-center justify-center mb-4 shadow-sm border border-[#FCE4EC]">
+            <Image
+              source={require('../../../Assets/Logo.png')}
+              style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+            />
+          </View>
+
           {/* Brand Title with Home screen GreatVibes cursive font */}
           <Text
             style={{

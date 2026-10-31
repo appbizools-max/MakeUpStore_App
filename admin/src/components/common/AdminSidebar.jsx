@@ -133,8 +133,7 @@ export const AdminSidebar = ({
     if (itemId === 'cancel_fee') return activeTab === 'cancel_fee';
     if (itemId === 'pricing_rules') return activeTab === 'pricing_rules';
     if (itemId === 'employees') return activeTab === 'employees' || activeTab === 'employees/new';
-    if (itemId === 'employees/activity') return activeTab === 'employees/activity';
-    if (itemId === 'audit_trail') return activeTab === 'audit_trail';
+        if (itemId === 'audit_trail') return activeTab === 'audit_trail';
     if (itemId === 'quick_panel') return activeTab === 'quick_panel';
     return activeTab === itemId;
   }, [activeTab]);
@@ -350,8 +349,7 @@ export const AdminSidebar = ({
           subItems: [
             { id: 'employees', label: 'All Employees', icon: Users },
             { id: 'employees/new', label: 'Add Employee', icon: UserPlus },
-            { id: 'employees/activity', label: 'Employee Activity', icon: Clock }
-          ]
+                      ]
         }
       ]
     },

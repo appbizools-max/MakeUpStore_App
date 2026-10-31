@@ -11,13 +11,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 600);
 const BANNER_HEIGHT = Math.round(BANNER_WIDTH / 2.56);
 
-const LOCAL_BANNER_ASSETS = {
-  banner_1: require('../../../Assets/banners/banner_1.jpg'),
-  banner_2: require('../../../Assets/banners/banner_2.jpg'),
-  banner_3: require('../../../Assets/banners/banner_3.jpg'),
-  banner_4: require('../../../Assets/banners/banner_4.jpg'),
-  banner_5: require('../../../Assets/banners/banner_5.jpg'),
-};
 
 // Reusable Section Header Component
 const SectionHeader = ({ title, subtitle, ctaText = 'View All →', onCtaPress, showCta = true, iconName }) => (
@@ -43,6 +36,28 @@ const SectionHeader = ({ title, subtitle, ctaText = 'View All →', onCtaPress, 
       <Text className="text-[10px] font-medium text-[#8C7078] mt-0.5">{subtitle}</Text>
     ) : null}
   </View>
+);
+
+// Skeleton Loading Placeholders for seamless Zero-Flicker Cold Starts
+const SkeletonCategoryCard = () => (
+  <View style={{ width: 88, borderColor: '#FCE4EC', borderWidth: 1 }} className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs">
+    <View style={{ width: 64, height: 64 }} className="rounded-xl mb-1.5 bg-[#FFF0F5] opacity-60" />
+    <View style={{ width: 50, height: 10 }} className="rounded bg-[#FCE4EC] mb-1 opacity-60" />
+    <View style={{ width: 34, height: 8 }} className="rounded bg-[#FCE4EC]/60 opacity-60" />
+  </View>
+);
+
+const SkeletonProductCard = () => (
+  <View style={{ width: 144, borderColor: '#FCE4EC', borderWidth: 1 }} className="mr-3 bg-white rounded-2xl p-2.5 shadow-xs flex-col">
+    <View style={{ width: '100%', height: 110 }} className="rounded-xl mb-2 bg-[#FFF0F5] opacity-60" />
+    <View style={{ width: 60, height: 8 }} className="rounded bg-[#FCE4EC] mb-1.5 opacity-60" />
+    <View style={{ width: 100, height: 12 }} className="rounded bg-[#FCE4EC] mb-2 opacity-60" />
+    <View style={{ width: 70, height: 14 }} className="rounded bg-[#FCE4EC]/70 opacity-60" />
+  </View>
+);
+
+const SkeletonBrandCircle = () => (
+  <View style={{ width: 72, height: 72, borderColor: '#FCE4EC', borderWidth: 1 }} className="rounded-full bg-[#FFF0F5] mr-3 shadow-xs opacity-60" />
 );
 
 // Reusable Universal Product Card Component
@@ -210,6 +225,7 @@ export const HomeScreen = () => {
     userRole,
     getRolePrice,
     setSelectedProduct,
+    selectedCategory,
     setSelectedCategory,
     setCurrentScreen,
     cart = [],
@@ -226,6 +242,7 @@ export const HomeScreen = () => {
     toggleFavorite,
     setGlobalSearchQuery,
     refreshCatalog,
+    isCatalogLoading = false,
     productSalesCounts = {},
     homeBanners = [],
     activeBanners = [],
@@ -308,86 +325,50 @@ export const HomeScreen = () => {
   }, [activeBanners, homeBanners]);
 
   const handleBannerClick = useCallback((banner) => {
-    if (!banner) return;
-    const destType = (banner.destinationType || '').toUpperCase();
-    const destId = banner.destinationId || '';
-
-    switch (destType) {
-      case 'BEST_SELLERS':
-        setSearchQuery('');
-        setSelectedCategory('Best Sellers');
-        setCurrentScreen('search');
-        break;
-
-      case 'CATEGORY':
-        if (destId) {
-          const matched = (categories || []).find(c => 
-            c.id?.toLowerCase() === destId.toLowerCase() || 
-            c.name?.toLowerCase() === destId.toLowerCase()
-          );
-          setSelectedCategory(matched?.name || destId);
-        }
-        setCurrentScreen('category');
-        break;
-
-      case 'SUBCATEGORY':
-        if (destId) {
-          setSelectedCategory(destId);
-        }
-        setCurrentScreen('category');
-        break;
-
-      case 'BRAND':
-        if (destId) {
-          const matched = (brands || []).find(b =>
-            b.id?.toLowerCase() === destId.toLowerCase() ||
-            b.name?.toLowerCase() === destId.toLowerCase()
-          );
-          setSelectedBrand(matched || { name: destId });
-          setSearchQuery(matched?.name || destId);
-        }
-        setCurrentScreen('search');
-        break;
-
-      case 'PRODUCT':
-        if (destId) {
-          const matched = (activeProducts || []).find(p => p.id === destId || p.barcode === destId);
-          if (matched) {
-            handleProductSelect(matched);
-            return;
-          }
-        }
-        setCurrentScreen('product');
-        break;
-
-      case 'NEW_ARRIVALS':
-        setCurrentScreen('search');
-        break;
-
-      case 'TRENDING':
-        setCurrentScreen('search');
-        break;
-
-      default:
-        if (destId) {
-          setSelectedCategory(destId);
-          setCurrentScreen('category');
-        } else {
-          setCurrentScreen('search');
-        }
-        break;
+    if (!banner) {
+      setCurrentScreen('category');
+      return;
     }
-  }, [categories, brands, activeProducts, setSelectedCategory, setSelectedBrand, setSearchQuery, setCurrentScreen, handleProductSelect]);
+    const destType = (banner.destinationType || '').toUpperCase();
+    const destId = banner.destinationId || banner.category || '';
+
+    // Ultra thinking: Match target category from destinationId, destinationType, category property or banner title
+    let matchedCategory = null;
+    if (destId) {
+      matchedCategory = (categories || []).find(c =>
+        c.id?.toLowerCase() === destId.toLowerCase() ||
+        c.name?.toLowerCase() === destId.toLowerCase()
+      );
+    }
+    if (!matchedCategory && banner.title) {
+      matchedCategory = (categories || []).find(c =>
+        c.name?.toLowerCase().includes(banner.title.toLowerCase()) ||
+        banner.title.toLowerCase().includes(c.name?.toLowerCase())
+      );
+    }
+
+    if (matchedCategory) {
+      setSelectedCategory(matchedCategory.name);
+    } else if (destId && (destType === 'CATEGORY' || destType === 'SUBCATEGORY')) {
+      setSelectedCategory(destId);
+    } else if (categories && categories.length > 0 && !selectedCategory) {
+      // Default to first active category if none selected
+      setSelectedCategory(categories[0].name);
+    }
+
+    // Always navigate directly to categories page
+    setCurrentScreen('category');
+  }, [categories, selectedCategory, setSelectedCategory, setCurrentScreen]);
 
   useEffect(() => {
     if (displayBanners.length <= 1) return;
     const timer = setInterval(() => {
       setActiveSlide(prev => {
         const next = (prev + 1) % displayBanners.length;
-        bannerScrollRef.current?.scrollTo({ x: next * BANNER_WIDTH, animated: true });
+        bannerScrollRef.current?.scrollTo({ x: next * (BANNER_WIDTH + 12), animated: true });
         return next;
       });
-    }, 4500);
+    }, 4000);
     return () => clearInterval(timer);
   }, [displayBanners.length]);
 
@@ -432,6 +413,38 @@ export const HomeScreen = () => {
     const list = activeBrands && activeBrands.length > 0 ? activeBrands : brands.filter(b => b.enabled !== false);
     return list.filter(b => b.name && !b.id.startsWith('app_') && !b.id.startsWith('salbeau_')).slice(0, 12);
   }, [activeBrands, brands]);
+
+  // Infinite brands looped array for seamless continuous scrolling
+  const infiniteBrands = useMemo(() => {
+    if (!topBrandsList || topBrandsList.length === 0) return [];
+    let base = [...topBrandsList];
+    while (base.length < 8) {
+      base = [...base, ...topBrandsList];
+    }
+    return [...base, ...base, ...base];
+  }, [topBrandsList]);
+
+  const brandScrollRef = useRef(null);
+  const brandScrollPos = useRef(0);
+  const isBrandTouching = useRef(false);
+
+  useEffect(() => {
+    if (!topBrandsList || topBrandsList.length === 0) return;
+    const singleSetWidth = (infiniteBrands.length / 3) * 84; // 72 item width + 12 margin
+
+    const interval = setInterval(() => {
+      if (isBrandTouching.current) return;
+      brandScrollPos.current += 1;
+      if (brandScrollPos.current >= singleSetWidth) {
+        brandScrollPos.current = 0;
+        brandScrollRef.current?.scrollTo({ x: 0, animated: false });
+      } else {
+        brandScrollRef.current?.scrollTo({ x: brandScrollPos.current, animated: false });
+      }
+    }, 30);
+
+    return () => clearInterval(interval);
+  }, [topBrandsList, infiniteBrands]);
 
   // 4. New Arrivals — Automatic by publishedAt / created_at DESC
   const newArrivals = useMemo(() => {
@@ -618,7 +631,7 @@ export const HomeScreen = () => {
             snapToAlignment="start"
           >
             {displayBanners.map((banner, idx) => {
-              const imageSource = LOCAL_BANNER_ASSETS[banner.id] || (banner.imageUrl ? { uri: banner.imageUrl } : null);
+              const imageSource = (banner.imageUrl && typeof banner.imageUrl === 'string' && banner.imageUrl.trim().length > 0) ? getSafeImageSource(banner.imageUrl) : null;
               return (
                 <View
                   key={banner.id || idx}
@@ -643,34 +656,29 @@ export const HomeScreen = () => {
                     onPress={() => handleBannerClick(banner)}
                     style={{ width: '100%', height: '100%' }}
                   >
-                    {imageSource && (
+                    {imageSource ? (
                       <Image
                         source={imageSource}
                         style={{ width: '100%', height: '100%' }}
                         resizeMode="cover"
                       />
+                    ) : (
+                      <View className="w-full h-full justify-center px-5 bg-[#FFF0F5]">
+                        {banner.badge ? (
+                          <Text className="text-[10px] font-black uppercase tracking-widest text-[#C2477A] mb-1">
+                            {banner.badge}
+                          </Text>
+                        ) : null}
+                        <Text className="text-base font-black text-[#3A2430] leading-tight" numberOfLines={1}>
+                          {banner.title}
+                        </Text>
+                        {banner.subtitle ? (
+                          <Text className="text-xs text-[#8C7078] font-medium mt-1" numberOfLines={1}>
+                            {banner.subtitle}
+                          </Text>
+                        ) : null}
+                      </View>
                     )}
-                    {/* Interactive CTA pill overlay */}
-                    <View
-                      style={{
-                        position: 'absolute',
-                        left: 14,
-                        bottom: 12,
-                        backgroundColor: 'rgba(194, 71, 122, 0.92)',
-                        paddingHorizontal: 14,
-                        paddingVertical: 6,
-                        borderRadius: 20,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 4,
-                        elevation: 4,
-                      }}
-                    >
-                      <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>
-                        {banner.ctaText || banner.ctaLabel || 'Shop Now →'}
-                      </Text>
-                    </View>
                   </TouchableOpacity>
                 </View>
               );
@@ -700,86 +708,61 @@ export const HomeScreen = () => {
         {/* ========================================================================= */}
         {/* 4. SHOP BY CATEGORY (HORIZONTAL CAROUSEL) */}
         {/* ========================================================================= */}
-        <SectionHeader
-          title="Shop by Category"
-          ctaText="View All →"
-          onCtaPress={() => setCurrentScreen('category')}
-        />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-          className="mb-6"
-        >
-          {displayCategories.map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              activeOpacity={0.85}
-              onPress={() => {
-                setSelectedCategory(cat);
-                setCurrentScreen('category');
-              }}
-              style={{ width: 88, borderColor: '#FCE4EC', borderWidth: 1 }}
-              className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs"
+        {(displayCategories.length > 0 || isCatalogLoading) && (
+          <>
+            <SectionHeader
+              title="Shop by Category"
+              ctaText="View All →"
+              onCtaPress={() => setCurrentScreen('category')}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+              className="mb-6"
             >
-              <View
-                style={{ width: 64, height: 64, borderColor: '#FCE4EC', borderWidth: 1 }}
-                className="rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] items-center justify-center"
-              >
-                <Image
-                  source={getSafeImageSource(cat.image, '')}
-                  style={{ width: '100%', height: '100%' }}
-                  resizeMode="cover"
-                />
-              </View>
-              <Text className="text-[11px] font-bold text-[#3A2430] text-center" numberOfLines={1}>
-                {cat.name}
-              </Text>
-              <Text className="text-[9px] font-medium text-[#8C7078] text-center mt-0.5">
-                {cat.countText}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              {displayCategories.length > 0
+                ? displayCategories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        setSelectedCategory(cat);
+                        setCurrentScreen('category');
+                      }}
+                      style={{ width: 88, borderColor: '#FCE4EC', borderWidth: 1 }}
+                      className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs"
+                    >
+                      <View
+                        style={{ width: 64, height: 64, borderColor: '#FCE4EC', borderWidth: 1 }}
+                        className="rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] items-center justify-center"
+                      >
+                        <Image
+                          source={getSafeImageSource(cat.image, '')}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <Text className="text-[11px] font-bold text-[#3A2430] text-center" numberOfLines={1}>
+                        {cat.name}
+                      </Text>
+                      <Text className="text-[9px] font-medium text-[#8C7078] text-center mt-0.5">
+                        {cat.countText}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                : [1, 2, 3, 4, 5].map((k) => <SkeletonCategoryCard key={`sk_cat_${k}`} />)}
+            </ScrollView>
+          </>
+        )}
 
         {/* ========================================================================= */}
         {/* 5. TRENDING NOW (HORIZONTAL PRODUCT CAROUSEL) */}
         {/* ========================================================================= */}
-        <SectionHeader
-          title="🔥 Trending Now"
-          ctaText="View All →"
-          onCtaPress={() => setCurrentScreen('search')}
-        />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-          className="mb-6"
-        >
-          {trendingProducts.map((item) => (
-            <ProductCard
-              key={item.id}
-              product={item}
-              badgeText="NEW"
-              userRole={userRole}
-              getRolePrice={getRolePrice}
-              isLiked={isFavorite(item.id)}
-              onToggleFavorite={toggleFavorite}
-              onSelectProduct={handleProductSelect}
-              cartQty={getProductCartQuantity(item.id)}
-              onAddToCart={(prod) => addToCart(prod, 1)}
-              onUpdateCartQty={updateCartQuantity}
-            />
-          ))}
-        </ScrollView>
-
-        {/* ========================================================================= */}
-        {/* 6. TOP BRANDS (CIRCULAR BRAND CAROUSEL) */}
-        {/* ========================================================================= */}
-        {topBrandsList.length > 0 && (
+        {(trendingProducts.length > 0 || isCatalogLoading) && (
           <>
             <SectionHeader
-              title="Top Brands"
+              title="🔥 Trending Now"
               ctaText="View All →"
               onCtaPress={() => setCurrentScreen('search')}
             />
@@ -789,100 +772,170 @@ export const HomeScreen = () => {
               contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
               className="mb-6"
             >
-              {topBrandsList.map((brand) => (
-                <TouchableOpacity
-                  key={brand.id}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    const brandQuery = (brand.name || '').replace('\n', ' ');
-                    if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
-                    setSearchQuery(brandQuery);
-                    setCurrentScreen('search');
-                  }}
-                  style={{ width: 72, height: 72, borderColor: '#FCE4EC', borderWidth: 1 }}
-                  className="rounded-full bg-white mr-3 shadow-xs items-center justify-center p-1.5 overflow-hidden"
-                >
-                  {brand.logo && typeof brand.logo === 'string' && brand.logo.startsWith('http') ? (
-                    <Image
-                      source={{ uri: brand.logo }}
-                      style={{ width: '80%', height: '80%' }}
-                      resizeMode="contain"
+              {trendingProducts.length > 0
+                ? trendingProducts.map((item) => (
+                    <ProductCard
+                      key={item.id}
+                      product={item}
+                      badgeText="NEW"
+                      userRole={userRole}
+                      getRolePrice={getRolePrice}
+                      isLiked={isFavorite(item.id)}
+                      onToggleFavorite={toggleFavorite}
+                      onSelectProduct={handleProductSelect}
+                      cartQty={getProductCartQuantity(item.id)}
+                      onAddToCart={(prod) => addToCart(prod, 1)}
+                      onUpdateCartQty={updateCartQuantity}
                     />
-                  ) : (
-                    <Text
-                      className="text-[9.5px] font-black text-center tracking-tight text-[#1F2937]"
-                      numberOfLines={2}
-                    >
-                      {brand.name}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ))}
+                  ))
+                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_trend_${k}`} />)}
             </ScrollView>
+          </>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 6. TOP BRANDS (CONTINUOUS INFINITE CAROUSEL) */}
+        {/* ========================================================================= */}
+        {(topBrandsList.length > 0 || isCatalogLoading) && (
+          <>
+            <SectionHeader
+              title="Top Brands"
+              ctaText="View All →"
+              onCtaPress={() => setCurrentScreen('search')}
+            />
+            {topBrandsList.length > 0 ? (
+              <ScrollView
+                ref={brandScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+                className="mb-6"
+                onTouchStart={() => { isBrandTouching.current = true; }}
+                onTouchEnd={() => { isBrandTouching.current = false; }}
+                onScrollBeginDrag={() => { isBrandTouching.current = true; }}
+                onScrollEndDrag={() => { isBrandTouching.current = false; }}
+                onMomentumScrollEnd={(e) => {
+                  isBrandTouching.current = false;
+                  brandScrollPos.current = e.nativeEvent.contentOffset.x;
+                }}
+                scrollEventThrottle={16}
+              >
+                {infiniteBrands.map((brand, idx) => (
+                  <TouchableOpacity
+                    key={`${brand.id}-${idx}`}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      const brandQuery = (brand.name || '').replace('\n', ' ');
+                      if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
+                      setSearchQuery(brandQuery);
+                      setCurrentScreen('search');
+                    }}
+                    style={{ width: 72, height: 72, borderColor: '#FCE4EC', borderWidth: 1 }}
+                    className="rounded-full bg-white mr-3 shadow-xs items-center justify-center p-1.5 overflow-hidden"
+                  >
+                    {Boolean(brand.logo && typeof brand.logo === 'string' && (brand.logo.startsWith('http') || brand.logo.startsWith('data:image/'))) ? (
+                      <Image
+                        source={getSafeImageSource(brand.logo)}
+                        style={{ width: '80%', height: '80%' }}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Text
+                        className="text-[9.5px] font-black text-center tracking-tight text-[#1F2937]"
+                        numberOfLines={2}
+                      >
+                        {brand.name}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+                className="mb-6"
+              >
+                {[1, 2, 3, 4, 5].map((k) => <SkeletonBrandCircle key={`sk_brand_${k}`} />)}
+              </ScrollView>
+            )}
           </>
         )}
 
         {/* ========================================================================= */}
         {/* 7. NEW ARRIVALS (HORIZONTAL PRODUCT CAROUSEL) */}
         {/* ========================================================================= */}
-        <SectionHeader
-          title="New Arrivals"
-          ctaText="View All →"
-          onCtaPress={() => setCurrentScreen('search')}
-        />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-          className="mb-6"
-        >
-          {newArrivals.map((item) => (
-            <ProductCard
-              key={`na_${item.id}`}
-              product={item}
-              badgeText="NEW"
-              userRole={userRole}
-              getRolePrice={getRolePrice}
-              isLiked={isFavorite(item.id)}
-              onToggleFavorite={toggleFavorite}
-              onSelectProduct={handleProductSelect}
-              cartQty={getProductCartQuantity(item.id)}
-              onAddToCart={(prod) => addToCart(prod, 1)}
-              onUpdateCartQty={updateCartQuantity}
+        {(newArrivals.length > 0 || isCatalogLoading) && (
+          <>
+            <SectionHeader
+              title="New Arrivals"
+              ctaText="View All →"
+              onCtaPress={() => setCurrentScreen('search')}
             />
-          ))}
-        </ScrollView>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+              className="mb-6"
+            >
+              {newArrivals.length > 0
+                ? newArrivals.map((item) => (
+                    <ProductCard
+                      key={`na_${item.id}`}
+                      product={item}
+                      badgeText="NEW"
+                      userRole={userRole}
+                      getRolePrice={getRolePrice}
+                      isLiked={isFavorite(item.id)}
+                      onToggleFavorite={toggleFavorite}
+                      onSelectProduct={handleProductSelect}
+                      cartQty={getProductCartQuantity(item.id)}
+                      onAddToCart={(prod) => addToCart(prod, 1)}
+                      onUpdateCartQty={updateCartQuantity}
+                    />
+                  ))
+                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_na_${k}`} />)}
+            </ScrollView>
+          </>
+        )}
 
         {/* ========================================================================= */}
         {/* 8. BEST SELLERS (HORIZONTAL PRODUCT CAROUSEL) */}
         {/* ========================================================================= */}
-        <SectionHeader
-          title="Best Sellers"
-          ctaText="View All →"
-          onCtaPress={() => setCurrentScreen('search')}
-        />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-          className="mb-6"
-        >
-          {bestSellers.map((item) => (
-            <ProductCard
-              key={`bs_${item.id}`}
-              product={item}
-              badgeText="NEW"
-              userRole={userRole}
-              getRolePrice={getRolePrice}
-              isLiked={isFavorite(item.id)}
-              onToggleFavorite={toggleFavorite}
-              onSelectProduct={handleProductSelect}
-              cartQty={getProductCartQuantity(item.id)}
-              onAddToCart={(prod) => addToCart(prod, 1)}
-              onUpdateCartQty={updateCartQuantity}
+        {(bestSellers.length > 0 || isCatalogLoading) && (
+          <>
+            <SectionHeader
+              title="Best Sellers"
+              ctaText="View All →"
+              onCtaPress={() => setCurrentScreen('search')}
             />
-          ))}
-        </ScrollView>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+              className="mb-6"
+            >
+              {bestSellers.length > 0
+                ? bestSellers.map((item) => (
+                    <ProductCard
+                      key={`bs_${item.id}`}
+                      product={item}
+                      badgeText="NEW"
+                      userRole={userRole}
+                      getRolePrice={getRolePrice}
+                      isLiked={isFavorite(item.id)}
+                      onToggleFavorite={toggleFavorite}
+                      onSelectProduct={handleProductSelect}
+                      cartQty={getProductCartQuantity(item.id)}
+                      onAddToCart={(prod) => addToCart(prod, 1)}
+                      onUpdateCartQty={updateCartQuantity}
+                    />
+                  ))
+                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_bs_${k}`} />)}
+            </ScrollView>
+          </>
+        )}
 
         {/* ========================================================================= */}
         {/* 9. BEAUTY EDIT (EDITORIAL BANNER CARD) */}
@@ -1050,44 +1103,6 @@ export const HomeScreen = () => {
           </>
         )}
 
-        {/* ========================================================================= */}
-        {/* 13. SEASONAL COLLECTION (FULL-WIDTH PROMO CARD) */}
-        {/* ========================================================================= */}
-        <SectionHeader
-          title="Seasonal Collection"
-          showCta={false}
-        />
-        <View className="px-4 mb-4">
-          <View
-            style={{ backgroundColor: '#FFF8F3', borderColor: '#FCE4EC', borderWidth: 1 }}
-            className="rounded-3xl overflow-hidden shadow-xs"
-          >
-            <View style={{ width: '100%', height: 96 }} className="relative bg-[#FCE4EC] justify-center items-center">
-              <View className="absolute top-2.5 left-2.5 bg-white/95 px-2.5 py-0.5 rounded-full border border-pink-100">
-                <Text className="text-[#C2477A] text-[8px] font-black uppercase tracking-wider">
-                  SEASONAL COLLECTION
-                </Text>
-              </View>
-            </View>
-            <View className="p-3.5 flex-row items-center justify-between">
-              <View className="flex-1 pr-2">
-                <Text className="text-xs font-black text-[#3A2430]">
-                  Luxe Bridal & Salon Master Series
-                </Text>
-                <Text className="text-[9.5px] text-[#8C7078] font-medium mt-0.5">
-                  Professional bridal kits with extended durability formulas.
-                </Text>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => setCurrentScreen('search')}
-                className="bg-[#C2477A] px-3.5 py-1.5 rounded-full shadow-xs"
-              >
-                <Text className="text-white text-[10px] font-black">Explore →</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
       </ScrollView>
 
       {/* ========================================================================= */}

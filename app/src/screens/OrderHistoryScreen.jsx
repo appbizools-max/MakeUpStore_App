@@ -48,7 +48,9 @@ export const OrderHistoryScreen = () => {
     setCurrentScreen,
     showCancelWarningModal,
     setShowCancelWarningModal,
-    pendingCancelOrderId
+    pendingCancelOrderId,
+    selectedOrderIdForDetails,
+    setSelectedOrderIdForDetails
   } = useApp();
 
   // Two Main Filters: 'all' | 'completed'
@@ -88,6 +90,19 @@ export const OrderHistoryScreen = () => {
       !userProfile ? true : (o.phone === userProfile.phone || o.userName === userProfile.name)
     );
   }, [orders, userProfile?.phone, userProfile?.name]);
+
+  // Auto-open order details when navigating from notification or deep link
+  useEffect(() => {
+    if (selectedOrderIdForDetails && displayOrders.length > 0) {
+      const target = displayOrders.find(o =>
+        o.id === selectedOrderIdForDetails ||
+        String(o.id).toLowerCase().endsWith(String(selectedOrderIdForDetails).toLowerCase())
+      );
+      if (target) {
+        setSelectedFullOrder(target);
+      }
+    }
+  }, [selectedOrderIdForDetails, displayOrders]);
 
   // Keep selectedFullOrder in sync with orders list
   const currentFullOrder = useMemo(() => {
@@ -265,6 +280,7 @@ export const OrderHistoryScreen = () => {
   const handleBackFromOrderDetails = () => {
     setEditingOrder(null);
     setSelectedFullOrder(null);
+    if (setSelectedOrderIdForDetails) setSelectedOrderIdForDetails(null);
   };
 
   // Reset any active edit modal when switching into or out of Order Details

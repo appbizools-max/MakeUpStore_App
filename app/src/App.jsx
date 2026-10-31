@@ -27,7 +27,8 @@ const AppShell = () => {
     orders = [],
     userProfile,
     orderStatusNotification,
-    dismissOrderStatusNotification
+    dismissOrderStatusNotification,
+    setSelectedOrderIdForDetails
   } = useApp();
 
   // Auto-dismiss notification after 7 seconds
@@ -58,6 +59,7 @@ const AppShell = () => {
       case 'checkout': return <PlaceOrderScreen />;
       case 'confirmation': return <OrderConfirmationScreen />;
       case 'orders': return <OrderHistoryScreen />;
+      case 'notifications': return <NotificationCenterScreen />;
       case 'profile': return <ProfileScreen />;
       case 'category': return <CategoryScreen />;
       case 'brand': return <BrandScreen />;
@@ -111,6 +113,9 @@ const AppShell = () => {
               <div className="mt-2 flex items-center gap-2">
                 <button
                   onClick={() => {
+                    if (orderStatusNotification?.orderId && setSelectedOrderIdForDetails) {
+                      setSelectedOrderIdForDetails(orderStatusNotification.orderId);
+                    }
                     setCurrentScreen('orders');
                     if (dismissOrderStatusNotification) dismissOrderStatusNotification();
                   }}

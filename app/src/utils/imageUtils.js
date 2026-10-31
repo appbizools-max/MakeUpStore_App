@@ -1,5 +1,19 @@
 import { supabase } from '../config/supabase.js';
 
+// 1x1 transparent PNG data URI - completely valid for React Native Image and Web img, never triggers empty URI warning
+export const TRANSPARENT_PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+export const isValidImageUri = (uri) => {
+  if (!uri || typeof uri !== 'string') return false;
+  const trimmed = uri.trim();
+  return trimmed.length > 0 && trimmed !== 'null' && trimmed !== 'undefined' && (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('file://')
+  );
+};
+
 // Neutral empty beauty category fallbacks - no default images
 export const DEFAULT_CATEGORY_FALLBACKS = {
   makeup: '',
@@ -56,8 +70,8 @@ export const getSafeImageUri = (input, fallback = '') => {
   // If input is a string
   if (typeof input === 'string') {
     const trimmed = input.trim();
-    if (!trimmed) {
-      return typeof fallback === 'string' ? fallback.trim() : '';
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+      return typeof fallback === 'string' && fallback.trim() !== 'null' && fallback.trim() !== 'undefined' ? fallback.trim() : '';
     }
 
     // Check if it's a JSON string representing an object
@@ -93,14 +107,21 @@ export const getSafeImageUri = (input, fallback = '') => {
 
 /**
  * Returns a guaranteed valid React Native Image source object or local number.
- * Ensures RCTImageView never receives a nested map or invalid src.
+ * Ensures RCTImageView never receives a nested map or invalid/empty src.
  */
 export const getSafeImageSource = (imageInput, fallbackUri = '') => {
   if (typeof imageInput === 'number') {
     return imageInput;
   }
   const safeUri = getSafeImageUri(imageInput, fallbackUri);
-  return { uri: safeUri || '' };
+  if (typeof safeUri === 'string' && safeUri.trim().length > 0) {
+    return { uri: safeUri.trim() };
+  }
+  if (typeof fallbackUri === 'string' && fallbackUri.trim().length > 0) {
+    return { uri: fallbackUri.trim() };
+  }
+  // Fallback to transparent pixel to prevent "source.uri should not be an empty string" warning in React Native
+  return { uri: TRANSPARENT_PIXEL };
 };
 
 /**
@@ -136,6 +157,8 @@ export const getResponsiveImageUri = (input, variant = 'medium', fallback = '') 
 };
 
 export default {
+  TRANSPARENT_PIXEL,
+  isValidImageUri,
   getSafeImageUri,
   getSafeImageSource,
   getResponsiveImageUri,

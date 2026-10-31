@@ -28,7 +28,7 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
     // Sample 1: Parent-Child Variant Row 1 (Lakmé Liquid Lipstick - Shade 01 Red Carpet)
     [
       '8901030383811',                                                           // BARCODE
-      'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800',     // IMAGE
+      '',     // IMAGE
       'LAK-MATTE-LIP',                                                           // PARENT_SKU
       'Lakmé Forever Matte Liquid Lip Colour',                                   // PRODUCT_NAME
       'Makeup',                                                                  // CATEGORY
@@ -49,7 +49,7 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
     // Sample 2: Parent-Child Variant Row 2 (Lakmé Liquid Lipstick - Shade 02 Nude Myth)
     [
       '8901030383828',                                                           // BARCODE
-      'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=800',     // IMAGE
+      '',     // IMAGE
       'LAK-MATTE-LIP',                                                           // PARENT_SKU (Same parent SKU groups variants)
       'Lakmé Forever Matte Liquid Lip Colour',                                   // PRODUCT_NAME
       'Makeup',                                                                  // CATEGORY
@@ -70,7 +70,7 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
     // Sample 3: Standalone Single Product (Face Serum without shades)
     [
       '8901030492812',                                                           // BARCODE
-      'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800',     // IMAGE
+      '',     // IMAGE
       'LOR-REVIT-30ML',                                                          // PARENT_SKU
       "L'Oréal Paris Revitalift 1.5% Hyaluronic Acid Serum",                     // PRODUCT_NAME
       'Skincare',                                                                // CATEGORY
@@ -135,7 +135,7 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
     ['18 FIXED REQUIRED COLUMNS REFERENCE:'],
     ['Column Header', 'Required?', 'Sample Value', 'Description & Rules'],
     ['BARCODE', 'Optional', '8901030383811', 'EAN-13, UPC, or custom barcode for scanner checkout. Format as text.'],
-    ['IMAGE', 'Optional', 'https://images.unsplash.com/...', 'Direct HTTP/HTTPS link to product image.'],
+    ['IMAGE', 'Optional', 'Direct storage/CDN image URL', 'Direct HTTP/HTTPS link to product image.'],
     ['PARENT_SKU', 'Required for Variants', 'LAK-MATTE-LIP', 'Parent SKU grouping related variants. Items with same PARENT_SKU belong to one product family.'],
     ['PRODUCT_NAME', 'REQUIRED', 'Lakmé Forever Matte Liquid Lip Colour', 'Full display name of the product.'],
     ['CATEGORY', 'REQUIRED', 'Makeup', 'Master product category (e.g. Makeup, Skincare, Hair Care).'],

@@ -297,7 +297,7 @@ const AdminDashboard = () => {
         'audit_trail',
         'employees',
         'employees/new',
-        'employees/activity',
+        
         'quick_panel',
         'settings'
       ];
@@ -439,7 +439,7 @@ const AdminDashboard = () => {
           'audit_trail',
           'employees',
           'employees/new',
-          'employees/activity',
+          
           'quick_panel',
           'settings'
         ];
@@ -534,7 +534,6 @@ const AdminDashboard = () => {
     if (itemId === 'b2b-verification/makeup-artist') return activeTab === 'b2b-verification/makeup-artist' || activeTab === 'b2b_verification/makeup-artist' || activeTab === 'b2b_verification/makeup_artist';
     if (itemId === 'b2b-verification/beautician') return activeTab === 'b2b-verification/beautician' || activeTab === 'b2b_verification/beautician';
     if (itemId === 'employees') return activeTab === 'employees' || activeTab === 'employees/new';
-    if (itemId === 'employees/activity') return activeTab === 'employees/activity';
     return activeTab === itemId;
   }, [activeTab]);
 
@@ -729,8 +728,7 @@ const AdminDashboard = () => {
           isPillBadge: true,
           subItems: [
             { id: 'employees', label: 'All Employees' },
-            { id: 'employees/activity', label: 'Employee Activity' }
-          ]
+                      ]
         }
       ]
     },
@@ -1565,7 +1563,6 @@ const AdminDashboard = () => {
     barcode: ''
   });
   const [editingShadeProductId, setEditingShadeProductId] = useState(null); // product whose shades panel is open
-  const [editingRichDataProductId, setEditingRichDataProductId] = useState(null); // product whose discovery/rich-data panel is open
   const [productShadesLocal, setProductShadesLocal] = useState([]); // working copy of shades for the open product
   const [isSavingShades, setIsSavingShades] = useState(false);
   const [shadesSaveSuccess, setShadesSaveSuccess] = useState(false);
@@ -2926,9 +2923,7 @@ const AdminDashboard = () => {
                   {activeTab === 'search_requests' && 'Customer Search Requests & Search Activity'}
                   {activeTab === 'abandoned_carts' && 'Abandoned Carts & Cart Recovery'}
                   {activeTab === 'employees' && 'Employee Management'}
-                  {activeTab === 'employees/new' && 'Add New Employee'}
-                  {activeTab === 'employees/activity' && 'Employee Activity Monitoring'}
-                  {activeTab.startsWith('employees/') && !activeTab.includes('activity') && !activeTab.includes('new') && 'Employee Profile & Management'}
+                  {activeTab === 'employees/new' && 'Add New Employee'}{activeTab.startsWith('employees/') && !activeTab.includes('activity') && !activeTab.includes('new') && 'Employee Profile & Management'}
                 </h1>
                 <p className="text-xs text-gray-400 font-medium mt-1">
                   {activeTab === 'home_banners' && 'Manage the carousel banners displayed on the customer mobile app home page. Changes sync in real-time.'}
@@ -2937,9 +2932,7 @@ const AdminDashboard = () => {
                   {activeTab === 'audit_trail' && 'Immutable activity history showing who performed what, when, and approval status'}
                   {activeTab === 'abandoned_carts' && 'Real-time tracking of incomplete orders and potential recoveries'}
                   {activeTab === 'employees' && 'Manage employee accounts, permissions, assigned work, and activity'}
-                  {activeTab === 'employees/new' && 'Create employee account and configure access'}
-                  {activeTab === 'employees/activity' && 'Real-time audit log of employee actions across modules'}
-                  {!activeTab.startsWith('employees') && activeTab !== 'abandoned_carts' && "Overview of today's store performance"}
+                  {activeTab === 'employees/new' && 'Create employee account and configure access'}{!activeTab.startsWith('employees') && activeTab !== 'abandoned_carts' && "Overview of today's store performance"}
                 </p>
               </div>
             </div>
@@ -4258,8 +4251,6 @@ const AdminDashboard = () => {
                 setEditingTiersProductId={setEditingTiersProductId}
                 editingShadeProductId={editingShadeProductId}
                 setEditingShadeProductId={setEditingShadeProductId}
-                editingRichDataProductId={editingRichDataProductId}
-                setEditingRichDataProductId={setEditingRichDataProductId}
                 getTotalQuantityTiersCount={getTotalQuantityTiersCount}
                 handleToggleProductTiersPanel={handleToggleProductTiersPanel}
                 handleToggleProductShadesPanel={handleToggleProductShadesPanel}
@@ -6171,10 +6162,6 @@ const AdminDashboard = () => {
             <AddEmployeePage onNavigate={navigateToTab} />
           )}
 
-          {activeTab === 'employees/activity' && (
-            <EmployeeActivityPage onNavigate={navigateToTab} />
-          )}
-
           {activeTab.startsWith('employees/') && activeTab.endsWith('/permissions') && (
             <EmployeePermissionsPage
               employeeId={activeTab.split('/')[1]}
@@ -6189,7 +6176,7 @@ const AdminDashboard = () => {
             />
           )}
 
-          {activeTab.startsWith('employees/') && !activeTab.includes('/permissions') && !activeTab.includes('/edit') && activeTab !== 'employees/new' && activeTab !== 'employees/activity' && (
+          {activeTab.startsWith('employees/') && !activeTab.includes('/permissions') && !activeTab.includes('/edit') && activeTab !== 'employees/new' && (
             <EmployeeProfilePage
               employeeId={activeTab.split('/')[1]}
               onNavigate={navigateToTab}

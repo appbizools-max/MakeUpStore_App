@@ -658,6 +658,22 @@ export function validatePasswordPolicy(password) {
   const errors = [];
   if (!password || !password.trim()) {
     errors.push('Password cannot be empty');
+    return { isValid: false, errors };
+  }
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push('Password must contain at least one special character');
   }
   return {
     isValid: errors.length === 0,
@@ -798,7 +814,6 @@ export function canAccessTab(tabId, user) {
       return Boolean(perms.employees?.enabled);
     case 'employees/new':
       return Boolean(perms.employees?.enabled && perms.employees?.actions?.add);
-    case 'employees/activity':
     case 'audit_trail':
       return Boolean(perms.employees?.enabled || perms.reports?.enabled);
     case 'dashboard_visibility':
@@ -840,7 +855,6 @@ export function getFirstAccessibleTab(user) {
     'pricing_rules',
     'cancel_fee',
     'employees',
-    'employees/activity',
     'audit_trail',
     'approval_center',
     'dashboard_visibility',

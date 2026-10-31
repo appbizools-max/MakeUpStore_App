@@ -2,6 +2,7 @@
  * Salbeau B2B Professional Verification Service
  * Handles verification lifecycle, role-based checks, database persistence & sync.
  */
+import { optimizeImage } from './imageOptimizer';
 
 export const B2B_ROLES = ['salon', 'artist', 'beautician'];
 export const ALL_ROLES = ['general', 'salon', 'artist', 'beautician'];
@@ -427,33 +428,64 @@ export const submitB2BVerification = async (supabase, {
 };
 
 /**
- * Uploads a document/image to Supabase Storage verification-docs bucket
+ * Uploads a document/image to Supabase Storage verification-docs bucket with HD compression.
+ * Automatically compresses large 5-15MB smartphone camera photos down to ~150-250KB WebP
+ * preserving fine text, stamps, and ID readability to save database & storage data.
  */
 export const uploadVerificationDocument = async (supabase, file, userId, customName = '') => {
   if (!supabase || !file) {
     return { success: false, error: 'Supabase client or file missing' };
   }
 
+  let uploadFile = file;
+  let fallbackDataUrl = '';
+  let compressionStats = null;
+
+  // 1. HD Image Compression before upload
+  try {
+    const isImage = (file.type && file.type.startsWith('image/')) || 
+                    (typeof file === 'string' && (file.startsWith('data:image/') || /\.(jpe?g|png|webp|bmp)$/i.test(file))) ||
+                    (file.name && /\.(jpe?g|png|webp|bmp)$/i.test(file.name));
+
+    if (isImage) {
+      const opt = await optimizeImage(file, 'VERIFICATION_DOC', {
+        filename: `${customName || 'doc'}_${Date.now()}.webp`
+      });
+      if (opt?.file) {
+        uploadFile = opt.file;
+        fallbackDataUrl = opt.dataUrl;
+        compressionStats = opt.summary;
+      }
+    }
+  } catch (compErr) {
+    console.warn('Pre-upload HD image compression notice:', compErr);
+  }
+
   try {
     const cleanUserId = (userId || 'anon').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const ext = file.name ? file.name.split('.').pop() : 'jpg';
-    const fileName = customName ? `${customName.replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}.${ext}` : `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+    const isWebP = uploadFile.type === 'image/webp';
+    const ext = isWebP ? 'webp' : (uploadFile.name ? uploadFile.name.split('.').pop() : 'jpg');
+    const fileName = customName 
+      ? `${customName.replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}.${ext}` 
+      : `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
     const filePath = `${cleanUserId}/${fileName}`;
 
     const { data, error } = await supabase.storage
       .from('verification-docs')
-      .upload(filePath, file, {
-        cacheControl: '3600',
+      .upload(filePath, uploadFile, {
+        contentType: uploadFile.type || 'image/webp',
+        cacheControl: '31536000',
         upsert: true
       });
 
     if (error) {
-      console.warn('Storage upload error, using local/empty URL:', error);
+      console.warn('Storage upload notice, falling back to HD compressed URL:', error);
       return {
         success: true,
-        url: typeof file === 'string' ? file : '',
+        url: fallbackDataUrl || (typeof file === 'string' ? file : ''),
         path: filePath,
-        name: file.name || fileName
+        name: file.name || fileName,
+        compression: compressionStats
       };
     }
 
@@ -463,16 +495,18 @@ export const uploadVerificationDocument = async (supabase, file, userId, customN
 
     return {
       success: true,
-      url: publicUrlData?.publicUrl || filePath,
+      url: publicUrlData?.publicUrl ? `${publicUrlData.publicUrl}?v=${Date.now()}` : (fallbackDataUrl || filePath),
       path: filePath,
-      name: file.name || fileName
+      name: file.name || fileName,
+      compression: compressionStats
     };
   } catch (err) {
-    console.warn('Document upload catch:', err);
+    console.warn('Document upload catch, using HD fallback:', err);
     return {
       success: true,
-      url: typeof file === 'string' ? file : '',
-      name: file.name || 'Uploaded Document'
+      url: fallbackDataUrl || (typeof file === 'string' ? file : ''),
+      name: file.name || 'Uploaded Document',
+      compression: compressionStats
     };
   }
 };

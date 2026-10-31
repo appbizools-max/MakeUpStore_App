@@ -120,20 +120,22 @@ export const VerificationStatusScreen = () => {
               Your professional account details have been submitted successfully. Our team is reviewing your documents and verifying your credentials.
             </p>
 
-            <div className="bg-white rounded-2xl p-5 border border-blue-100 max-w-md mx-auto text-left space-y-3 shadow-2xs">
-              <div className="flex justify-between items-center text-xs pb-2 border-b border-blue-50">
+            <div className="bg-white rounded-2xl p-5 border border-blue-100 max-w-md mx-auto text-left shadow-2xs">
+              <div className="flex justify-between items-center text-xs py-2 border-b border-blue-50">
                 <span className="text-stone-500 font-medium">Applied Account Role</span>
-                <span className="font-bold text-stone-900">{roleTitle}</span>
+                <span className="font-bold text-stone-900 text-right ml-2">{roleTitle}</span>
               </div>
 
-              <div className="flex justify-between items-center text-xs pb-2 border-b border-blue-50">
+              <div className="flex justify-between items-center text-xs py-2 border-b border-blue-50">
                 <span className="text-stone-500 font-medium">Submission Date</span>
-                <span className="font-bold text-stone-900">{submittedDate}</span>
+                <span className="font-bold text-stone-900 text-right ml-2">{submittedDate}</span>
               </div>
 
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-stone-500 font-medium">Current Catalog Pricing</span>
-                <span className="font-bold text-amber-600">Standard Retail (Until Approved)</span>
+              <div className="pt-2.5 pb-0.5">
+                <div className="text-xs text-stone-500 font-medium mb-1.5">Current Catalog Pricing</div>
+                <span className="inline-block bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-3 py-1 rounded-lg">
+                  Standard Retail (Until Approved)
+                </span>
               </div>
             </div>
           </div>

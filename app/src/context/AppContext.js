@@ -209,6 +209,23 @@ export const DEFAULT_RECOMMENDATION_CONFIG = {
 
 export const AUTH_SESSION_KEY = 'salbeau_auth_session';
 
+const getCachedData = (key, fallback) => {
+  try {
+    const memorySaved = storage.getSync(key);
+    if (memorySaved) {
+      const parsed = JSON.parse(memorySaved);
+      if (parsed !== undefined && parsed !== null) return parsed;
+    }
+  } catch (e) {}
+  return fallback;
+};
+
+const setCachedData = (key, val) => {
+  try {
+    storage.setItem(key, JSON.stringify(val));
+  } catch (e) {}
+};
+
 export const EMPTY_USER_PROFILE = {
   id: null,
   name: '',
@@ -389,11 +406,52 @@ export const AppProvider = ({ children }) => {
     let isMounted = true;
     const restoreSession = async () => {
       try {
-        const saved = await storage.getItem(AUTH_SESSION_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && parsed.phone && parsed.isProfileComplete) {
-            if (isMounted) {
+        const [savedAuth, savedProds, savedCats, savedBrands, savedSubs] = await Promise.all([
+          storage.getItem(AUTH_SESSION_KEY),
+          storage.getItem('salbeau_cache_products'),
+          storage.getItem('salbeau_cache_categories'),
+          storage.getItem('salbeau_cache_brands'),
+          storage.getItem('salbeau_cache_subcategories'),
+        ]);
+
+        if (isMounted) {
+          if (savedProds) {
+            try {
+              const parsedProds = JSON.parse(savedProds);
+              if (Array.isArray(parsedProds) && parsedProds.length > 0) {
+                setProducts(prev => (prev.length === 0 ? parsedProds : prev));
+                setIsCatalogLoading(false);
+              }
+            } catch (_) {}
+          }
+          if (savedCats) {
+            try {
+              const parsedCats = JSON.parse(savedCats);
+              if (Array.isArray(parsedCats) && parsedCats.length > 0) {
+                setRawCategories(prev => (prev.length === 0 ? parsedCats : prev));
+              }
+            } catch (_) {}
+          }
+          if (savedBrands) {
+            try {
+              const parsedBrands = JSON.parse(savedBrands);
+              if (Array.isArray(parsedBrands) && parsedBrands.length > 0) {
+                setBrands(prev => (prev.length === 0 ? parsedBrands : prev));
+              }
+            } catch (_) {}
+          }
+          if (savedSubs) {
+            try {
+              const parsedSubs = JSON.parse(savedSubs);
+              if (Array.isArray(parsedSubs) && parsedSubs.length > 0) {
+                setSubcategories(prev => (prev.length === 0 ? parsedSubs : prev));
+              }
+            } catch (_) {}
+          }
+
+          if (savedAuth) {
+            const parsed = JSON.parse(savedAuth);
+            if (parsed && parsed.phone && parsed.isProfileComplete) {
               if (parsed.profile) setUserProfile(parsed.profile);
               if (parsed.role) setUserRole(parsed.role);
               if (parsed.addresses && Array.isArray(parsed.addresses)) setAddresses(parsed.addresses);
@@ -501,15 +559,20 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  const [brands, setBrands] = useState([]);
-  const [rawCategories, setRawCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
-  const [leafCategories, setLeafCategories] = useState([]);
-  const [pricingRules, setPricingRules] = useState(DEFAULT_PRICING_RULES);
+  const [brands, setBrands] = useState(() => getCachedData('salbeau_cache_brands', []));
+  const [rawCategories, setRawCategories] = useState(() => getCachedData('salbeau_cache_categories', []));
+  const [subcategories, setSubcategories] = useState(() => getCachedData('salbeau_cache_subcategories', []));
+  const [leafCategories, setLeafCategories] = useState(() => getCachedData('salbeau_cache_leaf_categories', []));
+  const [pricingRules, setPricingRules] = useState(() => getCachedData('salbeau_pricing_rules', DEFAULT_PRICING_RULES));
   const categories = useMemo(() => {
     return (rawCategories || []).filter(c => c.enabled !== false);
   }, [rawCategories]);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => getCachedData('salbeau_cache_products', []));
+  const [isCatalogLoading, setIsCatalogLoading] = useState(() => {
+    const cachedProds = getCachedData('salbeau_cache_products', []);
+    const cachedCats = getCachedData('salbeau_cache_categories', []);
+    return !(cachedProds && cachedProds.length > 0 && cachedCats && cachedCats.length > 0);
+  });
 
   const productsRef = useRef(products);
   useEffect(() => {
@@ -525,7 +588,7 @@ export const AppProvider = ({ children }) => {
 
   const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(() => getCachedData('salbeau_cache_orders', []));
   const [consecutiveCancels, setConsecutiveCancels] = useState(0);
   const [showCancelWarningModal, setShowCancelWarningModal] = useState(false);
   const [pendingCancelOrderId, setPendingCancelOrderId] = useState(null);
@@ -571,6 +634,7 @@ export const AppProvider = ({ children }) => {
             const parsedPricing = JSON.parse(pricingRow.logo);
             if (parsedPricing && typeof parsedPricing === 'object') {
               setPricingRules(parsedPricing);
+              setCachedData('salbeau_pricing_rules', parsedPricing);
             }
           } catch (e) {}
         }
@@ -581,6 +645,7 @@ export const AppProvider = ({ children }) => {
             const parsedVisibility = JSON.parse(visibilityRow.logo);
             if (parsedVisibility && typeof parsedVisibility === 'object') {
               setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
+              setCachedData('salbeau_home_section_visibility', parsedVisibility);
             }
           } catch (e) { }
         }
@@ -591,6 +656,7 @@ export const AppProvider = ({ children }) => {
             const parsedRec = JSON.parse(recRow.logo);
             if (parsedRec && typeof parsedRec === 'object') {
               setRecommendationConfig(prev => ({ ...prev, ...parsedRec }));
+              setCachedData('salbeau_recommendation_config', parsedRec);
             }
           } catch (e) { }
         }
@@ -601,12 +667,12 @@ export const AppProvider = ({ children }) => {
             const parsedBanners = JSON.parse(bannersRow.logo);
             if (Array.isArray(parsedBanners) && parsedBanners.length > 0) {
               setHomeBanners(parsedBanners);
-              storage.setItem('salbeau_home_banners', JSON.stringify(parsedBanners)).catch(() => {});
+              setCachedData('salbeau_home_banners', parsedBanners);
             }
           } catch (e) { }
         }
 
-        setBrands(brandsData
+        const mappedBrands = brandsData
           .filter(b => b.id !== 'app_category_order_config' && b.id !== 'app_brand_category_map' && b.id !== 'app_home_section_visibility' && b.id !== 'app_recommendation_config' && b.id !== 'app_pricing_discount_config' && b.id !== 'app_home_banners' && b.id !== 'salbeau_category_subcategory_hierarchy' && b.id !== 'salbeau_customer_search_requests')
           .map(b => ({
             id: b.id,
@@ -614,8 +680,10 @@ export const AppProvider = ({ children }) => {
             enabled: b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0 && b.status !== 'hidden' && b.status !== 'disabled',
             logo: b.logo
           }))
-          .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }))
-        );
+          .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
+
+        setBrands(mappedBrands);
+        setCachedData('salbeau_cache_brands', mappedBrands);
 
         // Live Category & Subcategory Master Hierarchy Sync
         const hierRow = brandsData.find(b => b.id === 'salbeau_category_subcategory_hierarchy');
@@ -629,9 +697,11 @@ export const AppProvider = ({ children }) => {
               }
               if (Array.isArray(parsedHier.subcategories)) {
                 setSubcategories(parsedHier.subcategories);
+                setCachedData('salbeau_cache_subcategories', parsedHier.subcategories);
               }
               if (Array.isArray(parsedHier.leafCategories)) {
                 setLeafCategories(parsedHier.leafCategories);
+                setCachedData('salbeau_cache_leaf_categories', parsedHier.leafCategories);
               }
             }
           } catch (e) {}
@@ -677,6 +747,7 @@ export const AppProvider = ({ children }) => {
           });
           mergedSubs.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
           setSubcategories(mergedSubs);
+          setCachedData('salbeau_cache_subcategories', mergedSubs);
         }
 
         const catConfigRow = brandsData.find(b => b.id === 'app_category_order_config');
@@ -713,14 +784,20 @@ export const AppProvider = ({ children }) => {
 
       finalCategories.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
       setRawCategories(finalCategories);
+      setCachedData('salbeau_cache_categories', finalCategories);
 
       if (productsRes.data) {
-        setProducts(productsRes.data.map(mapProductFromDb).filter(Boolean));
+        const mappedProducts = productsRes.data.map(mapProductFromDb).filter(Boolean);
+        setProducts(mappedProducts);
+        setCachedData('salbeau_cache_products', mappedProducts);
       } else {
         setProducts([]);
+        setCachedData('salbeau_cache_products', []);
       }
+      setIsCatalogLoading(false);
     } catch (err) {
       console.warn('Supabase catalog fetch error:', err);
+      setIsCatalogLoading(false);
     }
   }, []);
 
@@ -734,8 +811,9 @@ export const AppProvider = ({ children }) => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const updatedOrder = mapOrderFromDb(payload.new);
-          const cleanPhone = (userProfile?.phone || '').trim();
-          const cleanName = (userProfile?.name || '').trim().toLowerCase();
+          const curProfile = userProfileRef.current;
+          const cleanPhone = (curProfile?.phone || '').trim();
+          const cleanName = (curProfile?.name || '').trim().toLowerCase();
           const isMyOrder = Boolean(
             !cleanPhone || !updatedOrder.phone ||
             (cleanPhone && updatedOrder.phone && updatedOrder.phone.trim() === cleanPhone) ||
@@ -762,10 +840,11 @@ export const AppProvider = ({ children }) => {
       // 2. USERS (profile, role, verification status)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
         const u = payload.new;
-        if (u && (u.phone === userProfile?.phone || u.id === userProfile?.id)) {
+        const curProfile = userProfileRef.current;
+        if (u && (u.phone === curProfile?.phone || u.id === curProfile?.id)) {
           setUserProfile(prev => {
             const nextRole = u.role || prev.role || 'general';
-            if (nextRole !== userRole) {
+            if (nextRole !== userRoleRef.current) {
               setUserRole(nextRole);
             }
             return {
@@ -791,7 +870,8 @@ export const AppProvider = ({ children }) => {
       // 2b. B2B VERIFICATIONS (application status and rejection notes)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'b2b_verifications' }, (payload) => {
         const v = payload.new;
-        if (v && (v.user_id === userProfile?.id || v.phone === userProfile?.phone)) {
+        const curProf = userProfileRef.current;
+        if (v && (v.user_id === curProf?.id || v.phone === curProf?.phone)) {
           setUserVerificationRecord(v);
           if (v.verification_status) {
             setUserProfile(prev => ({
@@ -1054,7 +1134,8 @@ export const AppProvider = ({ children }) => {
       })
       // 7. FAVORITES
       .on('postgres_changes', { event: '*', schema: 'public', table: 'favorites' }, (payload) => {
-        const userId = userProfile?.id || ('u_' + (userProfile?.phone || '').replace(/\D/g, '')) || 'guest_user';
+        const curP = userProfileRef.current;
+        const userId = curP?.id || ('u_' + (curP?.phone || '').replace(/\D/g, '')) || 'guest_user';
         if (payload.eventType === 'INSERT' && payload.new && payload.new.user_id === userId) {
           const matchedProd = productsRef.current.find(p => p.id === payload.new.product_id);
           if (matchedProd) {
@@ -1066,19 +1147,24 @@ export const AppProvider = ({ children }) => {
       })
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          // Connected
-        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[Supabase Realtime] Reconnecting after status:', status, err);
-          setTimeout(() => {
-            fetchCatalog();
-          }, 2500);
+          // Active realtime subscription
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          if (!isCleaningUp) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => {
+              if (!isCleaningUp) fetchCatalog();
+            }, 3000);
+          }
         }
+        // status === 'CLOSED' is normal teardown during unmount; no warning or reconnect needed
       });
 
     return () => {
+      isCleaningUp = true;
+      clearTimeout(reconnectTimer);
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.phone, userProfile?.id, userRole, fetchCatalog]);
+  }, [fetchCatalog]);
 
   // Load user orders in background on demand or user change
   useEffect(() => {
@@ -2159,6 +2245,7 @@ export const AppProvider = ({ children }) => {
         refreshCatalog: fetchCatalog,
         logout,
         isRestoringSession,
+        isCatalogLoading,
         productSalesCounts,
         homeBanners,
         activeBanners,

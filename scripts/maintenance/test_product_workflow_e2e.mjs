@@ -340,7 +340,10 @@ test('Duplicate Variant SKU in batch is identified as specific error', () => {
 console.log('\n📌 SCENARIO 10: Sidebar Consolidation (Unified Under Products)');
 
 import fs from 'fs';
-const sidebarSrc = fs.readFileSync('admin/src/components/common/AdminSidebar.jsx', 'utf8');
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const sidebarSrc = fs.readFileSync(path.resolve(__dirname, '../../admin/src/components/common/AdminSidebar.jsx'), 'utf8');
 
 test('Bulk Product Entry removed as standalone navigation item from PRODUCT MANAGEMENT in AdminSidebar', () => {
   const hasBulkInSidebar = sidebarSrc.includes("id: 'products/bulk'");

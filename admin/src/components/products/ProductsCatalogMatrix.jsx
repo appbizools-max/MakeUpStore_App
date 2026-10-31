@@ -40,7 +40,6 @@ import {
 } from 'lucide-react';
 import SearchableSelect from '../common/SearchableSelect';
 import RoleQuantityTiersManager from './RoleQuantityTiersManager';
-import GeneratedDataPanel from './GeneratedDataPanel';
 import { getBeautyShadeName } from '../common/HexColorPicker';
 import { getDefaultQuantityTiers } from '../../utils/quantityTiersUtils';
 import { getSafeActiveVariants } from '../../utils/productSearchEngine';
@@ -57,7 +56,7 @@ import * as XLSX from 'xlsx';
  * - Instant inline expandable details panel & modal inspector
  * - Dynamic view mode (Product Families vs All Sellable Variants)
  * - Universal Barcode Scanner & Search
- * - Expandable Child Variants, Shade Manager, Quantity Tiers Manager, and Rich Discovery panels
+ * - Expandable Child Variants, Shade Manager, and Quantity Tiers Manager
  */
 export default function ProductsCatalogMatrix({
   filteredProducts = [],
@@ -87,8 +86,6 @@ export default function ProductsCatalogMatrix({
   setEditingTiersProductId,
   editingShadeProductId = null,
   setEditingShadeProductId,
-  editingRichDataProductId = null,
-  setEditingRichDataProductId,
   getTotalQuantityTiersCount,
   handleToggleProductTiersPanel,
   handleToggleProductShadesPanel,
@@ -1143,22 +1140,6 @@ export default function ProductsCatalogMatrix({
 
                             <button
                               type="button"
-                              onClick={() =>
-                                setEditingRichDataProductId((prev) => (prev === p.id ? null : p.id))
-                              }
-                              className={`px-2 py-1.5 rounded-xl font-bold flex items-center gap-1 border transition-all text-[10.5px] cursor-pointer shadow-2xs ${
-                                editingRichDataProductId === p.id
-                                  ? 'bg-indigo-600 text-white border-indigo-600'
-                                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
-                              }`}
-                              title="View & edit auto-generated discovery data (keywords, benefits, highlights, SEO)"
-                            >
-                              <Sparkles size={11} />
-                              <span>Discovery</span>
-                            </button>
-
-                            <button
-                              type="button"
                               onClick={() => handleOpenDeleteProduct(p)}
                               className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-rose-200 transition-all text-[10.5px] cursor-pointer shadow-2xs"
                               title="Delete this product"
@@ -1873,20 +1854,6 @@ export default function ProductsCatalogMatrix({
                       </tr>
                     )}
 
-                    {/* EXPANDABLE GENERATED DISCOVERY PANEL */}
-                    {editingRichDataProductId === p.id && (
-                      <tr key={p.id + '_rich_panel'} className="bg-indigo-50/30 border-y-2 border-indigo-100">
-                        <td colSpan={11} className="p-0">
-                          <GeneratedDataPanel
-                            product={p}
-                            onSave={async (patch) => {
-                              if (updateProduct) await updateProduct(p.id, patch);
-                            }}
-                            onClose={() => setEditingRichDataProductId(null)}
-                          />
-                        </td>
-                      </tr>
-                    )}
                   </React.Fragment>
                 );
               })

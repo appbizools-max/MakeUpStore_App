@@ -7,7 +7,7 @@ import { getAnalytics, isSupported } from 'firebase/analytics';
 
 // Official Salbeau Firebase Web Configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCVA0tumqqN97dodRZ2E97Jh3oOkz0cY9A",
+  apiKey: "AIzaSyCZAW--ewEn7Re30ZkP6Qh7oYbj-FBBofI",
   authDomain: "salbeauapp.firebaseapp.com",
   projectId: "salbeauapp",
   storageBucket: "salbeauapp.firebasestorage.app",

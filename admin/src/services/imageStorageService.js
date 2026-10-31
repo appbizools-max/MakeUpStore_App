@@ -23,7 +23,8 @@ const BUCKET_MAPPING = {
   BRAND_LOGO: ['brand-logos', 'gc-home-assets', 'categories'],
   CATEGORY: ['categories', 'gc-home-assets', 'products'],
   SUBCATEGORY: ['categories', 'gc-home-assets', 'products'],
-  PRODUCT: ['products', 'gc-home-assets', 'categories']
+  PRODUCT: ['products', 'gc-home-assets', 'categories'],
+  VERIFICATION_DOC: ['verification-docs', 'products', 'gc-home-assets']
 };
 
 /**

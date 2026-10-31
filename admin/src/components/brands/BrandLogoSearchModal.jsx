@@ -91,13 +91,6 @@ export default function BrandLogoSearchModal({
             thumbnail: `https://logo.clearbit.com/${cleanName}.in`,
             title: `${q} India Portal Logo`,
             source: 'Brand CDN India'
-          },
-          {
-            id: 'fb_3',
-            url: `https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&auto=format&fit=crop&q=80`,
-            thumbnail: `https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80`,
-            title: `${q} Beauty & Cosmetics Badge`,
-            source: 'Cosmetic Library'
           }
         ];
 

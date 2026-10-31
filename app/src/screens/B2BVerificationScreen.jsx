@@ -30,6 +30,7 @@ import {
   STANDARD_DOCUMENT_SLOTS,
   uploadVerificationDocument
 } from '../utils/b2bVerificationService';
+import { optimizeImage } from '../utils/imageOptimizer';
 
 export const B2BVerificationScreen = () => {
   const {
@@ -42,6 +43,9 @@ export const B2BVerificationScreen = () => {
   } = useApp();
 
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
+  const [showUploadSourceModal, setShowUploadSourceModal] = useState(false);
   const effectiveRole = userRole || userProfile?.role || 'salon';
   const status = (userProfile?.verificationStatus || userProfile?.verification_status || userVerificationRecord?.verification_status || 'not_submitted').toLowerCase().trim();
   const isApproved = status === 'approved' || status === 'verified';
@@ -204,7 +208,12 @@ export const B2BVerificationScreen = () => {
       const cleanUserId = userProfile?.id || `u_${(userProfile?.phone || 'anon').replace(/\D/g, '')}`;
       const uploadRes = await uploadVerificationDocument(supabase, file, cleanUserId, activeUploadSlot.key);
 
-      const finalUrl = uploadRes?.url || URL.createObjectURL(file);
+      let finalUrl = uploadRes?.url;
+      if (!finalUrl && file.type && file.type.startsWith('image/')) {
+        const opt = await optimizeImage(file, 'VERIFICATION_DOC');
+        finalUrl = opt.dataUrl;
+      }
+      finalUrl = finalUrl || '';
       const finalName = file.name || activeUploadSlot.label;
 
       setDocuments(prev => {
@@ -511,42 +520,12 @@ export const B2BVerificationScreen = () => {
           {/* 2. PERSONAL / PROFESSIONAL ADDRESS */}
           {/* ======================================================== */}
           <div className="bg-white rounded-3xl p-6 border border-stone-200 shadow-xs">
-            <div className="flex items-center justify-between mb-5 pb-3 border-b border-stone-100">
-              <div className="flex items-center gap-2">
-                <MapPin size={18} className="text-[#C2477A]" />
-                <h3 className="text-xs font-black uppercase text-[#3A2430] tracking-wider">
-                  Professional Address
-                </h3>
-              </div>
-
-              {/* Use Current Location Button */}
-              <button
-                type="button"
-                onClick={() => handleUseCurrentLocation('professional')}
-                disabled={isLocatingProf}
-                className="bg-[#FFF0F5] hover:bg-[#FDE2EC] border border-[#F8BBD0] text-[#C2477A] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                {isLocatingProf ? <Loader2 size={13} className="animate-spin" /> : <Locate size={13} />}
-                <span>{isLocatingProf ? 'Detecting Location...' : 'Use Current Location'}</span>
-              </button>
+            <div className="flex items-center gap-2 mb-5 pb-3 border-b border-stone-100">
+              <MapPin size={18} className="text-[#C2477A]" />
+              <h3 className="text-xs font-black uppercase text-[#3A2430] tracking-wider">
+                Professional Address
+              </h3>
             </div>
-
-            {/* Location tag if set */}
-            {locationCoords && (
-              <div className="bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-xl mb-4 flex items-center justify-between text-xs font-bold text-emerald-900">
-                <span className="flex items-center gap-1.5">
-                  <MapPin size={14} className="text-emerald-600" />
-                  <span>Detected Location: {locationCoords}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLocationCoords(null)}
-                  className="text-emerald-700 hover:text-emerald-900 p-0.5 cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
 
             <div className="space-y-4">
               <div>
@@ -867,7 +846,7 @@ export const B2BVerificationScreen = () => {
                             type="button"
                             onClick={() => {
                               setActiveUploadSlot(slot);
-                              if (fileInputRef.current) fileInputRef.current.click();
+                              setShowUploadSourceModal(true);
                             }}
                             className="text-[11px] font-bold text-[#C2477A] bg-pink-50 hover:bg-pink-100 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
                           >
@@ -889,7 +868,7 @@ export const B2BVerificationScreen = () => {
                           type="button"
                           onClick={() => {
                             setActiveUploadSlot(slot);
-                            if (fileInputRef.current) fileInputRef.current.click();
+                            setShowUploadSourceModal(true);
                           }}
                           className="bg-white border border-dashed border-[#C2477A] text-[#C2477A] hover:bg-pink-50/80 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                         >
@@ -911,14 +890,124 @@ export const B2BVerificationScreen = () => {
             </div>
           </div>
 
-          {/* Hidden File Input for Browser File Picker */}
+          {/* Hidden Inputs for Camera, Gallery, and File Browser */}
           <input
-            ref={fileInputRef}
+            ref={cameraInputRef}
             type="file"
-            accept="image/*,application/pdf"
+            accept="image/*"
+            capture="environment"
             onChange={handleFileUpload}
             className="hidden"
           />
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,application/pdf,.pdf"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+
+          {/* Document Upload Source Selector Modal */}
+          {activeUploadSlot && showUploadSourceModal && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-pink-100 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <div>
+                    <h4 className="text-sm font-black text-gray-900">Upload Verification Document</h4>
+                    <p className="text-xs text-[#C2477A] font-bold mt-0.5">{activeUploadSlot.label}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowUploadSourceModal(false)}
+                    className="text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-stone-100 cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {/* Option 1: Take Photo with Camera */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUploadSourceModal(false);
+                      if (cameraInputRef.current) cameraInputRef.current.click();
+                    }}
+                    className="flex items-center gap-3 p-3.5 rounded-2xl border border-pink-200 bg-pink-50/50 hover:bg-pink-100/60 transition-all text-left cursor-pointer group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#C2477A] text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Camera size={20} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-gray-900 block group-hover:text-[#C2477A]">Take Photo with Camera</span>
+                      <span className="text-[10px] text-gray-500 font-medium">Capture certificate or ID using device camera</span>
+                    </div>
+                  </button>
+
+                  {/* Option 2: Choose Photo from Gallery */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUploadSourceModal(false);
+                      if (galleryInputRef.current) galleryInputRef.current.click();
+                    }}
+                    className="flex items-center gap-3 p-3.5 rounded-2xl border border-stone-200 bg-stone-50/50 hover:bg-stone-100/60 transition-all text-left cursor-pointer group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <ImageIcon size={20} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-gray-900 block group-hover:text-purple-600">Choose from Photos / Gallery</span>
+                      <span className="text-[10px] text-gray-500 font-medium">Select image from device photo library</span>
+                    </div>
+                  </button>
+
+                  {/* Option 3: Choose Local File / Document (PDF, Images) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUploadSourceModal(false);
+                      if (fileInputRef.current) fileInputRef.current.click();
+                    }}
+                    className="flex items-center gap-3 p-3.5 rounded-2xl border border-stone-200 bg-stone-50/50 hover:bg-stone-100/60 transition-all text-left cursor-pointer group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-gray-900 block group-hover:text-indigo-600">Browse Local Files / PDF</span>
+                      <span className="text-[10px] text-gray-500 font-medium">Upload PDF document, scanned copy, or file</span>
+                    </div>
+                  </button>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[10px] text-amber-900 font-medium flex items-center gap-2">
+                  <Sparkles size={14} className="text-amber-600 shrink-0" />
+                  <span>Automatic HD Compression active: Documents are optimized for fast upload while maintaining crystal-clear text readability.</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Uploading & Compression Overlay */}
+          {isUploadingFile && (
+            <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white p-5 rounded-3xl shadow-xl flex items-center gap-3 border border-pink-100">
+                <Loader2 size={24} className="text-[#C2477A] animate-spin" />
+                <div>
+                  <h4 className="text-xs font-black text-gray-900">Optimizing & Uploading Document...</h4>
+                  <p className="text-[10.5px] text-gray-500 font-medium">Compressing with HD quality for secure verification</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* SUBMIT BUTTON */}
           <div className="pt-2">

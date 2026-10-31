@@ -1310,13 +1310,13 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                             {/* Thumbnail Preview or Placeholder */}
                             {uploadedDoc ? (
                               <div>
-                                {uploadedDoc.file_url ? (
+                                {(uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl) ? (
                                   <div
-                                    onClick={() => setPreviewImage(uploadedDoc.file_url)}
+                                    onClick={() => setPreviewImage(uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl)}
                                     className="w-full h-28 rounded-lg bg-gray-100 overflow-hidden relative group cursor-pointer border border-gray-100 mb-2"
                                   >
                                     <img
-                                      src={uploadedDoc.file_url}
+                                      src={uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl}
                                       alt={slot.label}
                                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                       onError={(e) => {
@@ -1353,7 +1353,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                           <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
                             {uploadedDoc ? (
                               <a
-                                href={uploadedDoc.file_url}
+                                href={uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="font-bold text-[#C2477A] hover:underline flex items-center gap-1"
@@ -1385,7 +1385,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                           .map((doc, idx) => (
                             <div key={doc.id || idx} className="bg-white p-2.5 rounded-xl border border-gray-200 text-xs flex items-center justify-between">
                               <span className="font-bold text-gray-800 truncate">{doc.file_name || doc.document_type}</span>
-                              <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-[#C2477A] font-bold text-[10px] ml-2">
+                              <a href={doc.file_url || doc.url || doc.fileUrl} target="_blank" rel="noreferrer" className="text-[#C2477A] font-bold text-[10px] ml-2">
                                 View
                               </a>
                             </div>

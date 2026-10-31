@@ -1,6 +1,21 @@
 import React, { useRef, useEffect } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StatusBar, BackHandler, ToastAndroid, Platform } from 'react-native';
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, StatusBar, BackHandler, ToastAndroid, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+// Apply Google Sans typography consistently across React Native components
+const defaultFont = Platform.select({
+  ios: 'Google Sans',
+  android: 'Google Sans',
+  default: 'Google Sans, sans-serif'
+});
+
+try {
+  if (Text.defaultProps == null) Text.defaultProps = {};
+  Text.defaultProps.style = [{ fontFamily: defaultFont }, Text.defaultProps.style];
+
+  if (TextInput.defaultProps == null) TextInput.defaultProps = {};
+  TextInput.defaultProps.style = [{ fontFamily: defaultFont }, TextInput.defaultProps.style];
+} catch (_) {}
 import { AppProvider, useApp } from './src/context/AppContext';
 import { RoleSelectionScreen } from './src/features/auth/RoleSelectionScreen';
 import { MobileLoginScreen } from './src/features/auth/MobileLoginScreen';

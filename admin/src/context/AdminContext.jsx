@@ -84,6 +84,7 @@ const initialCancelFeeSettings = {
 };
 
 import { STATUS_META, computeOverallOrderStatus } from '../utils/orderStatusEngine';
+import { dispatchOrderNotification, isValidStatusTransition } from '../services/orderNotificationService';
 export { STATUS_META, computeOverallOrderStatus };
 
 const mapOrderFromDb = (o) => {
@@ -1503,6 +1504,20 @@ export const AdminProvider = ({ children }) => {
         const brandNumber = row.brandNumber || generateNextBrandNumber(currentBrandsList);
         const brandCode = row.brandCode || generateProposedBrandCode(row.brandName, currentBrandsList, brandNumber);
 
+        let finalImportLogo = row.logoUrl || '';
+        if (finalImportLogo && (finalImportLogo.startsWith('data:') || finalImportLogo instanceof Blob)) {
+          try {
+            const logoUpload = await uploadOptimizedImage(finalImportLogo, 'BRAND_LOGO', {
+              folder: 'brand-logos',
+              filenamePrefix: brandCode,
+              brandCode
+            });
+            if (logoUpload?.url) finalImportLogo = logoUpload.url;
+          } catch (luErr) {
+            console.warn('Brand logo import optimization notice:', luErr);
+          }
+        }
+
         const newObj = {
           id: 'b_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
           name: row.brandName,
@@ -1512,7 +1527,7 @@ export const AdminProvider = ({ children }) => {
           brand_code: brandCode,
           categories: row.categories || [],
           category: row.categories?.[0] || 'Makeup',
-          logo: row.logoUrl || '',
+          logo: finalImportLogo,
           enabled: row.enabled,
           description: row.description || '',
           internalNotes: row.internalNotes || '',
@@ -1769,6 +1784,51 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
+  // Centralized helper to guarantee product images and variant shade images are HD compressed
+  // before hitting the PostgreSQL database (saving database memory and Supabase quota)
+  const optimizeProductImageSet = async (primaryImage, imagesList, shadesList, prefix = 'prod') => {
+    let finalPrimary = primaryImage || '';
+    let finalImages = Array.isArray(imagesList) ? [...imagesList] : [];
+    let finalShades = Array.isArray(shadesList) ? [...shadesList] : [];
+
+    if (finalPrimary && (finalPrimary.startsWith('data:') || finalPrimary instanceof Blob)) {
+      try {
+        const up = await uploadOptimizedImage(finalPrimary, 'PRODUCT', { folder: 'products', filenamePrefix: prefix });
+        if (up?.url) finalPrimary = up.url;
+      } catch (e) {
+        console.warn('Product image pre-upload optimization notice:', e);
+      }
+    }
+
+    for (let i = 0; i < finalImages.length; i++) {
+      const img = finalImages[i];
+      if (img && (img.startsWith('data:') || img instanceof Blob)) {
+        try {
+          const up = await uploadOptimizedImage(img, 'PRODUCT', { folder: 'products', filenamePrefix: `${prefix}_img${i}` });
+          if (up?.url) finalImages[i] = up.url;
+        } catch (e) {
+          console.warn(`Gallery image ${i} optimization notice:`, e);
+        }
+      }
+    }
+
+    for (let i = 0; i < finalShades.length; i++) {
+      const s = finalShades[i];
+      if (s && s.image && (s.image.startsWith('data:') || s.image instanceof Blob)) {
+        try {
+          const up = await uploadOptimizedImage(s.image, 'PRODUCT', { folder: 'products', filenamePrefix: `${prefix}_var${i}` });
+          if (up?.url) {
+            finalShades[i] = { ...s, image: up.url, images: [up.url] };
+          }
+        } catch (e) {
+          console.warn(`Variant shade ${i} optimization notice:`, e);
+        }
+      }
+    }
+
+    return { finalPrimary, finalImages, finalShades };
+  };
+
   const addProduct = async (newProduct, isDirectAdminWrite = false) => {
     // If current actor is an employee without direct publish permission, stage operation for Admin approval
     if (currentAuthUser?.role === 'employee' && !isDirectAdminWrite) {
@@ -1843,6 +1903,18 @@ export const AdminProvider = ({ children }) => {
       ...(Array.isArray(productObj.images) && productObj.images.length > 0 ? { images: productObj.images } : {})
     };
 
+    // Pre-compress and persist images to prevent multi-megabyte DB bloat
+    const { finalPrimary, finalImages, finalShades } = await optimizeProductImageSet(
+      productObj.image || (Array.isArray(productObj.images) && productObj.images[0] ? productObj.images[0] : ''),
+      productObj.images,
+      productObj.shades,
+      barcodeVal || productObj.sku || productId
+    );
+
+    if (finalImages.length > 0) {
+      mergedAdditionalInfo.images = finalImages;
+    }
+
     const payload = {
       id: productId,
       name: productObj.name,
@@ -1855,12 +1927,12 @@ export const AdminProvider = ({ children }) => {
       salon_price: Number(productObj.salonPrice || mrpVal),
       artist_price: Number(productObj.artistPrice || mrpVal),
       beautician_price: Number(productObj.beauticianPrice || mrpVal),
-      image: productObj.image || (Array.isArray(productObj.images) && productObj.images[0] ? productObj.images[0] : '')
+      image: finalPrimary
     };
 
     // Include shades if present
-    const shadesPayload = productObj.shades && productObj.shades.length > 0
-      ? { shades: productObj.shades }
+    const shadesPayload = finalShades && finalShades.length > 0
+      ? { shades: finalShades }
       : {};
 
     // Include per-product quantity tiers if present (with roleDiscounts)
@@ -2193,6 +2265,24 @@ export const AdminProvider = ({ children }) => {
         }).eq('id', orderId);
       }
 
+      // Dispatch In-App Supabase Realtime + FCM Push Notification
+      try {
+        await dispatchOrderNotification({
+          eventType: computedOverall,
+          orderId: targetOrder.id,
+          orderNumber: targetOrder.orderNumber || (targetOrder.id ? String(targetOrder.id).slice(-6).toUpperCase() : ''),
+          userId: targetOrder.userId || targetOrder.user_id,
+          userPhone: targetOrder.phone || targetOrder.userPhone,
+          meta: {
+            reason: (computedOverall === 'rejected' || newStatus === 'rejected') ? rejectionReason : undefined,
+            itemsCount: updatedItems.length,
+            amount: targetOrder.total || targetOrder.finalAmount
+          }
+        });
+      } catch (notifErr) {
+        console.warn('dispatchOrderNotification non-fatal notice:', notifErr);
+      }
+
       // Non-blocking write to order_status_history audit table
       try {
         await supabase.from('order_status_history').insert({
@@ -2363,8 +2453,30 @@ export const AdminProvider = ({ children }) => {
       if (updatedFields.salonPrice !== undefined) payload.salon_price = Number(updatedFields.salonPrice);
       if (updatedFields.artistPrice !== undefined) payload.artist_price = Number(updatedFields.artistPrice);
       if (updatedFields.beauticianPrice !== undefined) payload.beautician_price = Number(updatedFields.beauticianPrice);
-      if (updatedFields.image !== undefined) payload.image = updatedFields.image;
-      if (updatedFields.shades !== undefined) payload.shades = updatedFields.shades;
+      let resolvedImage = updatedFields.image;
+      let resolvedShades = updatedFields.shades;
+      let resolvedImages = updatedFields.images;
+
+      if ((resolvedImage && (resolvedImage.startsWith('data:') || resolvedImage instanceof Blob)) ||
+          (Array.isArray(resolvedImages) && resolvedImages.some(img => img && (img.startsWith('data:') || img instanceof Blob))) ||
+          (Array.isArray(resolvedShades) && resolvedShades.some(s => s && s.image && (s.image.startsWith('data:') || s.image instanceof Blob)))) {
+        try {
+          const optRes = await optimizeProductImageSet(
+            resolvedImage,
+            resolvedImages,
+            resolvedShades,
+            cleanBarcode || targetProduct.barcode || productId
+          );
+          if (resolvedImage !== undefined) resolvedImage = optRes.finalPrimary;
+          if (resolvedImages !== undefined) resolvedImages = optRes.finalImages;
+          if (resolvedShades !== undefined) resolvedShades = optRes.finalShades;
+        } catch (optErr) {
+          console.warn('updateProduct image optimization notice:', optErr);
+        }
+      }
+
+      if (updatedFields.image !== undefined) payload.image = resolvedImage;
+      if (updatedFields.shades !== undefined) payload.shades = resolvedShades;
       if (updatedFields.searchKeywords !== undefined) payload.search_keywords = updatedFields.searchKeywords;
       if (updatedFields.searchAliases !== undefined) payload.search_aliases = updatedFields.searchAliases;
       if (updatedFields.keyPoints !== undefined) payload.key_points = updatedFields.keyPoints;
@@ -2968,11 +3080,20 @@ export const AdminProvider = ({ children }) => {
 
   const addCategory = async (newCat) => {
     const newId = 'cat_' + Date.now();
+    let catImage = newCat.image || newCat.imageUrl || '';
+    if (catImage && (catImage.startsWith('data:') || catImage instanceof Blob)) {
+      try {
+        const up = await uploadOptimizedImage(catImage, 'CATEGORY', { folder: 'categories', filenamePrefix: 'cat' });
+        if (up?.url) catImage = up.url;
+      } catch (e) {
+        console.warn('Category image optimization notice:', e);
+      }
+    }
     const newCategoryObj = {
       id: newId,
       name: (newCat.name || '').trim(),
       icon: newCat.icon || '',
-      image: newCat.image || newCat.imageUrl || '',
+      image: catImage,
       color: newCat.color || '#FCE4EC',
       sort_order: categories.length + 1,
       enabled: newCat.enabled !== false,
@@ -3043,7 +3164,21 @@ export const AdminProvider = ({ children }) => {
   };
 
   const updateCategory = async (categoryId, updatedFields) => {
-    const updatedList = categories.map(c => c.id === categoryId ? { ...c, ...updatedFields } : c);
+    let finalFields = { ...updatedFields };
+    let catImage = updatedFields.image !== undefined ? updatedFields.image : updatedFields.imageUrl;
+    if (catImage && (catImage.startsWith('data:') || catImage instanceof Blob)) {
+      try {
+        const up = await uploadOptimizedImage(catImage, 'CATEGORY', { folder: 'categories', filenamePrefix: 'cat' });
+        if (up?.url) {
+          finalFields.image = up.url;
+          if (finalFields.imageUrl !== undefined) finalFields.imageUrl = up.url;
+        }
+      } catch (e) {
+        console.warn('Category image update optimization notice:', e);
+      }
+    }
+
+    const updatedList = categories.map(c => c.id === categoryId ? { ...c, ...finalFields } : c);
     setCategories(updatedList);
     try {
       await supabase.from('brands').upsert({

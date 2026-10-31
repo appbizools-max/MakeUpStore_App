@@ -393,7 +393,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
             </h2>
             <button
               type="button"
-              onClick={() => onNavigate(`employees/activity`)}
+              onClick={() => onNavigate('audit_trail')}
               className="text-xs font-bold text-[#CE4270] hover:underline"
             >
               Full Activity Feed →

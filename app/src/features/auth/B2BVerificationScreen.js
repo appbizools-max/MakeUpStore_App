@@ -21,6 +21,7 @@ import {
   ROLE_SHORT_TITLES,
   STANDARD_DOCUMENT_SLOTS
 } from '../../utils/b2bVerificationService';
+import { getSafeImageSource } from '../../utils/imageUtils';
 
 export const B2BVerificationScreen = () => {
   const {
@@ -854,11 +855,17 @@ export const B2BVerificationScreen = () => {
                   {uploadedDoc ? (
                     <View className="bg-white p-2.5 rounded-lg border border-stone-200 flex-row items-center justify-between">
                       <View className="flex-row items-center gap-2 flex-1 mr-2">
-                        <Image
-                          source={{ uri: uploadedDoc.url }}
-                          className="w-9 h-9 rounded bg-stone-100"
-                          resizeMode="cover"
-                        />
+                        {Boolean(uploadedDoc.url && typeof uploadedDoc.url === 'string' && !uploadedDoc.url.toLowerCase().includes('.pdf')) ? (
+                          <Image
+                            source={getSafeImageSource(uploadedDoc.url)}
+                            className="w-9 h-9 rounded bg-stone-100"
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View className="w-9 h-9 rounded bg-[#FFF0F5] items-center justify-center border border-[#FCE4EC]">
+                            <Ionicons name="document-text" size={18} color="#C2477A" />
+                          </View>
+                        )}
                         <View className="flex-1">
                           <Text className="text-xs font-bold text-stone-800 truncate" numberOfLines={1}>
                             {uploadedDoc.name}
@@ -1001,9 +1008,9 @@ export const B2BVerificationScreen = () => {
             <Ionicons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
 
-          {previewDocUrl && (
+          {Boolean(previewDocUrl && typeof previewDocUrl === 'string' && previewDocUrl.trim().length > 0) && (
             <Image
-              source={{ uri: previewDocUrl }}
+              source={getSafeImageSource(previewDocUrl)}
               className="w-full h-4/5 rounded-2xl"
               resizeMode="contain"
             />

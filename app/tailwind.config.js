@@ -26,8 +26,13 @@ module.exports = {
           success: '#4C8C5C',
           warningBg: '#FDEAF1',
         }
+      },
+      fontFamily: {
+        sans: ['"Google Sans"', '"Product Sans"', 'Plus Jakarta Sans', 'Poppins', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        body: ['"Google Sans"', '"Product Sans"', 'Plus Jakarta Sans', 'Poppins', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        display: ['"Google Sans"', '"Product Sans"', 'sans-serif'],
       }
     },
   },
   plugins: [],
-}
+};

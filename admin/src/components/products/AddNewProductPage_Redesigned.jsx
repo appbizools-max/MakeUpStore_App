@@ -82,6 +82,7 @@ import { BarcodeLookupReviewModal } from './BarcodeLookupReviewModal';
 import BrandFormModal from '../brands/BrandFormModal';
 import { lookupBarcodeData } from '../../services/barcodeLookupService';
 import { extractColorsFromImage, matchBeautyShade } from '../../services/aiColorService';
+import { optimizeImage } from '../../utils/imageOptimizer';
 import {
   isShadeApplicable,
   getSubcategoriesForCategory,
@@ -817,9 +818,24 @@ export default function AddNewProductPage({
               continue;
             }
           }
-          setImageError('Image upload failed. Storage bucket unavailable. Please provide an image URL instead.');
+          // Direct client-side HD WebP compression fallback (1200x1200px, 0.88 quality)
+          const opt = await optimizeImage(file, 'PRODUCT', { filename: file.name });
+          if (opt?.dataUrl) {
+            handleAddImageUrl(opt.dataUrl);
+            continue;
+          }
+          setImageError('Image optimization failed for "' + file.name + '".');
         } catch (err) {
-          console.error('Image upload failed:', err);
+          console.warn('Image storage upload notice, attempting HD WebP compression fallback:', err);
+          try {
+            const opt = await optimizeImage(file, 'PRODUCT', { filename: file.name });
+            if (opt?.dataUrl) {
+              handleAddImageUrl(opt.dataUrl);
+              continue;
+            }
+          } catch (optErr) {
+            console.error('All image compression attempts failed:', optErr);
+          }
           setImageError(`Upload error for "${file.name}": ${err.message || 'Please check your connection and try again.'}`);
         }
       }
