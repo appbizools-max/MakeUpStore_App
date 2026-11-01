@@ -119,6 +119,7 @@ import GeneratedDataPanel from './components/products/GeneratedDataPanel';
 import SearchableSelect from './components/common/SearchableSelect';
 import AdminSidebar from './components/common/AdminSidebar';
 import ImageField from './components/media/ImageField';
+import InlineImageSection from './components/media/InlineImageSection';
 import { getBeautyShadeName, MAKEUP_SWATCH_PRESETS, normalizeHex, isValidHex } from './components/common/HexColorPicker';
 import {
   DISCOUNT_ROLES,
@@ -361,6 +362,14 @@ const AdminDashboard = () => {
       window.history.pushState({ tab: tabId }, '', `/admin/${tabId}`);
     }
   };
+
+  useEffect(() => {
+    const handleNavEvent = (e) => {
+      if (e.detail) navigateToTab(e.detail);
+    };
+    window.addEventListener('salbeau:navigate-tab', handleNavEvent);
+    return () => window.removeEventListener('salbeau:navigate-tab', handleNavEvent);
+  }, [currentAuthUser]);
 
   // Automatic Role-Based Access Enforcer: Redirects employees away from unpermitted tabs
   useEffect(() => {
@@ -4159,6 +4168,8 @@ const AdminDashboard = () => {
               isPageMode={true}
               onClose={() => navigateToTab('products')}
               onNavigateToProducts={() => navigateToTab('products')}
+              onNavigateToBrands={() => navigateToTab('add_brand')}
+              onNavigateToCategories={() => navigateToTab('categories')}
               categories={categories}
               brands={brands}
               existingProducts={products}
@@ -7429,16 +7440,20 @@ const AdminDashboard = () => {
 
                   {/* Body */}
                   <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 py-4 sm:py-5 space-y-4 text-xs">
-                    {/* Centralized Product Image Manager */}
-                    <ImageField
-                      label="Product Image"
-                      sublabel="Live in User App. Drag & drop, paste (Ctrl+V), browse Google, or enter URL."
-                      value={editingProductData.image}
-                      onChange={(newUrl) => setEditingProductData(prev => ({ ...prev, image: newUrl }))}
-                      folder="products"
-                      filenamePrefix="prod"
-                      entityName={editingProductData.name || editingProductData.brandName || 'Product'}
-                    />
+                                        {/* Centralized Product Image Manager with Direct Google Search Bar & Drag Drop */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Product Image
+                      </label>
+                      <InlineImageSection
+                        imageUrl={editingProductData.image}
+                        onChange={(newUrl) => setEditingProductData(prev => ({ ...prev, image: newUrl }))}
+                        entityName={editingProductData.name || editingProductData.brandName || 'Product'}
+                        entityType="Product"
+                        folder="products"
+                        filenamePrefix="prod"
+                      />
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="sm:col-span-2">
                         <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">

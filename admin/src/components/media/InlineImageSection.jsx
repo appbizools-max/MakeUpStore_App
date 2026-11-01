@@ -43,6 +43,9 @@ export default function InlineImageSection({
   const getDefaultQuery = (name, type) => {
     const clean = (name || '').trim();
     if (!clean) return 'Beauty cosmetics product';
+    if (type === 'Product' || type === 'product') {
+      return clean;
+    }
     if (type === 'Product Type' || type === 'Select Category') {
       return `${clean} beauty product`;
     }
@@ -96,7 +99,7 @@ export default function InlineImageSection({
     setIsUploading(true);
     setUploadStatusText('Uploading image to Supabase Storage...');
 
-    const profileType = entityType.includes('Sub') ? 'SUBCATEGORY' : 'CATEGORY';
+    const profileType = entityType === 'Brand' ? 'BRAND_LOGO' : entityType === 'Product' ? 'PRODUCT' : entityType.includes('Sub') ? 'SUBCATEGORY' : 'CATEGORY';
     try {
       if (typeof uploadImage === 'function') {
         const publicUrl = await uploadImage(file, folder, filenamePrefix, profileType);
@@ -308,7 +311,7 @@ export default function InlineImageSection({
 
       {/* ── 2. GOOGLE IMAGES SEARCH & DIRECT DRAG-AND-DROP BAR ───────────── */}
       <div className="bg-gradient-to-r from-amber-50/70 via-pink-50/50 to-white p-4 rounded-2xl border border-amber-200/80 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs shadow-2xs">
               G
@@ -323,14 +326,7 @@ export default function InlineImageSection({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenGoogleImages}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition-all active:scale-[0.98] cursor-pointer"
-          >
-            <Globe size={13} />
-            <span>Search in Google Images ↗</span>
-          </button>
+          
         </div>
 
         {/* Search query input for Google Images search */}
@@ -397,10 +393,7 @@ export default function InlineImageSection({
             <p className="text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
               Drag any image from your Google Images search tab and drop it here. You can also paste (<kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-[10px] text-gray-800">Ctrl + V</kbd>) or <span className="text-[#C2477A] font-bold underline">Browse Files</span>.
             </p>
-            <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full font-bold inline-flex items-center gap-1 mt-1">
-              <CheckCircle2 size={11} />
-              <span>Automatically uploads to Supabase Storage and saves to database</span>
-            </div>
+            
           </div>
         )}
       </div>

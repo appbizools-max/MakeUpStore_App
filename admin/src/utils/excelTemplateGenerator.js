@@ -24,69 +24,69 @@ export const CANONICAL_TEMPLATE_COLUMNS = [...REQUIRED_HEADERS];
 export const generateAndDownloadTemplate = (categories = [], brands = [], options = {}) => {
   const headers = [...REQUIRED_HEADERS];
 
-  const sampleRows = [
+    const sampleRows = [
     // Sample 1: Parent-Child Variant Row 1 (Lakmé Liquid Lipstick - Shade 01 Red Carpet)
     [
-      '8901030383811',                                                           // BARCODE
-      '',     // IMAGE
-      'LAK-MATTE-LIP',                                                           // PARENT_SKU
-      'Lakmé Forever Matte Liquid Lip Colour',                                   // PRODUCT_NAME
-      'Makeup',                                                                  // CATEGORY
-      'Lips',                                                                    // SUBCATEGORY
-      'Lakmé',                                                                   // BRAND
-      'LAK-MATTE-01',                                                            // VARIANT_SKU
-      '01 Red Carpet',                                                           // SHADE_NAME
-      '#C71585',                                                                 // HEX & SWATCH
-      '5.6 ml',                                                                  // SIZE_OR_WEIGHT
-      399,                                                                       // MRP
-      349,                                                                       // GENERAL_USER_PRICE
-      280,                                                                       // SALON_PRICE
-      260,                                                                       // MAKEUP_ARTIST_PRICE
-      245,                                                                       // BEAUTICIAN_PRICE
-      'TRUE',                                                                    // PRODUCT_ACTIVE
-      'ACTIVE'                                                                   // STATUS
+      '8901030383811',                                                           // 1. BARCODE
+      'Lakmé',                                                                   // 2. BRAND
+      '',                                                                        // 3. IMAGE
+      'LAK-LIP-MAT001',                                                          // 4. SKU_NUMBER
+      'Lakmé Forever Matte Liquid Lip Colour',                                   // 5. PRODUCT_NAME
+      'Makeup',                                                                  // 6. CATEGORY
+      'Lips',                                                                    // 7. SUBCATEGORY
+      'Liquid Lipstick',                                                         // 8. SELECT_CATEGORY
+      '01 Red Carpet',                                                           // 9. SHADE_NAME
+      '#C71585',                                                                 // 10. HEX & SWATCH
+      '5.6 ml',                                                                  // 11. SIZE_OR_WEIGHT
+      399,                                                                       // 12. MRP
+      349,                                                                       // 13. GENERAL_USER_PRICE
+      280,                                                                       // 14. SALON_PRICE
+      260,                                                                       // 15. MAKEUP_ARTIST_PRICE
+      245,                                                                       // 16. BEAUTICIAN_PRICE
+      'TRUE',                                                                    // 17. PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // 18. STATUS
     ],
     // Sample 2: Parent-Child Variant Row 2 (Lakmé Liquid Lipstick - Shade 02 Nude Myth)
     [
-      '8901030383828',                                                           // BARCODE
-      '',     // IMAGE
-      'LAK-MATTE-LIP',                                                           // PARENT_SKU (Same parent SKU groups variants)
-      'Lakmé Forever Matte Liquid Lip Colour',                                   // PRODUCT_NAME
-      'Makeup',                                                                  // CATEGORY
-      'Lips',                                                                    // SUBCATEGORY
-      'Lakmé',                                                                   // BRAND
-      'LAK-MATTE-02',                                                            // VARIANT_SKU
-      '02 Nude Myth',                                                            // SHADE_NAME
-      '#D2691E',                                                                 // HEX & SWATCH
-      '5.6 ml',                                                                  // SIZE_OR_WEIGHT
-      399,                                                                       // MRP
-      349,                                                                       // GENERAL_USER_PRICE
-      280,                                                                       // SALON_PRICE
-      260,                                                                       // MAKEUP_ARTIST_PRICE
-      245,                                                                       // BEAUTICIAN_PRICE
-      'TRUE',                                                                    // PRODUCT_ACTIVE
-      'ACTIVE'                                                                   // STATUS
+      '8901030383828',                                                           // 1. BARCODE
+      'Lakmé',                                                                   // 2. BRAND
+      '',                                                                        // 3. IMAGE
+      'LAK-LIP-MAT001',                                                          // 4. SKU_NUMBER
+      'Lakmé Forever Matte Liquid Lip Colour',                                   // 5. PRODUCT_NAME
+      'Makeup',                                                                  // 6. CATEGORY
+      'Lips',                                                                    // 7. SUBCATEGORY
+      'Liquid Lipstick',                                                         // 8. SELECT_CATEGORY
+      '02 Nude Myth',                                                            // 9. SHADE_NAME
+      '#D2691E',                                                                 // 10. HEX & SWATCH
+      '5.6 ml',                                                                  // 11. SIZE_OR_WEIGHT
+      399,                                                                       // 12. MRP
+      349,                                                                       // 13. GENERAL_USER_PRICE
+      280,                                                                       // 14. SALON_PRICE
+      260,                                                                       // 15. MAKEUP_ARTIST_PRICE
+      245,                                                                       // 16. BEAUTICIAN_PRICE
+      'TRUE',                                                                    // 17. PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // 18. STATUS
     ],
     // Sample 3: Standalone Single Product (Face Serum without shades)
     [
-      '8901030492812',                                                           // BARCODE
-      '',     // IMAGE
-      'LOR-REVIT-30ML',                                                          // PARENT_SKU
-      "L'Oréal Paris Revitalift 1.5% Hyaluronic Acid Serum",                     // PRODUCT_NAME
-      'Skincare',                                                                // CATEGORY
-      'Face Serums',                                                             // SUBCATEGORY
-      "L'Oréal Paris",                                                           // BRAND
-      'LOR-REVIT-30ML',                                                          // VARIANT_SKU
-      '',                                                                        // SHADE_NAME
-      '',                                                                        // HEX & SWATCH
-      '30 ml',                                                                   // SIZE_OR_WEIGHT
-      999,                                                                       // MRP
-      899,                                                                       // GENERAL_USER_PRICE
-      720,                                                                       // SALON_PRICE
-      680,                                                                       // MAKEUP_ARTIST_PRICE
-      640,                                                                       // BEAUTICIAN_PRICE
-      'TRUE',                                                                    // PRODUCT_ACTIVE
-      'ACTIVE'                                                                   // STATUS
+      '8901030492812',                                                           // 1. BARCODE
+      "L'Oréal Paris",                                                           // 2. BRAND
+      '',                                                                        // 3. IMAGE
+      'LOR-REVIT-30ML',                                                          // 4. SKU_NUMBER
+      "L'Oréal Paris Revitalift 1.5% Hyaluronic Acid Serum",                     // 5. PRODUCT_NAME
+      'Skincare',                                                                // 6. CATEGORY
+      'Face Serums',                                                             // 7. SUBCATEGORY
+      'Face Serum',                                                              // 8. SELECT_CATEGORY
+      '',                                                                        // 9. SHADE_NAME
+      '',                                                                        // 10. HEX & SWATCH
+      '30 ml',                                                                   // 11. SIZE_OR_WEIGHT
+      999,                                                                       // 12. MRP
+      899,                                                                       // 13. GENERAL_USER_PRICE
+      720,                                                                       // 14. SALON_PRICE
+      680,                                                                       // 15. MAKEUP_ARTIST_PRICE
+      640,                                                                       // 16. BEAUTICIAN_PRICE
+      'TRUE',                                                                    // 17. PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // 18. STATUS
     ]
   ];
 
@@ -127,22 +127,22 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
   // ---------------------------------------------------------------------------
   // SHEET 2: Field Guide (Notes & Formatting Rules - Ignored during import)
   // ---------------------------------------------------------------------------
-  const instructionsData = [
+    const instructionsData = [
     ['SALBEAU MAKEUPSTORE — BULK PRODUCT IMPORT FIELD GUIDE'],
     ['NOTE: This sheet is a reference guide only and is completely ignored by the import engine.'],
     ['All product data must be placed in the "Bulk Product Upload" sheet.'],
     [''],
-    ['18 FIXED REQUIRED COLUMNS REFERENCE:'],
+    ['18 FIXED REQUIRED COLUMNS REFERENCE (IN EXACT SEQUENCE):'],
     ['Column Header', 'Required?', 'Sample Value', 'Description & Rules'],
     ['BARCODE', 'Optional', '8901030383811', 'EAN-13, UPC, or custom barcode for scanner checkout. Format as text.'],
-    ['IMAGE', 'Optional', 'Direct storage/CDN image URL', 'Direct HTTP/HTTPS link to product image.'],
-    ['PARENT_SKU', 'Required for Variants', 'LAK-MATTE-LIP', 'Parent SKU grouping related variants. Items with same PARENT_SKU belong to one product family.'],
+    ['BRAND', 'REQUIRED', 'Lakmé', 'Brand name matching your catalog (Brand placed before Image).'],
+    ['IMAGE', 'Optional', 'Direct storage/CDN image URL', 'Direct HTTP/HTTPS link to product image. Image is optional.'],
+    ['SKU_NUMBER', 'Optional', 'LAK-LIP-MAT001', 'Unique SKU code for the product or variant family. Auto-generated if blank.'],
     ['PRODUCT_NAME', 'REQUIRED', 'Lakmé Forever Matte Liquid Lip Colour', 'Full display name of the product.'],
     ['CATEGORY', 'REQUIRED', 'Makeup', 'Master product category (e.g. Makeup, Skincare, Hair Care).'],
     ['SUBCATEGORY', 'Optional', 'Lips', 'Subcategory under category (e.g. Lips, Eyes, Face).'],
-    ['BRAND', 'REQUIRED', 'Lakmé', 'Brand name matching your catalog.'],
-    ['VARIANT_SKU', 'REQUIRED', 'LAK-MATTE-01', 'Unique SKU for this specific item/variant.'],
-    ['SHADE_NAME', 'Optional', '01 Red Carpet', 'Shade name for cosmetic products (leave empty for non-shade items).'],
+    ['SELECT_CATEGORY', 'Optional', 'Liquid Lipstick', 'Level 3 specific product type under the subcategory.'],
+    ['SHADE_NAME', 'Optional', '01 Red Carpet', 'Color name for shade variants (mandatory for color variants).'],
     ['HEX & SWATCH', 'Optional', '#C71585', 'Hex color code for shade swatch circle (e.g. #C71585 or #D2691E).'],
     ['SIZE_OR_WEIGHT', 'Optional', '5.6 ml', 'Volume or net weight (e.g. 5.6 ml, 30 ml, 50 g).'],
     ['MRP', 'REQUIRED', '399', 'Maximum Retail Price in rupees (must be > 0).'],
@@ -285,15 +285,15 @@ export const exportStagedProductsToExcel = (stagedRows = [], options = {}) => {
       ? r.images[0]
       : (r.image || r.productImageUrl || '');
 
-    return {
+        return {
       'BARCODE': String(r.barcode || r.variantBarcode || '').trim(),
+      'BRAND': r.brand || r.brand_name || '',
       'IMAGE': firstImage,
-      'PARENT_SKU': r.parentSku || r.parent_sku || r.sku || '',
+      'SKU_NUMBER': r.parentSku || r.parent_sku || r.sku || '',
       'PRODUCT_NAME': r.name || r.productName || r.product_name || '',
       'CATEGORY': r.category || '',
       'SUBCATEGORY': r.subcategory || '',
-      'BRAND': r.brand || r.brand_name || '',
-      'VARIANT_SKU': r.variantSku || r.sku || r.parentSku || '',
+      'SELECT_CATEGORY': r.productType || '',
       'SHADE_NAME': r.shade || r.shadeName || '',
       'HEX & SWATCH': r.hexColor || '',
       'SIZE_OR_WEIGHT': r.size || r.sizeOrWeight || '',

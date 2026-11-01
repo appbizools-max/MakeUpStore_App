@@ -14,6 +14,8 @@ import { supabase } from '../config/supabase.js';
 import { validateBarcodeChecksum, detectBarcodeFormat } from './barcodeLookupService.js';
 import { matchBeautyShade } from './aiColorService.js';
 import { DEFAULT_GST_SLAB } from './excelHeaderValidator.js';
+import { resolveCategoryAttributes } from '../utils/attributeMasterData.js';
+import { generateProductSku, generateVariantInternalSku } from './skuService.js';
 
 // ==============================================================================
 // 1. CANONICAL PRODUCT SCHEMA DEFINITION
@@ -188,12 +190,132 @@ export const CATEGORY_HIERARCHY_CONFIG = {
   }
 };
 
+// In-memory cache for dynamic hierarchy fetched from salbeau_category_subcategory_hierarchy
+let dynamicHierarchyCache = {
+  byCategory: {},
+  productTypesBySub: {},
+  categories: []
+};
+
 /**
- * Gets subcategories for a category
+ * Load and synchronize 3-level Category -> Subcategory -> Select Category hierarchy from DB
+ */
+export const loadDynamicHierarchyFromDb = async () => {
+  try {
+    const { data } = await supabase
+      .from('brands')
+      .select('logo')
+      .eq('id', 'salbeau_category_subcategory_hierarchy')
+      .maybeSingle();
+
+    if (!data?.logo) return dynamicHierarchyCache;
+    const parsed = JSON.parse(data.logo);
+    if (!parsed || typeof parsed !== 'object') return dynamicHierarchyCache;
+
+    const catIdToName = new Map();
+    if (Array.isArray(parsed.categories)) {
+      parsed.categories.forEach(c => {
+        if (c.id && c.name) catIdToName.set(c.id, c.name);
+      });
+    }
+
+    const byCategory = {};
+    const subIdToInfo = new Map();
+    if (Array.isArray(parsed.subcategories)) {
+      parsed.subcategories.forEach(sub => {
+        const rawCatId = sub.category_id || sub.categoryId;
+        const catName = (sub.categoryName || sub.category_name || catIdToName.get(rawCatId) || '').trim();
+        const subName = (sub.name || '').trim();
+        if (!subName) return;
+
+        if (sub.id) subIdToInfo.set(sub.id, { name: subName, catName });
+
+        if (catName) {
+          const normCat = normalizeText(catName);
+          if (!byCategory[normCat]) byCategory[normCat] = [];
+          if (!byCategory[normCat].includes(subName)) byCategory[normCat].push(subName);
+        }
+      });
+    }
+
+    const rawProductTypes = Array.isArray(parsed.product_types)
+      ? parsed.product_types
+      : (Array.isArray(parsed.leafCategories) ? parsed.leafCategories : []);
+
+    const productTypesBySub = {};
+    rawProductTypes.forEach(pt => {
+      const rawSubId = pt.subcategory_id || pt.subcategoryId;
+      const rawCatId = pt.category_id || pt.categoryId;
+      const subInfo = rawSubId ? subIdToInfo.get(rawSubId) : null;
+
+      const subName = (pt.subcategoryName || pt.subcategory_name || subInfo?.name || '').trim();
+      const catName = (pt.categoryName || pt.category_name || subInfo?.catName || catIdToName.get(rawCatId) || '').trim();
+      const name = (pt.name || '').trim();
+      if (!name) return;
+
+      if (catName && subName) {
+        const fullKey = `${normalizeText(catName)}:::${normalizeText(subName)}`;
+        if (!productTypesBySub[fullKey]) productTypesBySub[fullKey] = [];
+        if (!productTypesBySub[fullKey].includes(name)) productTypesBySub[fullKey].push(name);
+      }
+
+      if (subName) {
+        const subKey = normalizeText(subName);
+        if (!productTypesBySub[subKey]) productTypesBySub[subKey] = [];
+        if (!productTypesBySub[subKey].includes(name)) productTypesBySub[subKey].push(name);
+      }
+    });
+
+    dynamicHierarchyCache = {
+      byCategory,
+      productTypesBySub,
+      categories: parsed.categories || []
+    };
+    return dynamicHierarchyCache;
+  } catch (e) {
+    console.warn('productEngineService: Failed to load dynamic hierarchy:', e);
+    return dynamicHierarchyCache;
+  }
+};
+
+// Initial load trigger and real-time subscription
+if (typeof window !== 'undefined') {
+  loadDynamicHierarchyFromDb();
+  try {
+    supabase
+      .channel('salbeau-engine-hierarchy-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'brands',
+        filter: 'id=eq.salbeau_category_subcategory_hierarchy'
+      }, () => {
+        loadDynamicHierarchyFromDb();
+      })
+      .subscribe();
+  } catch (_) {}
+}
+
+/**
+ * Gets subcategories for a category - checks dynamic database hierarchy first, then static fallback
  */
 export const getSubcategoriesForCategory = (category = '') => {
   if (!category || !String(category).trim()) return [];
   const norm = normalizeText(category);
+
+  // 1. Check live database hierarchy cache
+  if (dynamicHierarchyCache.byCategory[norm] && dynamicHierarchyCache.byCategory[norm].length > 0) {
+    return dynamicHierarchyCache.byCategory[norm];
+  }
+
+  // 2. Check partial matches in dynamic database hierarchy
+  for (const [key, subs] of Object.entries(dynamicHierarchyCache.byCategory)) {
+    if (key === norm || norm.includes(key) || key.includes(norm)) {
+      if (subs && subs.length > 0) return subs;
+    }
+  }
+
+  // 3. Fallback to CATEGORY_HIERARCHY_CONFIG
   for (const [key, conf] of Object.entries(CATEGORY_HIERARCHY_CONFIG)) {
     if (normalizeText(key) === norm || norm.includes(normalizeText(key))) {
       return conf.subcategories;
@@ -203,29 +325,60 @@ export const getSubcategoriesForCategory = (category = '') => {
 };
 
 /**
- * Gets variant types for a category/subcategory
+ * Gets select categories / variant types for a category/subcategory - checks dynamic database hierarchy first
  */
 export const getVariantTypesForCategory = (category = '', subcategory = '') => {
-  const norm = normalizeText(category);
+  const normCat = normalizeText(category);
+  const normSub = normalizeText(subcategory);
+
+  if (normSub) {
+    // 1. Check exact category:::subcategory in dynamic hierarchy
+    const compositeKey = `${normCat}:::${normSub}`;
+    if (dynamicHierarchyCache.productTypesBySub[compositeKey] && dynamicHierarchyCache.productTypesBySub[compositeKey].length > 0) {
+      return dynamicHierarchyCache.productTypesBySub[compositeKey];
+    }
+
+    // 2. Check subcategory-only key in dynamic hierarchy
+    if (dynamicHierarchyCache.productTypesBySub[normSub] && dynamicHierarchyCache.productTypesBySub[normSub].length > 0) {
+      return dynamicHierarchyCache.productTypesBySub[normSub];
+    }
+  }
+
+  // 3. Fallback to static CATEGORY_HIERARCHY_CONFIG
   for (const [key, conf] of Object.entries(CATEGORY_HIERARCHY_CONFIG)) {
-    if (normalizeText(key) === norm || norm.includes(normalizeText(key))) {
+    if (normalizeText(key) === normCat || normCat.includes(normalizeText(key))) {
       return conf.variantTypes;
     }
   }
   return ['Standard', 'Size / Volume', 'Pack Size'];
 };
 
+export const getSelectCategoriesForSubcategory = getVariantTypesForCategory;
+
 /**
  * Gets category-specific dynamic attributes
  */
 export const getCategoryAttributes = (category = '', subcategory = '') => {
+  // 1. Dynamic resolution from Universal Attribute Master & Category Mappings
+  const dynamicAttrs = typeof resolveCategoryAttributes === 'function'
+    ? resolveCategoryAttributes(category, subcategory)
+    : [];
+  const addedKeys = new Set(dynamicAttrs.map(a => a.key));
+
+  // 2. Merge with fallback category-specific attributes from CATEGORY_HIERARCHY_CONFIG
   const norm = normalizeText(category);
   for (const [key, conf] of Object.entries(CATEGORY_HIERARCHY_CONFIG)) {
     if (normalizeText(key) === norm || norm.includes(normalizeText(key))) {
-      return conf.attributes || [];
+      (conf.attributes || []).forEach(attr => {
+        if (!addedKeys.has(attr.key)) {
+          addedKeys.add(attr.key);
+          dynamicAttrs.push(attr);
+        }
+      });
+      break;
     }
   }
-  return [];
+  return dynamicAttrs;
 };
 
 
@@ -621,6 +774,22 @@ export const validateProduct = (p, rowIndex = 1) => {
     });
   }
 
+  // Variant Color Validation: Every color variant must have a mandatory Color Name
+  if (Array.isArray(p.shades) && p.shades.length > 0) {
+    p.shades.forEach((s, sIdx) => {
+      const colorName = (s.color_name || s.name || s.shadeName || '').trim();
+      if (!colorName) {
+        issues.push({
+          rowNumber: rowIndex,
+          field: 'Variant Color Name',
+          error: `Color Name is mandatory for variant #${sIdx + 1}`,
+          suggestedFix: 'Provide a valid color or shade name (e.g. "Ruby Red", "Pink", "Nude")',
+          severity: 'error'
+        });
+      }
+    });
+  }
+
   // 7. Shade fields validation (ONLY if product has shades)
   const shadeApplies = isShadeApplicable(p.category, p.subcategory);
   if (shadeApplies && p.hexColor && !/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(p.hexColor)) {
@@ -674,18 +843,27 @@ export const validateProduct = (p, rowIndex = 1) => {
 export const toSupabaseProductPayload = (p) => {
   const shadeApplies = isShadeApplicable(p.category, p.subcategory);
 
+  // Automatically generate collision-safe SKU if missing
+  const mainSku = p.sku && String(p.sku).trim()
+    ? String(p.sku).trim()
+    : generateProductSku({ brand: p.brand || p.brand_name || p.brandName, category: p.category, name: p.name });
+
+  const mainImage = p.image || (Array.isArray(p.images) && p.images[0] ? p.images[0] : '') || null;
+  const mainImagesList = Array.isArray(p.images) && p.images.length > 0 ? p.images : (mainImage ? [mainImage] : []);
+
   const shadesJson = (Array.isArray(p.shades) && p.shades.length > 0)
     ? p.shades.map((s, idx) => ({
         id: s.id || `var_${Date.now()}_${idx + 1}`,
-        name: s.name || s.shadeName || `Variant ${idx + 1}`,
+        name: s.color_name || s.name || s.shadeName || `Variant ${idx + 1}`,
+        color_name: s.color_name || s.name || s.shadeName || 'Default',
         code: s.code || s.shadeCode || String(idx + 1).padStart(2, '0'),
-        sku: s.sku || s.variantSku || `${p.sku || 'SKU'}-V${idx + 1}`,
+        sku: s.sku || s.variantSku || generateVariantInternalSku(mainSku, idx + 1, s.color_name || s.name),
         barcode: s.barcode || s.variantBarcode || null,
         hexColor: s.hexColor || s.hex || '#CE4270',
         hex: s.hex || s.hexColor || '#CE4270',
-        color_name: s.color_name || s.name || 'Default',
-        image: s.image || s.variantImageUrl || p.image || null,
-        images: Array.isArray(s.images) && s.images.length > 0 ? s.images : (s.image ? [s.image] : (p.image ? [p.image] : [])),
+        // Reuses main product image by default if variant has no custom image
+        image: s.image || s.variantImageUrl || mainImage,
+        images: Array.isArray(s.images) && s.images.length > 0 ? s.images : (s.image ? [s.image] : mainImagesList),
         mrp: Number(s.mrp || p.mrp || 0),
         generalPrice: Number(s.generalPrice !== undefined ? s.generalPrice : (s.general_price !== undefined ? s.general_price : (p.generalPrice || p.mrp || 0))),
         general_price: Number(s.general_price !== undefined ? s.general_price : (s.generalPrice !== undefined ? s.generalPrice : (p.generalPrice || p.mrp || 0))),
@@ -724,8 +902,8 @@ export const toSupabaseProductPayload = (p) => {
 
   const addInfo = {
     ...(p.additionalInfo || {}),
-    sku: p.sku || null,
-    parent_sku: p.parentSku || p.sku || null,
+    sku: mainSku,
+    parent_sku: mainSku,
     is_parent: (shadesJson.length > 1),
     size: p.size || null,
     // Confirm correct GST slab with accountant.
@@ -757,6 +935,7 @@ export const toSupabaseProductPayload = (p) => {
     name: p.name,
     brand_id: p.brandId || null,
     brand_name: p.brand || 'General',
+    sku: mainSku,
     category: p.category || 'General',
     subcategory: p.subcategory || p.sub_category || null,
     variant_type: p.variantType || (shadeApplies ? 'Shade' : 'Standard'),

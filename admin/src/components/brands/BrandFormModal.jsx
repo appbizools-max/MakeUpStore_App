@@ -20,6 +20,7 @@ import {
   Trash2
 } from 'lucide-react';
 import BrandLogoSearchModal from './BrandLogoSearchModal';
+import InlineImageSection from '../media/InlineImageSection';
 import {
   generateNextBrandNumber,
   generateProposedBrandCode,
@@ -351,158 +352,19 @@ export default function BrandFormModal({
 
           {/* FIELD 2: Brand Logo */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-gray-800 font-bold flex items-center gap-1.5">
-                <ImageIcon size={14} className="text-[#C2477A]" />
-                <span>Brand Logo</span>
-              </label>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setIsOnlineSearchOpen(true)}
-                  className="px-2.5 py-1 rounded-lg bg-pink-50 hover:bg-pink-100 text-[#C2477A] text-[10px] font-bold border border-pink-200 transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  <Globe size={11} />
-                  <span>Search Online</span>
-                </button>
-              </div>
-            </div>
+            <label className="text-gray-800 font-bold flex items-center gap-1.5 mb-1.5">
+              <ImageIcon size={14} className="text-[#C2477A]" />
+              <span>Brand Logo</span>
+            </label>
 
-            {/* Logo Preview & Upload Zone */}
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDraggingLogo(true);
-              }}
-              onDragLeave={() => setIsDraggingLogo(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDraggingLogo(false);
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                  handleLogoFile(e.dataTransfer.files[0]);
-                }
-              }}
-              className={`p-3.5 rounded-2xl border-2 border-dashed transition-all flex items-center gap-4 ${
-                isDraggingLogo
-                  ? 'border-[#C2477A] bg-pink-50/70'
-                  : 'border-pink-100 bg-[#FFFDFE]'
-              }`}
-            >
-              {/* Thumbnail Display */}
-              <div className="w-16 h-16 rounded-xl bg-white border border-pink-100 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs p-1">
-                {formData.logo ? (
-                  <img
-                    src={formData.logo}
-                    alt="Brand Logo"
-                    className="max-w-full max-h-full object-contain"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://placehold.co/100x100?text=No+Logo';
-                    }}
-                  />
-                ) : (
-                  <Store size={24} className="text-gray-300" />
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex-1 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        handleLogoFile(e.target.files[0]);
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 rounded-xl bg-white border border-pink-200 hover:border-[#C2477A] text-gray-700 hover:text-[#C2477A] font-bold text-[11px] shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Upload size={12} />
-                    <span>{formData.logo ? 'Replace Logo' : 'Upload File'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setLogoInputTab(logoInputTab === 'url' ? 'upload' : 'url')}
-                    className="px-2.5 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 font-semibold text-[11px] transition-colors cursor-pointer"
-                  >
-                    {logoInputTab === 'url' ? 'Hide URL' : 'Paste URL'}
-                  </button>
-
-                  {formData.logo && (
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, logo: '' }))}
-                      className="px-2 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[11px] transition-colors cursor-pointer"
-                      title="Remove Logo"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
-                </div>
-
-                {logoInputTab === 'url' && (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input
-                      type="url"
-                      placeholder="https://example.com/logo.png"
-                      value={formData.logo}
-                      onChange={(e) => setFormData(prev => ({ ...prev, logo: e.target.value.trim() }))}
-                      className="flex-1 px-3 py-1.5 rounded-lg border border-pink-100 bg-white text-xs outline-none focus:border-[#C2477A]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => processAndSetLogo(formData.logo)}
-                      disabled={isOptimizingLogo || !formData.logo}
-                      className="px-2.5 py-1.5 rounded-lg bg-[#C2477A] text-white font-bold text-[11px] hover:bg-[#b83760] transition-colors cursor-pointer shrink-0"
-                    >
-                      Optimize
-                    </button>
-                  </div>
-                )}
-
-                <p className="text-[10px] text-gray-400">
-                  PNG, JPG, JPEG, WebP. Automatically optimized to 512×512 HD WebP with transparency preserved.
-                </p>
-              </div>
-            </div>
-
-            {/* Real-time Image Optimization Status Badge */}
-            {isOptimizingLogo && (
-              <div className="mt-2 px-3 py-2 rounded-xl bg-pink-50 border border-pink-200 text-[#C2477A] text-[11px] font-semibold flex items-center gap-2">
-                <div className="w-3.5 h-3.5 border-2 border-[#C2477A] border-t-transparent rounded-full animate-spin" />
-                <span>Automatically optimizing logo & preserving transparency...</span>
-              </div>
-            )}
-
-            {logoOptimizationStats && !isOptimizingLogo && (
-              <div className="mt-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold flex items-center justify-between gap-2 shadow-2xs">
-                <span className="flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-emerald-600 shrink-0" />
-                  <span>
-                    HD WebP Optimized: <strong>{logoOptimizationStats.originalFormatted}</strong> → <strong>{logoOptimizationStats.optimizedFormatted}</strong> ({logoOptimizationStats.savingsPercent}% saved)
-                  </span>
-                </span>
-                {logoOptimizationStats.hasTransparency && (
-                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-bold uppercase shrink-0">
-                    Alpha Transparency Active
-                  </span>
-                )}
-              </div>
-            )}
-            {errors.logo && (
-              <p className="text-rose-600 text-[11px] mt-1 flex items-center gap-1">
-                <AlertCircle size={12} />
-                <span>{errors.logo}</span>
-              </p>
-            )}
+            <InlineImageSection
+              imageUrl={formData.logo}
+              onChange={(newUrl) => setFormData(prev => ({ ...prev, logo: newUrl }))}
+              entityName={formData.name || 'Brand'}
+              entityType="Brand"
+              folder="brands"
+              filenamePrefix="brand"
+            />
           </div>
 
           {/* FIELD 3: Brand Name */}

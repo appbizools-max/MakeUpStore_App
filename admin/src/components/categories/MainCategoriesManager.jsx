@@ -46,6 +46,7 @@ export default function MainCategoriesManager({
   onNavigateToProducts
 }) {
   const adminCtx = useAdmin?.() || {};
+  const isAdmin = adminCtx?.currentAuthUser?.role !== 'employee';
 
   // Core Data States from Supabase
   const [categories, setCategories] = useState([]);
@@ -1792,22 +1793,26 @@ export default function MainCategoriesManager({
                                 <span>Show Subcategories</span>
                                 <ArrowRight size={13} className="transition-transform group-hover/btn:translate-x-0.5" />
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => openEditCategoryModal(cat)}
-                                className="p-2 rounded-xl border border-gray-200 hover:border-[#C2477A] hover:text-[#C2477A] text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
-                                title="Edit Category"
-                              >
-                                <Edit2 size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => initiateCategoryDelete(cat)}
-                                className="p-2 rounded-xl border border-gray-200 hover:border-rose-300 hover:text-rose-600 text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
-                                title="Delete Category"
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                              {isAdmin && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditCategoryModal(cat)}
+                                    className="p-2 rounded-xl border border-gray-200 hover:border-[#C2477A] hover:text-[#C2477A] text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
+                                    title="Edit Category"
+                                  >
+                                    <Edit2 size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => initiateCategoryDelete(cat)}
+                                    className="p-2 rounded-xl border border-gray-200 hover:border-rose-300 hover:text-rose-600 text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
+                                    title="Delete Category"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1867,14 +1872,21 @@ export default function MainCategoriesManager({
             </div>
 
             <div className="flex items-center gap-3 w-full md:w-auto">
-              <button
-                type="button"
-                onClick={() => openAddSubcategoryModal(selectedCategory)}
-                className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full md:w-auto shrink-0"
-              >
-                <PlusCircle size={17} />
-                <span>+ Add Sub Category</span>
-              </button>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => openAddSubcategoryModal(selectedCategory)}
+                  className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full md:w-auto shrink-0"
+                >
+                  <PlusCircle size={17} />
+                  <span>+ Add Sub Category</span>
+                </button>
+              ) : (
+                <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                  <AlertCircle size={15} className="text-amber-600 shrink-0" />
+                  <span>View Only • Admin required to add subcategories</span>
+                </span>
+              )}
             </div>
           </div>
 
@@ -2087,22 +2099,26 @@ export default function MainCategoriesManager({
                                 <span>Show Select Categories</span>
                                 <ArrowRight size={13} className="transition-transform group-hover/btn:translate-x-0.5" />
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => openEditSubcategoryModal(sub)}
-                                className="p-2 rounded-xl border border-gray-200 hover:border-[#C2477A] hover:text-[#C2477A] text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
-                                title="Edit Subcategory"
-                              >
-                                <Edit2 size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => initiateSubcategoryDelete(sub)}
-                                className="p-2 rounded-xl border border-gray-200 hover:border-rose-300 hover:text-rose-600 text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
-                                title="Delete Subcategory"
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                              {isAdmin && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditSubcategoryModal(sub)}
+                                    className="p-2 rounded-xl border border-gray-200 hover:border-[#C2477A] hover:text-[#C2477A] text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
+                                    title="Edit Subcategory"
+                                  >
+                                    <Edit2 size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => initiateSubcategoryDelete(sub)}
+                                    className="p-2 rounded-xl border border-gray-200 hover:border-rose-300 hover:text-rose-600 text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
+                                    title="Delete Subcategory"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -2166,14 +2182,21 @@ export default function MainCategoriesManager({
             </div>
 
             <div className="flex items-center gap-3 w-full md:w-auto">
-              <button
-                type="button"
-                onClick={() => openAddProductTypeModal(selectedCategory, selectedSubcategory)}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full md:w-auto shrink-0"
-              >
-                <PlusCircle size={17} />
-                <span>+ Add Select Category</span>
-              </button>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => openAddProductTypeModal(selectedCategory, selectedSubcategory)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full md:w-auto shrink-0"
+                >
+                  <PlusCircle size={17} />
+                  <span>+ Add Select Category</span>
+                </button>
+              ) : (
+                <span className="text-xs font-bold text-purple-800 bg-purple-50 border border-purple-200 px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                  <AlertCircle size={15} className="text-purple-600 shrink-0" />
+                  <span>View Only • Admin required to add select categories</span>
+                </span>
+              )}
             </div>
           </div>
 
@@ -2375,23 +2398,31 @@ export default function MainCategoriesManager({
                           {/* Actions: View / Edit | Delete */}
                           <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openEditProductTypeModal(pt)}
-                                className="px-3 py-1.5 rounded-xl border border-purple-200 hover:bg-purple-50 text-purple-700 font-extrabold text-xs transition-colors cursor-pointer bg-white shadow-2xs inline-flex items-center gap-1"
-                                title="View & Edit Select Category"
-                              >
-                                <Edit2 size={13} />
-                                <span>View / Edit</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => initiateProductTypeDelete(pt)}
-                                className="p-2 rounded-xl border border-gray-200 hover:border-rose-300 hover:text-rose-600 text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
-                                title="Delete Select Category"
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                              {isAdmin ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditProductTypeModal(pt)}
+                                    className="px-3 py-1.5 rounded-xl border border-purple-200 hover:bg-purple-50 text-purple-700 font-extrabold text-xs transition-colors cursor-pointer bg-white shadow-2xs inline-flex items-center gap-1"
+                                    title="View & Edit Select Category"
+                                  >
+                                    <Edit2 size={13} />
+                                    <span>View / Edit</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => initiateProductTypeDelete(pt)}
+                                    className="p-2 rounded-xl border border-gray-200 hover:border-rose-300 hover:text-rose-600 text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
+                                    title="Delete Select Category"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-[10px] font-bold text-gray-400 bg-gray-50 border border-gray-200 px-2 py-1 rounded-lg">
+                                  View Only
+                                </span>
+                              )}
                             </div>
                           </td>
                         </tr>

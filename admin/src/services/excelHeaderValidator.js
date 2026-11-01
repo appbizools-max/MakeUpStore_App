@@ -36,13 +36,13 @@ export const DEFAULT_GST_SLAB = 18;
 // Exactly these 18 headers must be present in the upload template
 export const REQUIRED_HEADERS = Object.freeze([
   'BARCODE',
+  'BRAND',
   'IMAGE',
-  'PARENT_SKU',
+  'SKU_NUMBER',
   'PRODUCT_NAME',
   'CATEGORY',
   'SUBCATEGORY',
-  'BRAND',
-  'VARIANT_SKU',
+  'SELECT_CATEGORY',
   'SHADE_NAME',
   'HEX & SWATCH',
   'SIZE_OR_WEIGHT',
@@ -189,6 +189,15 @@ export const validateExcelHeaders = (input, sheetName = '') => {
     headers = firstRow.map(h => (h !== undefined && h !== null ? String(h) : ''));
   }
 
+  const HEADER_ALIASES = {
+    'PARENT_SKU': 'SKU_NUMBER',
+    'SKU': 'SKU_NUMBER',
+    'SKU NUMBER': 'SKU_NUMBER',
+    'PRODUCT_TYPE': 'SELECT_CATEGORY',
+    'PRODUCT TYPE': 'SELECT_CATEGORY',
+    'SELECT CATEGORY': 'SELECT_CATEGORY'
+  };
+
   // Trim headers, normalize non-breaking spaces (\u00A0), and track non-empty headers
   const trimmedHeaders = [];
   const headersFound = [];
@@ -203,7 +212,8 @@ export const validateExcelHeaders = (input, sheetName = '') => {
       return;
     }
 
-    trimmedHeaders.push(trimmed);
+    const canonicalHeader = HEADER_ALIASES[trimmed] || trimmed;
+    trimmedHeaders.push(canonicalHeader);
     headersFound.push(trimmed);
 
     if (headerOccurrences[trimmed]) {
@@ -399,7 +409,8 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
   // 18 exact fields
   const barcode = getCell('BARCODE');
   const image = getCell('IMAGE');
-  const parentSku = getCell('PARENT_SKU');
+  const selectCategory = getCell('SELECT_CATEGORY') || getCell('PRODUCT_TYPE');
+  const parentSku = getCell('SKU_NUMBER') || getCell('PARENT_SKU') || getCell('SKU');
   const productName = getCell('PRODUCT_NAME');
   const category = getCell('CATEGORY');
   const subcategory = getCell('SUBCATEGORY');
@@ -441,7 +452,7 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
     barcodeStatus: barcode ? 'detected' : 'manual',
     parentSku: parentSku || (brand && productName ? `${brand.slice(0, 3).toUpperCase()}-${productName.slice(0, 8).toUpperCase().replace(/\s+/g, '-')}` : ''),
     name: productName,
-    productType: subcategory || category || '',
+    productType: selectCategory || subcategory || category || '',
     category,
     subcategory,
     brand,

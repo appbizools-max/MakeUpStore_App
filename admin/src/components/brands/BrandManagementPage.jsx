@@ -26,6 +26,7 @@ import {
   CheckSquare,
   Square
 } from 'lucide-react';
+import { useAdmin } from '../../context/AdminContext';
 import BrandFormModal from './BrandFormModal';
 import BrandImportModal from './BrandImportModal';
 import {
@@ -91,6 +92,9 @@ export default function BrandManagementPage({
   // Safe Deletion Confirmation Modal State
   const [deleteTargetBrand, setDeleteTargetBrand] = useState(null);
   const [deleteWarning, setDeleteWarning] = useState(null);
+
+  const adminCtx = useAdmin ? useAdmin() : null;
+  const isAdmin = adminCtx?.currentAuthUser?.role !== 'employee';
 
   const showToast = useCallback((msg, type = 'success') => {
     setToastMessage({ msg, type });
@@ -687,11 +691,12 @@ export default function BrandManagementPage({
                           <div className="inline-flex items-center gap-1.5 mr-1">
                             <button
                               type="button"
-                              onClick={() => onToggleBrandStatus(brand.id)}
-                              className={`relative inline-flex h-4 w-8 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              onClick={() => { if (isAdmin) onToggleBrandStatus(brand.id); }}
+                              disabled={!isAdmin}
+                              className={`relative inline-flex h-4 w-8 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                 isEnabled ? 'bg-emerald-500' : 'bg-gray-300'
-                              }`}
-                              title={isEnabled ? 'Click to make Inactive' : 'Click to make Active'}
+                              } ${isAdmin ? 'cursor-pointer' : 'cursor-default opacity-80'}`}
+                              title={isAdmin ? (isEnabled ? 'Click to make Inactive' : 'Click to make Active') : 'Status (Admin Only)'}
                             >
                               <span
                                 className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
@@ -710,26 +715,33 @@ export default function BrandManagementPage({
                             </span>
                           </div>
 
-                          {/* Edit Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditBrand(brand)}
-                            className="px-2.5 py-1.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-[#C2477A] font-bold text-[11px] shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
-                            title="Edit Brand details"
-                          >
-                            <Edit size={12} />
-                            <span>Edit</span>
-                          </button>
+                          {/* Edit & Delete Buttons (Admin Only) */}
+                          {isAdmin ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditBrand(brand)}
+                                className="px-2.5 py-1.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-[#C2477A] font-bold text-[11px] shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                                title="Edit Brand details"
+                              >
+                                <Edit size={12} />
+                                <span>Edit</span>
+                              </button>
 
-                          {/* Delete Button */}
-                          <button
-                            type="button"
-                            onClick={() => handlePromptDelete(brand)}
-                            className="px-2 py-1.5 rounded-xl border border-gray-200 hover:border-rose-300 bg-white hover:bg-rose-50 text-gray-500 hover:text-rose-600 font-bold text-[11px] transition-all cursor-pointer active:scale-95"
-                            title="Delete Brand (Protected)"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePromptDelete(brand)}
+                                className="px-2 py-1.5 rounded-xl border border-gray-200 hover:border-rose-300 bg-white hover:bg-rose-50 text-gray-500 hover:text-rose-600 font-bold text-[11px] transition-all cursor-pointer active:scale-95"
+                                title="Delete Brand (Protected)"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-[10px] font-bold text-gray-400 bg-gray-50 border border-gray-200 px-2 py-1 rounded-lg">
+                              View Only
+                            </span>
+                          )}
                         </div>
                       </td>
                     </tr>

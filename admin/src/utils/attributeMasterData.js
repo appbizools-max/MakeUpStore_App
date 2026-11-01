@@ -1175,6 +1175,116 @@ export async function loadCategoryAttributeMapFromDb() {
 /**
  * Save Category Attributes Map to Supabase & localStorage
  */
+/**
+ * Synchronous getter for Universal Attribute Master (from localStorage, fallback to DEFAULT_ATTRIBUTES)
+ */
+export function getStoredAttributeMaster() {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const local = localStorage.getItem(ATTR_MASTER_STORAGE_KEY);
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_ATTRIBUTES;
+}
+
+/**
+ * Synchronous getter for Category Attributes Map (from localStorage, fallback to DEFAULT_CATEGORY_ATTRIBUTES_MAP)
+ */
+export function getStoredCategoryAttributesMap() {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const local = localStorage.getItem(CAT_ATTR_STORAGE_KEY);
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_CATEGORY_ATTRIBUTES_MAP;
+}
+
+/**
+ * Find master attribute definition by name or key
+ */
+export function getMasterAttributeByName(nameOrKey) {
+  if (!nameOrKey) return null;
+  const master = getStoredAttributeMaster();
+  const norm = String(nameOrKey).trim().toLowerCase();
+  return master.find(a => {
+    const aNorm = (a.name || '').trim().toLowerCase();
+    const aKey = aNorm.replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+    return aNorm === norm || aKey === norm || a.id === nameOrKey;
+  }) || null;
+}
+
+/**
+ * Resolve full dynamic attribute configuration for a given Category and Subcategory
+ */
+export function resolveCategoryAttributes(category = '', subcategory = '') {
+  const master = getStoredAttributeMaster();
+  const catMap = getStoredCategoryAttributesMap();
+  const normCat = (category || '').trim().toLowerCase();
+  const normSub = (subcategory || '').trim().toLowerCase();
+
+  const mappedNames = new Set();
+
+  if (catMap && typeof catMap === 'object') {
+    // 1. Direct match on subcategory or category in catMap
+    for (const [mapKey, attrNames] of Object.entries(catMap)) {
+      const normKey = (mapKey || '').trim().toLowerCase();
+      if ((normSub && normKey === normSub) || (normCat && normKey === normCat)) {
+        if (Array.isArray(attrNames)) {
+          attrNames.forEach(n => mappedNames.add(n));
+        }
+      }
+    }
+    // 2. Fuzzy match if nothing matched directly
+    if (mappedNames.size === 0) {
+      for (const [mapKey, attrNames] of Object.entries(catMap)) {
+        const normKey = (mapKey || '').trim().toLowerCase();
+        if ((normSub && (normSub.includes(normKey) || normKey.includes(normSub))) ||
+            (normCat && (normCat.includes(normKey) || normKey.includes(normCat)))) {
+          if (Array.isArray(attrNames)) {
+            attrNames.forEach(n => mappedNames.add(n));
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Convert mappedNames to full attribute objects from master
+  const result = [];
+  const addedKeys = new Set();
+
+  mappedNames.forEach(attrName => {
+    const found = master.find(a => (a.name || '').trim().toLowerCase() === (attrName || '').trim().toLowerCase());
+    if (found && found.status !== 'inactive') {
+      const key = found.name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+      if (!addedKeys.has(key)) {
+        addedKeys.add(key);
+        const hasOptions = (found.inputType === 'select' || found.inputType === 'color_swatch' || (found.values && found.values.length > 0));
+        result.push({
+          id: found.id,
+          key,
+          label: found.name,
+          name: found.name,
+          group: found.group,
+          type: hasOptions ? 'dropdown' : 'text',
+          inputType: found.inputType || 'text',
+          options: (found.values || []).map(v => typeof v === 'object' ? v.name : v).filter(Boolean),
+          placeholder: 'Select ' + found.name + '...'
+        });
+      }
+    }
+  });
+
+  return result;
+}
+
 export async function saveCategoryAttributeMapToDb(categoryMap) {
   try {
     localStorage.setItem(CAT_ATTR_STORAGE_KEY, JSON.stringify(categoryMap));

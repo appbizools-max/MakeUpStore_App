@@ -21,10 +21,13 @@ export const NotificationCenterScreen = () => {
     markNotificationAsRead,
     markAllNotificationsAsRead,
     setCurrentScreen,
-    setSelectedOrderIdForDetails
+    setSelectedOrderIdForDetails,
+    userRole
   } = useApp();
 
-  const [filterTab, setFilterTab] = useState('all'); // 'all' | 'orders' | 'unread'
+  const isB2BUser = Boolean(userRole && ['salon', 'parlour', 'wholesale', 'reseller', 'artist', 'beautician', 'b2b'].includes(String(userRole).toLowerCase()));
+
+  const [filterTab, setFilterTab] = useState('all'); // 'all' | 'orders' | 'b2b' | 'unread'
 
   // Format relative timestamp
   const formatTimeAgo = (isoString) => {
@@ -56,6 +59,9 @@ export const NotificationCenterScreen = () => {
     if (filterTab === 'orders') {
       return notifications.filter(n => n.type === 'order_status' || n.data?.orderId);
     }
+    if (filterTab === 'b2b') {
+      return notifications.filter(n => (n.type && n.type.startsWith('b2b')) || n.data?.verificationId);
+    }
     return notifications;
   }, [notifications, filterTab]);
 
@@ -71,6 +77,15 @@ export const NotificationCenterScreen = () => {
     if (orderId && setSelectedOrderIdForDetails) {
       setSelectedOrderIdForDetails(orderId);
       setCurrentScreen('orders');
+      return;
+    }
+
+    // 3. If it's a B2B verification notification, navigate to B2B Verification desk
+    if (item.type?.startsWith('b2b') || item.data?.verificationId) {
+      if (setCurrentScreen) {
+        setCurrentScreen('b2b_verification');
+      }
+      return;
     }
   };
 
@@ -85,6 +100,16 @@ export const NotificationCenterScreen = () => {
         return { label: 'Refund', bg: 'bg-purple-50 text-purple-700 border-purple-200', icon: RotateCcw };
       case 'cancellation':
         return { label: 'Cancellation', bg: 'bg-amber-50 text-amber-700 border-amber-200', icon: RotateCcw };
+      case 'b2b_approved':
+        return { label: 'B2B Verified', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCheck };
+      case 'b2b_rejected':
+        return { label: 'B2B Review', bg: 'bg-rose-50 text-rose-700 border-rose-200', icon: Info };
+      case 'b2b_resubmission_required':
+        return { label: 'Action Required', bg: 'bg-amber-50 text-amber-700 border-amber-200', icon: Info };
+      case 'b2b_suspended':
+        return { label: 'B2B Suspended', bg: 'bg-red-50 text-red-700 border-red-200', icon: Info };
+      case 'b2b_under_review':
+        return { label: 'Under Review', bg: 'bg-blue-50 text-blue-700 border-blue-200', icon: Sparkles };
       default:
         return { label: 'Notification', bg: 'bg-rose-50 text-rose-700 border-rose-200', icon: Sparkles };
     }
@@ -128,16 +153,17 @@ export const NotificationCenterScreen = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-pink-50 bg-white">
+      <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-pink-50 bg-white overflow-x-auto scrollbar-none">
         {[
           { id: 'all', label: `All (${notifications.length})` },
           { id: 'orders', label: 'Orders' },
+          ...(isB2BUser || notifications.some(n => n.type?.startsWith('b2b')) ? [{ id: 'b2b', label: 'B2B Updates' }] : []),
           { id: 'unread', label: `Unread (${unreadNotificationsCount})` }
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setFilterTab(tab.id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               filterTab === tab.id
                 ? 'bg-[#C2477A] text-white shadow-xs'
                 : 'bg-gray-100 text-gray-600 hover:bg-pink-50 hover:text-[#C2477A]'
@@ -211,8 +237,8 @@ export const NotificationCenterScreen = () => {
                       {item.message}
                     </p>
 
-                    {/* Quick Action Footer if relates to an order */}
-                    {orderNum && (
+                    {/* Quick Action Footer */}
+                    {orderNum ? (
                       <div className="mt-2.5 pt-2 border-t border-pink-50 flex items-center justify-between">
                         <span className="text-[10px] font-black text-[#C2477A] flex items-center gap-1 group-hover:underline">
                           <span>View Order Details</span>
@@ -232,7 +258,27 @@ export const NotificationCenterScreen = () => {
                           </button>
                         )}
                       </div>
-                    )}
+                    ) : (item.type?.startsWith('b2b') || item.data?.verificationId) ? (
+                      <div className="mt-2.5 pt-2 border-t border-pink-50 flex items-center justify-between">
+                        <span className="text-[10px] font-black text-[#C2477A] flex items-center gap-1 group-hover:underline">
+                          <span>View Verification Desk</span>
+                          <ChevronRight size={12} />
+                        </span>
+                        {!item.is_read && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markNotificationAsRead(item.id);
+                            }}
+                            className="text-[10px] font-bold text-gray-400 hover:text-gray-700 flex items-center gap-1"
+                          >
+                            <Check size={11} />
+                            <span>Mark read</span>
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>

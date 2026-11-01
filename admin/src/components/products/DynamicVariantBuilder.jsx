@@ -431,8 +431,10 @@ export default function DynamicVariantBuilder({
 
     const newVar = {
       id: `var_${Date.now()}_${nextNum}`,
-      name: `Variant ${nextNum}`,
-      sku: baseProduct.sku ? `${baseProduct.sku}-V${nextNum}` : `VAR-${Date.now().toString(36)}-${nextNum}`,
+      name: '',
+      color_name: '',
+      hexColor: '#CE4270',
+      sku: '',
       barcode: '',
       image: '',
       mrp: parentMrp || '',
@@ -976,17 +978,41 @@ export default function DynamicVariantBuilder({
 
                       {/* Responsive Grid of Variant Controls (4-Role Pricing) */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5 text-xs">
-                        {/* Variant Title */}
+                        {/* Color Name & Swatch */}
                         <div className="sm:col-span-2 md:col-span-2 lg:col-span-1">
-                          <label className="block text-gray-700 font-bold mb-1 text-[11px] truncate">
-                            Variant Title
-                          </label>
-                          <input
-                            type="text"
-                            value={v.name || ''}
-                            onChange={(e) => handleUpdateVariantField(v.id, 'name', e.target.value)}
-                            className="w-full p-2 rounded-xl border border-pink-100 outline-none bg-white text-xs font-semibold text-gray-900 focus:border-[#E11D48]"
-                          />
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-gray-700 font-bold text-[11px] truncate">
+                              Color Name <span className="text-[#E11D48]">*</span>
+                            </label>
+                            {v.hexColor && (
+                              <span
+                                className="w-3.5 h-3.5 rounded-full border border-gray-300 shadow-2xs shrink-0"
+                                style={{ backgroundColor: v.hexColor }}
+                                title={`Swatch: ${v.hexColor}`}
+                              />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="color"
+                              value={v.hexColor || '#CE4270'}
+                              onChange={(e) => handleUpdateVariantField(v.id, 'hexColor', e.target.value)}
+                              className="w-7 h-8 rounded-lg border border-pink-200 p-0.5 cursor-pointer shrink-0 bg-white"
+                              title="Choose variant color swatch"
+                            />
+                            <input
+                              type="text"
+                              placeholder="e.g. Red, Pink, Nude"
+                              value={v.color_name || v.name || ''}
+                              onChange={(e) => {
+                                handleUpdateVariantField(v.id, 'name', e.target.value);
+                                handleUpdateVariantField(v.id, 'color_name', e.target.value);
+                              }}
+                              className={`w-full p-2 rounded-xl border outline-none bg-white text-xs font-bold text-gray-900 focus:border-[#E11D48] ${
+                                !(v.color_name || v.name) ? 'border-rose-300 bg-rose-50/20' : 'border-pink-100'
+                              }`}
+                            />
+                          </div>
                         </div>
 
                         {/* Barcode */}

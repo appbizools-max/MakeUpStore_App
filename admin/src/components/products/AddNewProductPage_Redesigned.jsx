@@ -70,10 +70,17 @@ import {
 } from '../../utils/quantityTiersUtils';
 import BarcodeScannerModal from './BarcodeScannerModal';
 import HexColorPicker, { getBeautyShadeName } from '../common/HexColorPicker';
-import { getProductAttributeSuggestions } from '../../utils/attributeMasterData';
+import {
+  getProductAttributeSuggestions,
+  loadAttributeMasterFromDb,
+  loadCategoryAttributeMapFromDb,
+  getStoredAttributeMaster,
+  getMasterAttributeByName
+} from '../../utils/attributeMasterData';
 import { generateProductDescription } from '../../utils/productDescriptionGenerator';
 import SearchableSelect from '../common/SearchableSelect';
 import DynamicVariantBuilder from './DynamicVariantBuilder';
+import { generateProductSku, generateVariantInternalSku } from '../../services/skuService.js';
 import { useHardwareBarcodeScanner } from '../../utils/useHardwareBarcodeScanner';
 import { Table, FileSpreadsheet } from 'lucide-react';
 import { BulkProductEntryModal } from './BulkProductEntryModal';
@@ -113,8 +120,11 @@ export default function AddNewProductPage({
     checkBarcodeInSupabase,
     uploadProductImage,
     DEFAULT_PRICING_RULES: contextDefaultPricingRules,
-    pricingRules
+    pricingRules,
+    currentAuthUser
   } = useAdmin();
+
+  const isAdmin = currentAuthUser?.role !== 'employee';
 
   const [isInlineAddBrandOpen, setIsInlineAddBrandOpen] = useState(false);
 
@@ -217,6 +227,16 @@ export default function AddNewProductPage({
 
   // Dynamic Attributes Inline Expansion State
   const [isAttributesExpanded, setIsAttributesExpanded] = useState(false);
+  const [masterAttributesList, setMasterAttributesList] = useState(() => getStoredAttributeMaster());
+  const [selectedAttrToAdd, setSelectedAttrToAdd] = useState('');
+
+  // Synchronize Universal Attribute Master & Category Mappings from DB on mount
+  useEffect(() => {
+    loadAttributeMasterFromDb().then(m => {
+      if (m && Array.isArray(m)) setMasterAttributesList(m);
+    });
+    loadCategoryAttributeMapFromDb();
+  }, []);
 
   // Parent Product / Child Products Configuration State
   const [isParentProduct, setIsParentProduct] = useState(() => {
@@ -498,10 +518,34 @@ export default function AddNewProductPage({
     return list.map(v => ({ id: v, name: v }));
   }, [formData.category, formData.subcategory, formData.variantType]);
 
-  // Category-Specific Dynamic Attributes
+  // Category-Specific Dynamic Attributes from Master
   const dynamicCategoryAttributes = useMemo(() => {
     return getCategoryAttributes(formData.category, formData.subcategory);
-  }, [formData.category, formData.subcategory]);
+  }, [formData.category, formData.subcategory, masterAttributesList]);
+
+  // Combined list of Category-Specific Attributes + user-added master/custom attributes
+  const allProductAttributes = useMemo(() => {
+    const list = [...dynamicCategoryAttributes];
+    const existingKeys = new Set(list.map(a => a.key));
+
+    if (formData.categoryAttributes) {
+      Object.keys(formData.categoryAttributes).forEach(k => {
+        if (!existingKeys.has(k)) {
+          existingKeys.add(k);
+          const masterDef = getMasterAttributeByName(k);
+          const hasOptions = masterDef && (masterDef.inputType === 'select' || masterDef.inputType === 'color_swatch' || (masterDef.values && masterDef.values.length > 0));
+          list.push({
+            key: k,
+            label: masterDef ? masterDef.name : k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            type: hasOptions ? 'dropdown' : 'text',
+            options: masterDef ? (masterDef.values || []).map(v => typeof v === 'object' ? v.name : v).filter(Boolean) : [],
+            isCustom: true
+          });
+        }
+      });
+    }
+    return list;
+  }, [dynamicCategoryAttributes, formData.categoryAttributes, masterAttributesList]);
 
   // Shade-applicability flag (strictly false for skincare, haircare, fragrance, tools)
   const shadeApplicable = useMemo(() => {
@@ -1199,6 +1243,18 @@ export default function AddNewProductPage({
       }
     }
 
+    // Mandatory Color Name for variants
+    if (hasVariants && formData.shades && formData.shades.length > 0) {
+      for (let i = 0; i < formData.shades.length; i++) {
+        const s = formData.shades[i];
+        const colorName = (s.color_name || s.name || '').trim();
+        if (!colorName) {
+          errors.variants = `Color Name is required for Variant #${i + 1}.`;
+          break;
+        }
+      }
+    }
+
     // Role Quantity Tiers Validation
     const normalizedTiers = normalizeQuantityTiers(formData.quantityTiers);
     for (const roleDef of DISCOUNT_ROLES) {
@@ -1233,45 +1289,34 @@ export default function AddNewProductPage({
       : (formData.image ? [formData.image] : []);
     const primaryImage = allImages[0] || formData.image || '';
 
-    const autoSku = formData.sku ? formData.sku.trim() : ('SKU-' + (formData.brandName || 'SAL').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() + '-' + Date.now().toString().slice(-6));
+    const existingSkus = (products || []).map(p => p.sku).filter(Boolean);
+    const autoSku = formData.sku && formData.sku.trim()
+      ? formData.sku.trim()
+      : generateProductSku({
+          brand: formData.brandName,
+          category: formData.category,
+          name: formData.name,
+          existingSkus
+        });
 
-    const sanitizedShades = (isParentProduct && childProducts.length > 0)
-      ? childProducts.map((child, idx) => ({
-          id: child.id || `child_${Date.now()}_${idx}`,
-          name: (child.name || `Variant ${idx + 1}`).trim(),
-          sku: child.sku ? child.sku.trim() : `${autoSku}-V${idx + 1}`,
-          barcode: child.barcode ? child.barcode.trim() : undefined,
-          barcode_format: child.barcode_format || undefined,
-          hexColor: child.hexColor || '#CE4270',
-          image: child.image || (child.images && child.images[0]) || primaryImage,
-          images: child.images && child.images.length > 0 ? child.images : (child.image ? [child.image] : allImages),
-          mrp: child.mrp ? Number(child.mrp) : mrpNum,
-          generalPrice: child.generalPrice !== undefined && child.generalPrice !== '' ? Number(child.generalPrice) : generalPriceNum,
-          salonPrice: child.salonPrice !== undefined && child.salonPrice !== '' ? Number(child.salonPrice) : salonPriceNum,
-          artistPrice: child.artistPrice !== undefined && child.artistPrice !== '' ? Number(child.artistPrice) : artistPriceNum,
-          beauticianPrice: child.beauticianPrice !== undefined && child.beauticianPrice !== '' ? Number(child.beauticianPrice) : beauticianPriceNum,
-          active: true,
-          attributes: child.attributes || {},
-          roleDiscounts: child.roleDiscounts || roleDiscounts,
-          quantityTiers: normalizeQuantityTiers(child.quantityTiers)
-        }))
-      : (hasVariants ? (formData.shades || []).map((shade, idx) => ({
-          id: shade.id || `var_${Date.now()}_${idx}`,
-          name: (shade.name || `Variant ${idx + 1}`).trim(),
-          code: shade.code ? shade.code.trim() : undefined,
-          sku: shade.sku ? shade.sku.trim() : `${autoSku}-V${idx + 1}`,
-          barcode: shade.barcode ? shade.barcode.trim() : undefined,
-          hexColor: shade.hexColor || (shade.attributes && (shade.attributes.Shade || shade.attributes.Color || shade.attributes.Colour) ? '#CE4270' : undefined),
-          image: shade.image || primaryImage,
-          images: shade.images || allImages,
-          mrp: shade.mrp ? Number(shade.mrp) : mrpNum,
-          generalPrice: shade.generalPrice !== undefined && shade.generalPrice !== '' ? Number(shade.generalPrice) : generalPriceNum,
-          salonPrice: shade.salonPrice !== undefined && shade.salonPrice !== '' ? Number(shade.salonPrice) : salonPriceNum,
-          artistPrice: shade.artistPrice !== undefined && shade.artistPrice !== '' ? Number(shade.artistPrice) : artistPriceNum,
-          beauticianPrice: shade.beauticianPrice !== undefined && shade.beauticianPrice !== '' ? Number(shade.beauticianPrice) : beauticianPriceNum,
-          active: shade.active !== false,
-          attributes: shade.attributes || {}
-        })) : []);
+    const sanitizedShades = hasVariants ? (formData.shades || []).map((shade, idx) => ({
+      id: shade.id || `var_${Date.now()}_${idx}`,
+      name: (shade.color_name || shade.name || `Variant ${idx + 1}`).trim(),
+      color_name: (shade.color_name || shade.name || `Variant ${idx + 1}`).trim(),
+      code: shade.code ? shade.code.trim() : undefined,
+      sku: generateVariantInternalSku(autoSku, idx),
+      barcode: shade.barcode ? shade.barcode.trim() : undefined,
+      hexColor: shade.hexColor || '#CE4270',
+      image: shade.image || primaryImage,
+      images: shade.images && shade.images.length > 0 ? shade.images : (shade.image ? [shade.image] : (primaryImage ? [primaryImage] : [])),
+      mrp: shade.mrp ? Number(shade.mrp) : mrpNum,
+      generalPrice: shade.generalPrice !== undefined && shade.generalPrice !== '' ? Number(shade.generalPrice) : generalPriceNum,
+      salonPrice: shade.salonPrice !== undefined && shade.salonPrice !== '' ? Number(shade.salonPrice) : salonPriceNum,
+      artistPrice: shade.artistPrice !== undefined && shade.artistPrice !== '' ? Number(shade.artistPrice) : artistPriceNum,
+      beauticianPrice: shade.beauticianPrice !== undefined && shade.beauticianPrice !== '' ? Number(shade.beauticianPrice) : beauticianPriceNum,
+      active: shade.active !== false,
+      attributes: shade.attributes || {}
+    })) : [];
 
     const normalizedTiers = normalizeQuantityTiers(formData.quantityTiers);
     const finalStatus = asDraft ? 'draft' : (newStatus || formData.status || 'published');
@@ -1694,14 +1739,18 @@ export default function AddNewProductPage({
                       <span>Brand</span>
                       <span className="text-[#E11D48]">*</span>
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsInlineAddBrandOpen(true)}
-                      className="text-[#C2477A] hover:text-[#b83760] font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <Plus size={12} strokeWidth={2.5} />
-                      <span>Add Brand</span>
-                    </button>
+                    {isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsInlineAddBrandOpen(true)}
+                        className="text-[#C2477A] hover:text-[#b83760] font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Plus size={12} strokeWidth={2.5} />
+                        <span>Add Brand</span>
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-gray-400 font-semibold">(Admin Only)</span>
+                    )}
                   </div>
                   <SearchableSelect
                     options={activeBrandOptions}
@@ -1797,7 +1846,8 @@ export default function AddNewProductPage({
                         ...prev,
                         category: selectedName,
                         subcategory: '',
-                        variantType: prev.variantType || '',
+                        variantType: '',
+                        productType: '',
                         categoryAttributes: {}
                       }));
                     }}
@@ -1823,32 +1873,41 @@ export default function AddNewProductPage({
                       setFormData(prev => ({
                         ...prev,
                         subcategory: selectedSub,
-                        variantType: prev.variantType || ''
+                        variantType: '',
+                        productType: ''
                       }));
                     }}
-                    placeholder={formData.category ? `Select ${formData.category} Subcategory...` : 'Select Subcategory...'}
+                    placeholder={formData.category ? `Select ${formData.category} Subcategory...` : 'Select Category First...'}
                     searchPlaceholder="Search subcategory or type..."
                     emptyMessage="No subcategories found"
                     labelKey="name"
                     valueKey="name"
+                    disabled={!formData.category}
                   />
                 </div>
 
                 <div>
                   <label className="block text-gray-800 font-bold mb-1.5 text-xs">
-                    Variant Type
+                    Select Category {formData.subcategory ? `(${formData.subcategory})` : ''}
                   </label>
                   <SearchableSelect
                     options={availableVariantTypes}
                     value={formData.variantType}
                     onChange={(selectedType) => {
-                      setFormData(prev => ({ ...prev, variantType: selectedType }));
+                      setFormData(prev => ({ ...prev, variantType: selectedType, productType: selectedType }));
                     }}
-                    placeholder="Select Variant Type..."
-                    searchPlaceholder="Search variant type..."
-                    emptyMessage="No variant types found"
+                    placeholder={
+                      !formData.category
+                        ? "Select Category First..."
+                        : !formData.subcategory
+                        ? "Select Subcategory First..."
+                        : "Select Category / Type..."
+                    }
+                    searchPlaceholder="Search select category..."
+                    emptyMessage="No select categories found"
                     labelKey="name"
                     valueKey="name"
+                    disabled={!formData.category || !formData.subcategory}
                   />
                 </div>
               </div>
@@ -2157,7 +2216,14 @@ export default function AddNewProductPage({
 
                 <div className="pt-0.5 text-[10.5px] text-gray-400 font-medium flex items-center gap-1.5">
                   <Info size={12} className="text-gray-400 shrink-0" />
-                  <span>SKU: {formData.sku || 'Auto-generated systematically on product save'}</span>
+                  <span className="text-gray-500 font-bold">Auto-Generated SKU: </span>
+                  <span className="font-mono font-black px-2 py-0.5 bg-rose-50 text-[#E11D48] rounded border border-rose-200">
+                    {formData.sku || generateProductSku({
+                      brand: formData.brandName,
+                      category: formData.category,
+                      name: formData.name
+                    })}
+                  </span>
                 </div>
               </div>
             </div>
@@ -2417,29 +2483,59 @@ export default function AddNewProductPage({
               }}
             />
 
-            {/* DYNAMIC ATTRIBUTES SECTION (INLINE EXPANDABLE ON CLICK) */}
-            {dynamicCategoryAttributes && dynamicCategoryAttributes.length > 0 && (
-              <div className="bg-white rounded-2xl border border-[#F3D7DF] p-6 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-pink-100/70">
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-[#E11D48] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                      <Sliders size={14} />
+            {/* UNIVERSAL & CATEGORY ATTRIBUTES SECTION */}
+            <div className="bg-white rounded-2xl border border-[#F3D7DF] p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-pink-100/70">
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-[#E11D48] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                    <Sliders size={14} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-black text-gray-900 tracking-tight">
+                        Product Attributes ({formData.category || 'All Categories'})
+                      </h2>
+                      {Object.keys(formData.categoryAttributes || {}).filter(k => formData.categoryAttributes[k]).length > 0 && (
+                        <span className="text-[10px] font-bold text-[#E11D48] bg-pink-50 border border-pink-200 px-2 py-0.5 rounded-full">
+                          {Object.keys(formData.categoryAttributes || {}).filter(k => formData.categoryAttributes[k]).length} Configured
+                        </span>
+                      )}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-black text-gray-900 tracking-tight">
-                          Product Attributes ({formData.category || 'All Categories'})
-                        </h2>
-                        {Object.keys(formData.categoryAttributes || {}).filter(k => formData.categoryAttributes[k]).length > 0 && (
-                          <span className="text-[10px] font-bold text-[#E11D48] bg-pink-50 border border-pink-200 px-2 py-0.5 rounded-full">
-                            {Object.keys(formData.categoryAttributes || {}).filter(k => formData.categoryAttributes[k]).length} Configured
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-gray-500 font-medium">
-                        Click Attributes button to expand and configure dynamic category specifications inline
-                      </p>
-                    </div>
+                    <p className="text-[11px] text-gray-500 font-medium">
+                      Dynamically synchronized with Universal Attribute Master & Category Mappings
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Add Attribute from Master Dropdown */}
+                  <div className="relative">
+                    <select
+                      value={selectedAttrToAdd}
+                      onChange={(e) => {
+                        const attrName = e.target.value;
+                        if (!attrName) return;
+                        const masterDef = getMasterAttributeByName(attrName);
+                        const key = (masterDef ? masterDef.name : attrName).toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+                        setFormData(prev => ({
+                          ...prev,
+                          categoryAttributes: {
+                            ...(prev.categoryAttributes || {}),
+                            [key]: ''
+                          }
+                        }));
+                        setIsAttributesExpanded(true);
+                        setSelectedAttrToAdd('');
+                      }}
+                      className="px-3 py-1.5 rounded-xl border border-pink-200 bg-pink-50/40 hover:bg-pink-100/60 text-xs font-bold text-[#E11D48] outline-none cursor-pointer shadow-2xs transition-all"
+                    >
+                      <option value="">+ Add Attribute from Master...</option>
+                      {masterAttributesList.filter(a => a.status !== 'inactive').map(a => (
+                        <option key={a.id || a.name} value={a.name}>
+                          {a.name} ({a.group || 'General'})
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <button
@@ -2456,19 +2552,71 @@ export default function AddNewProductPage({
                     {isAttributesExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </button>
                 </div>
+              </div>
 
-                {isAttributesExpanded && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2 animate-fade-in">
-                    {dynamicCategoryAttributes.map(attr => {
-                      const currentVal = formData.categoryAttributes?.[attr.key] || '';
-                      return (
-                        <div key={attr.key} className="space-y-1">
-                          <label className="block text-gray-800 font-bold text-xs truncate">
-                            {attr.label}
-                          </label>
-                          {attr.type === 'dropdown' ? (
-                            <div className="relative">
-                              <select
+              {isAttributesExpanded && (
+                <div className="pt-2 animate-fade-in">
+                  {allProductAttributes.length === 0 ? (
+                    <div className="text-center py-6 border border-dashed border-pink-200 rounded-2xl bg-pink-50/30">
+                      <Sliders size={22} className="mx-auto text-pink-300 mb-1.5" />
+                      <p className="text-xs font-bold text-gray-700">No attributes assigned yet</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Select an attribute from "+ Add Attribute from Master" above to add it to this product.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                      {allProductAttributes.map(attr => {
+                        const currentVal = formData.categoryAttributes?.[attr.key] || '';
+                        return (
+                          <div key={attr.key} className="space-y-1 p-2.5 rounded-xl border border-pink-100 bg-[#FFFBFD] relative group">
+                            <div className="flex items-center justify-between">
+                              <label className="block text-gray-800 font-bold text-xs truncate">
+                                {attr.label}
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData(prev => {
+                                    const updated = { ...(prev.categoryAttributes || {}) };
+                                    delete updated[attr.key];
+                                    return { ...prev, categoryAttributes: updated };
+                                  });
+                                }}
+                                className="text-gray-400 hover:text-rose-600 p-0.5 rounded cursor-pointer transition-colors"
+                                title="Remove attribute"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+
+                            {attr.type === 'dropdown' ? (
+                              <div className="relative">
+                                <select
+                                  value={currentVal}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      categoryAttributes: {
+                                        ...(prev.categoryAttributes || {}),
+                                        [attr.key]: val
+                                      }
+                                    }));
+                                  }}
+                                  className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-semibold text-gray-900 text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15 appearance-none cursor-pointer"
+                                >
+                                  <option value="">Select {attr.label}...</option>
+                                  {(attr.options || []).map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                              </div>
+                            ) : (
+                              <input
+                                type="text"
+                                placeholder={attr.placeholder || `Enter ${attr.label}...`}
                                 value={currentVal}
                                 onChange={(e) => {
                                   const val = e.target.value;
@@ -2480,40 +2628,17 @@ export default function AddNewProductPage({
                                     }
                                   }));
                                 }}
-                                className="w-full px-3 py-2.5 rounded-xl border border-pink-100 bg-white font-semibold text-gray-900 text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15 appearance-none cursor-pointer"
-                              >
-                                <option value="">Select {attr.label}...</option>
-                                {(attr.options || []).map(opt => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                            </div>
-                          ) : (
-                            <input
-                              type="text"
-                              placeholder={attr.placeholder || `Enter ${attr.label}...`}
-                              value={currentVal}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setFormData(prev => ({
-                                  ...prev,
-                                  categoryAttributes: {
-                                    ...(prev.categoryAttributes || {}),
-                                    [attr.key]: val
-                                  }
-                                }));
-                              }}
-                              className="w-full px-3 py-2.5 rounded-xl border border-pink-100 bg-white font-semibold text-gray-900 text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15"
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+                                className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-semibold text-gray-900 text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* PRODUCT SIZE, GST TAX & NET QUANTITY */}
             <div className="bg-white rounded-2xl border border-[#F3D7DF] p-6 shadow-xs space-y-4">
@@ -2933,406 +3058,7 @@ export default function AddNewProductPage({
               </div>
             </div>
 
-            {/* PARENT PRODUCT & CHILD PRODUCTS INLINE BUILDER */}
-            <div className="bg-white rounded-2xl border border-[#F3D7DF] p-6 shadow-xs space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-pink-100/70">
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                    <Boxes size={14} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-black text-gray-900 tracking-tight">
-                        Parent &amp; Child Products
-                      </h2>
-                      {isParentProduct && (
-                        <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
-                          Parent Mode Active ({childProducts.length} Children)
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-gray-500 font-medium">
-                      Set this product as a Parent and add independent sellable child products (shades/variants) with their own barcodes, images, 4-role pricing, and quantity tiers.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Set as Parent Toggle Switch */}
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xs font-bold text-gray-700">Set as Parent</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextVal = !isParentProduct;
-                      setIsParentProduct(nextVal);
-                      if (nextVal && childProducts.length === 0) {
-                        handleAddChildProduct();
-                      }
-                    }}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      isParentProduct ? 'bg-[#E11D48]' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        isParentProduct ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              {/* When Parent is enabled: Child products list */}
-              {isParentProduct ? (
-                <div className="space-y-4">
-                  <div className="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200 text-xs text-purple-900 flex items-start gap-2.5">
-                    <Info size={16} className="text-purple-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold">Independent Child Products Architecture</p>
-                      <p className="text-[11px] text-purple-700 leading-relaxed mt-0.5">
-                        Each child product behaves as an independent sellable product in Supabase (`parent_id = &lt;parent_product_id&gt;`) with its own unique barcode, images, attributes, 4-role prices, and independent quantity discounts.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Child Products Cards */}
-                  <div className="space-y-3">
-                    {childProducts.map((child, cIdx) => {
-                      const childTiers = normalizeQuantityTiers(child.quantityTiers);
-                      const currentChildRoleTiers = childTiers[child.activeTierRole || 'general'] || [];
-                      const childRole = child.activeTierRole || 'general';
-                      const childMrp = Number(child.mrp || formData.mrp || 0);
-                      const childBasePrice = getProductBasePriceForRole(child, childRole, child.roleDiscounts || roleDiscounts, childMrp);
-
-                      return (
-                        <div key={child.id || cIdx} className="rounded-2xl border border-pink-200 bg-white overflow-hidden shadow-2xs transition-all">
-                          {/* Child Card Header */}
-                          <div
-                            onClick={() => handleToggleChildExpand(cIdx)}
-                            className="p-3.5 bg-[#FFF9FA] border-b border-pink-100 flex items-center justify-between cursor-pointer hover:bg-pink-50/50 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="w-6 h-6 rounded-full bg-[#E11D48] text-white font-bold text-xs flex items-center justify-center">
-                                {cIdx + 1}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-xs text-gray-900">
-                                  {child.name || `Child Product ${cIdx + 1}`}
-                                </span>
-                                {child.barcode && (
-                                  <span className="text-[10px] font-mono font-bold bg-pink-100 text-pink-800 px-2 py-0.5 rounded-md border border-pink-200">
-                                    {child.barcode}
-                                  </span>
-                                )}
-                                {child.hexColor && (
-                                  <span
-                                    className="w-4 h-4 rounded-full border border-gray-300 inline-block shadow-2xs"
-                                    style={{ backgroundColor: child.hexColor }}
-                                    title={child.hexColor}
-                                  />
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                onClick={() => handleToggleChildExpand(cIdx)}
-                                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-                              >
-                                {child.isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveChildProduct(cIdx)}
-                                className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
-                                title="Delete Child Product"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Child Card Expandable Body */}
-                          {child.isExpanded && (
-                            <div className="p-4 space-y-4 animate-fade-in text-xs">
-                              {/* Row 1: Name & Barcode */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-gray-800 font-bold mb-1">
-                                    Variant / Shade Name <span className="text-[#E11D48]">*</span>
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder="e.g. Ruby Red, 50ml, Pack of 2"
-                                    value={child.name}
-                                    onChange={(e) => handleUpdateChildField(cIdx, 'name', e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl border border-pink-100 font-bold text-gray-900 text-xs outline-none focus:border-[#E11D48]"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-gray-800 font-bold mb-1">
-                                    Barcode (Unique)
-                                  </label>
-                                  <div className="relative flex items-center">
-                                    <input
-                                      type="text"
-                                      placeholder="e.g. 8901030999999"
-                                      value={child.barcode}
-                                      onChange={(e) => handleUpdateChildField(cIdx, 'barcode', e.target.value)}
-                                      className="w-full pl-3 pr-8 py-2 rounded-xl border border-pink-100 font-mono font-bold text-gray-900 text-xs outline-none focus:border-[#E11D48]"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setBarcodeScannerTarget(cIdx);
-                                        setIsBarcodeScannerOpen(true);
-                                      }}
-                                      className="absolute right-2 text-[#E11D48] hover:text-[#BE123C]"
-                                      title="Scan Barcode"
-                                    >
-                                      <ScanBarcode size={16} />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Row 2: 4-Role Prices for Child */}
-                              <div className="p-3 bg-pink-50/40 rounded-xl border border-pink-100 space-y-2">
-                                <span className="font-bold text-gray-800 text-[11px] block">
-                                  Child Product 4-Role Base Prices (₹):
-                                </span>
-                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                                  <div>
-                                    <label className="text-[10.5px] font-bold text-gray-600 block mb-0.5">MRP</label>
-                                    <input
-                                      type="number"
-                                      placeholder={formData.mrp ? `₹${formData.mrp}` : 'Enter MRP'}
-                                      value={child.mrp}
-                                      onChange={(e) => handleUpdateChildField(cIdx, 'mrp', e.target.value)}
-                                      className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-[10.5px] font-bold text-teal-700 block mb-0.5">General</label>
-                                    <input
-                                      type="number"
-                                      placeholder={formData.generalPrice ? `₹${formData.generalPrice}` : 'General'}
-                                      value={child.generalPrice}
-                                      onChange={(e) => handleChildRolePriceChange(cIdx, 'general', e.target.value)}
-                                      className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-[10.5px] font-bold text-pink-700 block mb-0.5">Salon</label>
-                                    <input
-                                      type="number"
-                                      placeholder={formData.salonPrice ? `₹${formData.salonPrice}` : 'Salon'}
-                                      value={child.salonPrice}
-                                      onChange={(e) => handleChildRolePriceChange(cIdx, 'salon', e.target.value)}
-                                      className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-[10.5px] font-bold text-purple-700 block mb-0.5">Artist</label>
-                                    <input
-                                      type="number"
-                                      placeholder={formData.artistPrice ? `₹${formData.artistPrice}` : 'Artist'}
-                                      value={child.artistPrice}
-                                      onChange={(e) => handleChildRolePriceChange(cIdx, 'artist', e.target.value)}
-                                      className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-[10.5px] font-bold text-rose-700 block mb-0.5">Beautician</label>
-                                    <input
-                                      type="number"
-                                      placeholder={formData.beauticianPrice ? `₹${formData.beauticianPrice}` : 'Beautician'}
-                                      value={child.beauticianPrice}
-                                      onChange={(e) => handleChildRolePriceChange(cIdx, 'beautician', e.target.value)}
-                                      className="w-full p-1.5 rounded-lg border border-pink-200 font-bold text-xs bg-white"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Row 3: Child Product Quantity Discount Tiers */}
-                              <div className="space-y-2 pt-1 border-t border-pink-100">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-bold text-gray-800 text-[11px]">
-                                    Child Quantity Discount Tiers:
-                                  </span>
-                                  <div className="flex items-center gap-1">
-                                    {DISCOUNT_ROLES.map(r => (
-                                      <button
-                                        key={r.id}
-                                        type="button"
-                                        onClick={() => handleUpdateChildField(cIdx, 'activeTierRole', r.id)}
-                                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
-                                          childRole === r.id
-                                            ? 'bg-[#E11D48] text-white'
-                                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                                        }`}
-                                      >
-                                        {r.shortName} ({(childTiers[r.id] || []).length})
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {/* Child Tiers Quick Presets */}
-                                <div className="flex items-center justify-between gap-1 flex-wrap p-2 bg-gray-50 rounded-lg text-[10px]">
-                                  <div className="flex items-center gap-1 flex-wrap">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleChildAddPresetTier(cIdx, childRole, 1, 2, 3)}
-                                      className="px-2 py-0.5 font-bold bg-white border border-gray-200 rounded hover:border-[#E11D48]"
-                                    >
-                                      + 1–2 (3%)
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleChildAddPresetTier(cIdx, childRole, 3, 4, 5)}
-                                      className="px-2 py-0.5 font-bold bg-white border border-gray-200 rounded hover:border-[#E11D48]"
-                                    >
-                                      + 3–4 (5%)
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleChildAddPresetTier(cIdx, childRole, 5, 9, 8)}
-                                      className="px-2 py-0.5 font-bold bg-white border border-gray-200 rounded hover:border-[#E11D48]"
-                                    >
-                                      + 5–9 (8%)
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleChildAddPresetTier(cIdx, childRole, 10, null, 12)}
-                                      className="px-2 py-0.5 font-bold bg-white border border-gray-200 rounded hover:border-[#E11D48]"
-                                    >
-                                      + 10+ (12%)
-                                    </button>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleChildAddBlankTier(cIdx, childRole)}
-                                    className="px-2 py-0.5 bg-[#E11D48] text-white font-bold rounded"
-                                  >
-                                    + Custom
-                                  </button>
-                                </div>
-
-                                {/* Child Tiers Table */}
-                                <div className="border border-pink-100 rounded-lg overflow-hidden bg-white">
-                                  <table className="w-full text-[10.5px] border-collapse">
-                                    <thead className="bg-[#FFF9FA] border-b border-pink-100 font-bold text-gray-600">
-                                      <tr>
-                                        <th className="p-1.5">Min</th>
-                                        <th className="p-1.5">Max</th>
-                                        <th className="p-1.5">Discount %</th>
-                                        <th className="p-1.5">Final Unit Price</th>
-                                        <th className="p-1.5 text-right w-10"></th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                      {currentChildRoleTiers.length === 0 ? (
-                                        <tr>
-                                          <td colSpan={5} className="p-2 text-center text-gray-400">
-                                            No quantity tiers set for {childRole}. Click presets above to add.
-                                          </td>
-                                        </tr>
-                                      ) : (
-                                        currentChildRoleTiers.map((tier, tIdx) => {
-                                          const disc = Number(tier.additionalDiscount) || 0;
-                                          const finalPrice = calculateTierFinalPrice(childBasePrice, disc);
-                                          return (
-                                            <tr key={tier.id || tIdx}>
-                                              <td className="p-1.5">
-                                                <input
-                                                  type="number"
-                                                  min="1"
-                                                  placeholder="Min"
-                                                  value={tier.minQty}
-                                                  onChange={(e) => handleChildUpdateTierField(cIdx, childRole, tIdx, 'minQty', e.target.value)}
-                                                  className="w-14 p-1 rounded border border-gray-200 font-bold"
-                                                />
-                                              </td>
-                                              <td className="p-1.5">
-                                                <input
-                                                  type="number"
-                                                  min={tier.minQty || 1}
-                                                  placeholder="10+"
-                                                  value={tier.maxQty ?? ''}
-                                                  onChange={(e) => handleChildUpdateTierField(cIdx, childRole, tIdx, 'maxQty', e.target.value)}
-                                                  className="w-14 p-1 rounded border border-gray-200"
-                                                />
-                                              </td>
-                                              <td className="p-1.5">
-                                                <input
-                                                  type="number"
-                                                  min="0"
-                                                  max="100"
-                                                  placeholder="Disc %"
-                                                  value={tier.additionalDiscount}
-                                                  onChange={(e) => handleChildUpdateTierField(cIdx, childRole, tIdx, 'additionalDiscount', e.target.value)}
-                                                  className="w-14 p-1 rounded border border-gray-200 font-bold text-[#E11D48]"
-                                                /> %
-                                              </td>
-                                              <td className="p-1.5 font-bold font-mono text-emerald-700">
-                                                ₹{finalPrice.toFixed(2)}
-                                              </td>
-                                              <td className="p-1.5 text-right">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleChildDeleteTier(cIdx, childRole, tIdx)}
-                                                  className="p-1 text-gray-400 hover:text-rose-600 rounded"
-                                                >
-                                                  <Trash2 size={13} />
-                                                </button>
-                                              </td>
-                                            </tr>
-                                          );
-                                        })
-                                      )}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* + Add Child Product Button */}
-                  <button
-                    type="button"
-                    onClick={handleAddChildProduct}
-                    className="w-full py-3 rounded-2xl border-2 border-dashed border-purple-300 hover:border-purple-600 bg-purple-50/50 hover:bg-purple-100/50 text-purple-800 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-98"
-                  >
-                    <Plus size={16} />
-                    <span>+ Add Child Product</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-500 flex items-center justify-between">
-                  <span>Parent mode is disabled. Toggle "Set as Parent" above to link multiple child products under this parent.</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsParentProduct(true);
-                      if (childProducts.length === 0) handleAddChildProduct();
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer"
-                  >
-                    Enable &amp; Add Child Product
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* CARD 7: PUBLISHING & MERCHANDISING CONTROLS */}
+            {/* CARD 6: PUBLISHING & MERCHANDISING CONTROLS */}
             <div className="bg-white rounded-2xl border border-[#F3D7DF] p-6 shadow-xs space-y-5">
               <div className="flex items-start gap-3 pb-3 border-b border-pink-100/70">
                 <div className="w-7 h-7 rounded-full bg-[#E11D48] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">

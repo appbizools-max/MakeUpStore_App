@@ -197,7 +197,7 @@ export default function RoleQuantityTiersManager({
 
       {/* 4 INDEPENDENT ROLE TABS */}
       <div className="px-4 sm:px-5">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 p-1.5 bg-gray-100/80 rounded-2xl border border-gray-200">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-gray-100/90 rounded-2xl border border-gray-200">
           {DISCOUNT_ROLES.map((role) => {
             const isActive = activeRoleTab === role.id;
             const roleTiersCount = (currentTiers[role.id] || []).length;
@@ -209,27 +209,29 @@ export default function RoleQuantityTiersManager({
                 key={role.id}
                 type="button"
                 onClick={() => setActiveRoleTab(role.id)}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all cursor-pointer text-center relative ${
+                className={`py-2.5 px-2 rounded-xl transition-all cursor-pointer text-center relative flex flex-col items-center justify-center gap-1 min-w-0 ${
                   isActive
-                    ? `${role.tabActive} shadow-xs`
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
+                    ? `${role.tabActive} shadow-xs ring-1 ring-black/10`
+                    : 'bg-white/60 hover:bg-white text-gray-700 hover:text-gray-900 border border-gray-200/70 shadow-2xs'
                 }`}
               >
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold">{role.name}</span>
+                {/* Line 1: Role Name */}
+                <div className="flex items-center justify-center gap-1.5 w-full min-w-0">
+                  <span className="font-extrabold text-xs truncate leading-tight">{role.name}</span>
                   {!roleValidation.isValid && (
-                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title="Configuration error in this role" />
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="Configuration error in this role" />
                   )}
                 </div>
 
-                <div className="flex items-center gap-1">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+                {/* Line 2: Tier Count Badge & Base Price */}
+                <div className="flex items-center justify-center gap-1 flex-wrap w-full">
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-none ${
+                    isActive ? 'bg-white/25 text-white' : 'bg-gray-200/80 text-gray-700'
                   }`}>
                     {roleTiersCount} {roleTiersCount === 1 ? 'Tier' : 'Tiers'}
                   </span>
-                  <span className={`text-[10px] hidden md:inline font-medium ${
-                    isActive ? 'text-white/90' : 'text-gray-400'
+                  <span className={`text-[10px] font-medium whitespace-nowrap leading-none ${
+                    isActive ? 'text-white/90' : 'text-gray-500'
                   }`}>
                     (Base: ₹{roleBase})
                   </span>
@@ -298,11 +300,11 @@ export default function RoleQuantityTiersManager({
                 <th className="py-3 px-3.5 w-24">TIER #</th>
                 <th className="py-3 px-3.5">MINIMUM QUANTITY</th>
                 <th className="py-3 px-3.5">ADDITIONAL DISCOUNT (%)</th>
-                <th className="py-3 px-3.5">
-                  <span className="flex items-center gap-1">
+                <th className="py-3 px-3.5 whitespace-nowrap">
+                  <div className="flex items-baseline gap-1">
                     <span>FINAL PRICE / UNIT</span>
                     <span className="text-[9px] font-normal text-gray-400 lowercase">(calculated)</span>
-                  </span>
+                  </div>
                 </th>
                 <th className="py-3 px-3.5 text-right w-20">ACTION</th>
               </tr>
