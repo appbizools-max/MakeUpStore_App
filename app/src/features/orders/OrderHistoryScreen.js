@@ -6,10 +6,13 @@ import { CancelWarningModal } from './CancelWarningModal';
 import { getSafeImageSource } from '../../utils/imageUtils';
 
 const ORDER_STAGES = [
-  { key: 'processing', label: 'Processing', description: 'Order confirmed & preparing at branch' },
-  { key: 'shipped', label: 'Shipped', description: 'Picked up by courier delivery partner' },
-  { key: 'out_for_delivery', label: 'Out for Delivery', description: 'Out with local delivery executive' },
-  { key: 'completed', label: 'Completed', description: 'Successfully delivered to customer' }
+  { key: 'placed', label: 'Placed', description: 'Order received and queued for store acceptance', icon: 'time-outline' },
+  { key: 'confirmed', label: 'Confirmed', description: 'Store branch verified and confirmed the order', icon: 'checkmark-outline' },
+  { key: 'processing', label: 'Processing', description: 'Order accepted, items being prepared at branch', icon: 'construct-outline' },
+  { key: 'packing', label: 'Packed & Sealed', description: 'Items verified, packed & sealed with quality check', icon: 'cube-outline' },
+  { key: 'ready_to_dispatch', label: 'Ready', description: 'Package staged for delivery partner handover', icon: 'car-outline' },
+  { key: 'out_for_delivery', label: 'Out for Delivery', description: 'Delivery partner / rider is en route to customer', icon: 'navigate-outline' },
+  { key: 'delivered', label: 'Delivered', description: 'Order successfully delivered to customer', icon: 'checkmark-circle-outline' }
 ];
 
 export const OrderHistoryScreen = () => {
@@ -52,10 +55,17 @@ export const OrderHistoryScreen = () => {
 
   // Filter orders so each user ONLY sees their own placed orders
   const displayOrders = useMemo(() => {
-    return orders.filter(o =>
-      !userProfile ? true : (o.phone === userProfile.phone || o.userName === userProfile.name)
-    );
-  }, [orders, userProfile?.phone, userProfile?.name]);
+    return orders.filter(o => {
+      if (!userProfile) return true;
+      const cleanPhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+      const uPhone = cleanPhone(userProfile.phone);
+      const oPhone = cleanPhone(o.phone);
+      const idMatch = userProfile.id && (o.userId === userProfile.id || o.user_id === userProfile.id || String(o.userId) === String(userProfile.id) || String(o.user_id) === String(userProfile.id));
+      const phoneMatch = uPhone && oPhone && uPhone === oPhone;
+      const nameMatch = userProfile.name && o.userName && userProfile.name.trim().toLowerCase() === o.userName.trim().toLowerCase();
+      return Boolean(idMatch || phoneMatch || nameMatch);
+    });
+  }, [orders, userProfile]);
 
   // Keep full order in sync if status changes
   const currentFullOrder = useMemo(() => {
@@ -84,11 +94,16 @@ export const OrderHistoryScreen = () => {
 
   const getStageIndex = (status) => {
     const s = (status || '').toLowerCase();
-    if (s === 'completed' || s === 'delivered') return 3;
-    if (s === 'out_for_delivery') return 2;
-    if (s === 'shipped') return 1;
+    if (s === 'completed' || s === 'delivered') return 6;
+    if (s === 'out_for_delivery') return 5;
+    if (s === 'ready_to_dispatch' || s === 'shipped') return 4;
+    if (s === 'packing') return 3;
+    if (s === 'processing') return 2;
+    if (s === 'confirmed') return 1;
+    if (s === 'placed') return 0;
+    if (s.startsWith('partially_delivered')) return 5;
     if (s === 'cancelled' || s === 'rejected') return -1;
-    return 0; // 'placed', 'processing', 'preparing'
+    return 0; // default to first stage
   };
 
   const getStatusBadgeStyle = (status) => {
@@ -97,24 +112,64 @@ export const OrderHistoryScreen = () => {
       return {
         container: 'border border-[#2E7D32] bg-emerald-50',
         text: 'text-[#2E7D32]',
-        label: 'COMPLETED',
+        label: 'DELIVERED',
         icon: 'checkmark-circle'
       };
     }
     if (s === 'out_for_delivery') {
       return {
-        container: 'border border-[#1976D2] bg-blue-50',
-        text: 'text-[#1976D2]',
+        container: 'border border-[#0891B2] bg-cyan-50',
+        text: 'text-[#0891B2]',
         label: 'OUT FOR DELIVERY',
         icon: 'car-outline'
       };
     }
-    if (s === 'shipped') {
+    if (s === 'ready_to_dispatch' || s === 'shipped') {
       return {
-        container: 'border border-[#5E35B1] bg-indigo-50',
-        text: 'text-[#5E35B1]',
-        label: 'SHIPPED',
+        container: 'border border-[#4F46E5] bg-indigo-50',
+        text: 'text-[#4F46E5]',
+        label: 'READY FOR DISPATCH',
         icon: 'cube-outline'
+      };
+    }
+    if (s === 'packing') {
+      return {
+        container: 'border border-[#7C3AED] bg-purple-50',
+        text: 'text-[#7C3AED]',
+        label: 'PACKED & SEALED',
+        icon: 'cube-outline'
+      };
+    }
+    if (s === 'processing') {
+      return {
+        container: 'border border-[#0284C7] bg-sky-50',
+        text: 'text-[#0284C7]',
+        label: 'PROCESSING',
+        icon: 'time-outline'
+      };
+    }
+    if (s === 'confirmed') {
+      return {
+        container: 'border border-[#2563EB] bg-blue-50',
+        text: 'text-[#2563EB]',
+        label: 'CONFIRMED',
+        icon: 'checkmark-outline'
+      };
+    }
+    if (s === 'placed') {
+      return {
+        container: 'border border-[#D97706] bg-amber-50',
+        text: 'text-[#D97706]',
+        label: 'ORDER PLACED',
+        icon: 'time-outline'
+      };
+    }
+    if (s.startsWith('partially_delivered')) {
+      return {
+        container: 'border border-[#7C3AED] bg-purple-50',
+        text: 'text-[#7C3AED]',
+        label: 'PARTIALLY DELIVERED',
+        icon: 'alert-circle-outline'
       };
     }
     if (s === 'cancelled') {
@@ -136,7 +191,7 @@ export const OrderHistoryScreen = () => {
     return {
       container: 'border border-[#C2477A] bg-[#FFF5F8]',
       text: 'text-[#C2477A]',
-      label: 'PROCESSING',
+      label: s.toUpperCase(),
       icon: 'time-outline'
     };
   };
@@ -379,7 +434,7 @@ export const OrderHistoryScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
           {/* Section 1: Order Reference ID, Date & Status Banner */}
           <View className="bg-white rounded-3xl border border-[#FCE4EC] p-4 mb-4 shadow-2xs">
             <View className="flex-row justify-between items-start pb-3 border-b border-[#FCE4EC]">
@@ -464,7 +519,7 @@ export const OrderHistoryScreen = () => {
                   Order Tracking Timeline
                 </Text>
                 <Text className="text-[10px] font-bold text-[#C2477A] bg-[#FFF5F8] px-2 py-0.5 rounded-full border border-[#FCE4EC]">
-                  Stage {currentStageIdx + 1} of 4
+                  Stage {Math.min(currentStageIdx + 1, ORDER_STAGES.length)} of {ORDER_STAGES.length}
                 </Text>
               </View>
 
@@ -474,10 +529,10 @@ export const OrderHistoryScreen = () => {
                   <View className="absolute top-3.5 left-4 right-4 h-1 bg-[#FCE4EC] rounded-full" />
                   <View
                     className="absolute top-3.5 left-4 h-1 bg-[#C2477A] rounded-full"
-                    style={{ width: `${(currentStageIdx / (ORDER_STAGES.length - 1)) * 100}%` }}
+                    style={{ width: `${Math.min(100, (currentStageIdx / (ORDER_STAGES.length - 1)) * 100)}%` }}
                   />
 
-                  {/* 4 Interactive Clickable Nodes */}
+                  {/* 7 Interactive Clickable Nodes */}
                   <View className="flex-row justify-between items-start">
                     {ORDER_STAGES.map((st, idx) => {
                       const isPassed = idx < currentStageIdx;
@@ -493,7 +548,7 @@ export const OrderHistoryScreen = () => {
                             }));
                           }}
                           className="items-center"
-                          style={{ width: '24%' }}
+                          style={{ width: `${100 / ORDER_STAGES.length}%` }}
                         >
                           <View
                             className={`w-7 h-7 rounded-full items-center justify-center ${
@@ -708,7 +763,7 @@ export const OrderHistoryScreen = () => {
      MAIN ORDERS LIST VIEW (REACT NATIVE)
      ======================================================================= */
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} className="bg-white">
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 100 }} className="bg-white">
       {/* Header Title */}
       <Text className="text-2xl font-black text-[#3A2430] mb-4 mt-1">
         My Orders
@@ -852,11 +907,11 @@ export const OrderHistoryScreen = () => {
                     <View
                       className="absolute top-3 left-4 h-1 bg-[#C2477A] rounded-full"
                       style={{
-                        width: `${(currentStageIdx / (ORDER_STAGES.length - 1)) * 100}%`
+                        width: `${Math.min(100, (currentStageIdx / (ORDER_STAGES.length - 1)) * 100)}%`
                       }}
                     />
 
-                    {/* 4 Clickable Stage Buttons */}
+                    {/* 7 Clickable Stage Buttons */}
                     <View className="flex-row justify-between items-start">
                       {ORDER_STAGES.map((st, idx) => {
                         const isPassed = idx < currentStageIdx;
@@ -872,7 +927,7 @@ export const OrderHistoryScreen = () => {
                               }));
                             }}
                             className="items-center"
-                            style={{ width: '24%' }}
+                            style={{ width: `${100 / ORDER_STAGES.length}%` }}
                           >
                             <View
                               className={`w-6 h-6 rounded-full items-center justify-center ${

@@ -131,7 +131,7 @@ export const CartScreen = () => {
 
   return (
     <View className="flex-1 bg-white">
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }} className="bg-white">
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 110 }} className="bg-white">
         {/* Header Title & Clear All Button */}
         <View className="flex-row items-center justify-between mb-4 mt-1">
           <Text className="text-2xl font-black text-[#3A2430]">
@@ -257,7 +257,7 @@ export const CartScreen = () => {
               </View>
             </View>
 
-            <ScrollView
+            <ScrollView keyboardShouldPersistTaps="handled"
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16 }}
@@ -482,7 +482,7 @@ export const CartScreen = () => {
               <Text className="text-[10px] font-black text-[#8C7078] uppercase tracking-wider mb-2">
                 Available Options ({getSafeProductShades(quickShadeModalItem).length})
               </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
+              <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
                 {getSafeProductShades(quickShadeModalItem).map((shade, idx) => {
                   const isSel = selectedQuickShade && (selectedQuickShade.id === shade.id || selectedQuickShade.name === shade.name);
                   const sPrice = getRolePrice(quickShadeModalItem, userRole, shade, 1);

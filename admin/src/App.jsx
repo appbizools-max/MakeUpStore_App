@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AdminProvider, useAdmin } from './context/AdminContext';
+import { AdminErrorBoundary } from './components/common/ErrorBoundary';
 import {
   LayoutGrid,
   ShoppingBag,
@@ -118,6 +119,7 @@ import { BulkProductEntryModal } from './components/products/BulkProductEntryMod
 import GeneratedDataPanel from './components/products/GeneratedDataPanel';
 import SearchableSelect from './components/common/SearchableSelect';
 import AdminSidebar from './components/common/AdminSidebar';
+import { AdminNotificationBell } from './components/notifications/AdminNotificationBell';
 import ImageField from './components/media/ImageField';
 import InlineImageSection from './components/media/InlineImageSection';
 import { getBeautyShadeName, MAKEUP_SWATCH_PRESETS, normalizeHex, isValidHex } from './components/common/HexColorPicker';
@@ -2850,10 +2852,24 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Current Active Section Badge on Mobile */}
-        <span className="text-[11px] font-bold text-[#C2477A] bg-[#FFF5F8] px-2.5 py-1 rounded-full border border-pink-200/50 truncate max-w-[130px]">
-          {getActiveTabLabel(activeTab)}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* Notification Bell on Mobile */}
+          <AdminNotificationBell
+            orders={orders}
+            b2bVerifications={b2bVerifications}
+            employeeOperations={employeeOperations}
+            searchRequests={searchRequests}
+            abandonedCarts={abandonedCarts}
+            products={products}
+            navigateToTab={navigateToTab}
+            currentAuthUser={currentAuthUser}
+          />
+
+          {/* Current Active Section Badge on Mobile */}
+          <span className="text-[11px] font-bold text-[#C2477A] bg-[#FFF5F8] px-2.5 py-1 rounded-full border border-pink-200/50 truncate max-w-[130px]">
+            {getActiveTabLabel(activeTab)}
+          </span>
+        </div>
       </header>
 
       {/* Fully Reorganized, Responsive Luxury Beauty Sidebar & Drawer */}
@@ -2947,6 +2963,18 @@ const AdminDashboard = () => {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Notification Bell with Live Alerts, Category Filters & Sound Chime */}
+              <AdminNotificationBell
+                orders={orders}
+                b2bVerifications={b2bVerifications}
+                employeeOperations={employeeOperations}
+                searchRequests={searchRequests}
+                abandonedCarts={abandonedCarts}
+                products={products}
+                navigateToTab={navigateToTab}
+                currentAuthUser={currentAuthUser}
+              />
+
               {/* Customer Search Requests Quick Button with Live Counter Badge */}
               <button
                 onClick={() => navigateToTab('search_requests')}
@@ -8329,8 +8357,10 @@ const AdminDashboard = () => {
 
 export default function App() {
   return (
-    <AdminProvider>
-      <AdminDashboard />
-    </AdminProvider>
+    <AdminErrorBoundary>
+      <AdminProvider>
+        <AdminDashboard />
+      </AdminProvider>
+    </AdminErrorBoundary>
   );
 }

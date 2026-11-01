@@ -21,53 +21,44 @@
 
 ## 📁 Repository Structure
 
+For the exhaustive architectural reference, see [**docs/FOLDER_STRUCTURE.md**](docs/FOLDER_STRUCTURE.md).
+
 ```
-MakeUpStore_App/
-├── admin/                         # 🖥️ Admin Management Console (React 18 + Vite 5)
-│   ├── src/
-│   │   ├── components/            # Domain-driven UI components
-│   │   │   ├── index.js           # Central component barrel re-export
-│   │   │   ├── b2b/               # B2B verification & trade inquiries
-│   │   │   ├── categories/        # Categories & master attributes
-│   │   │   ├── common/            # Reusable atomic controls (HexColorPicker, SearchableSelect)
-│   │   │   ├── governance/        # Employee RBAC, approvals & audit trail
-│   │   │   │   └── employees/
-│   │   │   ├── media/             # Image dropzone, modal, WebP optimizer
-│   │   │   ├── orders/            # Fulfillment statuses & cart recovery
-│   │   │   └── products/          # Catalog matrix, variant builder, barcodes, pricing
-│   │   │       └── preview/       # Merchandising live preview cards
-│   │   ├── config/                # Supabase client singleton
-│   │   ├── context/               # AdminContext state provider
-│   │   └── utils/                 # Barcode lookup, Excel generator, AI shade matcher
-│   ├── dist/                      # Production build output
-│   └── vite.config.js             # Vite configuration with path aliases
-│
-├── app/                           # 📱 Customer Mobile Application (React Native / Expo 51)
-│   ├── src/
-│   │   ├── api/                   # Supabase client & mobile data services
-│   │   ├── components/            # Mobile & Web UI components
-│   │   ├── context/               # Dual AppContext (localStorage Web & AsyncStorage Native)
-│   │   ├── features/              # Cross-platform screens & feature modules
-│   │   ├── screens/               # Mobile app screens (Catalog, Cart, B2B Register)
-│   │   └── theme/                 # Luxury color palette & typography tokens
-│   ├── App.js                     # Mobile application root entry point
-│   └── package.json               # Expo dependencies & scripts
-│
-├── database/                      # 🗄️ Database Architecture & Migrations
-│   ├── README.md                  # Database execution & RLS guide
-│   └── migrations/                # Chronologically sequenced SQL migrations
-│       ├── 001_supabase_schema.sql
-│       ├── 002_b2b_verification_migration.sql
-│       ├── 003_custom_modules_migration.sql
-│       ├── 004_inventory_removal_migration.sql
-│       └── 005_remove_all_images_migration.sql
-│
-├── scripts/                       # 🛠️ Maintenance & Diagnostic Automation
-│   ├── README.md                  # Scripts reference guide
-│   ├── database/                  # Connection tests, audit scripts, image inspector
-│   └── maintenance/               # Theme harmonizers, data cleaners
-│
-├── docs/                          # 📚 Engineering Documentation
+MakeUpStore_App-main/
+├── releases/                      # 📦 Production release binaries (APKs)
+└── MakeUpStore_App/
+    ├── admin/                     # 🖥️ Admin Management Console (React 18 + Vite 5)
+    │   └── src/
+    │       ├── components/        # Domain-driven management components (b2b, orders, products, etc.)
+    │       ├── config/            # Supabase API client & configuration
+    │       ├── context/           # AdminContext state provider & realtime listeners
+    │       └── utils/             # Exporters, formatters, and permission helpers
+    │
+    ├── app/                       # 📱 Customer Mobile Application (React Native / Expo 51)
+    │   ├── android/               # Native Android project (Kotlin, Manifest, Native FCM)
+    │   ├── Assets/                # Static brand assets (Logo, transparent splash logo)
+    │   ├── App.js                 # Mobile root entry point, navigation shell & bottom tabs
+    │   └── src/
+    │       ├── components/        # Error boundaries and shared presentation components
+    │       ├── config/            # Supabase singleton & 3-tier category taxonomy
+    │       ├── context/           # AppContext state provider (Cart, User, Realtime sync)
+    │       ├── features/          # Feature-driven modular screens (auth, home, product, cart, orders)
+    │       ├── utils/             # Push notification service, tier pricing, search engine
+    │       └── archive/           # Archived early web preview references
+    │
+    ├── database/                  # 🗄️ Database Architecture & Migrations
+    │   ├── migrations/            # Version-controlled SQL migrations (001 through 013)
+    │   ├── schemas/               # Baseline master relational schema reference
+    │   └── README.md              # Database migration instructions & Supabase CLI guide
+    │
+    ├── docs/                      # 📚 Engineering Documentation & PRDs
+    │   ├── FOLDER_STRUCTURE.md    # Complete folder, subfolder & sub-subfolder guide
+    │   └── Salbeau_App_Screens_PRD.md # Product Requirements Document
+    │
+    └── scripts/                   # 🛠️ Maintenance & Diagnostic Automation
+        ├── check_db.js            # Node.js CLI database connection verification
+        └── meta.bat               # Git synchronization utility
+```
 │   ├── architecture/
 │   │   ├── TARGET_FOLDER_STRUCTURE.md
 │   │   └── FILE_MIGRATION_MAP.md

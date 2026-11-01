@@ -343,7 +343,7 @@ export const B2BVerificationScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
+      <ScrollView keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
       >

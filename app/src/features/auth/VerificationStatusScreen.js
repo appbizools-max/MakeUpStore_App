@@ -105,7 +105,7 @@ export const VerificationStatusScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
+      <ScrollView keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
       >

@@ -2,19 +2,19 @@
 // Structured for 4-Level Navigation Flow (Nykaa / Tira / Sephora style)
 
 export const CATEGORY_IMAGES = {
-  makeup: '',
-  skincare: '',
-  hairCare: '',
-  hairStylingTools: '',
-  bathBody: '',
-  fragrance: '',
-  mensGrooming: '',
-  nailCare: '',
-  salonProducts: '',
-  beautyTools: '',
-  personalCare: '',
-  beautyKits: '',
-  eyeMakeup: '',
+  makeup: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505754975_gvytzx.webp?v=1793505754975',
+  skincare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505683962_hunl1d.webp?v=1793505683962',
+  hairCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505874428_6r1hr8.webp?v=1793505874428',
+  hairStylingTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505817403_oybioz.webp?v=1793505817403',
+  bathBody: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505998316_5h3t1a.webp?v=1793505998316',
+  fragrance: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505916828_ivu8o1.webp?v=1793505916828',
+  mensGrooming: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506238512_er0eqb.webp?v=1793506238512',
+  nailCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505951442_sl1hjy.webp?v=1793505951442',
+  salonProducts: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506188470_oisjf7.webp?v=1793506188470',
+  beautyTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506139285_xc2eij.webp?v=1793506139285',
+  personalCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506048096_8lqwd8.webp?v=1793506048096',
+  beautyKits: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506188470_oisjf7.webp?v=1793506188470',
+  eyeMakeup: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/sub_1790838756897_sy637u.jpg',
 };
 
 export const MAIN_CATEGORIES = [
@@ -807,7 +807,8 @@ export const getSubcategoriesForCategory = (catIdOrName) => {
 
           return {
             ...s,
-            image: cleanImage || '',
+            image: cleanImage || cat?.image || cat?.fallbackImage || '',
+            tagline: s.tagline || s.description || `Explore ${s.name}`,
             leafCategories: matchedLeaves
           };
         });
@@ -818,7 +819,11 @@ export const getSubcategoriesForCategory = (catIdOrName) => {
   const detail = CATEGORY_DETAILS_MAP[cat?.id] || Object.values(CATEGORY_DETAILS_MAP).find(d =>
     normalizeStr(d.title) === catName || normalizeStr(d.name) === catName
   );
-  return detail ? detail.subcategories : [];
+  if (!detail || !Array.isArray(detail.subcategories)) return [];
+  return detail.subcategories.map(s => ({
+    ...s,
+    image: s.image || cat?.image || cat?.fallbackImage || ''
+  }));
 };
 
 // Helper: Get leaf categories ("Select Categories") for a given subcategory

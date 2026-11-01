@@ -20,6 +20,7 @@ import {
   fetchUserVerificationRecord,
   submitB2BVerification as apiSubmitB2BVerification
 } from '../utils/b2bVerificationService';
+import { requestFCMToken, setupFCMForegroundListener, displayLocalNotification } from '../utils/fcmService';
 
 const AppContext = createContext();
 
@@ -119,7 +120,7 @@ export const computeOverallOrderStatus = (items, currentOrderStatus = 'placed') 
   const allPlaced = statuses.every(s => s === 'placed');
   if (allPlaced) return 'placed';
 
-  const allDelivered = statuses.every(s => s === 'delivered');
+  const allDelivered = statuses.every(s => s === 'delivered' || s === 'completed');
   if (allDelivered) return 'delivered';
 
   const allRejected = statuses.every(s => s === 'rejected');
@@ -128,16 +129,23 @@ export const computeOverallOrderStatus = (items, currentOrderStatus = 'placed') 
   const allCancelled = statuses.every(s => s === 'cancelled');
   if (allCancelled) return 'cancelled';
 
-  const deliveredCount = statuses.filter(s => s === 'delivered').length;
+  const deliveredCount = statuses.filter(s => s === 'delivered' || s === 'completed').length;
   const rejectedCount = statuses.filter(s => s === 'rejected').length;
   const cancelledCount = statuses.filter(s => s === 'cancelled').length;
-  const processingCount = statuses.filter(s => s === 'processing' || s === 'placed').length;
+  const processingCount = statuses.filter(s =>
+    ['processing', 'placed', 'pending_fulfillment', 'confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery'].includes(s)
+  ).length;
 
   if (deliveredCount > 0) {
     if (processingCount > 0) return 'partially_delivered';
     if (rejectedCount > 0 && cancelledCount === 0) return 'partially_delivered_rejected';
     if (cancelledCount > 0 && rejectedCount === 0) return 'partially_delivered_cancelled';
     return 'partially_delivered';
+  }
+
+  // Preserve explicit standard lifecycle stages set by Admin
+  if (['confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery', 'placed', 'delivered', 'completed'].includes(currentOrderStatus)) {
+    return currentOrderStatus;
   }
 
   if (processingCount > 0) {
@@ -280,7 +288,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Shop Best Sellers →',
     destinationType: 'BEST_SELLERS',
     destinationId: 'best_sellers',
-    imageUrl: '',
+    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_1.jpg',
     displayOrder: 1,
     isActive: true,
     startDate: null,
@@ -294,7 +302,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Shop Skincare →',
     destinationType: 'CATEGORY',
     destinationId: 'Skin Care',
-    imageUrl: '',
+    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_2.jpg',
     displayOrder: 2,
     isActive: true,
     startDate: null,
@@ -308,7 +316,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Explore Makeup →',
     destinationType: 'CATEGORY',
     destinationId: 'Makeup',
-    imageUrl: '',
+    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_3.jpg',
     displayOrder: 3,
     isActive: true,
     startDate: null,
@@ -322,7 +330,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Shop Hair Care →',
     destinationType: 'CATEGORY',
     destinationId: 'Hair Care',
-    imageUrl: '',
+    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_4.jpg',
     displayOrder: 4,
     isActive: true,
     startDate: null,
@@ -336,7 +344,7 @@ export const DEFAULT_HOME_BANNERS = [
     ctaLabel: 'Explore Pro Rates →',
     destinationType: 'CATEGORY',
     destinationId: 'Face Cream & Serums',
-    imageUrl: '',
+    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_5.jpg',
     displayOrder: 5,
     isActive: true,
     startDate: null,
@@ -593,33 +601,86 @@ export const AppProvider = ({ children }) => {
   const [showCancelWarningModal, setShowCancelWarningModal] = useState(false);
   const [pendingCancelOrderId, setPendingCancelOrderId] = useState(null);
   const [productSalesCounts, setProductSalesCounts] = useState({});
+  const [notifications, setNotifications] = useState([]);
+  const [selectedOrderIdForDetails, setSelectedOrderIdForDetails] = useState(null);
+  const [orderStatusNotification, setOrderStatusNotification] = useState(null);
+  const unreadNotificationsCount = useMemo(() => {
+    return (notifications || []).filter(n => !n.is_read).length;
+  }, [notifications]);
 
-  // Parallel fetch critical catalog data (brands, products, categories, subcategories)
+  // Parallel fetch critical catalog data with deduplication & SWR TTL caching
+  const inFlightCatalogFetchRef = useRef(null);
+
   const fetchCatalog = useCallback(async () => {
-    try {
-      const [brandsRes, productsRes, categoriesRes, subcategoriesRes, storeOrdersRes] = await Promise.all([
-        supabase.from('brands').select('id, name, enabled, logo'),
-        supabase.from('products').select('*').order('created_at', { ascending: false }),
-        supabase.from('categories').select('*').order('sort_order', { ascending: true }),
-        supabase.from('subcategories').select('*').order('sort_order', { ascending: true }),
-        supabase.from('orders').select('id, items, status').order('date', { ascending: false }).limit(200)
-      ]);
+    if (inFlightCatalogFetchRef.current) {
+      return inFlightCatalogFetchRef.current;
+    }
 
-      if (storeOrdersRes && storeOrdersRes.data) {
-        const salesMap = {};
-        for (const o of storeOrdersRes.data) {
-          const st = (o.status || '').toLowerCase();
-          if (['delivered', 'completed', 'placed', 'processing', 'confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery'].includes(st)) {
-            for (const item of (o.items || [])) {
-              const pid = item.product?.id || item.productId || item.id;
-              if (pid) {
-                salesMap[pid] = (salesMap[pid] || 0) + (Number(item.quantity) || 1);
+    const fetchPromise = (async () => {
+      try {
+        // Ultra-low latency banner sync: updates banners in milliseconds without waiting for products or orders
+        supabase
+          .from('brands')
+          .select('id, logo')
+          .eq('id', 'app_home_banners')
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data?.logo) {
+              try {
+                const parsed = JSON.parse(data.logo);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  setHomeBanners(parsed);
+                  setCachedData('salbeau_home_banners', parsed);
+                }
+              } catch (_) {}
+            }
+          })
+          .catch(() => {});
+
+        // Check cached sales counts with a 15-minute TTL to prevent high-frequency orders table thrashing under 10,000 CCU
+        let cachedSales = null;
+        try {
+          const raw = storage.getSync('salbeau_sales_counts_cache');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.ts && (Date.now() - parsed.ts < 15 * 60 * 1000) && parsed.data) {
+              cachedSales = parsed.data;
+            }
+          }
+        } catch (_) {}
+
+        const fetchOrdersPromise = cachedSales
+          ? Promise.resolve({ data: null, isCached: true })
+          : supabase.from('orders').select('id, items, status').order('date', { ascending: false }).limit(200);
+
+        const [brandsRes, productsRes, categoriesRes, subcategoriesRes, storeOrdersRes] = await Promise.all([
+          supabase.from('brands').select('id, name, enabled, logo'),
+          supabase.from('products').select('*').order('created_at', { ascending: false }),
+          supabase.from('categories').select('*').order('sort_order', { ascending: true }),
+          supabase.from('subcategories').select('*').order('sort_order', { ascending: true }),
+          fetchOrdersPromise
+        ]);
+
+        if (cachedSales) {
+          setProductSalesCounts(cachedSales);
+        } else if (storeOrdersRes && storeOrdersRes.data) {
+          const salesMap = {};
+          for (const o of storeOrdersRes.data) {
+            const st = (o.status || '').toLowerCase();
+            if (['delivered', 'completed', 'placed', 'processing', 'confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery'].includes(st)) {
+              for (const item of (o.items || [])) {
+                const pid = item.product?.id || item.productId || item.id;
+                if (pid) {
+                  salesMap[pid] = (salesMap[pid] || 0) + (Number(item.quantity) || 1);
+                }
               }
             }
           }
+          setProductSalesCounts(salesMap);
+          try {
+            storage.setItem('salbeau_sales_counts_cache', JSON.stringify({ ts: Date.now(), data: salesMap }));
+          } catch (_) {}
         }
-        setProductSalesCounts(salesMap);
-      }
 
       let hierarchyCategories = [];
       let parsedHier = null;
@@ -798,32 +859,64 @@ export const AppProvider = ({ children }) => {
     } catch (err) {
       console.warn('Supabase catalog fetch error:', err);
       setIsCatalogLoading(false);
+    } finally {
+      inFlightCatalogFetchRef.current = null;
     }
+    })();
+
+    inFlightCatalogFetchRef.current = fetchPromise;
+    return fetchPromise;
   }, []);
 
   // Real-Time Subscriptions: Single consolidated subscription channel
   useEffect(() => {
     fetchCatalog();
 
+    let isCleaningUp = false;
+    let reconnectTimer = null;
+
+    // Use a unique channel topic per mount to prevent callback collisions after subscribe
+    const channelName = `app-realtime-sync-${Date.now()}`;
     const channel = supabase
-      .channel('app-realtime-sync')
+      .channel(channelName)
       // 1. ORDERS
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const updatedOrder = mapOrderFromDb(payload.new);
           const curProfile = userProfileRef.current;
-          const cleanPhone = (curProfile?.phone || '').trim();
+          const cleanPhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+          const p1 = cleanPhone(curProfile?.phone);
+          const p2 = cleanPhone(updatedOrder.phone);
           const cleanName = (curProfile?.name || '').trim().toLowerCase();
           const isMyOrder = Boolean(
-            !cleanPhone || !updatedOrder.phone ||
-            (cleanPhone && updatedOrder.phone && updatedOrder.phone.trim() === cleanPhone) ||
-            (cleanName && updatedOrder.userName && updatedOrder.userName.trim().toLowerCase() === cleanName)
+            !curProfile ||
+            (curProfile?.id && (payload.new.user_id === curProfile.id || payload.new.userId === curProfile.id || String(payload.new.user_id) === String(curProfile.id))) ||
+            (p1 && p2 && p1 === p2) ||
+            (cleanName && updatedOrder.userName && updatedOrder.userName.trim().toLowerCase() === cleanName) ||
+            !updatedOrder.phone
           );
           if (isMyOrder) {
             setOrders(prev => {
               const idx = prev.findIndex(o => o.id === updatedOrder.id);
               if (idx >= 0) {
                 const copy = [...prev];
+                const oldOrder = copy[idx];
+                if (oldOrder && oldOrder.status !== updatedOrder.status) {
+                  const statusTitle = `Order Status: ${updatedOrder.status.toUpperCase().replace(/_/g, ' ')}`;
+                  const statusMsg = `Your order #${updatedOrder.id.slice(-6)} is now ${updatedOrder.status.replace(/_/g, ' ')}.`;
+                  setOrderStatusNotification({
+                    id: 'ord_upd_' + Date.now(),
+                    orderId: updatedOrder.id,
+                    status: updatedOrder.status,
+                    title: statusTitle,
+                    message: statusMsg,
+                    time: new Date().toISOString()
+                  });
+                  displayLocalNotification(statusTitle, statusMsg, {
+                    orderId: String(updatedOrder.id),
+                    status: String(updatedOrder.status)
+                  }).catch(() => {});
+                }
                 copy[idx] = updatedOrder;
                 return copy;
               }
@@ -879,6 +972,54 @@ export const AppProvider = ({ children }) => {
               verificationStatus: v.verification_status,
               rejectionReason: v.rejection_reason || null
             }));
+          }
+        }
+      })
+      // 2c. NOTIFICATIONS (In-App & Push Notification Center Realtime Sync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+        const notif = payload.new;
+        if (!notif) return;
+        const curProfile = userProfileRef.current;
+        const cleanPhone = (curProfile?.phone || '').trim();
+        const cleanId = (curProfile?.id || '').trim();
+        const isForMe = Boolean(
+          !curProfile ||
+          (cleanId && notif.user_id === cleanId) ||
+          (cleanPhone && notif.user_id === cleanPhone) ||
+          notif.target === 'all' ||
+          notif.target === curProfile?.role ||
+          notif.target === 'b2c'
+        );
+        if (!isForMe) return;
+
+        if (payload.eventType === 'INSERT') {
+          setNotifications(prev => [notif, ...prev.filter(n => n.id !== notif.id)]);
+          if (!notif.is_read) {
+            setOrderStatusNotification({
+              id: notif.id,
+              orderId: notif.data?.orderId,
+              status: notif.data?.eventType || notif.type,
+              title: notif.title || 'Notification',
+              message: notif.message || '',
+              time: notif.created_at || new Date().toISOString()
+            });
+
+            // Post to Android System Notification Bar & Lock Screen
+            displayLocalNotification(
+              notif.title || 'Salbeau Notification',
+              notif.message || '',
+              {
+                orderId: String(notif.data?.orderId || notif.data?.orderNumber || ''),
+                type: String(notif.type || notif.data?.eventType || 'general'),
+                id: String(notif.id || '')
+              }
+            ).catch(() => {});
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          setNotifications(prev => prev.map(n => n.id === notif.id ? notif : n));
+        } else if (payload.eventType === 'DELETE') {
+          if (payload.old?.id) {
+            setNotifications(prev => prev.filter(n => n.id !== payload.old.id));
           }
         }
       })
@@ -1161,8 +1302,12 @@ export const AppProvider = ({ children }) => {
 
     return () => {
       isCleaningUp = true;
-      clearTimeout(reconnectTimer);
-      supabase.removeChannel(channel);
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      try {
+        supabase.removeChannel(channel);
+      } catch (_) {}
     };
   }, [fetchCatalog]);
 
@@ -1192,6 +1337,159 @@ export const AppProvider = ({ children }) => {
     fetchUserOrders();
     return () => { isMounted = false; };
   }, [userProfile?.phone]);
+
+  // In-App Notification Center helpers & Supabase queries
+  const fetchNotifications = useCallback(async () => {
+    const cleanPhone = (userProfile?.phone || '').trim();
+    const cleanId = (userProfile?.id || '').trim();
+    try {
+      let query = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(60);
+      if (cleanPhone || cleanId) {
+        const conds = [];
+        if (cleanPhone) conds.push(`user_id.eq.${cleanPhone}`);
+        if (cleanId) conds.push(`user_id.eq.${cleanId}`);
+        query = query.or(conds.join(','));
+      }
+      const { data, error } = await query;
+      if (!error && Array.isArray(data)) {
+        setNotifications(data);
+      }
+    } catch (e) {
+      console.warn('fetchNotifications error:', e);
+    }
+  }, [userProfile?.phone, userProfile?.id]);
+
+  const markNotificationAsRead = useCallback(async (notifId) => {
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
+    try {
+      await supabase.from('notifications').update({ is_read: true }).eq('id', notifId);
+    } catch (e) {
+      console.warn('markNotificationAsRead error:', e);
+    }
+  }, []);
+
+  const markAllNotificationsAsRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    try {
+      const cleanPhone = (userProfile?.phone || '').trim();
+      const cleanId = (userProfile?.id || '').trim();
+      let query = supabase.from('notifications').update({ is_read: true }).eq('is_read', false);
+      if (cleanPhone || cleanId) {
+        const conds = [];
+        if (cleanPhone) conds.push(`user_id.eq.${cleanPhone}`);
+        if (cleanId) conds.push(`user_id.eq.${cleanId}`);
+        query = query.or(conds.join(','));
+      }
+      await query;
+    } catch (e) {
+      console.warn('markAllNotificationsAsRead error:', e);
+    }
+  }, [userProfile?.phone, userProfile?.id]);
+
+  const dismissOrderStatusNotification = useCallback(() => {
+    setOrderStatusNotification(null);
+  }, []);
+
+  // Native Android FCM & Notifications synchronization
+  useEffect(() => {
+    fetchNotifications();
+    const cleanPhone = (userProfile?.phone || '').trim();
+    const cleanId = (userProfile?.id || '').trim();
+    // Always request FCM token & Android 13+ runtime permission on mount
+    requestFCMToken(cleanId, cleanPhone);
+    const unsubFCM = setupFCMForegroundListener((pushData) => {
+      fetchNotifications();
+      setOrderStatusNotification({
+        id: 'fcm_' + Date.now(),
+        orderId: pushData.data?.orderId,
+        title: pushData.title,
+        message: pushData.message,
+        timestamp: Date.now()
+      });
+    });
+    return () => {
+      if (typeof unsubFCM === 'function') unsubFCM();
+    };
+  }, [userProfile?.phone, userProfile?.id, fetchNotifications]);
+
+  // Personalized Real-time & In-App Welcome Notification on User Login
+  const triggerLoginWelcomeNotification = useCallback(async (profileOverride = null) => {
+    const profile = profileOverride || userProfileRef.current;
+    if (!profile || !profile.phone) return;
+
+    const cleanPhone = (profile.phone || '').trim();
+    const cleanDigits = cleanPhone.replace(/\D/g, '');
+    const name = (profile.name || profile.fullName || '').trim() || 'Beauty Lover';
+    const role = (profile.role || userRoleRef.current || 'general').toLowerCase();
+
+    // Ensure FCM token registration on login
+    requestFCMToken(profile.id, cleanPhone).catch(() => {});
+
+    // 1. Personalized title & greeting tailored to customer role/persona
+    let title = `Welcome to Salbeau, ${name}! ✨`;
+    let message = 'Discover authentic luxury cosmetics, curated shades, and exclusive beauty deals for your skin.';
+
+    if (role.includes('salon') || role.includes('parlour')) {
+      title = `Welcome to Salbeau Salon Pro, ${name}! 🏛️`;
+      message = 'Your salon wholesale rates, bulk tier savings, and priority dispatch are ready.';
+    } else if (role.includes('artist') || role.includes('mua')) {
+      title = `Welcome to Salbeau Pro MUA, ${name}! 💄`;
+      message = 'Access professional makeup artist discounts, master kits, and bulk tier rates.';
+    } else if (role.includes('beautician')) {
+      title = `Welcome to Salbeau Beautician Partner, ${name}! 🌸`;
+      message = 'Explore specialized beautician pricing, salon packs, and verified cosmetic products.';
+    } else if (role.includes('wholesale') || role.includes('reseller')) {
+      title = `Welcome to Salbeau Wholesale, ${name}! 📦`;
+      message = 'Direct B2B distribution rates, bulk purchase discounts, and GST invoice billing unlocked.';
+    }
+
+    // 2. Immediate floating celebration in-app toast banner
+    setOrderStatusNotification({
+      id: `welcome_toast_${Date.now()}`,
+      title,
+      message,
+      type: 'welcome',
+      time: new Date().toISOString()
+    });
+
+    // Post to Android System Notification Bar
+    displayLocalNotification(title, message, {
+      type: 'welcome',
+      eventType: 'login_welcome'
+    }).catch(() => {});
+
+    // 3. Persistent Notification Center item in local state
+    const newNotifItem = {
+      id: `notif_welcome_${cleanDigits}_${Date.now()}`,
+      user_id: cleanPhone,
+      title,
+      message,
+      type: 'welcome',
+      data: { eventType: 'login_welcome', role, name },
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+
+    setNotifications(prev => [newNotifItem, ...prev.filter(n => n.type !== 'welcome' || n.id !== newNotifItem.id)]);
+
+    // 4. Persist to Supabase notifications table in background
+    try {
+      await supabase.from('notifications').insert([{
+        user_id: cleanPhone,
+        title,
+        message,
+        type: 'welcome',
+        data: { eventType: 'login_welcome', role, name },
+        is_read: false
+      }]);
+    } catch (e) {
+      console.warn('Welcome notification db insert skipped/offline:', e?.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   // Server-side session verification and sync on app startup / refresh
   useEffect(() => {
@@ -2250,6 +2548,18 @@ export const AppProvider = ({ children }) => {
         homeBanners,
         activeBanners,
         setHomeBanners,
+        notifications,
+        unreadNotificationsCount,
+        orderStatusNotification,
+        setOrderStatusNotification,
+        dismissOrderStatusNotification,
+        triggerLoginWelcomeNotification,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
+        fetchNotifications,
+        refreshNotifications: fetchNotifications,
+        selectedOrderIdForDetails,
+        setSelectedOrderIdForDetails,
       }}
     >
       {children}

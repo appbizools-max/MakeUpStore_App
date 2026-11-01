@@ -11,7 +11,7 @@ import { generateSalbeauOrderId, getISTDateParts } from '../utils/orderIdUtils';
 import { setLiveCategoryHierarchy } from '../config/categoriesHierarchy';
 import { getSafeImageUri, DEFAULT_CATEGORY_FALLBACKS } from '../utils/imageUtils';
 import { flattenProductsToIndividualVariants } from '../utils/productSearchEngine';
-import { requestFCMToken, setupFCMForegroundListener } from '../utils/fcmService';
+import { requestFCMToken, setupFCMForegroundListener, displayLocalNotification } from '../utils/fcmService';
 import {
   isB2BRole,
   isUserB2BVerified,
@@ -165,7 +165,7 @@ export const computeOverallOrderStatus = (items, currentOrderStatus = 'placed') 
   }
 
   if (processingCount > 0) {
-    if (['confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery', 'placed'].includes(currentOrderStatus)) {
+    if (['confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery', 'placed', 'delivered', 'completed'].includes(currentOrderStatus)) {
       return currentOrderStatus;
     }
     return 'processing';
@@ -761,19 +761,27 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     fetchCatalog();
 
+    let isCleaningUp = false;
+    let reconnectTimer = null;
+
+    const channelName = `app-web-realtime-sync-${Date.now()}`;
     const channel = supabase
-      .channel('app-web-realtime-sync')
+      .channel(channelName)
       // 1. ORDERS
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const updatedOrder = mapOrderFromDb(payload.new);
           const curProfile = userProfileRef.current;
-          const cleanPhone = (curProfile?.phone || '').trim();
+          const cleanPhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+          const p1 = cleanPhone(curProfile?.phone);
+          const p2 = cleanPhone(updatedOrder.phone);
           const cleanName = (curProfile?.name || '').trim().toLowerCase();
           const isMyOrder = Boolean(
-            !cleanPhone || !updatedOrder.phone ||
-            (cleanPhone && updatedOrder.phone && updatedOrder.phone.trim() === cleanPhone) ||
-            (cleanName && updatedOrder.userName && updatedOrder.userName.trim().toLowerCase() === cleanName)
+            !curProfile ||
+            (curProfile?.id && (payload.new.user_id === curProfile.id || payload.new.userId === curProfile.id || String(payload.new.user_id) === String(curProfile.id))) ||
+            (p1 && p2 && p1 === p2) ||
+            (cleanName && updatedOrder.userName && updatedOrder.userName.trim().toLowerCase() === cleanName) ||
+            !updatedOrder.phone
           );
 
           setOrders(prev => {
@@ -1211,8 +1219,12 @@ export const AppProvider = ({ children }) => {
 
     return () => {
       isCleaningUp = true;
-      clearTimeout(reconnectTimer);
-      supabase.removeChannel(channel);
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      try {
+        supabase.removeChannel(channel);
+      } catch (_) {}
     };
   }, [fetchCatalog]);
 
@@ -1270,9 +1282,7 @@ export const AppProvider = ({ children }) => {
   // Load user notifications & initialize FCM
   useEffect(() => {
     fetchNotifications();
-    if (userProfile?.phone || userProfile?.id) {
-      requestFCMToken(userProfile?.id, userProfile?.phone);
-    }
+    requestFCMToken(userProfile?.id, userProfile?.phone);
     const unsubFCM = setupFCMForegroundListener((pushData) => {
       fetchNotifications();
       setOrderStatusNotification({

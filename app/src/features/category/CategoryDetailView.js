@@ -97,36 +97,16 @@ export const CategoryDetailView = ({
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 90 }}
       >
-        {/* ── TOP HERO BANNER ─────────────────────────────────────────── */}
-        <View className="mx-4 mt-3 mb-4 rounded-2xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FFF0F5] relative h-44">
+        {/* ── TOP HERO BANNER (PROPER 16:9 HD BANNER — FULLY VISIBLE) ─── */}
+        <View className="mx-4 mt-3 mb-4 rounded-2xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FFF5F8]">
           <Image
             source={getSafeImageSource(category?.image, category?.fallbackImage || '')}
-            className="w-full h-full object-cover"
+            style={{ width: '100%', aspectRatio: 16 / 9 }}
             resizeMode="cover"
           />
-          {/* Subtle dark gradient overlay */}
-          <View className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent justify-end p-4">
-            <View className="bg-white/20 self-start px-2.5 py-0.5 rounded-full mb-1.5 backdrop-blur-md">
-              <Text className="text-white text-[10px] font-extrabold tracking-wider uppercase">
-                Featured Collection
-              </Text>
-            </View>
-            <Text className="text-2xl font-black text-white leading-tight">
-              {category?.name}
-            </Text>
-            {category?.tagline ? (
-              <Text className="text-xs font-bold text-white/95 mt-0.5">
-                {category.tagline}
-              </Text>
-            ) : null}
-            {category?.description ? (
-              <Text className="text-[11px] text-white/80 font-medium mt-1 leading-4" numberOfLines={2}>
-                {category.description}
-              </Text>
-            ) : null}
-          </View>
         </View>
 
         {/* ── SECTION HEADER ─────────────────────────────────────────── */}
@@ -152,7 +132,7 @@ export const CategoryDetailView = ({
                 {/* Visual Thumbnail */}
                 <View className="w-14 h-14 rounded-xl overflow-hidden bg-[#FFF0F5] border border-[#FCE4EC]">
                   <Image
-                    source={getSafeImageSource(sub.image, '')}
+                    source={getSafeImageSource(sub.image, category?.image || '')}
                     className="w-full h-full object-cover"
                     resizeMode="cover"
                   />

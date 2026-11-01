@@ -214,14 +214,14 @@ export const PlaceOrderScreen = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }} className="bg-gray-50">
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 110 }} className="bg-gray-50">
       {/* Header Row with Back Button & Title */}
       <View className="flex-row items-center gap-3 mb-5 mt-1">
         <TouchableOpacity
           onPress={() => setCurrentScreen('cart')}
           className="w-9 h-9 rounded-2xl bg-white border border-gray-200 items-center justify-center shadow-xs"
         >
-          <Ionicons name="chevron-back" size={18} color="#1E293B" />
+          <Ionicons name="chevron-back" size={18} color="#C2477A" />
         </TouchableOpacity>
         <Text className="text-xl font-black text-slate-900 tracking-tight">Checkout</Text>
       </View>
@@ -420,7 +420,7 @@ export const PlaceOrderScreen = () => {
               onPress={() => setShowAddModal(false)}
               className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 items-center justify-center"
             >
-              <Ionicons name="chevron-back" size={18} color="#1E293B" />
+              <Ionicons name="chevron-back" size={18} color="#C2477A" />
             </TouchableOpacity>
             <View>
               <Text className="text-base font-black text-slate-900 tracking-tight">Add Delivery Address</Text>
@@ -429,7 +429,7 @@ export const PlaceOrderScreen = () => {
           </View>
 
           {/* ScrollView with 160px Bottom Padding */}
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
             {/* Address Tag Selector */}
             <View className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 shadow-xs">
               <Text className="text-xs font-black text-slate-900 uppercase tracking-wider mb-2.5">

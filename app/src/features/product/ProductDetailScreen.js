@@ -275,7 +275,11 @@ export const ProductDetailScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 12, paddingTop: 60, paddingBottom: 150 }} className="bg-[#F4F5F8]">
+      <ScrollView
+        contentContainerStyle={{ padding: 12, paddingTop: 60, paddingBottom: 150 }}
+        keyboardShouldPersistTaps="handled"
+        className="bg-[#F4F5F8]"
+      >
         {/* 2. Interactive Hero Image Slider & Dots */}
         <View className="bg-white p-4 rounded-2xl border border-gray-100 items-center mb-3 relative">
           <View className="w-full h-64 bg-white items-center justify-center relative">
@@ -286,10 +290,10 @@ export const ProductDetailScreen = () => {
             {productImages.length > 1 && (
               <View className="absolute flex-row justify-between w-full px-1">
                 <TouchableOpacity onPress={prevImage} className="w-8 h-8 rounded-full bg-white/90 items-center justify-center border border-gray-200">
-                  <Text className="text-sm font-bold">‹</Text>
+                  <Ionicons name="chevron-back" size={16} color="#C2477A" />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={nextImage} className="w-8 h-8 rounded-full bg-white/90 items-center justify-center border border-gray-200">
-                  <Text className="text-sm font-bold">›</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#C2477A" />
                 </TouchableOpacity>
               </View>
             )}
@@ -417,7 +421,7 @@ export const ProductDetailScreen = () => {
               )}
             </View>
 
-            <ScrollView
+            <ScrollView keyboardShouldPersistTaps="handled"
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16 }}
@@ -522,7 +526,7 @@ export const ProductDetailScreen = () => {
               )}
             </View>
 
-            <ScrollView
+            <ScrollView keyboardShouldPersistTaps="handled"
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16 }}
@@ -613,7 +617,7 @@ export const ProductDetailScreen = () => {
               </View>
             </View>
 
-            <ScrollView
+            <ScrollView keyboardShouldPersistTaps="handled"
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16 }}
@@ -716,7 +720,7 @@ export const ProductDetailScreen = () => {
               </View>
             </View>
 
-            <ScrollView
+            <ScrollView keyboardShouldPersistTaps="handled"
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16 }}
@@ -851,7 +855,7 @@ export const ProductDetailScreen = () => {
               <Text className="text-[10px] font-black text-[#8C7078] uppercase tracking-wider mb-2">
                 Available Options ({getSafeProductShades(quickShadeModalItem).length})
               </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
+              <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
                 {getSafeProductShades(quickShadeModalItem).map((shade, idx) => {
                   const isSel = selectedQuickShade && (selectedQuickShade.id === shade.id || selectedQuickShade.name === shade.name);
                   const sPrice = getRolePrice(quickShadeModalItem, userRole, shade, 1);

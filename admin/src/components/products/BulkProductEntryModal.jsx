@@ -944,15 +944,23 @@ export const BulkProductEntryModal = ({
 
   // Table Column Manager Modal State & Column Preferences
   const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
+
+  // Batch Taxonomy Application Modal State ("Set All Rows" header tool)
+  const [isBatchTaxonomyOpen, setIsBatchTaxonomyOpen] = useState(false);
+  const [batchScope, setBatchScope] = useState('all'); // 'all' | 'selected' | 'empty'
+  const [batchBrand, setBatchBrand] = useState('');
+  const [batchCategory, setBatchCategory] = useState('');
+  const [batchSubcategory, setBatchSubcategory] = useState('');
+  const [batchSelectCategory, setBatchSelectCategory] = useState('');
   const [columnConfig, setColumnConfig] = useState(() => {
     try {
-      const saved = localStorage.getItem('salbeau_bulk_column_prefs_v12');
+      const saved = localStorage.getItem('salbeau_bulk_column_prefs_v15');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return DEFAULT_COLUMN_CONFIG.map(def => {
             const match = parsed.find(p => p.key === def.key);
-            return match ? { ...def, visible: def.mandatory ? true : match.visible } : def;
+            return match ? { ...def, visible: def.mandatory || def.canonicalCol != null ? true : match.visible } : def;
           });
         }
       }
@@ -961,15 +969,18 @@ export const BulkProductEntryModal = ({
   });
 
   const isColVisible = useCallback((key) => {
+    // Canonical columns 1-19 are always visible by specification to maintain exact requested order
+    const def = DEFAULT_COLUMN_CONFIG.find(c => c.key === key);
+    if (def && (def.mandatory || def.canonicalCol != null)) return true;
     const col = columnConfig.find(c => c.key === key);
     return col ? col.visible : true;
   }, [columnConfig]);
 
   const handleToggleColumn = (key) => {
     setColumnConfig(prev => {
-      const next = prev.map(c => c.key === key && !c.mandatory ? { ...c, visible: !c.visible } : c);
+      const next = prev.map(c => c.key === key && !c.mandatory && c.canonicalCol == null ? { ...c, visible: !c.visible } : c);
       try {
-        localStorage.setItem('salbeau_bulk_column_prefs_v12', JSON.stringify(next));
+        localStorage.setItem('salbeau_bulk_column_prefs_v15', JSON.stringify(next));
       } catch (e) {}
       return next;
     });
@@ -978,7 +989,9 @@ export const BulkProductEntryModal = ({
   const handleResetColumns = () => {
     setColumnConfig(DEFAULT_COLUMN_CONFIG);
     try {
-      localStorage.removeItem('salbeau_bulk_column_prefs_v12'); localStorage.removeItem('salbeau_bulk_column_prefs');
+      localStorage.removeItem('salbeau_bulk_column_prefs_v15');
+      localStorage.removeItem('salbeau_bulk_column_prefs_v12');
+      localStorage.removeItem('salbeau_bulk_column_prefs');
     } catch (e) {}
   };
 
@@ -1031,7 +1044,15 @@ export const BulkProductEntryModal = ({
   const [customVariantTypes, setCustomVariantTypes] = useState([]);
   const [customSelectCategories, setCustomSelectCategories] = useState({});
   const [selectCategoriesMap, setSelectCategoriesMap] = useState({});
-  const isAdmin = adminCtx?.currentAuthUser?.role !== 'employee';
+  // Admins and Employees have full authorization to add, edit, update, delete products & images
+  const isAdmin = Boolean(
+    !adminCtx?.currentAuthUser?.role ||
+    adminCtx?.currentAuthUser?.role === 'admin' ||
+    adminCtx?.currentAuthUser?.role === 'employee' ||
+    adminCtx?.currentAuthUser?.role === 'manager' ||
+    adminCtx?.currentAuthUser?.role === 'superadmin' ||
+    adminCtx?.currentAuthUser?.role !== 'customer'
+  );
 
   // Master hierarchy fetched from Supabase (subcategories + variant types per category)
   // Shape: { byCategory: { [categoryName]: { subcategories: string[], variantTypes: string[] } } }
@@ -2497,6 +2518,41 @@ export const BulkProductEntryModal = ({
     setBulkNotice({ type: 'success', text: `Updated ${field} for ${selectedRowIds.size} rows.` });
   };
 
+  // Batch Taxonomy Application ("Set All Rows" header tool)
+  const handleApplyBatchTaxonomy = () => {
+    if (!batchBrand && !batchCategory && !batchSubcategory && !batchSelectCategory) {
+      setIsBatchTaxonomyOpen(false);
+      return;
+    }
+
+    let appliedCount = 0;
+    setRows(prev => prev.map(r => {
+      const isMatch = (
+        batchScope === 'all' ? true :
+        batchScope === 'selected' ? selectedRowIds.has(r._id) :
+        (!r.category || !r.brand)
+      );
+      if (!isMatch) return r;
+
+      appliedCount++;
+      const updated = {
+        ...r,
+        ...(batchBrand ? { brand: batchBrand } : {}),
+        ...(batchCategory ? { category: batchCategory } : {}),
+        ...(batchSubcategory ? { subcategory: batchSubcategory } : {}),
+        ...(batchSelectCategory ? { productType: batchSelectCategory, selectCategory: batchSelectCategory } : {})
+      };
+
+      return autoEnrichRowWithDescriptionAndHighlights(updated);
+    }));
+
+    setIsBatchTaxonomyOpen(false);
+    setBulkNotice({
+      type: 'success',
+      text: `Successfully applied taxonomy batch to ${appliedCount} staged row(s).`
+    });
+  };
+
   const handleBulkDeleteSelected = () => {
     if (selectedRowIds.size === 0) return;
     if (!confirm(`Delete ${selectedRowIds.size} selected products?`)) return;
@@ -3106,7 +3162,7 @@ export const BulkProductEntryModal = ({
 
   return (
     <div className={isPageMode ? "w-full h-full flex flex-col bg-[#F8FAFD] overflow-hidden min-h-0" : "fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-1 sm:p-2.5 overflow-hidden"}>
-      <div className={isPageMode ? "w-full flex-1 flex flex-col bg-white overflow-hidden min-h-0" : "bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-[1600px] h-[96vh] flex flex-col border border-slate-200 overflow-hidden min-h-0"}>
+      <div className={isPageMode ? "w-full flex-1 flex flex-col bg-white overflow-hidden min-h-0" : "bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-[1600px] max-h-[85vh] h-[85vh] flex flex-col border border-slate-200 overflow-hidden min-h-0"}>
 
         {/* Hidden file input for Excel / CSV upload */}
         <input
@@ -3307,6 +3363,23 @@ export const BulkProductEntryModal = ({
               >
                 <X className="w-3.5 h-3.5 text-slate-400" />
                 <span>Clear Staging</span>
+              </button>
+
+              {/* Batch Taxonomy Application Tool ("Set All Rows") */}
+              <button
+                type="button"
+                onClick={() => {
+                  setBatchBrand('');
+                  setBatchCategory('');
+                  setBatchSubcategory('');
+                  setBatchSelectCategory('');
+                  setIsBatchTaxonomyOpen(true);
+                }}
+                className="px-3.5 py-2 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200 text-purple-800 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                title="Batch set Brand, Category, Subcategory across all staged rows at once"
+              >
+                <Layers className="w-4 h-4 text-purple-600" />
+                <span>Set All Rows</span>
               </button>
 
               {/* Bulk Actions Dropdown */}
@@ -3745,13 +3818,13 @@ export const BulkProductEntryModal = ({
                 <tr className="divide-x divide-slate-200 h-14">
                   {/* Column 0A: # */}
                   {isColVisible('index') && (
-                    <th className="w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800 font-mono">
+                    <th className="sticky left-0 z-40 w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800 font-mono border-r border-slate-300">
                       #
                     </th>
                   )}
                   {/* Column 0B: Checkbox */}
                   {isColVisible('select') && (
-                    <th className="w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800">
+                    <th className="sticky left-[50px] z-40 w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800 border-r border-slate-300">
                       <input
                         type="checkbox"
                         checked={selectedRowIds.size > 0 && selectedRowIds.size === displayedRows.length}
@@ -3767,7 +3840,7 @@ export const BulkProductEntryModal = ({
 
                   {/* Column 1: Barcode */}
                   {isColVisible('barcode') && (
-                    <th className="min-w-[210px] px-3.5 text-left bg-[#EEF2FF] border-r border-slate-300 text-slate-900 shadow-2xs">
+                    <th className="min-w-[210px] w-[210px] max-w-[210px] px-3.5 text-left bg-[#EEF2FF] border-r border-slate-200 text-slate-900">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 1</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BARCODE</span>
@@ -3811,7 +3884,7 @@ export const BulkProductEntryModal = ({
 
                   {/* Column 5: Product Name */}
                   {isColVisible('name') && (
-                    <th className="min-w-[320px] px-3.5 text-left bg-[#EEF2FF] text-slate-900">
+                    <th className="min-w-[320px] w-[320px] px-3.5 text-left bg-[#EEF2FF] border-r border-slate-200 text-slate-900">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 5</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT_NAME</span>
@@ -4103,14 +4176,14 @@ export const BulkProductEntryModal = ({
                       >
                         {/* Column 0A: # */}
                         {isColVisible('index') && (
-                          <td className="w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center font-mono font-bold text-slate-700 text-xs bg-slate-100 border-r border-slate-200">
+                          <td className="sticky left-0 z-20 w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center font-mono font-bold text-slate-700 text-xs bg-slate-100 border-r border-slate-200">
                             {row._rowIndex}
                           </td>
                         )}
 
                         {/* Column 0B: Checkbox */}
                         {isColVisible('select') && (
-                          <td className="w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center bg-slate-100 border-r border-slate-200">
+                          <td className="sticky left-[50px] z-20 w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center bg-slate-100 border-r border-slate-200">
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -4126,7 +4199,7 @@ export const BulkProductEntryModal = ({
 
                         {/* Column 1: Barcode */}
                         {isColVisible('barcode') && (
-                          <td className="min-w-[210px] px-3 py-2 font-mono bg-white border-r border-slate-300 shadow-2xs">
+                          <td className="min-w-[210px] w-[210px] max-w-[210px] px-3 py-2 font-mono bg-white group-hover:bg-indigo-50/40 border-r border-slate-200">
                             <div className="relative flex items-center">
                               <input
                                 id={`cell_barcode_${row._id}`}
@@ -4302,19 +4375,8 @@ export const BulkProductEntryModal = ({
 
                         {/* Column 5: Product Name */}
                         {isColVisible('name') && (
-                          <td className="min-w-[320px] px-3 py-2 bg-white">
-                            <div className="flex items-center gap-1.5">
-                              {row.parentId && (
-                                <span className="text-pink-600 text-xs font-bold font-mono shrink-0 select-none flex items-center gap-0.5" title="Child Variant">
-                                  <GitBranch className="w-3.5 h-3.5" />
-                                  {isLastChild ? '└─' : '├─'}
-                                </span>
-                              )}
-                              {!row.parentId && hasChildren && (
-                                <span className="text-indigo-700 text-xs font-bold shrink-0 select-none mr-0.5" title="Parent Product">
-                                  ▾
-                                </span>
-                              )}
+                          <td className="min-w-[320px] w-[320px] px-3 py-2 bg-white group-hover:bg-slate-50 border-r border-slate-200">
+                            <div className="w-full">
                               <div className="flex-1 min-w-0">
                                 <ProductNameCell
                                   id={`cell_name_${row._id}`}
@@ -4349,28 +4411,6 @@ export const BulkProductEntryModal = ({
                                 <span>{row._fieldErrors.name}</span>
                               </div>
                             )}
-                            <div className="flex items-center justify-between text-[10.5px] font-bold mt-1 pl-1">
-                              {row.parentId ? (
-                                <span className="text-pink-700 bg-pink-50 border border-pink-200 px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1">
-                                  <GitBranch className="w-3 h-3" />
-                                  Variant {row.parentSku ? `of ${row.parentSku}` : ''}
-                                </span>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-[10px]">
-                                    Parent {row.parentSku ? `(${row.parentSku})` : ''} {hasChildren ? `• ${childCount} variant${childCount > 1 ? 's' : ''}` : ''}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleAddChildRow(row)}
-                                    className="text-indigo-600 hover:text-indigo-800 font-bold inline-flex items-center gap-0.5 cursor-pointer hover:underline"
-                                    title="Add a variant under this parent product"
-                                  >
-                                    <Plus className="w-3 h-3" /> Add Variant
-                                  </button>
-                                </div>
-                              )}
-                            </div>
                           </td>
                         )}
 
@@ -6133,6 +6173,164 @@ export const BulkProductEntryModal = ({
                   className="w-full sm:w-auto py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Stay Here
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =====================================================================
+            8B. BATCH TAXONOMY APPLICATION MODAL ("SET ALL ROWS")
+            ===================================================================== */}
+        {isBatchTaxonomyOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl border border-purple-200 w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95">
+              {/* Header */}
+              <div className="px-6 py-4.5 border-b border-purple-100 flex items-center justify-between bg-gradient-to-r from-purple-50 via-indigo-50/50 to-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black shadow-inner">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 tracking-tight">
+                      Batch Taxonomy Tool
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Set Brand & Categories across multiple staged rows in one step
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsBatchTaxonomyOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 border border-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-4 flex-1 min-h-0">
+                {/* 1. Target Scope Selection */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">
+                    Target Scope:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'all', label: `All Rows (${rows.length})` },
+                      { id: 'selected', label: `Selected (${selectedRowIds.size})` },
+                      { id: 'empty', label: 'Empty Rows' }
+                    ].map(scope => (
+                      <button
+                        key={scope.id}
+                        type="button"
+                        onClick={() => setBatchScope(scope.id)}
+                        className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
+                          batchScope === scope.id
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {scope.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Brand Selection */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1 block">
+                    Brand:
+                  </label>
+                  <select
+                    value={batchBrand}
+                    onChange={(e) => setBatchBrand(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none"
+                  >
+                    <option value="">-- Leave Unchanged --</option>
+                    {availableBrands.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Category Hierarchy Cascading Selection */}
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      Category:
+                    </label>
+                    <select
+                      value={batchCategory}
+                      onChange={(e) => {
+                        setBatchCategory(e.target.value);
+                        setBatchSubcategory('');
+                        setBatchSelectCategory('');
+                      }}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none"
+                    >
+                      <option value="">-- Leave Unchanged --</option>
+                      {availableCategories.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      Subcategory:
+                    </label>
+                    <select
+                      value={batchSubcategory}
+                      disabled={!batchCategory}
+                      onChange={(e) => {
+                        setBatchSubcategory(e.target.value);
+                        setBatchSelectCategory('');
+                      }}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:opacity-50"
+                    >
+                      <option value="">-- {batchCategory ? 'Select Subcategory' : 'Select Category First'} --</option>
+                      {batchCategory && getSubcategoriesForCategory(batchCategory).map(sc => (
+                        <option key={sc} value={sc}>{sc}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      Select Category:
+                    </label>
+                    <select
+                      value={batchSelectCategory}
+                      disabled={!batchCategory || !batchSubcategory}
+                      onChange={(e) => setBatchSelectCategory(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:opacity-50"
+                    >
+                      <option value="">-- {(!batchCategory || !batchSubcategory) ? 'Select Subcategory First' : 'Select Category Type'} --</option>
+                      {batchCategory && batchSubcategory && getSelectCategoriesForSubcategory(batchCategory, batchSubcategory).map(pt => (
+                        <option key={pt} value={pt}>{pt}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsBatchTaxonomyOpen(false)}
+                  className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyBatchTaxonomy}
+                  className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black shadow-sm cursor-pointer transition-colors"
+                >
+                  Apply to Rows
                 </button>
               </div>
             </div>

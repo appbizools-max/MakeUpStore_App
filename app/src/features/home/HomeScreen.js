@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Platform, RefreshControl, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Platform, RefreshControl, Dimensions, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
@@ -13,30 +13,35 @@ const BANNER_HEIGHT = Math.round(BANNER_WIDTH / 2.56);
 
 
 // Reusable Section Header Component
-const SectionHeader = ({ title, subtitle, ctaText = 'View All →', onCtaPress, showCta = true, iconName }) => (
-  <View className="px-4 mb-3">
-    <View className="flex-row justify-between items-center">
-      <View className="flex-row items-center gap-1.5 flex-1 pr-2">
-        {iconName && <Ionicons name={iconName} size={15} color="#C2477A" />}
-        <Text className="text-base font-extrabold text-[#3A2430]" numberOfLines={1}>
-          {title}
-        </Text>
+const SectionHeader = ({ title, subtitle, ctaText = 'View All', onCtaPress, showCta = true, iconName }) => {
+  const cleanCta = (ctaText || 'View All').replace('→', '').replace('->', '').trim();
+  return (
+    <View className="px-4 mb-3">
+      <View className="flex-row justify-between items-center">
+        <View className="flex-row items-center gap-1.5 flex-1 pr-2">
+          {iconName && <Ionicons name={iconName} size={15} color="#C2477A" />}
+          <Text className="text-base font-extrabold text-[#3A2430]" numberOfLines={1}>
+            {title}
+          </Text>
+        </View>
+        {showCta && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onCtaPress}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="flex-row items-center gap-1"
+          >
+            <Text className="text-xs font-bold text-[#C2477A]">{cleanCta}</Text>
+            <Ionicons name="arrow-forward" size={13} color="#C2477A" />
+          </TouchableOpacity>
+        )}
       </View>
-      {showCta && (
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={onCtaPress}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text className="text-xs font-bold text-[#C2477A]">{ctaText}</Text>
-        </TouchableOpacity>
-      )}
+      {subtitle ? (
+        <Text className="text-[10px] font-medium text-[#8C7078] mt-0.5">{subtitle}</Text>
+      ) : null}
     </View>
-    {subtitle ? (
-      <Text className="text-[10px] font-medium text-[#8C7078] mt-0.5">{subtitle}</Text>
-    ) : null}
-  </View>
-);
+  );
+};
 
 // Skeleton Loading Placeholders for seamless Zero-Flicker Cold Starts
 const SkeletonCategoryCard = () => (
@@ -107,19 +112,19 @@ const ProductCard = React.memo(({
           </View>
         ) : null}
 
-        {/* Wishlist Heart Button */}
+        {/* Wishlist Heart Button - Transparent with pink heart, no white circle */}
         <TouchableOpacity
-          activeOpacity={0.8}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           onPress={(e) => {
             e.stopPropagation?.();
             onToggleFavorite(product);
           }}
-          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white items-center justify-center shadow-xs"
+          className="absolute top-1.5 right-1.5 p-1 items-center justify-center bg-transparent z-10"
         >
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
-            size={13}
+            size={18}
             color="#C2477A"
           />
         </TouchableOpacity>
@@ -235,6 +240,7 @@ export const HomeScreen = () => {
     setSearchQuery,
     activeProducts = [],
     categories = [],
+    subcategories = [],
     brands = [],
     activeBrands = [],
     favorites = [],
@@ -247,6 +253,7 @@ export const HomeScreen = () => {
     homeBanners = [],
     activeBanners = [],
     setSelectedBrand,
+    unreadNotificationsCount = 0,
   } = useApp();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -512,21 +519,172 @@ export const HomeScreen = () => {
     }
   }, [duoBundle, addToCart]);
 
-  // Essential Beauty Staples Data (Categories & Real Queries)
-  const beautyEssentials = useMemo(() => [
-    { id: 'be1', title: 'Face Serums', subtitle: 'Radiance & Hydration', iconName: 'sparkles', query: 'Serum' },
-    { id: 'be2', title: 'Hair Care Oils', subtitle: 'Nourishment & Spa', iconName: 'cut', query: 'Hair' },
-    { id: 'be3', title: 'Lipsticks & Oils', subtitle: 'Velvet & Gloss Shades', iconName: 'color-palette', query: 'Lipstick' },
-    { id: 'be4', title: 'Aloevera & Green Care', subtitle: 'Pure Organic Care', iconName: 'leaf', query: 'Aloe' },
-    { id: 'be5', title: 'Waxing & Kits', subtitle: 'Salon Smooth Finish', iconName: 'gift', query: 'Wax' },
-    { id: 'be6', title: 'Sunscreen Shades', subtitle: 'Broad Spectrum UV', iconName: 'sunny', query: 'Sunscreen' }
-  ], []);
+  // State for Autumn Gloss trending products slideshow
+  const [autumnSlideIndex, setAutumnSlideIndex] = useState(0);
+
+  const autumnTrendingSlides = useMemo(() => {
+    const list = trendingProducts && trendingProducts.length > 0
+      ? trendingProducts.filter(p => p.image)
+      : (activeProducts || []).filter(p => p.image);
+    return list.slice(0, 8);
+  }, [trendingProducts, activeProducts]);
+
+  useEffect(() => {
+    if (!autumnTrendingSlides || autumnTrendingSlides.length <= 1) return;
+    const timer = setInterval(() => {
+      setAutumnSlideIndex(prev => (prev + 1) % autumnTrendingSlides.length);
+    }, 2800);
+    return () => clearInterval(timer);
+  }, [autumnTrendingSlides]);
+
+  // Essential Beauty Staples Data with Dynamic Live Database Resolution (No hardcoded images in code)
+  const beautyEssentials = useMemo(() => {
+    const findLiveImage = (queryKeywords) => {
+      // 1. Check live database subcategories managed by Admin/Employees
+      if (Array.isArray(subcategories) && subcategories.length > 0) {
+        const match = subcategories.find(s =>
+          Boolean(s.image) && queryKeywords.some(k => (s.name || '').toLowerCase().includes(k))
+        );
+        if (match?.image) return match.image;
+      }
+      // 2. Check live database categories managed by Admin/Employees
+      if (Array.isArray(categories) && categories.length > 0) {
+        const match = categories.find(c =>
+          Boolean(c.image) && queryKeywords.some(k => (c.name || '').toLowerCase().includes(k))
+        );
+        if (match?.image) return match.image;
+      }
+      // 3. Check live products managed by Admin/Employees
+      if (Array.isArray(activeProducts) && activeProducts.length > 0) {
+        const match = activeProducts.find(p =>
+          Boolean(p.image) && queryKeywords.some(k => (p.subcategory || p.name || p.category || '').toLowerCase().includes(k))
+        );
+        if (match?.image) return match.image;
+      }
+      return '';
+    };
+
+    return [
+      {
+        id: 'be1',
+        title: 'Face Serums',
+        subtitle: 'Radiance & Hydration',
+        iconName: 'sparkles',
+        query: 'Serum',
+        image: findLiveImage(['serum', 'skin'])
+      },
+      {
+        id: 'be2',
+        title: 'Hair Care Oils',
+        subtitle: 'Nourishment & Spa',
+        iconName: 'cut',
+        query: 'Hair',
+        image: findLiveImage(['hair', 'oil'])
+      },
+      {
+        id: 'be3',
+        title: 'Lipsticks & Oils',
+        subtitle: 'Velvet & Gloss Shades',
+        iconName: 'color-palette',
+        query: 'Lipstick',
+        image: findLiveImage(['lipstick', 'lip'])
+      },
+      {
+        id: 'be4',
+        title: 'Aloevera & Green Care',
+        subtitle: 'Pure Organic Care',
+        iconName: 'leaf',
+        query: 'Aloe',
+        image: findLiveImage(['aloe', 'green', 'skincare'])
+      },
+      {
+        id: 'be5',
+        title: 'Waxing & Kits',
+        subtitle: 'Salon Smooth Finish',
+        iconName: 'gift',
+        query: 'Wax',
+        image: findLiveImage(['wax', 'salon', 'kit'])
+      },
+      {
+        id: 'be6',
+        title: 'Sunscreen Shades',
+        subtitle: 'Broad Spectrum UV',
+        iconName: 'sunny',
+        query: 'Sunscreen',
+        image: findLiveImage(['sunscreen', 'sun', 'spf'])
+      }
+    ];
+  }, [subcategories, categories, activeProducts]);
+
+  // Curated Face Serums product list
+  const serumProducts = useMemo(() => {
+    if (!activeProducts || activeProducts.length === 0) return [];
+    return activeProducts.filter(p =>
+      ((p.subcategory || '').toLowerCase().includes('serum')) ||
+      ((p.name || '').toLowerCase().includes('serum')) ||
+      ((p.category || '').toLowerCase().includes('skincare'))
+    );
+  }, [activeProducts]);
 
   return (
     <View className="flex-1 bg-white relative">
+      {/* ========================================================================= */}
+      {/* 1. FIXED TOP HEADER (SALBEAU SCRIPT LOGO + NOTIFICATIONS + WISHLIST) */}
+      {/* ========================================================================= */}
+      <View
+        style={{
+          borderBottomWidth: 1,
+          borderBottomColor: '#FFF0F5'
+        }}
+        className="px-4 py-1.5 bg-white z-30 flex-row justify-between items-center shadow-xs"
+      >
+        <Text
+          style={{
+            fontFamily: fontsLoaded ? 'GreatVibes_400Regular' : (Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif'),
+          }}
+          className="text-[36px] text-[#C2477A] tracking-wide ml-0.5 mt-0.5"
+        >
+          Salbeau
+        </Text>
+        <View className="flex-row items-center gap-3">
+          {/* Notification Bell Button - Background removed, icon in vivid pink */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => setCurrentScreen('notifications')}
+            className="p-1.5 items-center justify-center relative bg-transparent"
+          >
+            <Ionicons name="notifications-outline" size={24} color="#C2477A" />
+            {unreadNotificationsCount > 0 && (
+              <View className="absolute -top-1 -right-1 bg-[#C2477A] min-w-[16px] h-[16px] px-1 rounded-full items-center justify-center shadow-xs">
+                <Text className="text-white text-[8px] font-black">
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Wishlist Heart Button - Background removed, icon in vivid pink */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => setCurrentScreen('wishlist')}
+            className="p-1.5 items-center justify-center relative bg-transparent"
+          >
+            <Ionicons name={favorites.length > 0 ? "heart" : "heart-outline"} size={24} color="#C2477A" />
+            {favorites.length > 0 && (
+              <View className="absolute -top-1 -right-1 bg-[#C2477A] min-w-[16px] h-[16px] px-1 rounded-full items-center justify-center shadow-xs">
+                <Text className="text-white text-[8px] font-black">{favorites.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
-        contentContainerStyle={{ paddingBottom: totalCartQuantity > 0 ? 160 : 100 }}
+        contentContainerStyle={{ paddingTop: 10, paddingBottom: totalCartQuantity > 0 ? 160 : 100 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         className="bg-white"
         refreshControl={
           <RefreshControl
@@ -537,45 +695,6 @@ export const HomeScreen = () => {
           />
         }
       >
-        {/* ========================================================================= */}
-        {/* 1. HEADER (SALBEAU SCRIPT LOGO + NOTIFICATIONS + WISHLIST) */}
-        {/* ========================================================================= */}
-        <View className="px-4 pt-3 pb-2 bg-white">
-          <View className="flex-row justify-between items-center">
-            <Text
-              style={{
-                fontFamily: fontsLoaded ? 'GreatVibes_400Regular' : (Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif'),
-              }}
-              className="text-[36px] text-[#C2477A] tracking-wide ml-0.5 mt-0.5"
-            >
-              Salbeau
-            </Text>
-            <View className="flex-row items-center gap-2.5">
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setCurrentScreen('orders')}
-                style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
-                className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center"
-              >
-                <Ionicons name="notifications-outline" size={18} color="#C2477A" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setCurrentScreen('wishlist')}
-                style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
-                className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center relative"
-              >
-                <Ionicons name={favorites.length > 0 ? "heart" : "heart-outline"} size={18} color="#C2477A" />
-                {favorites.length > 0 && (
-                  <View className="absolute -top-1 -right-1 bg-[#C2477A] w-4 h-4 rounded-full items-center justify-center border border-white">
-                    <Text className="text-white text-[8px] font-black">{favorites.length}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
         {/* ========================================================================= */}
         {/* 2. SEARCH BAR (WITH SCANNER ICON ON RIGHT) */}
         {/* ========================================================================= */}
@@ -620,6 +739,7 @@ export const HomeScreen = () => {
             ref={bannerScrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             onMomentumScrollEnd={(e) => {
               const offsetX = e.nativeEvent.contentOffset.x;
               const newIndex = Math.round(offsetX / (BANNER_WIDTH + 12));
@@ -631,7 +751,12 @@ export const HomeScreen = () => {
             snapToAlignment="start"
           >
             {displayBanners.map((banner, idx) => {
-              const imageSource = (banner.imageUrl && typeof banner.imageUrl === 'string' && banner.imageUrl.trim().length > 0) ? getSafeImageSource(banner.imageUrl) : null;
+              // Real banner image from database with canonical banner fallback
+              const defaultBanner = DEFAULT_HOME_BANNERS[idx % DEFAULT_HOME_BANNERS.length];
+              const rawUrl = (banner.imageUrl && typeof banner.imageUrl === 'string' && banner.imageUrl.trim().length > 0)
+                ? banner.imageUrl.trim()
+                : (defaultBanner?.imageUrl || null);
+              const imageSource = rawUrl ? getSafeImageSource(rawUrl) : null;
               return (
                 <View
                   key={banner.id || idx}
@@ -718,6 +843,7 @@ export const HomeScreen = () => {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
               className="mb-6"
             >
@@ -738,7 +864,7 @@ export const HomeScreen = () => {
                         className="rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] items-center justify-center"
                       >
                         <Image
-                          source={getSafeImageSource(cat.image, '')}
+                          source={getSafeImageSource(cat.image, cat.fallbackImage || '')}
                           style={{ width: '100%', height: '100%' }}
                           resizeMode="cover"
                         />
@@ -769,6 +895,7 @@ export const HomeScreen = () => {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
               className="mb-6"
             >
@@ -808,6 +935,7 @@ export const HomeScreen = () => {
                 ref={brandScrollRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
                 className="mb-6"
                 onTouchStart={() => { isBrandTouching.current = true; }}
@@ -854,6 +982,7 @@ export const HomeScreen = () => {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
                 className="mb-6"
               >
@@ -876,6 +1005,7 @@ export const HomeScreen = () => {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
               className="mb-6"
             >
@@ -913,6 +1043,7 @@ export const HomeScreen = () => {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
               className="mb-6"
             >
@@ -974,13 +1105,96 @@ export const HomeScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Right Editorial Decoration */}
-            <View style={{ width: '42%', height: '100%' }} className="justify-center items-center relative overflow-hidden bg-white/10 rounded-r-3xl" />
+            {/* Right Side Slideshow of Trending Products */}
+            <View style={{ width: '45%', height: '100%' }} className="relative overflow-hidden justify-center items-center bg-transparent rounded-r-3xl">
+              {autumnTrendingSlides.length > 0 ? (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={{ width: '100%', height: '100%' }}
+                  onPress={() => {
+                    const activeItem = autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length];
+                    if (activeItem) handleProductSelect(activeItem);
+                  }}
+                  className="items-center justify-center p-2 relative"
+                >
+                  {/* Trending Product Image - Clean with no background circle */}
+                  <Image
+                    source={{ uri: autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length]?.image }}
+                    style={{ width: '88%', height: '70%' }}
+                    resizeMode="contain"
+                  />
+
+                  {/* Top Badge: TRENDING */}
+                  <View className="absolute top-2 right-2 bg-[#C2477A] px-2 py-0.5 rounded-full shadow-xs">
+                    <Text className="text-[7.5px] font-black text-white uppercase tracking-wider">
+                      ★ TRENDING
+                    </Text>
+                  </View>
+
+                  {/* Pink Arrow Navigation Buttons */}
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      setAutumnSlideIndex((prev) => (prev > 0 ? prev - 1 : autumnTrendingSlides.length - 1));
+                    }}
+                    className="absolute left-1 top-1/2 -mt-3 p-1 items-center justify-center bg-transparent z-10"
+                  >
+                    <Ionicons name="chevron-back" size={18} color="#C2477A" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      setAutumnSlideIndex((prev) => (prev + 1) % autumnTrendingSlides.length);
+                    }}
+                    className="absolute right-1 top-1/2 -mt-3 p-1 items-center justify-center bg-transparent z-10"
+                  >
+                    <Ionicons name="chevron-forward" size={18} color="#C2477A" />
+                  </TouchableOpacity>
+
+                  {/* Bottom Price & Name Tag Capsule */}
+                  <View className="absolute bottom-1.5 left-1.5 right-1.5 bg-white/95 px-2 py-1 rounded-xl border border-[#FCE4EC] shadow-xs flex-row items-center justify-between">
+                    <Text className="text-[8px] font-bold text-[#3A2430] flex-1 mr-1" numberOfLines={1}>
+                      {autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length]?.name}
+                    </Text>
+                    <Text className="text-[8.5px] font-black text-[#C2477A]">
+                      ₹{Math.round(getRolePrice(autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length], userRole) || autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length]?.price || 0)}
+                    </Text>
+                  </View>
+
+                  {/* Pagination Slide Dots */}
+                  <View className="absolute bottom-8 flex-row gap-1 items-center">
+                    {autumnTrendingSlides.slice(0, 5).map((_, dotIdx) => {
+                      const isActive = dotIdx === (autumnSlideIndex % Math.min(autumnTrendingSlides.length, 5));
+                      return (
+                        <View
+                          key={`autumn_dot_${dotIdx}`}
+                          style={{
+                            width: isActive ? 12 : 4,
+                            height: 3.5,
+                            borderRadius: 2,
+                            backgroundColor: isActive ? '#C2477A' : '#E8B4C8'
+                          }}
+                        />
+                      );
+                    })}
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View className="items-center justify-center">
+                  <Ionicons name="sparkles" size={28} color="#C2477A" />
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
         {/* ========================================================================= */}
-        {/* 10. ESSENTIAL BEAUTY STAPLES (2-COLUMN GRID) */}
+        {/* 10. ESSENTIAL BEAUTY STAPLES (2-COLUMN GRID WITH IMAGES) */}
         {/* ========================================================================= */}
         <SectionHeader
           title="Essential Beauty Staples"
@@ -1003,9 +1217,17 @@ export const HomeScreen = () => {
             >
               <View
                 style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
-                className="w-9 h-9 rounded-xl items-center justify-center bg-[#FFF5F8]"
+                className="w-11 h-11 rounded-xl items-center justify-center bg-[#FFF5F8] overflow-hidden"
               >
-                <Ionicons name={item.iconName} size={16} color="#C2477A" />
+                {item.image ? (
+                  <Image
+                    source={{ uri: item.image }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Ionicons name={item.iconName} size={16} color="#C2477A" />
+                )}
               </View>
               <View className="flex-1">
                 <Text className="text-[11px] font-extrabold text-[#3A2430]" numberOfLines={1}>
@@ -1020,6 +1242,49 @@ export const HomeScreen = () => {
         </View>
 
         {/* ========================================================================= */}
+        {/* 10B. CURATED FACE SERUMS & GLOW RITUALS (HORIZONTAL PRODUCT LIST) */}
+        {/* ========================================================================= */}
+        {(serumProducts.length > 0 || isCatalogLoading) && (
+          <>
+            <SectionHeader
+              title="✨ Face Serums & Glow Rituals"
+              subtitle="Concentrated actives & clinical hydration elixirs"
+              ctaText="Explore All Serums →"
+              onCtaPress={() => {
+                if (setGlobalSearchQuery) setGlobalSearchQuery('Serum');
+                setSearchQuery('Serum');
+                setCurrentScreen('search');
+              }}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+              className="mb-6"
+            >
+              {serumProducts.length > 0
+                ? serumProducts.map((item) => (
+                    <ProductCard
+                      key={`serum_${item.id}`}
+                      product={item}
+                      badgeText="SERUM"
+                      userRole={userRole}
+                      getRolePrice={getRolePrice}
+                      isLiked={isFavorite(item.id)}
+                      onToggleFavorite={toggleFavorite}
+                      onSelectProduct={handleProductSelect}
+                      cartQty={getProductCartQuantity(item.id)}
+                      onAddToCart={(prod) => addToCart(prod, 1)}
+                      onUpdateCartQty={updateCartQuantity}
+                    />
+                  ))
+                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_serum_${k}`} />)}
+            </ScrollView>
+          </>
+        )}
+
+        {/* ========================================================================= */}
         {/* 11. RECENTLY VIEWED (HORIZONTAL CAROUSEL — PERSONALIZED PER CUSTOMER) */}
         {/* ========================================================================= */}
         {recentlyViewedProducts.length > 0 && (
@@ -1032,6 +1297,7 @@ export const HomeScreen = () => {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
               className="mb-6"
             >

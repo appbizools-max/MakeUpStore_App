@@ -144,10 +144,10 @@ export const WishlistScreen = () => {
         <View className="flex-row items-center gap-3">
           <TouchableOpacity
             onPress={() => setCurrentScreen('home')}
-            style={{ borderColor: '#E5E7EB', borderWidth: 1 }}
+            style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
             className="w-9 h-9 rounded-full bg-white items-center justify-center shadow-xs"
           >
-            <Ionicons name="chevron-back" size={18} color="#1E1B1D" />
+            <Ionicons name="chevron-back" size={18} color="#C2477A" />
           </TouchableOpacity>
           <View>
             <Text className="text-base font-black text-[#1E1B1D] tracking-tight">
@@ -215,7 +215,7 @@ export const WishlistScreen = () => {
         </View>
       ) : (
         /* Populated Grid */
-        <ScrollView
+        <ScrollView keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 14, paddingBottom: totalCartQuantity > 0 ? 150 : 100 }}
           showsVerticalScrollIndicator={false}
           className="bg-white"
@@ -267,23 +267,19 @@ export const WishlistScreen = () => {
                         </View>
                       )}
 
-                      {/* Active Heart Toggle Button */}
+                      {/* Active Heart Toggle Button - Transparent with pink heart, no white circle */}
                       <TouchableOpacity
                         activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         onPress={(e) => {
                           e.stopPropagation?.();
                           toggleFavorite(item);
                         }}
-                        style={{
-                          backgroundColor: '#FFFFFF',
-                          borderColor: '#E2D1DC',
-                          borderWidth: 1,
-                        }}
-                        className="absolute top-2 right-2 w-7 h-7 rounded-full items-center justify-center shadow-xs"
+                        className="absolute top-2 right-2 p-1 items-center justify-center bg-transparent z-10"
                       >
                         <Ionicons
                           name="heart"
-                          size={15}
+                          size={18}
                           color="#C2477A"
                         />
                       </TouchableOpacity>

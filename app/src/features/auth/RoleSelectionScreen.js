@@ -34,7 +34,7 @@ export const RoleSelectionScreen = () => {
   };
 
   return (
-    <ScrollView
+    <ScrollView keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: 20, paddingBottom: 50, flexGrow: 1, justifyContent: 'space-between' }}
       className="flex-1 bg-white"
     >

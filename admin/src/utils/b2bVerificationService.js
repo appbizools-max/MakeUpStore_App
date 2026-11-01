@@ -374,3 +374,53 @@ export const updateVerificationStatus = async (supabase, {
     historyRecord
   };
 };
+
+/**
+ * SEC-03: Generate a secure short-lived signed URL for private B2B verification documents.
+ * Prevents unauthorized public leakage of sensitive business tax/ID documents.
+ */
+export const getVerificationDocumentSignedUrl = async (supabase, doc, expiresIn = 3600) => {
+  if (!doc) return '';
+  if (typeof doc === 'string' && (doc.startsWith('data:image/') || doc.startsWith('blob:'))) {
+    return doc;
+  }
+
+  let rawPath = '';
+  if (typeof doc === 'string') {
+    rawPath = doc;
+  } else if (typeof doc === 'object') {
+    rawPath = doc.path || doc.file_path || doc.filePath || doc.file_url || doc.url || '';
+  }
+
+  if (!rawPath) return '';
+
+  // If it's a signed URL already with a valid token, return it
+  if (rawPath.includes('token=') && rawPath.startsWith('http')) {
+    return rawPath;
+  }
+
+  // Extract storage path if a full Supabase URL was passed
+  let cleanPath = rawPath;
+  const bucketMarker = '/verification-docs/';
+  if (cleanPath.includes(bucketMarker)) {
+    cleanPath = cleanPath.substring(cleanPath.indexOf(bucketMarker) + bucketMarker.length).split('?')[0];
+  } else if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+    // External link
+    return cleanPath;
+  }
+
+  try {
+    if (supabase?.storage) {
+      const { data, error } = await supabase.storage
+        .from('verification-docs')
+        .createSignedUrl(cleanPath, expiresIn);
+      if (!error && data?.signedUrl) {
+        return data.signedUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to generate signed document URL:', err);
+  }
+
+  return rawPath;
+};

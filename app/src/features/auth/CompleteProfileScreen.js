@@ -16,7 +16,7 @@ import { useApp } from '../../context/AppContext';
 import { isB2BRole } from '../../utils/b2bVerificationService';
 
 export const CompleteProfileScreen = () => {
-  const { userRole, userProfile, saveUserProfile, setCurrentScreen } = useApp();
+  const { userRole, userProfile, saveUserProfile, setCurrentScreen, triggerLoginWelcomeNotification } = useApp();
 
   const [fullName, setFullName] = useState(userProfile?.name || '');
   const [email, setEmail] = useState(userProfile?.email || '');
@@ -114,13 +114,22 @@ export const CompleteProfileScreen = () => {
     setIsSubmitting(true);
 
     try {
-      await saveUserProfile({
+      const savedProfile = await saveUserProfile({
         fullName: fullName.trim(),
         email: email.trim(),
         pincode: pincode.trim(),
         city: city.trim(),
         state: state.trim()
       });
+
+      if (triggerLoginWelcomeNotification) {
+        triggerLoginWelcomeNotification(savedProfile || {
+          ...userProfile,
+          name: fullName.trim(),
+          email: email.trim(),
+          role: userRole
+        });
+      }
 
       if (isB2BRole(userRole)) {
         setCurrentScreen('b2b_verification');

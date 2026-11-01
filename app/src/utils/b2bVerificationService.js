@@ -489,14 +489,30 @@ export const uploadVerificationDocument = async (supabase, file, userId, customN
       };
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from('verification-docs')
-      .getPublicUrl(filePath);
+    // Generate secure short-lived signed URL for private bucket (SEC-03)
+    let secureUrl = fallbackDataUrl || filePath;
+    try {
+      const { data: signedData } = await supabase.storage
+        .from('verification-docs')
+        .createSignedUrl(filePath, 3600);
+      if (signedData?.signedUrl) {
+        secureUrl = signedData.signedUrl;
+      } else {
+        const { data: publicUrlData } = supabase.storage
+          .from('verification-docs')
+          .getPublicUrl(filePath);
+        if (publicUrlData?.publicUrl) secureUrl = publicUrlData.publicUrl;
+      }
+    } catch (signErr) {
+      console.warn('Signed URL generation fallback:', signErr);
+    }
 
     return {
       success: true,
-      url: publicUrlData?.publicUrl ? `${publicUrlData.publicUrl}?v=${Date.now()}` : (fallbackDataUrl || filePath),
+      url: secureUrl,
+      file_url: secureUrl,
       path: filePath,
+      file_path: filePath,
       name: file.name || fileName,
       compression: compressionStats
     };

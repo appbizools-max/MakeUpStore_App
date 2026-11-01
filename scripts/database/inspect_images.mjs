@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '../../admin/node_modules/@supabase/supabase-js/dist/index.mjs';
 
 const SUPABASE_URL = 'https://mlhlpslhrvwjasbttghw.supabase.co';
 const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1saGxwc2xocnZ3amFzYnR0Z2h3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTUzNDU3NCwiZXhwIjoyMTA1MTEwNTc0fQ.YHeREZuf-1HjFx11LEB-76W0c3IFEH6I5r-K4mph5o4';

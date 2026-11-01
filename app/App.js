@@ -17,6 +17,7 @@ try {
   TextInput.defaultProps.style = [{ fontFamily: defaultFont }, TextInput.defaultProps.style];
 } catch (_) {}
 import { AppProvider, useApp } from './src/context/AppContext';
+import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import { RoleSelectionScreen } from './src/features/auth/RoleSelectionScreen';
 import { MobileLoginScreen } from './src/features/auth/MobileLoginScreen';
 import { OtpScreen } from './src/features/auth/OtpScreen';
@@ -33,10 +34,36 @@ import { SearchScreen } from './src/features/search/SearchScreen';
 import { WishlistScreen } from './src/features/wishlist/WishlistScreen';
 import { B2BVerificationScreen } from './src/features/auth/B2BVerificationScreen';
 import { VerificationStatusScreen } from './src/features/auth/VerificationStatusScreen';
+import { NotificationCenterScreen } from './src/features/notifications/NotificationCenterScreen';
+import { requestFCMToken } from './src/utils/fcmService';
 
 const MainShell = () => {
-  const { currentScreen, setCurrentScreen, orders = [], userProfile, isRestoringSession } = useApp();
+  const {
+    currentScreen,
+    setCurrentScreen,
+    orders = [],
+    userProfile,
+    isRestoringSession,
+    orderStatusNotification,
+    dismissOrderStatusNotification,
+    setSelectedOrderIdForDetails
+  } = useApp();
   const lastBackPressTimeRef = useRef(0);
+
+  // Initialize FCM notifications & request Android 13+ runtime permissions on launch
+  useEffect(() => {
+    requestFCMToken().catch(() => {});
+  }, []);
+
+  // Auto-dismiss in-app notification banner after 6 seconds
+  useEffect(() => {
+    if (orderStatusNotification) {
+      const timer = setTimeout(() => {
+        if (dismissOrderStatusNotification) dismissOrderStatusNotification();
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [orderStatusNotification, dismissOrderStatusNotification]);
 
   // Android Hardware Back Button Interception
   useEffect(() => {
@@ -104,25 +131,34 @@ const MainShell = () => {
       return <SplashScreen />;
     }
 
-    switch (currentScreen) {
-      case 'splash': return <SplashScreen />;
-      case 'onboarding': return <RoleSelectionScreen />;
-      case 'login': return <MobileLoginScreen />;
-      case 'otp': return <OtpScreen />;
-      case 'complete_profile': return <CompleteProfileScreen />;
-      case 'b2b_verification': return <B2BVerificationScreen />;
-      case 'verification_status': return <VerificationStatusScreen />;
-      case 'home': return <HomeScreen />;
-      case 'category': return <CategoryScreen />;
-      case 'product': return <ProductDetailScreen />;
-      case 'cart': return <CartScreen />;
-      case 'checkout': return <PlaceOrderScreen />;
-      case 'orders': return <OrderHistoryScreen />;
-      case 'profile': return <ProfileScreen />;
-      case 'search': return <SearchScreen />;
-      case 'wishlist': return <WishlistScreen />;
-      default: return <HomeScreen />;
-    }
+    const screenComponent = (() => {
+      switch (currentScreen) {
+        case 'splash': return <SplashScreen />;
+        case 'onboarding': return <RoleSelectionScreen />;
+        case 'login': return <MobileLoginScreen />;
+        case 'otp': return <OtpScreen />;
+        case 'complete_profile': return <CompleteProfileScreen />;
+        case 'b2b_verification': return <B2BVerificationScreen />;
+        case 'verification_status': return <VerificationStatusScreen />;
+        case 'home': return <HomeScreen />;
+        case 'category': return <CategoryScreen />;
+        case 'product': return <ProductDetailScreen />;
+        case 'cart': return <CartScreen />;
+        case 'checkout': return <PlaceOrderScreen />;
+        case 'orders': return <OrderHistoryScreen />;
+        case 'profile': return <ProfileScreen />;
+        case 'search': return <SearchScreen />;
+        case 'wishlist': return <WishlistScreen />;
+        case 'notifications': return <NotificationCenterScreen />;
+        default: return <HomeScreen />;
+      }
+    })();
+
+    return (
+      <ErrorBoundary onGoHome={() => setCurrentScreen('home')} onReset={() => setCurrentScreen('home')}>
+        {screenComponent}
+      </ErrorBoundary>
+    );
   };
 
   const hideBottomNav = isRestoringSession || currentScreen === 'splash' || currentScreen === 'onboarding' || currentScreen === 'login' || currentScreen === 'otp' || currentScreen === 'complete_profile' || currentScreen === 'b2b_verification' || currentScreen === 'verification_status' || currentScreen === 'checkout' || currentScreen === 'confirmation';
@@ -130,6 +166,62 @@ const MainShell = () => {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      {/* Real-time In-App Notification Toast Banner */}
+      {orderStatusNotification && (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => {
+            if (orderStatusNotification.type === 'welcome') {
+              setCurrentScreen('notifications');
+            } else {
+              if (orderStatusNotification.orderId && setSelectedOrderIdForDetails) {
+                setSelectedOrderIdForDetails(orderStatusNotification.orderId);
+              }
+              setCurrentScreen('orders');
+            }
+            if (dismissOrderStatusNotification) dismissOrderStatusNotification();
+          }}
+          className="mx-3 mt-2 mb-1 p-3 bg-white rounded-2xl border-2 border-[#C2477A] shadow-xl flex-row items-center justify-between z-50"
+          style={{
+            shadowColor: '#C2477A',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 8
+          }}
+        >
+          <View className="flex-row items-center gap-3 flex-1 pr-2">
+            <View className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center border border-[#FCE4EC] shrink-0">
+              <Ionicons
+                name={orderStatusNotification.type === 'welcome' ? "sparkles" : "cube"}
+                size={18}
+                color={orderStatusNotification.type === 'welcome' ? "#D97706" : "#C2477A"}
+              />
+            </View>
+            <View className="flex-1">
+              <View className="flex-row items-center gap-1.5">
+                <Text numberOfLines={1} className="text-xs font-black text-slate-900 flex-1">
+                  {orderStatusNotification.title || 'Notification'}
+                </Text>
+                <View className={`w-2 h-2 rounded-full ${orderStatusNotification.type === 'welcome' ? 'bg-amber-400' : 'bg-[#C2477A]'}`} />
+              </View>
+              <Text numberOfLines={2} className="text-[11px] font-semibold text-slate-600 mt-0.5">
+                {orderStatusNotification.message}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={(e) => {
+              if (e && e.stopPropagation) e.stopPropagation();
+              if (dismissOrderStatusNotification) dismissOrderStatusNotification();
+            }}
+            className="p-1.5 rounded-full bg-slate-100"
+          >
+            <Ionicons name="close" size={16} color="#64748B" />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      )}
 
       <View className="flex-1">
         {renderScreen()}
@@ -143,7 +235,9 @@ const MainShell = () => {
         >
           {/* 1. Home */}
           <TouchableOpacity
-            className="items-center flex-1"
+            className="items-center flex-1 py-1"
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             onPress={() => setCurrentScreen('home')}
           >
             <Ionicons
@@ -162,7 +256,9 @@ const MainShell = () => {
 
           {/* 2. Categories */}
           <TouchableOpacity
-            className="items-center flex-1"
+            className="items-center flex-1 py-1"
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             onPress={() => setCurrentScreen('category')}
           >
             <Ionicons
@@ -181,7 +277,9 @@ const MainShell = () => {
 
           {/* 3. Search */}
           <TouchableOpacity
-            className="items-center flex-1"
+            className="items-center flex-1 py-1"
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             onPress={() => setCurrentScreen('search')}
           >
             <Ionicons
@@ -200,7 +298,9 @@ const MainShell = () => {
 
           {/* 4. My Orders */}
           <TouchableOpacity
-            className="items-center flex-1 relative"
+            className="items-center flex-1 py-1 relative"
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             onPress={() => setCurrentScreen('orders')}
           >
             <View className="relative">
@@ -228,7 +328,9 @@ const MainShell = () => {
 
           {/* 5. Profile */}
           <TouchableOpacity
-            className="items-center flex-1"
+            className="items-center flex-1 py-1"
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             onPress={() => setCurrentScreen('profile')}
           >
             <Ionicons
@@ -252,8 +354,10 @@ const MainShell = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainShell />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <MainShell />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

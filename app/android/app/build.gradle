@@ -114,8 +114,8 @@ android {
         applicationId 'com.Salbeau'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.0.1"
+        versionCode 10
+        versionName "1.0.9"
     }
     signingConfigs {
         debug {
@@ -203,6 +203,10 @@ dependencies {
             implementation("com.facebook.fresco:animated-webp:${reactAndroidLibs.versions.fresco.get()}")
         }
     }
+
+    // Firebase Cloud Messaging (FCM) Native SDK
+    implementation platform('com.google.firebase:firebase-bom:33.1.0')
+    implementation 'com.google.firebase:firebase-messaging'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

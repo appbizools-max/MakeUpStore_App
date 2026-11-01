@@ -2,14 +2,14 @@
   "expo": {
     "name": "Salbeau",
     "slug": "salbeau-app",
-    "version": "1.0.0",
+    "version": "1.0.9",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#FFF8FA",
     "splash": {
-      "image": "./Assets/Logo.png",
+      "image": "./Assets/Logo_transparent.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFF8FA"
+      "backgroundColor": "#FFFFFF"
     },
     "android": {
       "package": "com.Salbeau",

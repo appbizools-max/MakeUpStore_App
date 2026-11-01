@@ -194,7 +194,7 @@ export const ProductListingView = ({
 
       {/* ── FILTER CHIPS ROW ────────────────────────────────────────── */}
       <View className="bg-white border-b border-gray-100 py-2">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pl-4">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" className="pl-4">
           {/* Price Filters */}
           <TouchableOpacity
             onPress={() => setSelectedPriceTier('ALL')}
@@ -290,6 +290,7 @@ export const ProductListingView = ({
       {/* ── PRODUCT GRID ────────────────────────────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 90 }}
       >
         {filteredProducts.length === 0 ? (
@@ -346,19 +347,19 @@ export const ProductListingView = ({
                       </View>
                     )}
 
-                    {/* Heart button */}
+                    {/* Heart button - Transparent with pink heart, no white circle */}
                     <TouchableOpacity
                       onPress={(e) => {
                         e.stopPropagation();
                         toggleFavorite(product);
                       }}
-                      activeOpacity={0.8}
-                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 items-center justify-center shadow-xs"
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      activeOpacity={0.7}
+                      className="absolute top-2 right-2 p-1 items-center justify-center bg-transparent z-10"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <Ionicons
                         name={isFav ? 'heart' : 'heart-outline'}
-                        size={15}
+                        size={18}
                         color="#C2477A"
                       />
                     </TouchableOpacity>

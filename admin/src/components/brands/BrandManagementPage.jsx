@@ -94,7 +94,15 @@ export default function BrandManagementPage({
   const [deleteWarning, setDeleteWarning] = useState(null);
 
   const adminCtx = useAdmin ? useAdmin() : null;
-  const isAdmin = adminCtx?.currentAuthUser?.role !== 'employee';
+  // Admins and Employees have full authorization to add, edit, update, delete brands & images
+  const isAdmin = Boolean(
+    !adminCtx?.currentAuthUser?.role ||
+    adminCtx?.currentAuthUser?.role === 'admin' ||
+    adminCtx?.currentAuthUser?.role === 'employee' ||
+    adminCtx?.currentAuthUser?.role === 'manager' ||
+    adminCtx?.currentAuthUser?.role === 'superadmin' ||
+    adminCtx?.currentAuthUser?.role !== 'customer'
+  );
 
   const showToast = useCallback((msg, type = 'success') => {
     setToastMessage({ msg, type });

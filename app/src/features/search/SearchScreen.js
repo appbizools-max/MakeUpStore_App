@@ -169,7 +169,7 @@ export const SearchScreen = () => {
             onPress={() => setCurrentScreen('home')}
             className="w-9 h-9 rounded-full bg-white border border-[#FCE4EC] items-center justify-center shadow-2xs"
           >
-            <Ionicons name="chevron-back" size={18} color="#3A2430" />
+            <Ionicons name="chevron-back" size={18} color="#C2477A" />
           </TouchableOpacity>
 
           {/* Search Input Bar */}
@@ -201,7 +201,7 @@ export const SearchScreen = () => {
         </View>
 
         {/* Category Filter Pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pb-1">
+        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} className="pb-1">
           <TouchableOpacity
             onPress={() => setSelectedCatName('All')}
             className={`mr-2 px-3 py-1 rounded-full border ${
@@ -242,7 +242,7 @@ export const SearchScreen = () => {
 
         {/* Price Filter Chips & Reset */}
         <View className="flex-row items-center justify-between pt-1">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1">
+          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} className="flex-1">
             <TouchableOpacity
               onPress={() => setSelectedPriceFilter('all')}
               className={`mr-1.5 px-2.5 py-0.5 rounded-full border ${
@@ -304,7 +304,7 @@ export const SearchScreen = () => {
         </View>
       </View>
 
-      <ScrollView
+      <ScrollView keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 14, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
         className="bg-white flex-1"
@@ -369,7 +369,7 @@ export const SearchScreen = () => {
             {activeBrands && activeBrands.length > 0 && (
               <View className="mb-5">
                 <Text className="text-xs font-extrabold text-[#3A2430] mb-2.5">Top Brands</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false}>
                   {activeBrands.slice(0, 10).map(brand => (
                     <TouchableOpacity
                       key={brand.id || brand.name}
@@ -463,11 +463,11 @@ export const SearchScreen = () => {
                               toggleFavorite(p);
                             }}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white items-center justify-center shadow-xs"
+                            className="absolute top-1.5 right-1.5 p-1 items-center justify-center bg-transparent z-10"
                           >
                             <Ionicons
                               name={isFavorite(p.id) ? "heart" : "heart-outline"}
-                              size={13}
+                              size={18}
                               color="#C2477A"
                             />
                           </TouchableOpacity>

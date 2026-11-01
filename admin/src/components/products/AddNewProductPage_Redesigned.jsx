@@ -124,7 +124,15 @@ export default function AddNewProductPage({
     currentAuthUser
   } = useAdmin();
 
-  const isAdmin = currentAuthUser?.role !== 'employee';
+  // Admins and Employees have full authorization to add, edit, update, delete products, brands & images
+  const isAdmin = Boolean(
+    !currentAuthUser?.role ||
+    currentAuthUser?.role === 'admin' ||
+    currentAuthUser?.role === 'employee' ||
+    currentAuthUser?.role === 'manager' ||
+    currentAuthUser?.role === 'superadmin' ||
+    currentAuthUser?.role !== 'customer'
+  );
 
   const [isInlineAddBrandOpen, setIsInlineAddBrandOpen] = useState(false);
 

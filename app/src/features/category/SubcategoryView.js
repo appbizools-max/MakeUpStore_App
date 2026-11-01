@@ -75,30 +75,16 @@ export const SubcategoryView = ({
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 90 }}
       >
-        {/* ── SUBCATEGORY BANNER ──────────────────────────────────────── */}
-        <View className="mx-4 mt-3 mb-4 rounded-2xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FFF0F5] relative h-36">
+        {/* ── SUBCATEGORY BANNER (PROPER 16:9 HD BANNER — FULLY VISIBLE) ── */}
+        <View className="mx-4 mt-3 mb-4 rounded-2xl overflow-hidden shadow-xs border border-[#FCE4EC] bg-[#FFF5F8]">
           <Image
-            source={getSafeImageSource(subcategory?.image, category?.fallbackImage || '')}
-            className="w-full h-full object-cover"
+            source={getSafeImageSource(subcategory?.image, category?.image || category?.fallbackImage || '')}
+            style={{ width: '100%', aspectRatio: 16 / 9 }}
             resizeMode="cover"
           />
-          <View className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent justify-end p-4">
-            <View className="bg-white/20 self-start px-2 py-0.5 rounded-md mb-1 backdrop-blur-md">
-              <Text className="text-white text-[10px] font-black uppercase tracking-wider">
-                {category?.name}
-              </Text>
-            </View>
-            <Text className="text-xl font-black text-white leading-tight">
-              {subcategory?.name}
-            </Text>
-            {subcategory?.tagline ? (
-              <Text className="text-xs text-white/90 font-medium mt-0.5" numberOfLines={1}>
-                {subcategory.tagline}
-              </Text>
-            ) : null}
-          </View>
         </View>
 
         {/* ── SECTION TITLE ───────────────────────────────────────────── */}

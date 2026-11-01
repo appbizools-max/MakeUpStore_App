@@ -45,8 +45,10 @@ import {
   ROLE_LABELS,
   ROLE_SHORT_TITLES,
   VERIFICATION_STATUSES,
-  STANDARD_DOCUMENT_SLOTS
+  STANDARD_DOCUMENT_SLOTS,
+  getVerificationDocumentSignedUrl
 } from '../../utils/b2bVerificationService';
+import { supabase } from '../../config/supabase';
 
 export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset = 'all' }) {
   const {
@@ -1310,9 +1312,14 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                             {/* Thumbnail Preview or Placeholder */}
                             {uploadedDoc ? (
                               <div>
-                                {(uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl) ? (
+                                {(uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl || uploadedDoc.path || uploadedDoc.file_path) ? (
                                   <div
-                                    onClick={() => setPreviewImage(uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl)}
+                                    onClick={async () => {
+                                      const fallback = uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl;
+                                      const path = uploadedDoc.path || uploadedDoc.file_path;
+                                      const signedUrl = await getVerificationDocumentSignedUrl(supabase, path || fallback);
+                                      setPreviewImage(signedUrl || fallback);
+                                    }}
                                     className="w-full h-28 rounded-lg bg-gray-100 overflow-hidden relative group cursor-pointer border border-gray-100 mb-2"
                                   >
                                     <img
@@ -1352,14 +1359,18 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                           {/* Footer Action */}
                           <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
                             {uploadedDoc ? (
-                              <a
-                                href={uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="font-bold text-[#C2477A] hover:underline flex items-center gap-1"
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const fallback = uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl;
+                                  const path = uploadedDoc.path || uploadedDoc.file_path;
+                                  const signedUrl = await getVerificationDocumentSignedUrl(supabase, path || fallback);
+                                  if (signedUrl) window.open(signedUrl, '_blank');
+                                }}
+                                className="font-bold text-[#C2477A] hover:underline flex items-center gap-1 cursor-pointer"
                               >
                                 <ExternalLink size={11} /> Open full size
-                              </a>
+                              </button>
                             ) : (
                               <button
                                 type="button"

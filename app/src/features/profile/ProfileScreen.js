@@ -47,7 +47,8 @@ export const ProfileScreen = () => {
     updateAddress,
     deleteAddress,
     setDefaultAddress,
-    logout
+    logout,
+    unreadNotificationsCount = 0
   } = useApp();
 
   const name = userProfile?.name || '';
@@ -313,7 +314,7 @@ export const ProfileScreen = () => {
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <ScrollView
+      <ScrollView keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
       >
@@ -701,6 +702,13 @@ export const ProfileScreen = () => {
               action: () => setCurrentScreen('orders')
             },
             {
+              title: 'Notifications & Alerts',
+              subtitle: unreadNotificationsCount > 0 ? `${unreadNotificationsCount} unread notification${unreadNotificationsCount > 1 ? 's' : ''}` : 'View order tracking, B2B updates & offers',
+              icon: 'notifications-outline',
+              badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : null,
+              action: () => setCurrentScreen('notifications')
+            },
+            {
               title: 'Saved Delivery Addresses',
               subtitle: 'Manage home, office and branch shipping locations',
               icon: 'location-outline',
@@ -737,9 +745,16 @@ export const ProfileScreen = () => {
                   <Ionicons name={item.icon} size={18} color={PALETTE.logoPink} />
                 </View>
                 <View className="flex-1">
-                  <Text style={{ color: PALETTE.textDark }} className="text-xs font-bold">
-                    {item.title}
-                  </Text>
+                  <View className="flex-row items-center gap-1.5">
+                    <Text style={{ color: PALETTE.textDark }} className="text-xs font-bold">
+                      {item.title}
+                    </Text>
+                    {item.badge != null && item.badge > 0 && (
+                      <View className="bg-[#C2477A] px-1.5 py-0.5 rounded-full">
+                        <Text className="text-white text-[9px] font-black">{item.badge}</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={{ color: PALETTE.textMuted }} numberOfLines={1} className="text-[10px]">
                     {item.subtitle}
                   </Text>
@@ -805,9 +820,16 @@ export const ProfileScreen = () => {
                   <Ionicons name={item.icon} size={18} color={PALETTE.logoPink} />
                 </View>
                 <View className="flex-1">
-                  <Text style={{ color: PALETTE.textDark }} className="text-xs font-bold">
-                    {item.title}
-                  </Text>
+                  <View className="flex-row items-center gap-1.5">
+                    <Text style={{ color: PALETTE.textDark }} className="text-xs font-bold">
+                      {item.title}
+                    </Text>
+                    {item.badge != null && item.badge > 0 && (
+                      <View className="bg-[#C2477A] px-1.5 py-0.5 rounded-full">
+                        <Text className="text-white text-[9px] font-black">{item.badge}</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={{ color: PALETTE.textMuted }} numberOfLines={1} className="text-[10px]">
                     {item.subtitle}
                   </Text>
@@ -1060,7 +1082,7 @@ export const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
             {addresses.length === 0 ? (
               <View
                 style={{
@@ -1249,7 +1271,7 @@ export const ProfileScreen = () => {
             </View>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
             {/* Address Tag Selector */}
             <View
               style={{

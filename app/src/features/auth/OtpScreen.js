@@ -5,7 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { isB2BRole } from '../../utils/b2bVerificationService';
 
 export const OtpScreen = () => {
-  const { userRole, userProfile, setCurrentScreen, checkUserExistingProfile, prefetchUserProfile } = useApp();
+  const { userRole, userProfile, setCurrentScreen, checkUserExistingProfile, prefetchUserProfile, triggerLoginWelcomeNotification } = useApp();
   const [otp, setOtp] = useState(['', '', '', '']);
   const [timerSeconds, setTimerSeconds] = useState(120); // 2:00 minutes countdown limit
   const [isVerifying, setIsVerifying] = useState(false);
@@ -91,12 +91,18 @@ export const OtpScreen = () => {
 
       if (isB2B) {
         // DIRECTLY OPEN B2B PROFESSIONAL VERIFICATION USER ACCOUNT FOR ALL B2B USERS
+        if (triggerLoginWelcomeNotification) {
+          triggerLoginWelcomeNotification();
+        }
         setCurrentScreen('b2b_verification');
         return;
       }
 
       // For General User (B2C):
       if (isComplete) {
+        if (triggerLoginWelcomeNotification) {
+          triggerLoginWelcomeNotification();
+        }
         setCurrentScreen('home');
       } else {
         setCurrentScreen('complete_profile');
@@ -104,6 +110,9 @@ export const OtpScreen = () => {
     } catch (e) {
       const effectiveRole = (userProfile?.role || userRole || '').toLowerCase().trim();
       if (isB2BRole(effectiveRole)) {
+        if (triggerLoginWelcomeNotification) {
+          triggerLoginWelcomeNotification();
+        }
         setCurrentScreen('b2b_verification');
       } else {
         setCurrentScreen('complete_profile');
@@ -121,7 +130,7 @@ export const OtpScreen = () => {
   };
 
   return (
-    <ScrollView
+    <ScrollView keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1, justifyContent: 'space-between' }}
       className="flex-1 bg-white"
     >

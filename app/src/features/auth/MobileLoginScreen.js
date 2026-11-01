@@ -43,7 +43,7 @@ export const MobileLoginScreen = () => {
   };
 
   return (
-    <ScrollView
+    <ScrollView keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1, justifyContent: 'space-between' }}
       className="flex-1 bg-white"
     >

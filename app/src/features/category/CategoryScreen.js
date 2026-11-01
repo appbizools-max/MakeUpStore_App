@@ -221,6 +221,7 @@ export const CategoryScreen = () => {
         <TouchableOpacity
           onPress={() => setCurrentScreen('home')}
           activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="flex-row items-center gap-1 -ml-1 py-1 px-1.5 rounded-lg active:bg-pink-50"
         >
           <Ionicons name="chevron-back" size={20} color="#C2477A" />
@@ -234,6 +235,7 @@ export const CategoryScreen = () => {
         <TouchableOpacity
           onPress={() => setCurrentScreen('search')}
           activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="w-8 h-8 rounded-full bg-[#FFF0F5] items-center justify-center border border-[#FCE4EC]"
         >
           <Ionicons name="search" size={15} color="#C2477A" />
@@ -243,6 +245,7 @@ export const CategoryScreen = () => {
       {/* ── 2-3 COLUMN RESPONSIVE GRID ────────────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingHorizontal: horizontalPadding,
           paddingTop: 16,
