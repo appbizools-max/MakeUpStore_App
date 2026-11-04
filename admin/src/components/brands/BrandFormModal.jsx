@@ -22,8 +22,6 @@ import {
 } from 'lucide-react';
 import {
   generateNextBrandNumber,
-  generateProposedBrandCode,
-  validateBrandCode,
   validateBrandName,
   normalizeBrandName
 } from '../../utils/brandUtils';
@@ -40,8 +38,7 @@ import { uploadOptimizedImage } from '../../services/imageStorageService';
  * 1. Only 5 essential fields:
  *    - Brand Logo (Upload, Drag-and-Drop, Paste, Preview, Remove, Google Search)
  *    - Brand Name (Required, uniqueness validated)
- *    - Brand Code (Unique, preserved during editing)
- *    - Categories (Searchable multi-select with removable tags)
+  *    - Categories (Searchable multi-select with removable tags)
  *    - Brand Visibility Status (Active / Inactive)
  * 2. Completely removes Parent Brand, Brand Description, and Internal Notes.
  * 3. Position Google Image Search immediately below the logo preview with brand name displayed beside it.
@@ -60,7 +57,6 @@ export default function BrandFormModal({
     id: '',
     brandNumber: '',
     name: '',
-    brandCode: '',
     logo: '',
     categories: [],
     enabled: true
@@ -120,7 +116,6 @@ export default function BrandFormModal({
         id: editingBrand.id || '',
         brandNumber: editingBrand.brandNumber || editingBrand.brand_number || '',
         name: editingBrand.name || '',
-        brandCode: editingBrand.brandCode || editingBrand.brand_code || '',
         logo: editingBrand.logo || '',
         categories: cats,
         enabled: editingBrand.enabled !== false
@@ -134,7 +129,6 @@ export default function BrandFormModal({
         id: '',
         brandNumber: nextBrandNum,
         name: '',
-        brandCode: '',
         logo: '',
         categories: [],
         enabled: true
@@ -177,16 +171,10 @@ export default function BrandFormModal({
     return availableCategoryNames.filter(c => c.toLowerCase().includes(q));
   }, [availableCategoryNames, categorySearchQuery]);
 
-  // Handle Brand Name Change & Auto-propose Brand Code (Only for new brands or empty code)
+  // Handle Brand Name Change
   const handleNameChange = (e) => {
     const newName = e.target.value;
-    setFormData(prev => {
-      const updated = { ...prev, name: newName };
-      if (!isEdit && (!prev.brandCode || prev.brandCode === generateProposedBrandCode(prev.name, existingBrands, prev.brandNumber))) {
-        updated.brandCode = generateProposedBrandCode(newName, existingBrands, prev.brandNumber);
-      }
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, name: newName }));
 
     if (errors.name) {
       setErrors(prev => ({ ...prev, name: null }));
@@ -214,8 +202,7 @@ export default function BrandFormModal({
     try {
       const result = await uploadOptimizedImage(fileOrBlob, 'BRAND_LOGO', {
         folder: 'brand-logos',
-        filenamePrefix: (formData.brandCode || formData.name || 'brand').toLowerCase().replace(/[^a-z0-9]/g, '_'),
-        brandCode: formData.brandCode || 'brand'
+        filenamePrefix: (formData.brandNumber || formData.name || 'brand').toLowerCase().replace(/[^a-z0-9]/g, '_')
       });
 
       if (result?.url) {
@@ -247,7 +234,7 @@ export default function BrandFormModal({
         }
       }
     }
-  }, [formData.brandCode, formData.name]);
+  }, [formData.brandNumber, formData.name]);
 
   // Remove Logo Handler
   const handleRemoveLogo = () => {
@@ -285,12 +272,6 @@ export default function BrandFormModal({
       newErrors.name = nameValidation.error;
     }
 
-    // 2. Validate Brand Code
-    const codeValidation = validateBrandCode(formData.brandCode, isEdit ? formData.id : null, existingBrands);
-    if (!codeValidation.valid) {
-      newErrors.brandCode = codeValidation.error;
-    }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -303,8 +284,6 @@ export default function BrandFormModal({
         brandNumber: formData.brandNumber,
         brand_number: formData.brandNumber,
         name: normalizeBrandName(formData.name),
-        brandCode: formData.brandCode.trim().toUpperCase(),
-        brand_code: formData.brandCode.trim().toUpperCase(),
         logo: formData.logo || '',
         categories: formData.categories,
         category: formData.categories[0] || 'General',
@@ -402,41 +381,7 @@ export default function BrandFormModal({
           </div>
 
           {/* ════════════════════════════════════════════════════════════════ */}
-          {/* FIELD 3: BRAND CODE                                             */}
-          {/* ════════════════════════════════════════════════════════════════ */}
-          <div className="space-y-1.5">
-            <label className="text-gray-900 font-extrabold text-xs flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <FileText size={13} className="text-[#C2477A]" />
-                <span>Brand Code <span className="text-rose-500">*</span></span>
-              </span>
-              <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                Mnemonic + Seq (e.g. AGA-001)
-              </span>
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. AGA-001, LAK-167"
-              value={formData.brandCode}
-              onChange={(e) => {
-                setFormData(prev => ({ ...prev, brandCode: e.target.value.toUpperCase() }));
-                if (errors.brandCode) setErrors(prev => ({ ...prev, brandCode: null }));
-              }}
-              className={`w-full px-4 py-2.5 rounded-xl border bg-white font-mono font-bold text-gray-900 shadow-2xs text-xs sm:text-sm outline-none transition-all placeholder:text-gray-400 focus:ring-2 focus:ring-[#C2477A]/20 ${
-                errors.brandCode ? 'border-rose-300 focus:border-rose-500' : 'border-pink-100 focus:border-[#C2477A]'
-              }`}
-            />
-            {errors.brandCode && (
-              <p className="text-rose-600 text-[11px] font-bold flex items-center gap-1">
-                <AlertCircle size={12} />
-                <span>{errors.brandCode}</span>
-              </p>
-            )}
-          </div>
-
-          {/* ════════════════════════════════════════════════════════════════ */}
-          {/* FIELD 4: CATEGORIES MULTI-SELECT DROPDOWN                        */}
+          {/* FIELD 3: CATEGORIES MULTI-SELECT DROPDOWN                        */}
           {/* ════════════════════════════════════════════════════════════════ */}
           <div ref={categoryContainerRef} className="relative space-y-1.5">
             <label className="text-gray-900 font-extrabold text-xs flex items-center justify-between">

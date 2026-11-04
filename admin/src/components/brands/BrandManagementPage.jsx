@@ -34,7 +34,6 @@ import BrandImportModal from './BrandImportModal';
 import {
   exportBrandsToExcel,
   resolveBrandNumber,
-  resolveBrandCode,
   parseBrandNumberSeq,
   formatBrandNumber
 } from '../../utils/brandUtils';
@@ -47,14 +46,13 @@ import {
  *   1. BRAND NUMBER (BR001, BR002...)
  *   2. BRAND NAME
  *   3. BRAND LOGO
- *   4. BRAND CODE (AGA-001, AIK-002...)
- *   5. CATEGORIES (Multi-category badges)
+  *   5. CATEGORIES (Multi-category badges)
  *   6. ACTION (Active/Inactive Toggle, Edit, Delete)
  * - Completely removes any Product Count, Products Catalog, or Total Products columns.
- * - Concurrency-safe permanent Brand Number and mnemonic Brand Code.
+ * - Concurrency-safe permanent Brand Number.
  * - Excel Import and Export (brand_master_YYYY-MM-DD.xlsx).
  * - Safe Delete with product reference validation.
- * - Search by Brand Number, Brand Name, Brand Code.
+ * - Search by Brand Number and Brand Name.
  * - Filter by Category, Active/Inactive, Logo status.
  * - Pagination: 15, 25, 50, 100.
  */
@@ -82,7 +80,7 @@ export default function BrandManagementPage({
   const [logoFilter, setLogoFilter] = useState('all'); // 'all' | 'has_logo' | 'no_logo'
 
   // Sorting States
-  const [sortField, setSortField] = useState('brandNumber'); // 'brandNumber' | 'name' | 'brandCode' | 'createdAt'
+  const [sortField, setSortField] = useState('brandNumber'); // 'brandNumber' | 'name' | 'createdAt'
   const [sortDirection, setSortDirection] = useState('asc'); // 'asc' | 'desc'
 
   // Pagination States
@@ -120,16 +118,14 @@ export default function BrandManagementPage({
   const filteredBrands = useMemo(() => {
     return (brands || []).filter(b => {
       if (!b || b.id?.startsWith('app_') || b.id?.startsWith('salbeau_') || b.category === 'SystemConfig') return false;
-      // 1. Search Query Match (searches Brand Number, Sequence, Brand Name, Brand Code)
+      // 1. Search Query Match (searches Brand Number, Sequence, Brand Name)
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
         const brandNum = resolveBrandNumber(b, brands);
         const num = brandNum.toLowerCase();
         const seq = String(parseBrandNumberSeq(brandNum));
         const name = (b.name || '').toLowerCase();
-        const brandCode = resolveBrandCode(b, brands, brandNum);
-        const code = brandCode.toLowerCase();
-        const match = num.includes(q) || seq.includes(q) || name.includes(q) || code.includes(q);
+        const match = num.includes(q) || seq.includes(q) || name.includes(q);
         if (!match) return false;
       }
 
@@ -174,9 +170,6 @@ export default function BrandManagementPage({
       } else if (sortField === 'name') {
         valA = a.name || '';
         valB = b.name || '';
-      } else if (sortField === 'brandCode') {
-        valA = resolveBrandCode(a, brands, a.brandNumber);
-        valB = resolveBrandCode(b, brands, b.brandNumber);
       } else if (sortField === 'createdAt') {
         valA = a.createdAt || a.created_at || '';
         valB = b.createdAt || b.created_at || '';
@@ -564,12 +557,12 @@ export default function BrandManagementPage({
         {/* Filter & Search Toolbar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 p-3.5 rounded-2xl bg-[#FFF8FA] border border-pink-100/80">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
-            {/* Search Input: Brand Number, Name, Brand Code */}
+            {/* Search Input: Brand Number, Name */}
             <div className="flex items-center gap-2 bg-white px-3.5 h-10 rounded-xl border border-pink-200/90 w-full sm:w-72 focus-within:ring-2 focus-within:ring-[#C2477A]/20 transition-all shadow-2xs">
               <Search size={14} className="text-[#C2477A] shrink-0" />
               <input
                 type="text"
-                placeholder="Search number, name, or code..."
+                placeholder="Search brand number or name..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -703,23 +696,21 @@ export default function BrandManagementPage({
         )}
 
         {/* 
-          EXACT SPECIFICATION: FINAL BRAND MANAGEMENT TABLE (EXACTLY SIX COLUMNS IN EXACT ORDER)
-          Column 1: Brand Number
-          Column 2: Brand Logo
+          FINAL BRAND MANAGEMENT TABLE (EXACTLY FIVE COLUMNS IN EXACT ORDER)
+          Column 1: Checkbox
+          Column 2: Brand Number
           Column 3: Brand Name
-          Column 4: Brand Code
-          Column 5: Categories
-          Column 6: Action
+          Column 4: Categories
+          Column 5: Action
         */}
         <div className="overflow-x-auto rounded-2xl border border-pink-100/90 shadow-2xs bg-white">
           <table className="w-full text-left border-collapse text-xs table-fixed">
             <colgroup>
               <col className="w-12" />
               <col className="w-32" />
+              <col className="min-w-[220px]" />
               <col className="min-w-[200px]" />
-              <col className="w-32" />
-              <col className="min-w-[180px]" />
-              <col className="w-56" />
+              <col className="w-48" />
             </colgroup>
             <thead>
               <tr className="bg-[#FFF0F4] text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100">
@@ -750,22 +741,12 @@ export default function BrandManagementPage({
                   </div>
                 </th>
 
-
-
-                {/* COLUMN 4: Brand Code */}
-                <th className="py-4 px-3 text-left align-middle cursor-pointer hover:bg-pink-100/60 transition-colors" onClick={() => handleSort('brandCode')}>
-                  <div className="flex items-center gap-1.5">
-                    <span>BRAND CODE</span>
-                    <ArrowUpDown size={11} className={sortField === 'brandCode' ? 'text-[#C2477A]' : 'text-gray-400'} />
-                  </div>
-                </th>
-
-                {/* COLUMN 5: Categories */}
+                {/* COLUMN 3: Categories */}
                 <th className="py-4 px-4 text-left align-middle">
                   <span>CATEGORIES</span>
                 </th>
 
-                {/* COLUMN 6: Action */}
+                {/* COLUMN 4: Action */}
                 <th className="py-4 px-4 text-right align-middle">
                   <span>ACTION</span>
                 </th>
@@ -774,7 +755,7 @@ export default function BrandManagementPage({
             <tbody className="divide-y divide-pink-50">
               {paginatedBrands.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-16 px-6 text-center text-gray-400">
+                  <td colSpan={5} className="py-16 px-6 text-center text-gray-400">
                     <Store size={36} className="mx-auto mb-2 text-gray-300" />
                     <p className="font-bold text-sm text-gray-700">No partner brands found</p>
                     <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
@@ -788,7 +769,6 @@ export default function BrandManagementPage({
                 paginatedBrands.map((brand, index) => {
                   const brandNum = brand.brandNumber || brand.brand_number || resolveBrandNumber(brand, brands);
                   const brandSeq = parseBrandNumberSeq(brandNum);
-                  const brandCode = brand.brandCode || brand.brand_code || resolveBrandCode(brand, brands, brandNum);
                   const isSelected = selectedBrandIds.has(brand.id);
                   const isEnabled = brand.enabled !== false;
 
@@ -843,16 +823,7 @@ export default function BrandManagementPage({
                         )}
                       </td>
 
-
-
-                      {/* COLUMN 4: Brand Code */}
-                      <td className="py-3 px-3 whitespace-nowrap font-mono font-bold text-gray-800 text-xs align-middle">
-                        <span className="px-2 py-0.5 rounded-lg bg-gray-100 text-gray-800 border border-gray-200">
-                          {brandCode}
-                        </span>
-                      </td>
-
-                      {/* COLUMN 5: Categories (Badges) */}
+                      {/* COLUMN 3: Categories (Badges) */}
                       <td className="py-3 px-4 align-middle">
                         <div className="flex flex-wrap gap-1 max-w-xs">
                           {brandCats.length === 0 ? (

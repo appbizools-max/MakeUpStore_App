@@ -214,7 +214,6 @@ const mapBrandFromDb = (b, metaDict = {}) => {
   }
   const rawNum = b.brand_number || b.brandNumber || meta.brandNumber || '';
   const brandNumber = resolveBrandNumber({ ...b, brandNumber: rawNum });
-  const brandCode = (b.brand_code || b.brandCode || meta.brandCode) || resolveBrandCode({ ...b, brandNumber }, [], brandNumber);
   const sortOrder = b.sort_order || meta.sortOrder || parseBrandNumberSeq(brandNumber) || 0;
 
   return {
@@ -222,8 +221,6 @@ const mapBrandFromDb = (b, metaDict = {}) => {
     name: b.name || '',
     brandNumber,
     brand_number: brandNumber,
-    brandCode,
-    brand_code: brandCode,
     categories,
     category: categories[0] || b.category || '',
     description: b.description || meta.description || '',
@@ -1330,7 +1327,7 @@ export const AdminProvider = ({ children }) => {
 
     // Determine brand code for file naming
     const existingBrand = brands.find(b => b.id === brandId);
-    const brandCode = updatedFields.brandCode !== undefined ? updatedFields.brandCode.trim().toUpperCase() : (existingBrand?.brandCode || existingBrand?.brand_code || 'brand');
+    const logoPrefix = 'brand';
 
     // Optimize updated logo if a new data URL or blob was provided
     let updatedLogo = updatedFields.logo;
@@ -1338,8 +1335,7 @@ export const AdminProvider = ({ children }) => {
       try {
         const logoUpload = await uploadOptimizedImage(updatedLogo, 'BRAND_LOGO', {
           folder: 'brand-logos',
-          filenamePrefix: brandCode,
-          brandCode
+          filenamePrefix: logoPrefix
         });
         if (logoUpload?.url) updatedLogo = logoUpload.url;
       } catch (luErr) {
@@ -1353,7 +1349,6 @@ export const AdminProvider = ({ children }) => {
       if (b.id === brandId) {
         // Critical requirement: Brand Number must remain permanent & immutable!
         const preservedBrandNumber = b.brandNumber || b.brand_number;
-        const bCode = updatedFields.brandCode !== undefined ? updatedFields.brandCode.trim().toUpperCase() : (b.brandCode || b.brand_code);
         const categoriesList = updatedFields.categories !== undefined
           ? (Array.isArray(updatedFields.categories) ? updatedFields.categories : [updatedFields.categories])
           : b.categories;
@@ -1364,8 +1359,6 @@ export const AdminProvider = ({ children }) => {
           ...(updatedLogo !== undefined ? { logo: updatedLogo } : {}),
           brandNumber: preservedBrandNumber,
           brand_number: preservedBrandNumber,
-          brandCode: bCode,
-          brand_code: bCode,
           categories: categoriesList,
           category: categoriesList && categoriesList.length > 0 ? categoriesList[0] : (b.category || 'Makeup'),
           ...(isEnabled !== undefined ? { enabled: isEnabled } : {})
@@ -1395,7 +1388,6 @@ export const AdminProvider = ({ children }) => {
         if (updatedBrandObj) {
           currentMeta[brandId] = {
             brandNumber: updatedBrandObj.brandNumber,
-            brandCode: updatedBrandObj.brandCode,
             categories: updatedBrandObj.categories,
             description: updatedBrandObj.description,
             internalNotes: updatedBrandObj.internalNotes,
@@ -1581,7 +1573,6 @@ export const AdminProvider = ({ children }) => {
           brandsToUpdate.push({
             id: existing.id,
             name: row.brandName,
-            brandCode: row.brandCode || existing.brandCode,
             categories: row.categories && row.categories.length > 0 ? row.categories : existing.categories,
             logo: row.logoUrl || existing.logo,
             enabled: row.enabled,
@@ -1591,16 +1582,14 @@ export const AdminProvider = ({ children }) => {
           results.updated++;
         }
       } else {
-        const brandNumber = row.brandNumber || generateNextBrandNumber(currentBrandsList);
-        const brandCode = row.brandCode || generateProposedBrandCode(row.brandName, currentBrandsList, brandNumber);
+        const brandNumber = row.brandNumber || generateNextBrandNumber(currentBrandsList);const logoPrefix = 'brand';
 
         let finalImportLogo = row.logoUrl || '';
         if (finalImportLogo && (finalImportLogo.startsWith('data:') || finalImportLogo instanceof Blob)) {
           try {
             const logoUpload = await uploadOptimizedImage(finalImportLogo, 'BRAND_LOGO', {
               folder: 'brand-logos',
-              filenamePrefix: brandCode,
-              brandCode
+              filenamePrefix: logoPrefix
             });
             if (logoUpload?.url) finalImportLogo = logoUpload.url;
           } catch (luErr) {
@@ -1613,8 +1602,6 @@ export const AdminProvider = ({ children }) => {
           name: row.brandName,
           brandNumber,
           brand_number: brandNumber,
-          brandCode,
-          brand_code: brandCode,
           categories: row.categories || [],
           category: row.categories?.[0] || 'Makeup',
           logo: finalImportLogo,
@@ -1672,7 +1659,6 @@ export const AdminProvider = ({ children }) => {
         newBrandsToInsert.forEach(b => {
           currentMeta[b.id] = {
             brandNumber: b.brandNumber,
-            brandCode: b.brandCode,
             categories: b.categories,
             description: b.description,
             internalNotes: b.internalNotes,
@@ -2339,8 +2325,8 @@ export const AdminProvider = ({ children }) => {
     return uploadImage(file, 'products', sku, 'PRODUCT');
   };
 
-  const uploadBrandLogo = async (file, brandCode = 'brand') => {
-    return uploadImage(file, 'brand-logos', brandCode, 'BRAND_LOGO');
+  const uploadBrandLogo = async (file, logoPrefix = 'brand') => {
+    return uploadImage(file, 'brand-logos', logoPrefix, 'BRAND_LOGO');
   };
 
   const uploadCategoryImage = async (file, slug = 'cat') => {

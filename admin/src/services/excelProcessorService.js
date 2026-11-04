@@ -235,8 +235,9 @@ export const generateBrandCode = (brand) => {
     b.brandCode.toLowerCase() === normalized ||
     b.brandNumber.toLowerCase() === normalized
   );
-  if (masterMatch && masterMatch.brandCode) {
-    return masterMatch.brandCode.split('-')[0];
+  if (masterMatch && masterMatch.name) {
+    const letters = masterMatch.name.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    return letters.slice(0, 3).padEnd(3, 'X');
   }
 
   if (KNOWN_BRAND_CODES[normalized]) {

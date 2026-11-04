@@ -5,1828 +5,1463 @@
 export const APPROVED_BRAND_MASTER = [
   {
     "brandNumber": "BR001",
-    "name": "AGARO",
-    "brandCode": "AGA-001"
+    "name": "AGARO"
   },
   {
     "brandNumber": "BR002",
-    "name": "AIR KARPURE",
-    "brandCode": "AIK-002"
+    "name": "AIR KARPURE"
   },
   {
     "brandNumber": "BR003",
-    "name": "AIR WICK",
-    "brandCode": "AIW-003"
+    "name": "AIR WICK"
   },
   {
     "brandNumber": "BR004",
-    "name": "AJAY",
-    "brandCode": "AJA-004"
+    "name": "AJAY"
   },
   {
     "brandNumber": "BR005",
-    "name": "AJMAL",
-    "brandCode": "AJM-005"
+    "name": "AJMAL"
   },
   {
     "brandNumber": "BR006",
-    "name": "ALPS GOODNESS",
-    "brandCode": "ALG-006"
+    "name": "ALPS GOODNESS"
   },
   {
     "brandNumber": "BR007",
-    "name": "ALTON",
-    "brandCode": "ALT-007"
+    "name": "ALTON"
   },
   {
     "brandNumber": "BR008",
-    "name": "AMBI PUR",
-    "brandCode": "AMP-008"
+    "name": "AMBI PUR"
   },
   {
     "brandNumber": "BR009",
-    "name": "ANIMATE",
-    "brandCode": "ANI-009"
+    "name": "ANIMATE"
   },
   {
     "brandNumber": "BR010",
-    "name": "ANOOS",
-    "brandCode": "ANO-010"
+    "name": "ANOOS"
   },
   {
     "brandNumber": "BR011",
-    "name": "AQUALOGICA",
-    "brandCode": "AQU-011"
+    "name": "AQUALOGICA"
   },
   {
     "brandNumber": "BR012",
-    "name": "ARATA",
-    "brandCode": "ARA-012"
+    "name": "ARATA"
   },
   {
     "brandNumber": "BR013",
-    "name": "ARMAF",
-    "brandCode": "ARM-013"
+    "name": "ARMAF"
   },
   {
     "brandNumber": "BR014",
-    "name": "AROMA CARE",
-    "brandCode": "ARC-014"
+    "name": "AROMA CARE"
   },
   {
     "brandNumber": "BR015",
-    "name": "AROMA MAGIC",
-    "brandCode": "ARM-015"
+    "name": "AROMA MAGIC"
   },
   {
     "brandNumber": "BR016",
-    "name": "ASWINI",
-    "brandCode": "ASW-016"
+    "name": "ASWINI"
   },
   {
     "brandNumber": "BR017",
-    "name": "AUREANA",
-    "brandCode": "AUR-017"
+    "name": "AUREANA"
   },
   {
     "brandNumber": "BR018",
-    "name": "AURIC",
-    "brandCode": "AUR-018"
+    "name": "AURIC"
   },
   {
     "brandNumber": "BR019",
-    "name": "AVEENO",
-    "brandCode": "AVE-019"
+    "name": "AVEENO"
   },
   {
     "brandNumber": "BR020",
-    "name": "AXE",
-    "brandCode": "AXE-020"
+    "name": "AXE"
   },
   {
     "brandNumber": "BR021",
-    "name": "AYOUTH VEDA",
-    "brandCode": "AYV-021"
+    "name": "AYOUTH VEDA"
   },
   {
     "brandNumber": "BR022",
-    "name": "AYUR",
-    "brandCode": "AYU-022"
+    "name": "AYUR"
   },
   {
     "brandNumber": "BR023",
-    "name": "BABILA",
-    "brandCode": "BAB-023"
+    "name": "BABILA"
   },
   {
     "brandNumber": "BR024",
-    "name": "BADZ PLAY",
-    "brandCode": "BAP-024"
+    "name": "BADZ PLAY"
   },
   {
     "brandNumber": "BR025",
-    "name": "BAJAJ",
-    "brandCode": "BAJ-025"
+    "name": "BAJAJ"
   },
   {
     "brandNumber": "BR026",
-    "name": "BANJARA",
-    "brandCode": "BAN-026"
+    "name": "BANJARA"
   },
   {
     "brandNumber": "BR027",
-    "name": "BATH & BODY WORKS",
-    "brandCode": "BBW-027"
+    "name": "BATH & BODY WORKS"
   },
   {
     "brandNumber": "BR028",
-    "name": "BATISTE",
-    "brandCode": "BAT-028"
+    "name": "BATISTE"
   },
   {
     "brandNumber": "BR029",
-    "name": "BBLUNT",
-    "brandCode": "BBL-029"
+    "name": "BBLUNT"
   },
   {
     "brandNumber": "BR030",
-    "name": "BE BODYWISE",
-    "brandCode": "BEB-030"
+    "name": "BE BODYWISE"
   },
   {
     "brandNumber": "BR031",
-    "name": "BEARDO",
-    "brandCode": "BEA-031"
+    "name": "BEARDO"
   },
   {
     "brandNumber": "BR032",
-    "name": "BEAUTE BLANC",
-    "brandCode": "BEB-032"
+    "name": "BEAUTE BLANC"
   },
   {
     "brandNumber": "BR033",
-    "name": "BEAUTE SECRETS",
-    "brandCode": "BES-033"
+    "name": "BEAUTE SECRETS"
   },
   {
     "brandNumber": "BR034",
-    "name": "BEAUTY",
-    "brandCode": "BEA-034"
+    "name": "BEAUTY"
   },
   {
     "brandNumber": "BR035",
-    "name": "BEAUTY ZONE",
-    "brandCode": "BEZ-035"
+    "name": "BEAUTY ZONE"
   },
   {
     "brandNumber": "BR036",
-    "name": "BELLA VITA ORGANIC",
-    "brandCode": "BVO-036"
+    "name": "BELLA VITA ORGANIC"
   },
   {
     "brandNumber": "BR037",
-    "name": "BEURER BEAUTY",
-    "brandCode": "BEB-037"
+    "name": "BEURER BEAUTY"
   },
   {
     "brandNumber": "BR038",
-    "name": "BIGEN",
-    "brandCode": "BIG-038"
+    "name": "BIGEN"
   },
   {
     "brandNumber": "BR039",
-    "name": "BILUMA",
-    "brandCode": "BIL-039"
+    "name": "BILUMA"
   },
   {
     "brandNumber": "BR040",
-    "name": "BIO OIL",
-    "brandCode": "BIO-040"
+    "name": "BIO OIL"
   },
   {
     "brandNumber": "BR041",
-    "name": "BIODERMA",
-    "brandCode": "BIO-041"
+    "name": "BIODERMA"
   },
   {
     "brandNumber": "BR042",
-    "name": "BIOTIQUE",
-    "brandCode": "BIO-042"
+    "name": "BIOTIQUE"
   },
   {
     "brandNumber": "BR043",
-    "name": "BLUE HEAVEN",
-    "brandCode": "BLH-043"
+    "name": "BLUE HEAVEN"
   },
   {
     "brandNumber": "BR044",
-    "name": "BORO PLUS",
-    "brandCode": "BOP-044"
+    "name": "BORO PLUS"
   },
   {
     "brandNumber": "BR045",
-    "name": "BOROLINE",
-    "brandCode": "BOR-045"
+    "name": "BOROLINE"
   },
   {
     "brandNumber": "BR046",
-    "name": "BRASIL CACAU PRO",
-    "brandCode": "BCP-046"
+    "name": "BRASIL CACAU PRO"
   },
   {
     "brandNumber": "BR047",
-    "name": "BRUSHMAN",
-    "brandCode": "BRU-047"
+    "name": "BRUSHMAN"
   },
   {
     "brandNumber": "BR048",
-    "name": "BRUT",
-    "brandCode": "BRU-048"
+    "name": "BRUT"
   },
   {
     "brandNumber": "BR049",
-    "name": "CAMAY",
-    "brandCode": "CAM-049"
+    "name": "CAMAY"
   },
   {
     "brandNumber": "BR050",
-    "name": "CAMPURE",
-    "brandCode": "CAM-050"
+    "name": "CAMPURE"
   },
   {
     "brandNumber": "BR051",
-    "name": "CANDIO",
-    "brandCode": "CAN-051"
+    "name": "CANDIO"
   },
   {
     "brandNumber": "BR052",
-    "name": "CARESMITH",
-    "brandCode": "CAR-052"
+    "name": "CARESMITH"
   },
   {
     "brandNumber": "BR053",
-    "name": "CERAVE",
-    "brandCode": "CER-053"
+    "name": "CERAVE"
   },
   {
     "brandNumber": "BR054",
-    "name": "CETAPHIL",
-    "brandCode": "CET-054"
+    "name": "CETAPHIL"
   },
   {
     "brandNumber": "BR055",
-    "name": "CHEMIST AT PLAY",
-    "brandCode": "CAP-055"
+    "name": "CHEMIST AT PLAY"
   },
   {
     "brandNumber": "BR056",
-    "name": "CHICCO",
-    "brandCode": "CHI-056"
+    "name": "CHICCO"
   },
   {
     "brandNumber": "BR057",
-    "name": "CIGAR",
-    "brandCode": "CIG-057"
+    "name": "CIGAR"
   },
   {
     "brandNumber": "BR058",
-    "name": "CLEAN & CLEAR",
-    "brandCode": "CLC-058"
+    "name": "CLEAN & CLEAR"
   },
   {
     "brandNumber": "BR059",
-    "name": "CLEAN AND DRY",
-    "brandCode": "CAD-059"
+    "name": "CLEAN AND DRY"
   },
   {
     "brandNumber": "BR060",
-    "name": "CLEAR",
-    "brandCode": "CLE-060"
+    "name": "CLEAR"
   },
   {
     "brandNumber": "BR061",
-    "name": "CLINIC PLUS",
-    "brandCode": "CLP-061"
+    "name": "CLINIC PLUS"
   },
   {
     "brandNumber": "BR062",
-    "name": "CLOSEUP",
-    "brandCode": "CLO-062"
+    "name": "CLOSEUP"
   },
   {
     "brandNumber": "BR063",
-    "name": "COLGATE",
-    "brandCode": "COL-063"
+    "name": "COLGATE"
   },
   {
     "brandNumber": "BR064",
-    "name": "COLOR TREND",
-    "brandCode": "COT-064"
+    "name": "COLOR TREND"
   },
   {
     "brandNumber": "BR065",
-    "name": "COLORESSENCE",
-    "brandCode": "COL-065"
+    "name": "COLORESSENCE"
   },
   {
     "brandNumber": "BR066",
-    "name": "COSRX",
-    "brandCode": "COS-066"
+    "name": "COSRX"
   },
   {
     "brandNumber": "BR067",
-    "name": "CURL UP",
-    "brandCode": "CUU-067"
+    "name": "CURL UP"
   },
   {
     "brandNumber": "BR068",
-    "name": "CURLIN",
-    "brandCode": "CUR-068"
+    "name": "CURLIN"
   },
   {
     "brandNumber": "BR069",
-    "name": "DABUR",
-    "brandCode": "DAB-069"
+    "name": "DABUR"
   },
   {
     "brandNumber": "BR070",
-    "name": "DE CONSTRUCT",
-    "brandCode": "DEC-070"
+    "name": "DE CONSTRUCT"
   },
   {
     "brandNumber": "BR071",
-    "name": "DENVER",
-    "brandCode": "DEN-071"
+    "name": "DENVER"
   },
   {
     "brandNumber": "BR072",
-    "name": "DERMA COLOR",
-    "brandCode": "DEC-072"
+    "name": "DERMA COLOR"
   },
   {
     "brandNumber": "BR073",
-    "name": "DERMADEW",
-    "brandCode": "DER-073"
+    "name": "DERMADEW"
   },
   {
     "brandNumber": "BR074",
-    "name": "DERMATOUCH",
-    "brandCode": "DER-074"
+    "name": "DERMATOUCH"
   },
   {
     "brandNumber": "BR075",
-    "name": "DERMAVIVE",
-    "brandCode": "DER-075"
+    "name": "DERMAVIVE"
   },
   {
     "brandNumber": "BR076",
-    "name": "DERMDOC",
-    "brandCode": "DER-076"
+    "name": "DERMDOC"
   },
   {
     "brandNumber": "BR077",
-    "name": "DERMI COOL",
-    "brandCode": "DEC-077"
+    "name": "DERMI COOL"
   },
   {
     "brandNumber": "BR078",
-    "name": "DERMICOVER",
-    "brandCode": "DER-078"
+    "name": "DERMICOVER"
   },
   {
     "brandNumber": "BR079",
-    "name": "DETTOL",
-    "brandCode": "DET-079"
+    "name": "DETTOL"
   },
   {
     "brandNumber": "BR080",
-    "name": "DF",
-    "brandCode": "DFX-080"
+    "name": "DF"
   },
   {
     "brandNumber": "BR081",
-    "name": "DOT & KEY",
-    "brandCode": "DOK-081"
+    "name": "DOT & KEY"
   },
   {
     "brandNumber": "BR082",
-    "name": "DOVE",
-    "brandCode": "DOV-082"
+    "name": "DOVE"
   },
   {
     "brandNumber": "BR083",
-    "name": "DR REDDY",
-    "brandCode": "DRR-083"
+    "name": "DR REDDY"
   },
   {
     "brandNumber": "BR084",
-    "name": "DR SCHOLLS",
-    "brandCode": "DRS-084"
+    "name": "DR SCHOLLS"
   },
   {
     "brandNumber": "BR085",
-    "name": "DR.ORTHO",
-    "brandCode": "DRO-085"
+    "name": "DR.ORTHO"
   },
   {
     "brandNumber": "BR086",
-    "name": "DR.RASHEL",
-    "brandCode": "DRR-086"
+    "name": "DR.RASHEL"
   },
   {
     "brandNumber": "BR087",
-    "name": "DR.REDDYS",
-    "brandCode": "DRR-087"
+    "name": "DR.REDDYS"
   },
   {
     "brandNumber": "BR088",
-    "name": "DR.SHETHS",
-    "brandCode": "DRS-088"
+    "name": "DR.SHETHS"
   },
   {
     "brandNumber": "BR089",
-    "name": "DURACELL",
-    "brandCode": "DUR-089"
+    "name": "DURACELL"
   },
   {
     "brandNumber": "BR090",
-    "name": "ECOPATH",
-    "brandCode": "ECO-090"
+    "name": "ECOPATH"
   },
   {
     "brandNumber": "BR091",
-    "name": "EMAMI",
-    "brandCode": "EMA-091"
+    "name": "EMAMI"
   },
   {
     "brandNumber": "BR092",
-    "name": "ENCHANTEUR",
-    "brandCode": "ENC-092"
+    "name": "ENCHANTEUR"
   },
   {
     "brandNumber": "BR093",
-    "name": "ENGAGE",
-    "brandCode": "ENG-093"
+    "name": "ENGAGE"
   },
   {
     "brandNumber": "BR094",
-    "name": "ENVY",
-    "brandCode": "ENV-094"
+    "name": "ENVY"
   },
   {
     "brandNumber": "BR095",
-    "name": "EVA",
-    "brandCode": "EVA-095"
+    "name": "EVA"
   },
   {
     "brandNumber": "BR096",
-    "name": "EVEREADY",
-    "brandCode": "EVE-096"
+    "name": "EVEREADY"
   },
   {
     "brandNumber": "BR097",
-    "name": "EVERYUTH",
-    "brandCode": "EVE-097"
+    "name": "EVERYUTH"
   },
   {
     "brandNumber": "BR098",
-    "name": "EYETAX",
-    "brandCode": "EYE-098"
+    "name": "EYETAX"
   },
   {
     "brandNumber": "BR099",
-    "name": "FACES",
-    "brandCode": "FAC-099"
+    "name": "FACES"
   },
   {
     "brandNumber": "BR100",
-    "name": "FAIR AND LOVELY",
-    "brandCode": "FAL-100"
+    "name": "FAIR AND LOVELY"
   },
   {
     "brandNumber": "BR101",
-    "name": "FANCY ITEM",
-    "brandCode": "FAI-101"
+    "name": "FANCY ITEM"
   },
   {
     "brandNumber": "BR102",
-    "name": "FEELINGS",
-    "brandCode": "FEE-102"
+    "name": "FEELINGS"
   },
   {
     "brandNumber": "BR103",
-    "name": "FEM",
-    "brandCode": "FEM-103"
+    "name": "FEM"
   },
   {
     "brandNumber": "BR104",
-    "name": "FIAMA",
-    "brandCode": "FIA-104"
+    "name": "FIAMA"
   },
   {
     "brandNumber": "BR105",
-    "name": "FIGARO",
-    "brandCode": "FIG-105"
+    "name": "FIGARO"
   },
   {
     "brandNumber": "BR106",
-    "name": "FIX DERMA",
-    "brandCode": "FID-106"
+    "name": "FIX DERMA"
   },
   {
     "brandNumber": "BR107",
-    "name": "FLORL NUTRITION",
-    "brandCode": "FLN-107"
+    "name": "FLORL NUTRITION"
   },
   {
     "brandNumber": "BR108",
-    "name": "FLOWEROM",
-    "brandCode": "FLO-108"
+    "name": "FLOWEROM"
   },
   {
     "brandNumber": "BR109",
-    "name": "FOGG",
-    "brandCode": "FOG-109"
+    "name": "FOGG"
   },
   {
     "brandNumber": "BR110",
-    "name": "FOREST",
-    "brandCode": "FOR-110"
+    "name": "FOREST"
   },
   {
     "brandNumber": "BR111",
-    "name": "FOREVER",
-    "brandCode": "FOR-111"
+    "name": "FOREVER"
   },
   {
     "brandNumber": "BR112",
-    "name": "FOREVER52",
-    "brandCode": "FOR-112"
+    "name": "FOREVER52"
   },
   {
     "brandNumber": "BR113",
-    "name": "FOXTALE",
-    "brandCode": "FOX-113"
+    "name": "FOXTALE"
   },
   {
     "brandNumber": "BR114",
-    "name": "GAIATOP",
-    "brandCode": "GAI-114"
+    "name": "GAIATOP"
   },
   {
     "brandNumber": "BR115",
-    "name": "GARNIER",
-    "brandCode": "GAR-115"
+    "name": "GARNIER"
   },
   {
     "brandNumber": "BR116",
-    "name": "GATSBY",
-    "brandCode": "GAT-116"
+    "name": "GATSBY"
   },
   {
     "brandNumber": "BR117",
-    "name": "GEOFRESH",
-    "brandCode": "GEO-117"
+    "name": "GEOFRESH"
   },
   {
     "brandNumber": "BR118",
-    "name": "GILLETTE",
-    "brandCode": "GIL-118"
+    "name": "GILLETTE"
   },
   {
     "brandNumber": "BR119",
-    "name": "GLAM FAM",
-    "brandCode": "GLF-119"
+    "name": "GLAM FAM"
   },
   {
     "brandNumber": "BR120",
-    "name": "GLAM-UP",
-    "brandCode": "GLU-120"
+    "name": "GLAM-UP"
   },
   {
     "brandNumber": "BR121",
-    "name": "GLOW & HANDSOME",
-    "brandCode": "GLH-121"
+    "name": "GLOW & HANDSOME"
   },
   {
     "brandNumber": "BR122",
-    "name": "GODREJ",
-    "brandCode": "GOD-122"
+    "name": "GODREJ"
   },
   {
     "brandNumber": "BR123",
-    "name": "GOOD VIBES",
-    "brandCode": "GOV-123"
+    "name": "GOOD VIBES"
   },
   {
     "brandNumber": "BR124",
-    "name": "GOREE",
-    "brandCode": "GOR-124"
+    "name": "GOREE"
   },
   {
     "brandNumber": "BR125",
-    "name": "GREEN LEAF",
-    "brandCode": "GRL-125"
+    "name": "GREEN LEAF"
   },
   {
     "brandNumber": "BR126",
-    "name": "GUBB",
-    "brandCode": "GUB-126"
+    "name": "GUBB"
   },
   {
     "brandNumber": "BR127",
-    "name": "HAIR & CARE",
-    "brandCode": "HAC-127"
+    "name": "HAIR & CARE"
   },
   {
     "brandNumber": "BR128",
-    "name": "HAIR ACC -AARAV",
-    "brandCode": "HAA-128"
+    "name": "HAIR ACC -AARAV"
   },
   {
     "brandNumber": "BR129",
-    "name": "HAIR COMB",
-    "brandCode": "HAC-129"
+    "name": "HAIR COMB"
   },
   {
     "brandNumber": "BR130",
-    "name": "HAIR WAX",
-    "brandCode": "HAW-130"
+    "name": "HAIR WAX"
   },
   {
     "brandNumber": "BR131",
-    "name": "HAIRLINE",
-    "brandCode": "HAI-131"
+    "name": "HAIRLINE"
   },
   {
     "brandNumber": "BR132",
-    "name": "HAMAM",
-    "brandCode": "HAM-132"
+    "name": "HAMAM"
   },
   {
     "brandNumber": "BR133",
-    "name": "HAMDARD",
-    "brandCode": "HAM-133"
+    "name": "HAMDARD"
   },
   {
     "brandNumber": "BR134",
-    "name": "HARPIC",
-    "brandCode": "HAR-134"
+    "name": "HARPIC"
   },
   {
     "brandNumber": "BR135",
-    "name": "HEAD & SHOULDER",
-    "brandCode": "HES-135"
+    "name": "HEAD & SHOULDER"
   },
   {
     "brandNumber": "BR136",
-    "name": "HIMALAYA",
-    "brandCode": "HIM-136"
+    "name": "HIMALAYA"
   },
   {
     "brandNumber": "BR137",
-    "name": "HIMGANGE",
-    "brandCode": "HIM-137"
+    "name": "HIMGANGE"
   },
   {
     "brandNumber": "BR138",
-    "name": "HONEYBEE",
-    "brandCode": "HON-138"
+    "name": "HONEYBEE"
   },
   {
     "brandNumber": "BR139",
-    "name": "HYPHEN",
-    "brandCode": "HYP-139"
+    "name": "HYPHEN"
   },
   {
     "brandNumber": "BR140",
-    "name": "ICE ROLLER",
-    "brandCode": "ICR-140"
+    "name": "ICE ROLLER"
   },
   {
     "brandNumber": "BR141",
-    "name": "ICE TEMPERED",
-    "brandCode": "ICT-141"
+    "name": "ICE TEMPERED"
   },
   {
     "brandNumber": "BR142",
-    "name": "IKI",
-    "brandCode": "IKI-142"
+    "name": "IKI"
   },
   {
     "brandNumber": "BR143",
-    "name": "IKONIC",
-    "brandCode": "IKO-143"
+    "name": "IKONIC"
   },
   {
     "brandNumber": "BR144",
-    "name": "INDULEKHA",
-    "brandCode": "IND-144"
+    "name": "INDULEKHA"
   },
   {
     "brandNumber": "BR145",
-    "name": "INDUS VALLEY",
-    "brandCode": "INV-145"
+    "name": "INDUS VALLEY"
   },
   {
     "brandNumber": "BR146",
-    "name": "INSIGHT",
-    "brandCode": "INS-146"
+    "name": "INSIGHT"
   },
   {
     "brandNumber": "BR147",
-    "name": "JOHNSONS",
-    "brandCode": "JOH-147"
+    "name": "JOHNSONS"
   },
   {
     "brandNumber": "BR148",
-    "name": "JOVEES",
-    "brandCode": "JOV-148"
+    "name": "JOVEES"
   },
   {
     "brandNumber": "BR149",
-    "name": "JOY",
-    "brandCode": "JOY-149"
+    "name": "JOY"
   },
   {
     "brandNumber": "BR150",
-    "name": "JOYO",
-    "brandCode": "JOY-150"
+    "name": "JOYO"
   },
   {
     "brandNumber": "BR151",
-    "name": "JUICY CHEMISTRY",
-    "brandCode": "JUC-151"
+    "name": "JUICY CHEMISTRY"
   },
   {
     "brandNumber": "BR152",
-    "name": "JUST HERBS",
-    "brandCode": "JUH-152"
+    "name": "JUST HERBS"
   },
   {
     "brandNumber": "BR153",
-    "name": "KAI",
-    "brandCode": "KAI-153"
+    "name": "KAI"
   },
   {
     "brandNumber": "BR154",
-    "name": "KAMA AYURVEDA",
-    "brandCode": "KAA-154"
+    "name": "KAMA AYURVEDA"
   },
   {
     "brandNumber": "BR155",
-    "name": "KANGARO",
-    "brandCode": "KAN-155"
+    "name": "KANGARO"
   },
   {
     "brandNumber": "BR156",
-    "name": "KARA",
-    "brandCode": "KAR-156"
+    "name": "KARA"
   },
   {
     "brandNumber": "BR157",
-    "name": "KAY BEAUTY",
-    "brandCode": "KAB-157"
+    "name": "KAY BEAUTY"
   },
   {
     "brandNumber": "BR158",
-    "name": "KERRATO",
-    "brandCode": "KER-158"
+    "name": "KERRATO"
   },
   {
     "brandNumber": "BR159",
-    "name": "KHADI",
-    "brandCode": "KHA-159"
+    "name": "KHADI"
   },
   {
     "brandNumber": "BR160",
-    "name": "KOHE",
-    "brandCode": "KOH-160"
+    "name": "KOHE"
   },
   {
     "brandNumber": "BR161",
-    "name": "KOZICARE",
-    "brandCode": "KOZ-161"
+    "name": "KOZICARE"
   },
   {
     "brandNumber": "BR162",
-    "name": "KRYOLAN",
-    "brandCode": "KRY-162"
+    "name": "KRYOLAN"
   },
   {
     "brandNumber": "BR163",
-    "name": "KTEIN",
-    "brandCode": "KTE-163"
+    "name": "KTEIN"
   },
   {
     "brandNumber": "BR164",
-    "name": "LA ORGANO",
-    "brandCode": "LAO-164"
+    "name": "LA ORGANO"
   },
   {
     "brandNumber": "BR165",
-    "name": "LA SHIELD",
-    "brandCode": "LAS-165"
+    "name": "LA SHIELD"
   },
   {
     "brandNumber": "BR166",
-    "name": "LACTO CALAMINE",
-    "brandCode": "LAC-166"
+    "name": "LACTO CALAMINE"
   },
   {
     "brandNumber": "BR167",
-    "name": "LAKME",
-    "brandCode": "LAK-167"
+    "name": "LAKME"
   },
   {
     "brandNumber": "BR168",
-    "name": "LAKME-SIMPLE",
-    "brandCode": "LAS-168"
+    "name": "LAKME-SIMPLE"
   },
   {
     "brandNumber": "BR169",
-    "name": "LANEIGE",
-    "brandCode": "LAN-169"
+    "name": "LANEIGE"
   },
   {
     "brandNumber": "BR170",
-    "name": "LASER",
-    "brandCode": "LAS-170"
+    "name": "LASER"
   },
   {
     "brandNumber": "BR171",
-    "name": "LAYERR",
-    "brandCode": "LAY-171"
+    "name": "LAYERR"
   },
   {
     "brandNumber": "BR172",
-    "name": "LIA",
-    "brandCode": "LIA-172"
+    "name": "LIA"
   },
   {
     "brandNumber": "BR173",
-    "name": "LIFEBUOY",
-    "brandCode": "LIF-173"
+    "name": "LIFEBUOY"
   },
   {
     "brandNumber": "BR174",
-    "name": "LIP BALM",
-    "brandCode": "LIB-174"
+    "name": "LIP BALM"
   },
   {
     "brandNumber": "BR175",
-    "name": "LIRIL",
-    "brandCode": "LIR-175"
+    "name": "LIRIL"
   },
   {
     "brandNumber": "BR176",
-    "name": "LISTERINE",
-    "brandCode": "LIS-176"
+    "name": "LISTERINE"
   },
   {
     "brandNumber": "BR177",
-    "name": "LIVON",
-    "brandCode": "LIV-177"
+    "name": "LIVON"
   },
   {
     "brandNumber": "BR178",
-    "name": "LOREAL COSMETICS",
-    "brandCode": "LOC-178"
+    "name": "LOREAL COSMETICS"
   },
   {
     "brandNumber": "BR179",
-    "name": "LOREAL PRO",
-    "brandCode": "LOP-179"
+    "name": "LOREAL PRO"
   },
   {
     "brandNumber": "BR180",
-    "name": "LOREAL SKIN CARE",
-    "brandCode": "LSC-180"
+    "name": "LOREAL SKIN CARE"
   },
   {
     "brandNumber": "BR181",
-    "name": "LOTUS BOTANICALS",
-    "brandCode": "LOB-181"
+    "name": "LOTUS BOTANICALS"
   },
   {
     "brandNumber": "BR182",
-    "name": "LOTUS HERBALS",
-    "brandCode": "LOH-182"
+    "name": "LOTUS HERBALS"
   },
   {
     "brandNumber": "BR183",
-    "name": "LOTUS ORGANICS",
-    "brandCode": "LOO-183"
+    "name": "LOTUS ORGANICS"
   },
   {
     "brandNumber": "BR184",
-    "name": "LOTUS PRO",
-    "brandCode": "LOP-184"
+    "name": "LOTUS PRO"
   },
   {
     "brandNumber": "BR185",
-    "name": "LOVE BEAUTY AND PLANET",
-    "brandCode": "LBA-185"
+    "name": "LOVE BEAUTY AND PLANET"
   },
   {
     "brandNumber": "BR186",
-    "name": "LUX",
-    "brandCode": "LUX-186"
+    "name": "LUX"
   },
   {
     "brandNumber": "BR187",
-    "name": "LUXLISS",
-    "brandCode": "LUX-187"
+    "name": "LUXLISS"
   },
   {
     "brandNumber": "BR188",
-    "name": "M CAFFEINE",
-    "brandCode": "MCX-188"
+    "name": "M CAFFEINE"
   },
   {
     "brandNumber": "BR189",
-    "name": "MAKEOVER PROFESSIONAL",
-    "brandCode": "MAP-189"
+    "name": "MAKEOVER PROFESSIONAL"
   },
   {
     "brandNumber": "BR190",
-    "name": "MAMA EARTH",
-    "brandCode": "MAE-190"
+    "name": "MAMA EARTH"
   },
   {
     "brandNumber": "BR191",
-    "name": "MAN MATTERS",
-    "brandCode": "MAM-191"
+    "name": "MAN MATTERS"
   },
   {
     "brandNumber": "BR192",
-    "name": "MARS",
-    "brandCode": "MAR-192"
+    "name": "MARS"
   },
   {
     "brandNumber": "BR193",
-    "name": "MATRIX",
-    "brandCode": "MAT-193"
+    "name": "MATRIX"
   },
   {
     "brandNumber": "BR194",
-    "name": "MAYBELLINE",
-    "brandCode": "MAY-194"
+    "name": "MAYBELLINE"
   },
   {
     "brandNumber": "BR195",
-    "name": "MEDIKER",
-    "brandCode": "MED-195"
+    "name": "MEDIKER"
   },
   {
     "brandNumber": "BR196",
-    "name": "MEDIMIX",
-    "brandCode": "MED-196"
+    "name": "MEDIMIX"
   },
   {
     "brandNumber": "BR197",
-    "name": "MEERA",
-    "brandCode": "MEE-197"
+    "name": "MEERA"
   },
   {
     "brandNumber": "BR198",
-    "name": "MINIMALIST",
-    "brandCode": "MIN-198"
+    "name": "MINIMALIST"
   },
   {
     "brandNumber": "BR199",
-    "name": "MIRABELLE",
-    "brandCode": "MIR-199"
+    "name": "MIRABELLE"
   },
   {
     "brandNumber": "BR200",
-    "name": "MISS CLAIRE",
-    "brandCode": "MIC-200"
+    "name": "MISS CLAIRE"
   },
   {
     "brandNumber": "BR201",
-    "name": "MOISTURISER",
-    "brandCode": "MOI-201"
+    "name": "MOISTURISER"
   },
   {
     "brandNumber": "BR202",
-    "name": "MOODS",
-    "brandCode": "MOO-202"
+    "name": "MOODS"
   },
   {
     "brandNumber": "BR203",
-    "name": "MOODY",
-    "brandCode": "MOO-203"
+    "name": "MOODY"
   },
   {
     "brandNumber": "BR204",
-    "name": "MOROCCANOIL",
-    "brandCode": "MOR-204"
+    "name": "MOROCCANOIL"
   },
   {
     "brandNumber": "BR205",
-    "name": "MUNIX",
-    "brandCode": "MUN-205"
+    "name": "MUNIX"
   },
   {
     "brandNumber": "BR206",
-    "name": "MYGLAMM",
-    "brandCode": "MYG-206"
+    "name": "MYGLAMM"
   },
   {
     "brandNumber": "BR207",
-    "name": "MYSORE SANDAL",
-    "brandCode": "MYS-207"
+    "name": "MYSORE SANDAL"
   },
   {
     "brandNumber": "BR208",
-    "name": "NANDINI",
-    "brandCode": "NAN-208"
+    "name": "NANDINI"
   },
   {
     "brandNumber": "BR209",
-    "name": "NAT HABIT",
-    "brandCode": "NAH-209"
+    "name": "NAT HABIT"
   },
   {
     "brandNumber": "BR210",
-    "name": "NATURES",
-    "brandCode": "NAT-210"
+    "name": "NATURES"
   },
   {
     "brandNumber": "BR211",
-    "name": "NAVRATNA",
-    "brandCode": "NAV-211"
+    "name": "NAVRATNA"
   },
   {
     "brandNumber": "BR212",
-    "name": "NEETA",
-    "brandCode": "NEE-212"
+    "name": "NEETA"
   },
   {
     "brandNumber": "BR213",
-    "name": "NEUD",
-    "brandCode": "NEU-213"
+    "name": "NEUD"
   },
   {
     "brandNumber": "BR214",
-    "name": "NEUTRIDERM",
-    "brandCode": "NEU-214"
+    "name": "NEUTRIDERM"
   },
   {
     "brandNumber": "BR215",
-    "name": "NEUTROGENA",
-    "brandCode": "NEU-215"
+    "name": "NEUTROGENA"
   },
   {
     "brandNumber": "BR216",
-    "name": "Nippo",
-    "brandCode": "NIP-216"
+    "name": "Nippo"
   },
   {
     "brandNumber": "BR217",
-    "name": "NISHA",
-    "brandCode": "NIS-217"
+    "name": "NISHA"
   },
   {
     "brandNumber": "BR218",
-    "name": "NIVEA",
-    "brandCode": "NIV-218"
+    "name": "NIVEA"
   },
   {
     "brandNumber": "BR219",
-    "name": "NUTRIGOW",
-    "brandCode": "NUT-219"
+    "name": "NUTRIGOW"
   },
   {
     "brandNumber": "BR220",
-    "name": "NYKAA",
-    "brandCode": "NYK-220"
+    "name": "NYKAA"
   },
   {
     "brandNumber": "BR221",
-    "name": "NYLE",
-    "brandCode": "NYL-221"
+    "name": "NYLE"
   },
   {
     "brandNumber": "BR222",
-    "name": "O3+",
-    "brandCode": "O3X-222"
+    "name": "O3+"
   },
   {
     "brandNumber": "BR223",
-    "name": "ODONIL",
-    "brandCode": "ODO-223"
+    "name": "ODONIL"
   },
   {
     "brandNumber": "BR224",
-    "name": "OLAY",
-    "brandCode": "OLA-224"
+    "name": "OLAY"
   },
   {
     "brandNumber": "BR225",
-    "name": "OLD SPICE",
-    "brandCode": "OLS-225"
+    "name": "OLD SPICE"
   },
   {
     "brandNumber": "BR226",
-    "name": "ORAL-B",
-    "brandCode": "ORB-226"
+    "name": "ORAL-B"
   },
   {
     "brandNumber": "BR227",
-    "name": "ORGANIC HARVEST",
-    "brandCode": "ORH-227"
+    "name": "ORGANIC HARVEST"
   },
   {
     "brandNumber": "BR228",
-    "name": "ORGANIX MANTRA",
-    "brandCode": "ORM-228"
+    "name": "ORGANIX MANTRA"
   },
   {
     "brandNumber": "BR229",
-    "name": "ORIGAMI",
-    "brandCode": "ORI-229"
+    "name": "ORIGAMI"
   },
   {
     "brandNumber": "BR230",
-    "name": "OSHEA",
-    "brandCode": "OSH-230"
+    "name": "OSHEA"
   },
   {
     "brandNumber": "BR231",
-    "name": "OSSUM",
-    "brandCode": "OSS-231"
+    "name": "OSSUM"
   },
   {
     "brandNumber": "BR232",
-    "name": "OTTO",
-    "brandCode": "OTT-232"
+    "name": "OTTO"
   },
   {
     "brandNumber": "BR233",
-    "name": "OXYGLOW",
-    "brandCode": "OXY-233"
+    "name": "OXYGLOW"
   },
   {
     "brandNumber": "BR234",
-    "name": "OXYLIFE",
-    "brandCode": "OXY-234"
+    "name": "OXYLIFE"
   },
   {
     "brandNumber": "BR235",
-    "name": "OZIVA",
-    "brandCode": "OZI-235"
+    "name": "OZIVA"
   },
   {
     "brandNumber": "BR236",
-    "name": "OZONE",
-    "brandCode": "OZO-236"
+    "name": "OZONE"
   },
   {
     "brandNumber": "BR237",
-    "name": "PAIN BALM",
-    "brandCode": "PAB-237"
+    "name": "PAIN BALM"
   },
   {
     "brandNumber": "BR238",
-    "name": "PALMERS",
-    "brandCode": "PAL-238"
+    "name": "PALMERS"
   },
   {
     "brandNumber": "BR239",
-    "name": "PALMOLIVE",
-    "brandCode": "PAL-239"
+    "name": "PALMOLIVE"
   },
   {
     "brandNumber": "BR240",
-    "name": "PAMPERS",
-    "brandCode": "PAM-240"
+    "name": "PAMPERS"
   },
   {
     "brandNumber": "BR241",
-    "name": "PANTENE",
-    "brandCode": "PAN-241"
+    "name": "PANTENE"
   },
   {
     "brandNumber": "BR242",
-    "name": "PARACHUTE",
-    "brandCode": "PAR-242"
+    "name": "PARACHUTE"
   },
   {
     "brandNumber": "BR243",
-    "name": "PARK AVENUE",
-    "brandCode": "PAA-243"
+    "name": "PARK AVENUE"
   },
   {
     "brandNumber": "BR244",
-    "name": "PARODONTAX",
-    "brandCode": "PAR-244"
+    "name": "PARODONTAX"
   },
   {
     "brandNumber": "BR245",
-    "name": "PASSION INDULGE",
-    "brandCode": "PAI-245"
+    "name": "PASSION INDULGE"
   },
   {
     "brandNumber": "BR246",
-    "name": "PATANJALI",
-    "brandCode": "PAT-246"
+    "name": "PATANJALI"
   },
   {
     "brandNumber": "BR247",
-    "name": "PEARS",
-    "brandCode": "PEA-247"
+    "name": "PEARS"
   },
   {
     "brandNumber": "BR248",
-    "name": "PEE SAFE",
-    "brandCode": "PES-248"
+    "name": "PEE SAFE"
   },
   {
     "brandNumber": "BR249",
-    "name": "PEPSODENT",
-    "brandCode": "PEP-249"
+    "name": "PEPSODENT"
   },
   {
     "brandNumber": "BR250",
-    "name": "PHILIPS",
-    "brandCode": "PHI-250"
+    "name": "PHILIPS"
   },
   {
     "brandNumber": "BR251",
-    "name": "PIGEON",
-    "brandCode": "PIG-251"
+    "name": "PIGEON"
   },
   {
     "brandNumber": "BR252",
-    "name": "PILGRIM",
-    "brandCode": "PIL-252"
+    "name": "PILGRIM"
   },
   {
     "brandNumber": "BR253",
-    "name": "PLIX",
-    "brandCode": "PLI-253"
+    "name": "PLIX"
   },
   {
     "brandNumber": "BR254",
-    "name": "PLUM",
-    "brandCode": "PLU-254"
+    "name": "PLUM"
   },
   {
     "brandNumber": "BR255",
-    "name": "PONDS",
-    "brandCode": "PON-255"
+    "name": "PONDS"
   },
   {
     "brandNumber": "BR256",
-    "name": "POUR HOME",
-    "brandCode": "POH-256"
+    "name": "POUR HOME"
   },
   {
     "brandNumber": "BR257",
-    "name": "PRC HERBAL",
-    "brandCode": "PRH-257"
+    "name": "PRC HERBAL"
   },
   {
     "brandNumber": "BR258",
-    "name": "PREM DULHAN",
-    "brandCode": "PRD-258"
+    "name": "PREM DULHAN"
   },
   {
     "brandNumber": "BR259",
-    "name": "PREMIER",
-    "brandCode": "PRE-259"
+    "name": "PREMIER"
   },
   {
     "brandNumber": "BR260",
-    "name": "PREMIUM",
-    "brandCode": "PRE-260"
+    "name": "PREMIUM"
   },
   {
     "brandNumber": "BR261",
-    "name": "PRIMER",
-    "brandCode": "PRI-261"
+    "name": "PRIMER"
   },
   {
     "brandNumber": "BR262",
-    "name": "QOD",
-    "brandCode": "QOD-262"
+    "name": "QOD"
   },
   {
     "brandNumber": "BR263",
-    "name": "QUENCH",
-    "brandCode": "QUE-263"
+    "name": "QUENCH"
   },
   {
     "brandNumber": "BR264",
-    "name": "RAAGA",
-    "brandCode": "RAA-264"
+    "name": "RAAGA"
   },
   {
     "brandNumber": "BR265",
-    "name": "RAMSONS",
-    "brandCode": "RAM-265"
+    "name": "RAMSONS"
   },
   {
     "brandNumber": "BR266",
-    "name": "REEQUIL",
-    "brandCode": "REE-266"
+    "name": "REEQUIL"
   },
   {
     "brandNumber": "BR267",
-    "name": "REGULARS",
-    "brandCode": "REG-267"
+    "name": "REGULARS"
   },
   {
     "brandNumber": "BR268",
-    "name": "RENEE",
-    "brandCode": "REN-268"
+    "name": "RENEE"
   },
   {
     "brandNumber": "BR269",
-    "name": "REVLON",
-    "brandCode": "REV-269"
+    "name": "REVLON"
   },
   {
     "brandNumber": "BR270",
-    "name": "Rexona",
-    "brandCode": "REX-270"
+    "name": "Rexona"
   },
   {
     "brandNumber": "BR271",
-    "name": "RICA",
-    "brandCode": "RIC-271"
+    "name": "RICA"
   },
   {
     "brandNumber": "BR272",
-    "name": "RICHFEEL",
-    "brandCode": "RIC-272"
+    "name": "RICHFEEL"
   },
   {
     "brandNumber": "BR273",
-    "name": "RIN",
-    "brandCode": "RIN-273"
+    "name": "RIN"
   },
   {
     "brandNumber": "BR274",
-    "name": "RIYA",
-    "brandCode": "RIY-274"
+    "name": "RIYA"
   },
   {
     "brandNumber": "BR275",
-    "name": "ROOTS",
-    "brandCode": "ROO-275"
+    "name": "ROOTS"
   },
   {
     "brandNumber": "BR276",
-    "name": "ROYAL GOLD",
-    "brandCode": "ROG-276"
+    "name": "ROYAL GOLD"
   },
   {
     "brandNumber": "BR277",
-    "name": "SANFE",
-    "brandCode": "SAN-277"
+    "name": "SANFE"
   },
   {
     "brandNumber": "BR278",
-    "name": "SANTOOR",
-    "brandCode": "SAN-278"
+    "name": "SANTOOR"
   },
   {
     "brandNumber": "BR279",
-    "name": "SARA",
-    "brandCode": "SAR-279"
+    "name": "SARA"
   },
   {
     "brandNumber": "BR280",
-    "name": "SATURN",
-    "brandCode": "SAT-280"
+    "name": "SATURN"
   },
   {
     "brandNumber": "BR281",
-    "name": "SAVLON",
-    "brandCode": "SAV-281"
+    "name": "SAVLON"
   },
   {
     "brandNumber": "BR282",
-    "name": "SCALPE PRO",
-    "brandCode": "SCP-282"
+    "name": "SCALPE PRO"
   },
   {
     "brandNumber": "BR283",
-    "name": "SCARLET",
-    "brandCode": "SCA-283"
+    "name": "SCARLET"
   },
   {
     "brandNumber": "BR284",
-    "name": "SCHWARZKOPF",
-    "brandCode": "SCH-284"
+    "name": "SCHWARZKOPF"
   },
   {
     "brandNumber": "BR285",
-    "name": "SEBAMED",
-    "brandCode": "SEB-285"
+    "name": "SEBAMED"
   },
   {
     "brandNumber": "BR286",
-    "name": "SENSODYNE",
-    "brandCode": "SEN-286"
+    "name": "SENSODYNE"
   },
   {
     "brandNumber": "BR287",
-    "name": "SESA",
-    "brandCode": "SES-287"
+    "name": "SESA"
   },
   {
     "brandNumber": "BR288",
-    "name": "SET WET",
-    "brandCode": "SEW-288"
+    "name": "SET WET"
   },
   {
     "brandNumber": "BR289",
-    "name": "SHAHNAZ HUSAIN",
-    "brandCode": "SHH-289"
+    "name": "SHAHNAZ HUSAIN"
   },
   {
     "brandNumber": "BR290",
-    "name": "SHINGAR",
-    "brandCode": "SHI-290"
+    "name": "SHINGAR"
   },
   {
     "brandNumber": "BR291",
-    "name": "SIMPLE",
-    "brandCode": "SIM-291"
+    "name": "SIMPLE"
   },
   {
     "brandNumber": "BR292",
-    "name": "SIRONA",
-    "brandCode": "SIR-292"
+    "name": "SIRONA"
   },
   {
     "brandNumber": "BR293",
-    "name": "SKIN FX",
-    "brandCode": "SKF-293"
+    "name": "SKIN FX"
   },
   {
     "brandNumber": "BR294",
-    "name": "SLEEK",
-    "brandCode": "SLE-294"
+    "name": "SLEEK"
   },
   {
     "brandNumber": "BR295",
-    "name": "SOFTSENS",
-    "brandCode": "SOF-295"
+    "name": "SOFTSENS"
   },
   {
     "brandNumber": "BR296",
-    "name": "SOFY",
-    "brandCode": "SOF-296"
+    "name": "SOFY"
   },
   {
     "brandNumber": "BR297",
-    "name": "SOTRUE",
-    "brandCode": "SOT-297"
+    "name": "SOTRUE"
   },
   {
     "brandNumber": "BR298",
-    "name": "SOULFLOWER",
-    "brandCode": "SOU-298"
+    "name": "SOULFLOWER"
   },
   {
     "brandNumber": "BR299",
-    "name": "SPINZ",
-    "brandCode": "SPI-299"
+    "name": "SPINZ"
   },
   {
     "brandNumber": "BR300",
-    "name": "SPRAYMINTT",
-    "brandCode": "SPR-300"
+    "name": "SPRAYMINTT"
   },
   {
     "brandNumber": "BR301",
-    "name": "SRI KOMAL",
-    "brandCode": "SRK-301"
+    "name": "SRI KOMAL"
   },
   {
     "brandNumber": "BR302",
-    "name": "ST.BOTANICA",
-    "brandCode": "STB-302"
+    "name": "ST.BOTANICA"
   },
   {
     "brandNumber": "BR303",
-    "name": "ST.IVES",
-    "brandCode": "STI-303"
+    "name": "ST.IVES"
   },
   {
     "brandNumber": "BR304",
-    "name": "STAG BRAND",
-    "brandCode": "STB-304"
+    "name": "STAG BRAND"
   },
   {
     "brandNumber": "BR305",
-    "name": "STAG CLUB",
-    "brandCode": "STC-305"
+    "name": "STAG CLUB"
   },
   {
     "brandNumber": "BR306",
-    "name": "STAYFREE",
-    "brandCode": "STA-306"
+    "name": "STAYFREE"
   },
   {
     "brandNumber": "BR307",
-    "name": "STREAX",
-    "brandCode": "STR-307"
+    "name": "STREAX"
   },
   {
     "brandNumber": "BR308",
-    "name": "SUGAR",
-    "brandCode": "SUG-308"
+    "name": "SUGAR"
   },
   {
     "brandNumber": "BR309",
-    "name": "SUNCROS",
-    "brandCode": "SUN-309"
+    "name": "SUNCROS"
   },
   {
     "brandNumber": "BR310",
-    "name": "SUNSCOOP",
-    "brandCode": "SUN-310"
+    "name": "SUNSCOOP"
   },
   {
     "brandNumber": "BR311",
-    "name": "SUNSILK",
-    "brandCode": "SUN-311"
+    "name": "SUNSILK"
   },
   {
     "brandNumber": "BR312",
-    "name": "SUNSTOP GOLD",
-    "brandCode": "SUG-312"
+    "name": "SUNSTOP GOLD"
   },
   {
     "brandNumber": "BR313",
-    "name": "SURGICOM",
-    "brandCode": "SUR-313"
+    "name": "SURGICOM"
   },
   {
     "brandNumber": "BR314",
-    "name": "SWASTIK",
-    "brandCode": "SWA-314"
+    "name": "SWASTIK"
   },
   {
     "brandNumber": "BR315",
-    "name": "SWISS BEAUTY",
-    "brandCode": "SWB-315"
+    "name": "SWISS BEAUTY"
   },
   {
     "brandNumber": "BR316",
-    "name": "TEDIBAR",
-    "brandCode": "TED-316"
+    "name": "TEDIBAR"
   },
   {
     "brandNumber": "BR317",
-    "name": "TESTER-MAYBELLINE",
-    "brandCode": "TEM-317"
+    "name": "TESTER-MAYBELLINE"
   },
   {
     "brandNumber": "BR318",
-    "name": "THE BODY SHOP",
-    "brandCode": "TBS-318"
+    "name": "THE BODY SHOP"
   },
   {
     "brandNumber": "BR319",
-    "name": "THE DERMA CO",
-    "brandCode": "TDC-319"
+    "name": "THE DERMA CO"
   },
   {
     "brandNumber": "BR320",
-    "name": "THE FACE SHOP",
-    "brandCode": "TFS-320"
+    "name": "THE FACE SHOP"
   },
   {
     "brandNumber": "BR321",
-    "name": "THE MAN COMPANY",
-    "brandCode": "TMC-321"
+    "name": "THE MAN COMPANY"
   },
   {
     "brandNumber": "BR322",
-    "name": "THE MOMS CO.",
-    "brandCode": "TMC-322"
+    "name": "THE MOMS CO."
   },
   {
     "brandNumber": "BR323",
-    "name": "THE TRIBE CONCEPTS",
-    "brandCode": "TTC-323"
+    "name": "THE TRIBE CONCEPTS"
   },
   {
     "brandNumber": "BR324",
-    "name": "THRICECO",
-    "brandCode": "THR-324"
+    "name": "THRICECO"
   },
   {
     "brandNumber": "BR325",
-    "name": "TMS NCP",
-    "brandCode": "TMN-325"
+    "name": "TMS NCP"
   },
   {
     "brandNumber": "BR326",
-    "name": "TMS NCP1",
-    "brandCode": "TMN-326"
+    "name": "TMS NCP1"
   },
   {
     "brandNumber": "BR327",
-    "name": "TORRENT",
-    "brandCode": "TOR-327"
+    "name": "TORRENT"
   },
   {
     "brandNumber": "BR328",
-    "name": "TRESEMME",
-    "brandCode": "TRE-328"
+    "name": "TRESEMME"
   },
   {
     "brandNumber": "BR329",
-    "name": "TRICHUP",
-    "brandCode": "TRI-329"
+    "name": "TRICHUP"
   },
   {
     "brandNumber": "BR330",
-    "name": "TRITON",
-    "brandCode": "TRI-330"
+    "name": "TRITON"
   },
   {
     "brandNumber": "BR331",
-    "name": "TRU TONE",
-    "brandCode": "TRT-331"
+    "name": "TRU TONE"
   },
   {
     "brandNumber": "BR332",
-    "name": "TRYCONE",
-    "brandCode": "TRY-332"
+    "name": "TRYCONE"
   },
   {
     "brandNumber": "BR333",
-    "name": "TULIPS",
-    "brandCode": "TUL-333"
+    "name": "TULIPS"
   },
   {
     "brandNumber": "BR334",
-    "name": "UNITED COLORS OF BENETTON",
-    "brandCode": "UCO-334"
+    "name": "UNITED COLORS OF BENETTON"
   },
   {
     "brandNumber": "BR335",
-    "name": "URBAN BOTANICS",
-    "brandCode": "URB-335"
+    "name": "URBAN BOTANICS"
   },
   {
     "brandNumber": "BR336",
-    "name": "URBAN GABRU",
-    "brandCode": "URG-336"
+    "name": "URBAN GABRU"
   },
   {
     "brandNumber": "BR337",
-    "name": "URBAN YOG",
-    "brandCode": "URY-337"
+    "name": "URBAN YOG"
   },
   {
     "brandNumber": "BR338",
-    "name": "URBANVEDA COMP",
-    "brandCode": "URC-338"
+    "name": "URBANVEDA COMP"
   },
   {
     "brandNumber": "BR339",
-    "name": "UROPARIS PROFESSIONAL",
-    "brandCode": "URP-339"
+    "name": "UROPARIS PROFESSIONAL"
   },
   {
     "brandNumber": "BR340",
-    "name": "USTRAA",
-    "brandCode": "UST-340"
+    "name": "USTRAA"
   },
   {
     "brandNumber": "BR341",
-    "name": "UV DOUX",
-    "brandCode": "UVD-341"
+    "name": "UV DOUX"
   },
   {
     "brandNumber": "BR342",
-    "name": "V WASH",
-    "brandCode": "VWX-342"
+    "name": "V WASH"
   },
   {
     "brandNumber": "BR343",
-    "name": "VAADI HERBALS",
-    "brandCode": "VAH-343"
+    "name": "VAADI HERBALS"
   },
   {
     "brandNumber": "BR344",
-    "name": "VANESA",
-    "brandCode": "VAN-344"
+    "name": "VANESA"
   },
   {
     "brandNumber": "BR345",
-    "name": "VASELINE",
-    "brandCode": "VAS-345"
+    "name": "VASELINE"
   },
   {
     "brandNumber": "BR346",
-    "name": "VCARE",
-    "brandCode": "VCA-346"
+    "name": "VCARE"
   },
   {
     "brandNumber": "BR347",
-    "name": "VEET",
-    "brandCode": "VEE-347"
+    "name": "VEET"
   },
   {
     "brandNumber": "BR348",
-    "name": "VEGA",
-    "brandCode": "VEG-348"
+    "name": "VEGA"
   },
   {
     "brandNumber": "BR349",
-    "name": "VICCO",
-    "brandCode": "VIC-349"
+    "name": "VICCO"
   },
   {
     "brandNumber": "BR350",
-    "name": "VICKS",
-    "brandCode": "VIC-350"
+    "name": "VICKS"
   },
   {
     "brandNumber": "BR351",
-    "name": "VI-JOHN",
-    "brandCode": "VIJ-351"
+    "name": "VI-JOHN"
   },
   {
     "brandNumber": "BR352",
-    "name": "VILLAIN",
-    "brandCode": "VIL-352"
+    "name": "VILLAIN"
   },
   {
     "brandNumber": "BR353",
-    "name": "VINZBERRY",
-    "brandCode": "VIN-353"
+    "name": "VINZBERRY"
   },
   {
     "brandNumber": "BR354",
-    "name": "VLCC",
-    "brandCode": "VLC-354"
+    "name": "VLCC"
   },
   {
     "brandNumber": "BR355",
-    "name": "WA JAPAN",
-    "brandCode": "WAJ-355"
+    "name": "WA JAPAN"
   },
   {
     "brandNumber": "BR356",
-    "name": "WATTAGIRL",
-    "brandCode": "WAT-356"
+    "name": "WATTAGIRL"
   },
   {
     "brandNumber": "BR357",
-    "name": "WELLA",
-    "brandCode": "WEL-357"
+    "name": "WELLA"
   },
   {
     "brandNumber": "BR358",
-    "name": "WHISPER",
-    "brandCode": "WHI-358"
+    "name": "WHISPER"
   },
   {
     "brandNumber": "BR359",
-    "name": "WHITETONE",
-    "brandCode": "WHI-359"
+    "name": "WHITETONE"
   },
   {
     "brandNumber": "BR360",
-    "name": "WILD STONE",
-    "brandCode": "WIS-360"
+    "name": "WILD STONE"
   },
   {
     "brandNumber": "BR361",
-    "name": "WISHCARE",
-    "brandCode": "WIS-361"
+    "name": "WISHCARE"
   },
   {
     "brandNumber": "BR362",
-    "name": "WOW",
-    "brandCode": "WOW-362"
+    "name": "WOW"
   },
   {
     "brandNumber": "BR363",
-    "name": "YARDLEY",
-    "brandCode": "YAR-363"
+    "name": "YARDLEY"
   },
   {
     "brandNumber": "BR364",
-    "name": "Z CLASSIC",
-    "brandCode": "ZCX-364"
+    "name": "Z CLASSIC"
   },
   {
     "brandNumber": "BR365",
-    "name": "ZANDU",
-    "brandCode": "ZAN-365"
+    "name": "ZANDU"
   }
 ];
 
@@ -1837,9 +1472,7 @@ export const LOOKUP_BY_NUMBER = {};
 for (const b of APPROVED_BRAND_MASTER) {
   b.brand_number = b.brandNumber;
   b.brand_name = b.name;
-  b.brand_code = b.brandCode;
-  const normalized = b.name ? b.name.toUpperCase().trim() : '';
+    const normalized = b.name ? b.name.toUpperCase().trim() : '';
   if (normalized) LOOKUP_BY_NAME[normalized] = b;
-  if (b.brandCode) LOOKUP_BY_CODE[b.brandCode] = b;
-  if (b.brandNumber) LOOKUP_BY_NUMBER[b.brandNumber] = b;
+    if (b.brandNumber) LOOKUP_BY_NUMBER[b.brandNumber] = b;
 }

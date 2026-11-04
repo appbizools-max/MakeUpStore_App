@@ -1812,13 +1812,12 @@ export default function AddNewProductPage({
                   <SearchableSelect
                     options={activeBrandOptions}
                     value={formData.brandName}
-                    searchKeys={['name', 'brandNumber', 'brandCode']}
+                    searchKeys={['name', 'brandNumber']}
                     renderTrigger={(selected) => {
                       if (!selected) {
                         return <span className="text-gray-400 font-normal">Select Brand...</span>;
                       }
                       const brandNum = selected.brandNumber || selected.brand_number || '';
-                      const brandCode = selected.brandCode || selected.brand_code || '';
                       return (
                         <div className="flex items-center gap-2 overflow-hidden truncate">
                           {selected.logo ? (
@@ -1834,17 +1833,11 @@ export default function AddNewProductPage({
                               {brandNum}
                             </span>
                           )}
-                          {brandCode && (
-                            <span className="text-[10px] font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 shrink-0">
-                              {brandCode}
-                            </span>
-                          )}
                         </div>
                       );
                     }}
                     renderOption={(opt, isSelected) => {
                       const brandNum = opt.brandNumber || opt.brand_number || '';
-                      const brandCode = opt.brandCode || opt.brand_code || '';
                       return (
                         <div className="flex items-center justify-between w-full py-0.5">
                           <div className="flex items-center gap-2 min-w-0">
@@ -1863,11 +1856,6 @@ export default function AddNewProductPage({
                             {brandNum && (
                               <span className="text-[10px] font-mono font-bold text-[#C2477A] bg-[#FFF0F4] px-1.5 py-0.5 rounded border border-pink-200">
                                 {brandNum}
-                              </span>
-                            )}
-                            {brandCode && (
-                              <span className="text-[10px] font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
-                                {brandCode}
                               </span>
                             )}
                           </div>

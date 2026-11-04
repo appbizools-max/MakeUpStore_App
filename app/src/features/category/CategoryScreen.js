@@ -19,7 +19,6 @@ import {
 } from '../../config/categoriesHierarchy';
 
 import { getCategoryFA5Icon } from '../../utils/categoryIcons';
-import { getCategory3DFaceSource } from '../../utils/categoryFaceIcons';
 import { CategoryDetailView } from './CategoryDetailView';
 import { SubcategoryView } from './SubcategoryView';
 import { ProductListingView } from './ProductListingView';
@@ -423,8 +422,7 @@ export const CategoryScreen = () => {
                   width: '100%',
                   height: 116,
                   borderRadius: 16,
-                  backgroundColor: '#FFF0F5',
-                  borderColor: '#FCE4EC',
+                  backgroundColor: '#FFFFFF', borderColor: '#FCE4EC',
                   borderWidth: 1,
                   marginBottom: 8,
                   overflow: 'hidden',
@@ -432,11 +430,15 @@ export const CategoryScreen = () => {
                   justifyContent: 'center',
                 }}
               >
-                <Image
-                  source={getCategory3DFaceSource(cat.name, cat.image)}
-                  style={{ width: '100%', height: '100%' }}
-                  resizeMode="cover"
-                />
+                {cat.image ? (
+                  <Image
+                    source={{ uri: cat.image }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <FontAwesome5 name={catIconMeta.icon || 'sparkles'} size={32} color="#C2477A" />
+                )}
               </View>
 
               {/* 2 & 3. 3D face avatar badge + Category Title */}
@@ -453,11 +455,15 @@ export const CategoryScreen = () => {
                   }}
                   className="items-center justify-center shrink-0"
                 >
-                  <Image
-                    source={getCategory3DFaceSource(cat.name, cat.image)}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="cover"
-                  />
+                  {cat.image ? (
+                    <Image
+                      source={{ uri: cat.image }}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <FontAwesome5 name={catIconMeta.icon || 'sparkles'} size={11} color="#C2477A" />
+                  )}
                 </View>
                 <Text
                   style={{ color: '#33252F' }}

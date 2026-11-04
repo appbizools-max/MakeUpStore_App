@@ -3,8 +3,7 @@
  * 
  * Provides:
  * - Permanent Sequential Brand Number Generator (BR001, BR002...) with deletion tracking
- * - Professional Brand Code Generator (Mnemonic-Hyphen-Sequence, e.g. AGA-001)
- * - Approved Brand Master Reconciliation (365 Verified Brands)
+  * - Approved Brand Master Reconciliation (365 Verified Brands)
  * - Conflict Detection & Deterministic Collision Resolution
  * - Excel Export with CSV Formula Injection Safeguards
  * - Excel Import Parsing, Schema Validation & Row-Level Error Auditing
@@ -85,19 +84,10 @@ export const resolveBrandNumber = (brand, existingBrands = []) => {
 
 /**
  * Resolves a Brand Code deterministically:
- * 1. Checks existing brandCode / brand_code
+ * 1. Checks existing brandNumber / brand_number
  * 2. Generates proposed code from mnemonic and brand number
  */
-export const resolveBrandCode = (brand, existingBrands = [], assignedBrandNumber = '') => {
-  if (!brand) return 'BRD-001';
-  if (brand.brandCode && brand.brandCode !== '---') {
-    return brand.brandCode.toUpperCase();
-  }
-  if (brand.brand_code && brand.brand_code !== '---') {
-    return brand.brand_code.toUpperCase();
-  }
-  return generateProposedBrandCode(brand.name, existingBrands, assignedBrandNumber || brand.brandNumber || brand.brand_number);
-};
+export const resolveBrandCode = () => '';
 
 
 /**
@@ -181,86 +171,12 @@ export const deriveBrandMnemonic = (brandName) => {
  * 2. Checks uniqueness against existing brands.
  * 3. In case of collision, resolves with deterministic alternative mnemonic.
  */
-export const generateProposedBrandCode = (brandName, existingBrands = [], assignedBrandNumber = '') => {
-  if (!brandName || !brandName.trim()) return '';
-
-  const normalized = normalizeBrandName(brandName).toLowerCase();
-
-  // 1. Extract numeric sequence from assignedBrandNumber or calculate next
-  let seqNumber = parseBrandNumberSeq(assignedBrandNumber);
-  if (!seqNumber || seqNumber <= 0) {
-    seqNumber = parseBrandNumberSeq(generateNextBrandNumber(existingBrands));
-  }
-
-  const seqStr = seqNumber <= 999
-    ? String(seqNumber).padStart(3, '0')
-    : String(seqNumber);
-
-  // 2. Derive mnemonic
-  let mnemonic = deriveBrandMnemonic(brandName);
-  let proposedCode = `${mnemonic}-${seqStr}`;
-
-  // 3. Collision check across existing brands
-  const isCodeTaken = (code) => {
-    return (existingBrands || []).some(b => {
-      const bCode = (b.brandCode || b.brand_code || '').trim().toUpperCase();
-      const bNorm = normalizeBrandName(b.brand_name || b.brandName || b.name).toLowerCase();
-      return bCode === code && bNorm !== normalized;
-    });
-  };
-
-  if (!isCodeTaken(proposedCode)) {
-    return proposedCode;
-  }
-
-  // Deterministic collision resolution: Alter 3rd character
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  for (let i = 0; i < alphabet.length; i++) {
-    const altMnemonic = mnemonic.slice(0, 2) + alphabet[i];
-    const altCode = `${altMnemonic}-${seqStr}`;
-    if (!isCodeTaken(altCode)) {
-      return altCode;
-    }
-  }
-
-  return `${mnemonic}X-${seqStr}`;
-};
+export const generateProposedBrandCode = () => '';
 
 /**
  * Validates Brand Code format and uniqueness
  */
-export const validateBrandCode = (code, arg2 = null, arg3 = []) => {
-  let excludeBrandId = typeof arg2 === 'string' ? arg2 : (typeof arg3 === 'string' ? arg3 : null);
-  let existingBrands = Array.isArray(arg2) ? arg2 : (Array.isArray(arg3) ? arg3 : []);
-
-  if (!code || !code.trim()) {
-    return { valid: false, error: 'Brand Code is required.' };
-  }
-  const cleanCode = code.trim().toUpperCase();
-  const formatRegex = /^[A-Z0-9]{3}-\d{3,4}$/;
-  if (!formatRegex.test(cleanCode)) {
-    return {
-      valid: false,
-      error: 'Brand Code must follow standard format: 3-character mnemonic, hyphen, 3+ digits (e.g. AGA-001).'
-    };
-  }
-
-  const collision = (existingBrands || []).find(b => {
-    if (excludeBrandId && (b.id === excludeBrandId)) return false;
-    const bCode = (b.brandCode || b.brand_code || '').trim().toUpperCase();
-    return bCode === cleanCode;
-  });
-
-  if (collision) {
-    const colName = collision.brand_name || collision.brandName || collision.name || 'another brand';
-    return {
-      valid: false,
-      error: `Brand Code "${cleanCode}" is already assigned to brand "${colName}". Brand Codes must be unique.`
-    };
-  }
-
-  return { valid: true };
-};
+export const validateBrandCode = () => ({ valid: true });
 
 /**
  * Validates Brand Name uniqueness
@@ -321,8 +237,7 @@ export const exportBrandsToExcel = (brandsList = [], options = {}) => {
   // Exact 8 columns in order:
   // 1. Brand Number
   // 2. Brand Name
-  // 3. Brand Code
-  // 4. Categories
+    // 4. Categories
   // 5. Logo URL
   // 6. Visibility
   // 7. Brand Description
@@ -330,7 +245,6 @@ export const exportBrandsToExcel = (brandsList = [], options = {}) => {
   const headers = [
     'Brand Number',
     'Brand Name',
-    'Brand Code',
     'Categories',
     'Logo URL',
     'Visibility',
@@ -354,7 +268,6 @@ export const exportBrandsToExcel = (brandsList = [], options = {}) => {
     return [
       escapeSpreadsheetFormula(b.brandNumber || b.brand_number || ''),
       escapeSpreadsheetFormula(b.name || ''),
-      escapeSpreadsheetFormula(b.brandCode || b.brand_code || ''),
       escapeSpreadsheetFormula(catsStr),
       escapeSpreadsheetFormula(b.logo || ''),
       escapeSpreadsheetFormula(visibilityStr),
@@ -370,7 +283,6 @@ export const exportBrandsToExcel = (brandsList = [], options = {}) => {
   ws['!cols'] = [
     { wch: 15 }, // Brand Number
     { wch: 28 }, // Brand Name
-    { wch: 16 }, // Brand Code
     { wch: 32 }, // Categories
     { wch: 45 }, // Logo URL
     { wch: 14 }, // Visibility
@@ -392,7 +304,6 @@ export const downloadBrandImportTemplate = () => {
   const headers = [
     'S.No',
     'Brand Name',
-    'Brand Code',
     'Categories',
     'Logo URL',
     'Visibility',
@@ -404,7 +315,6 @@ export const downloadBrandImportTemplate = () => {
     [
       1,
       'AGARO',
-      'AGA-001',
       'Beauty Tools & Devices',
       'https://example.com/agaro.png',
       'Active',
@@ -445,7 +355,6 @@ export const downloadBrandImportTemplate = () => {
     ['Column', 'Rules & Requirements'],
     ['S.No / Brand Number', 'Numeric order (1, 2, 3...) or Brand Number (BR001, BR002). Leave BLANK to auto-number sequentially.'],
     ['Brand Name', 'REQUIRED. Official unique brand name.'],
-    ['Brand Code', 'Preserve code (e.g. AGA-001). Leave BLANK for new brands to auto-generate.'],
     ['Categories', 'Optional. Semicolon or comma-separated list of existing categories (e.g. "Makeup; Skin Care").'],
     ['Logo URL', 'Optional. Direct web image link (PNG, JPG, WebP).'],
     ['Visibility', '"Active" or "Inactive". Defaults to "Active" if blank.'],
@@ -496,15 +405,12 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
         };
 
         const existingBrandNumbersMap = new Map();
-        const existingBrandCodesMap = new Map();
         const existingBrandNamesMap = new Map();
 
         existingBrands.forEach(b => {
           const num = (b.brandNumber || b.brand_number || '').trim().toUpperCase();
-          const code = (b.brandCode || b.brand_code || '').trim().toUpperCase();
           const name = normalizeBrandName(b.name).toLowerCase();
           if (num) existingBrandNumbersMap.set(num, b);
-          if (code) existingBrandCodesMap.set(code, b);
           if (name) existingBrandNamesMap.set(name, b);
         });
 
@@ -546,9 +452,7 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
             'Brand Name', 'BrandName', 'Standardized Brand Name', 'Name', 'Brand'
           ]);
 
-          const rawBrandCode = getFieldVal(row, [
-            'Brand Code', 'BrandCode', 'Code', 'Short Code'
-          ]);
+          const rawBrandCode = '';
 
           const categoriesRaw = getFieldVal(row, [
             'Categories', 'Category', 'Primary Category', 'Other Categories'
@@ -638,39 +542,6 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
             newBrandsCount++;
           }
 
-          // 3. Resolve Brand Code
-          let brandCode = '';
-          if (rawBrandCode) {
-            const cleanCode = rawBrandCode.trim().toUpperCase();
-            if (/^[A-Z0-9]{2,6}-\d+$/.test(cleanCode)) {
-              brandCode = cleanCode;
-            } else {
-              const mnemonic = deriveBrandMnemonic(brandName || cleanCode);
-              const seqNum = parseBrandNumberSeq(brandNumber) || (index + 1);
-              const seqStr = seqNum <= 999 ? String(seqNum).padStart(3, '0') : String(seqNum);
-              brandCode = `${mnemonic}-${seqStr}`;
-            }
-          } else if (brandName) {
-            brandCode = generateProposedBrandCode(brandName, existingBrands, brandNumber);
-          }
-
-          // Ensure code uniqueness in file
-          if (seenInFileCodes.has(brandCode)) {
-            const mnemonic = deriveBrandMnemonic(brandName);
-            const seqNum = parseBrandNumberSeq(brandNumber) || (index + 1);
-            const seqStr = seqNum <= 999 ? String(seqNum).padStart(3, '0') : String(seqNum);
-            let attempt = 0;
-            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let altCode = `${mnemonic}-${seqStr}`;
-            while (seenInFileCodes.has(altCode) && attempt < alphabet.length) {
-              const altMnemonic = mnemonic.slice(0, 2) + alphabet[attempt];
-              altCode = `${altMnemonic}-${seqStr}`;
-              attempt++;
-            }
-            brandCode = altCode;
-          }
-          seenInFileCodes.add(brandCode);
-
           // 4. Validate Categories
           const parsedCategories = [];
           if (categoriesRaw) {
@@ -701,7 +572,6 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
             matchedBrandId: matchedExistingBrand ? matchedExistingBrand.id : null,
             brandNumber: brandNumber || (matchedExistingBrand?.brandNumber || ''),
             brandName,
-            brandCode: brandCode || (matchedExistingBrand?.brandCode || ''),
             categories: parsedCategories,
             logoUrl,
             enabled: isEnabled,
@@ -741,9 +611,7 @@ export const downloadBrandImportErrorReport = (parsedRows = []) => {
   const headers = [
     'Row #',
     'Status',
-    'Brand Number',
-    'Brand Name',
-    'Brand Code',
+    'Brand Number', 'Brand Name',
     'Errors',
     'Warnings'
   ];
@@ -755,7 +623,6 @@ export const downloadBrandImportErrorReport = (parsedRows = []) => {
       r.isValid ? 'Valid with Warnings' : 'Failed / Invalid',
       r.brandNumber,
       r.brandName,
-      r.brandCode,
       r.errors.join(' | '),
       r.warnings.join(' | ')
     ]);
@@ -788,10 +655,10 @@ export const downloadBrandImportErrorReport = (parsedRows = []) => {
  *    - If sub-brand (has parent_brand_id / parentBrandId):
  *      - Resolves parent brand.
  *      - Sub-brand number: `${parent.brandNumber}-01` (e.g. BR120-01).
- *      - Sub-brand code: `${parent.brandCode}-01` (e.g. LOR-120-01).
+ *      - Sub-brand code: `${parent.brandNumber}-01` (e.g. LOR-120-01).
  *      - Does NOT consume a new main sequence number!
  *    - If main brand:
- *      - Generates brandNumber (e.g. BR377) and brandCode (e.g. SOU-377) sequentially from a locked counter.
+ *      - Generates brandNumber (e.g. BR377) and brandNumber (e.g. SOU-377) sequentially from a locked counter.
  *      - Never random, never reused, strictly sequential.
  * 4. Persists new brand to Supabase (if client provided) and returns { brand, created }.
  */
@@ -815,9 +682,7 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
     if (typeof brandInput === 'object' && brandInput.id && b.id === brandInput.id) return true;
     const bName = normalizeBrandName(b.name || b.brandName || b.brand || '').toLowerCase();
     if (bName === normalizedLower) return true;
-    if (typeof brandInput === 'object' && brandInput.brandCode && b.brandCode) {
-      if (b.brandCode.toUpperCase() === brandInput.brandCode.toUpperCase()) return true;
-    }
+    
     return false;
   });
 
@@ -828,8 +693,7 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
 
   // 2. Brand does NOT exist -> Create new brand sequentially
   let brandNumber = '';
-  let brandCode = '';
-  let parentBrandObj = null;
+    let parentBrandObj = null;
 
   if (parentId) {
     parentBrandObj = (existingBrands || []).find(b =>
@@ -843,21 +707,9 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
   if (parentBrandObj) {
     // Sub-brand under parent: BR120-01 / LOR-120-01 without consuming new main number
     const parentNum = parentBrandObj.brandNumber || parentBrandObj.brand_number || 'BR001';
-    const parentCd = parentBrandObj.brandCode || parentBrandObj.brand_code || 'BRD-001';
-
-    const siblings = (existingBrands || []).filter(b =>
-      b.parent_brand_id === parentBrandObj.id ||
-      b.parentBrandId === parentBrandObj.id ||
-      (b.brandNumber && String(b.brandNumber).startsWith(parentNum + '-'))
-    );
-
-    const subSeq = String(siblings.length + 1).padStart(2, '0');
-    brandNumber = `${parentNum}-${subSeq}`;
-    brandCode = `${parentCd}-${subSeq}`;
   } else {
     // Main Brand: Sequential from locked counter (e.g. BR377, SOU-377)
     brandNumber = generateNextBrandNumber(existingBrands);
-    brandCode = generateProposedBrandCode(cleanName, existingBrands, brandNumber);
   }
 
   const brandId = (typeof brandInput === 'object' && brandInput.id)
@@ -875,8 +727,6 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
     name: cleanName,
     brandNumber,
     brand_number: brandNumber,
-    brandCode: brandCode.toUpperCase(),
-    brand_code: brandCode.toUpperCase(),
     categories: categoriesList,
     category: categoriesList[0] || 'Makeup',
     description: (typeof brandInput === 'object' && brandInput.description) || '',
@@ -906,7 +756,7 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
         throw insErr;
       }
 
-      // Persist brand metadata configuration so brandNumber & brandCode persist across reloads
+      // Persist brand metadata configuration so brandNumber & brandNumber persist across reloads
       const { data: existingMetaRow } = await supabaseClient.from('brands').select('logo').eq('id', 'app_brand_metadata_config').maybeSingle();
       let currentMeta = {};
       if (existingMetaRow?.logo) {
@@ -914,7 +764,6 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
       }
       currentMeta[newBrandObj.id] = {
         brandNumber: newBrandObj.brandNumber,
-        brandCode: newBrandObj.brandCode,
         categories: newBrandObj.categories,
         description: newBrandObj.description,
         internalNotes: newBrandObj.internalNotes,

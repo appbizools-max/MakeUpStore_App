@@ -1616,15 +1616,14 @@ export const BulkProductEntryModal = ({
         }
 
         if (brand) {
-          // Match by Brand Number (e.g. BR001), Brand Code (e.g. AGA-001), or normalized Brand Name
+          // Match by Brand Number (e.g. BR001) or normalized Brand Name
           const brandClean = brand.trim();
           const matchedBrandObj = (brands || []).find(b => {
             const bNum = (b.brandNumber || b.brand_number || '').trim().toUpperCase();
-            const bCode = (b.brandCode || b.brand_code || '').trim().toUpperCase();
             const bName = (b.name || '').trim().toLowerCase();
             const inputUpper = brandClean.toUpperCase();
             const inputLower = brandClean.toLowerCase();
-            return bNum === inputUpper || bCode === inputUpper || bName === inputLower;
+            return bNum === inputUpper || bName === inputLower;
           });
 
           if (!matchedBrandObj && !availableBrands.some(b => normalizeText(b) === normalizeText(brandClean))) {

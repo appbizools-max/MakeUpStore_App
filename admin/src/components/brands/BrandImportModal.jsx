@@ -148,9 +148,9 @@ export default function BrandImportModal({
             <div className="flex items-start gap-2.5">
               <Info size={16} className="text-[#C2477A] shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-gray-900 text-xs">Use the Standard 8-Column Format</p>
+                <p className="font-bold text-gray-900 text-xs">Use the Standard Brand Format</p>
                 <p className="text-[11px] text-gray-500">
-                  Brand Number, Brand Name, Brand Code, Categories, Logo URL, Visibility, Description, Notes.
+                  Brand Number, Brand Name, Categories, Logo URL, Visibility, Description, Notes.
                 </p>
               </div>
             </div>
