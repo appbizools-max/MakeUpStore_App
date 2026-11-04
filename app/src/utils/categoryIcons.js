@@ -1,178 +1,176 @@
 /**
  * categoryIcons.js
  * ─────────────────────────────────────────────────────────────────────────────
- * Single source of truth for category → FontAwesome 5 icon mapping.
- * Used by both HomeScreen (small 30px strip tiles) and CategoryScreen (grid cards).
+ * Single source of truth for beauty category & subcategory FontAwesome 5 icons.
+ * Used by HomeScreen (horizontal Shop by Category strip) and CategoryScreen (catalog grid).
  *
  * Icon library: FontAwesome5 from @expo/vector-icons
  * All icon names verified against the FA5 Free glyph map bundled with Expo SDK 51.
  *
- * Usage:
- *   import { FontAwesome5 } from '@expo/vector-icons';
- *   import { getCategoryFA5Icon, SUBCATEGORY_FA5_ICONS } from '../../utils/categoryIcons';
- *
- *   const { icon, color, bg } = getCategoryFA5Icon('Skincare');
- *   <FontAwesome5 name={icon} size={28} color={color} />
+ * Mapped to eliminate awkward/mismatched icons:
+ *   - 'Hair Care' uses 'cut' (hair shears) instead of 'leaf'
+ *   - 'Men's Grooming' uses 'user-tie' (gentleman) instead of 'male' (restroom stick figure)
+ *   - 'Beauty Tools & Accessories' uses 'brush' instead of 'tools' (mechanical wrench/hammer)
+ *   - 'Fragrance' uses 'air-freshener' (perfume bottle shape) instead of 'spray-can' (graffiti can)
+ *   - 'Hair Styling Tools' uses 'wind' (airflow / heat styling) instead of 'magic' (wand)
+ *   - 'Professional Salon Products' uses 'crown' (master royal tier) instead of 'award' (medal)
+ *   - 'Nail Care' uses 'hand-sparkles' (manicure) instead of 'gem'
+ *   - 'Personal Care' uses 'soap' instead of 'pump-soap'
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN CATEGORY MAP
-// key  : lowercase trimmed category name (exact + common aliases)
-// icon : FontAwesome5 Free icon name (confirmed in FA5Free glyph map)
-// color: accent foreground colour matching app palette
-// bg   : light background tint for the icon container
 // ─────────────────────────────────────────────────────────────────────────────
 export const CATEGORY_FA5_MAP = {
-  // ── Skincare ──────────────────────────────────────────────────────────────
-  'skincare':               { icon: 'spa',           color: '#3A8A6A', bg: '#EEF7F3' },
-  'skin care':              { icon: 'spa',           color: '#3A8A6A', bg: '#EEF7F3' },
-  'skin':                   { icon: 'spa',           color: '#3A8A6A', bg: '#EEF7F3' },
-  'face care':              { icon: 'spa',           color: '#3A8A6A', bg: '#EEF7F3' },
-  'facial':                 { icon: 'spa',           color: '#3A8A6A', bg: '#EEF7F3' },
-
   // ── Makeup / Colour Cosmetics ─────────────────────────────────────────────
-  'makeup':                 { icon: 'paint-brush',   color: '#C2477A', bg: '#FFF0F5' },
-  'colour cosmetics':       { icon: 'paint-brush',   color: '#C2477A', bg: '#FFF0F5' },
-  'color cosmetics':        { icon: 'paint-brush',   color: '#C2477A', bg: '#FFF0F5' },
-  'cosmetics':              { icon: 'paint-brush',   color: '#C2477A', bg: '#FFF0F5' },
-  'face makeup':            { icon: 'paint-brush',   color: '#C2477A', bg: '#FFF0F5' },
+  'makeup':                             { icon: 'brush',         color: '#C2477A', bg: '#FFF0F5' },
+  'colour cosmetics':                   { icon: 'brush',         color: '#C2477A', bg: '#FFF0F5' },
+  'color cosmetics':                    { icon: 'brush',         color: '#C2477A', bg: '#FFF0F5' },
+  'cosmetics':                          { icon: 'brush',         color: '#C2477A', bg: '#FFF0F5' },
+  'face makeup':                        { icon: 'brush',         color: '#C2477A', bg: '#FFF0F5' },
+
+  // ── Skincare / Facial Care ────────────────────────────────────────────────
+  'skincare':                           { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
+  'skin care':                          { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
+  'skin':                               { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
+  'face care':                          { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
+  'facial':                             { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
 
   // ── Hair Care ─────────────────────────────────────────────────────────────
-  'hair care':              { icon: 'leaf',          color: '#A0661E', bg: '#FDF5E8' },
-  'haircare':               { icon: 'leaf',          color: '#A0661E', bg: '#FDF5E8' },
-  'hair':                   { icon: 'leaf',          color: '#A0661E', bg: '#FDF5E8' },
+  'hair care':                          { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
+  'haircare':                           { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
+  'hair':                               { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
 
-  // ── Hair Styling / Styling Tools ─────────────────────────────────────────
-  'hair styling':           { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
-  'hair styling tools':     { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
-  'hair styling & tools':   { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
-  'styling':                { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
-  'styling tools':          { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
+  // ── Hair Styling / Styling Tools ──────────────────────────────────────────
+  'hair styling':                       { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
+  'hair styling tools':                 { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
+  'hair styling & tools':               { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
+  'styling':                            { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
+  'styling tools':                      { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
 
   // ── Bath & Body ───────────────────────────────────────────────────────────
-  'bath & body':            { icon: 'bath',          color: '#1A7A88', bg: '#E6F5F7' },
-  'bath and body':          { icon: 'bath',          color: '#1A7A88', bg: '#E6F5F7' },
-  'bath body':              { icon: 'bath',          color: '#1A7A88', bg: '#E6F5F7' },
-  'bath':                   { icon: 'bath',          color: '#1A7A88', bg: '#E6F5F7' },
-  'body care':              { icon: 'bath',          color: '#1A7A88', bg: '#E6F5F7' },
-  'body':                   { icon: 'bath',          color: '#1A7A88', bg: '#E6F5F7' },
-  'bodycare':               { icon: 'bath',          color: '#1A7A88', bg: '#E6F5F7' },
+  'bath & body':                        { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
+  'bath and body':                      { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
+  'bath body':                          { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
+  'bath':                               { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
+  'body care':                          { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
+  'body':                               { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
+  'bodycare':                           { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
 
   // ── Fragrance / Perfume ───────────────────────────────────────────────────
-  'fragrance':              { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
-  'fragrances':             { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
-  'perfume':                { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
-  'deodorant':              { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
-  'cologne':                { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
-
-  // ── Nail Care ─────────────────────────────────────────────────────────────
-  'nail care':              { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
-  'nails':                  { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
-  'nail':                   { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
-  'nail color':             { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
-  'nail polish':            { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
+  'fragrance':                          { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'fragrances':                         { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'perfume':                            { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'perfumes':                           { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'deodorant':                          { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'cologne':                            { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
 
   // ── Men's Grooming ────────────────────────────────────────────────────────
-  "men's grooming":         { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
-  'mens grooming':          { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
-  "men grooming":           { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
-  'grooming':               { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
-  'shaving':                { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
+  "men's grooming":                     { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'mens grooming':                      { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'men grooming':                       { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'grooming':                           { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'shaving':                            { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+
+  // ── Nail Care ─────────────────────────────────────────────────────────────
+  'nail care':                          { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
+  'nails':                              { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
+  'nail':                               { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
+  'nail color':                         { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
+  'nail polish':                        { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
+
+  // ── Professional Salon Products ───────────────────────────────────────────
+  'salon':                              { icon: 'crown',         color: '#6D28D9', bg: '#EDE9FE' },
+  'salon products':                     { icon: 'crown',         color: '#6D28D9', bg: '#EDE9FE' },
+  'professional salon products':        { icon: 'crown',         color: '#6D28D9', bg: '#EDE9FE' },
+  'professional':                       { icon: 'crown',         color: '#6D28D9', bg: '#EDE9FE' },
 
   // ── Beauty Tools / Brushes / Accessories ─────────────────────────────────
-  'beauty tools':           { icon: 'tools',         color: '#5A5A8A', bg: '#EDEDF7' },
-  'tools':                  { icon: 'tools',         color: '#5A5A8A', bg: '#EDEDF7' },
-  'brushes':                { icon: 'tools',         color: '#5A5A8A', bg: '#EDEDF7' },
-  'accessories':            { icon: 'tools',         color: '#5A5A8A', bg: '#EDEDF7' },
-  'beauty accessories':     { icon: 'tools',         color: '#5A5A8A', bg: '#EDEDF7' },
-  'brush':                  { icon: 'tools',         color: '#5A5A8A', bg: '#EDEDF7' },
+  'beauty tools':                       { icon: 'brush',         color: '#BE185D', bg: '#FDF2F8' },
+  'beauty tools & accessories':         { icon: 'brush',         color: '#BE185D', bg: '#FDF2F8' },
+  'tools':                              { icon: 'brush',         color: '#BE185D', bg: '#FDF2F8' },
+  'brushes':                            { icon: 'brush',         color: '#BE185D', bg: '#FDF2F8' },
+  'accessories':                        { icon: 'brush',         color: '#BE185D', bg: '#FDF2F8' },
+  'beauty accessories':                 { icon: 'brush',         color: '#BE185D', bg: '#FDF2F8' },
+  'brush':                              { icon: 'brush',         color: '#BE185D', bg: '#FDF2F8' },
 
-  // ── Personal Care / Hygiene ───────────────────────────────────────────────
-  'personal care':          { icon: 'pump-soap',     color: '#2E7D55', bg: '#E8F5EE' },
-  'hygiene':                { icon: 'pump-soap',     color: '#2E7D55', bg: '#E8F5EE' },
-  'oral care':              { icon: 'pump-soap',     color: '#2E7D55', bg: '#E8F5EE' },
-  'hand care':              { icon: 'pump-soap',     color: '#2E7D55', bg: '#E8F5EE' },
+  // ── Personal Care & Hygiene ───────────────────────────────────────────────
+  'personal care':                      { icon: 'soap',          color: '#10B981', bg: '#ECFDF5' },
+  'personal care & hygiene':            { icon: 'soap',          color: '#10B981', bg: '#ECFDF5' },
+  'hygiene':                            { icon: 'soap',          color: '#10B981', bg: '#ECFDF5' },
+  'oral care':                          { icon: 'soap',          color: '#10B981', bg: '#ECFDF5' },
+  'hand care':                          { icon: 'soap',          color: '#10B981', bg: '#ECFDF5' },
 
-  // ── Wellness / Health ─────────────────────────────────────────────────────
-  'wellness':               { icon: 'heartbeat',     color: '#C0392B', bg: '#FDECEA' },
-  'health':                 { icon: 'heartbeat',     color: '#C0392B', bg: '#FDECEA' },
-  'health & wellness':      { icon: 'heartbeat',     color: '#C0392B', bg: '#FDECEA' },
-  'supplements':            { icon: 'heartbeat',     color: '#C0392B', bg: '#FDECEA' },
-
-  // ── Gift Sets / Kits ─────────────────────────────────────────────────────
-  'gift sets':              { icon: 'gift',          color: '#C2477A', bg: '#FFF0F5' },
-  'gift set':               { icon: 'gift',          color: '#C2477A', bg: '#FFF0F5' },
-  'gifts':                  { icon: 'gift',          color: '#C2477A', bg: '#FFF0F5' },
-  'beauty kits':            { icon: 'gift',          color: '#C2477A', bg: '#FFF0F5' },
-  'kits':                   { icon: 'gift',          color: '#C2477A', bg: '#FFF0F5' },
+  // ── Beauty Kits / Gift Sets / Combos ─────────────────────────────────────
+  'gift sets':                          { icon: 'gifts',         color: '#DB2777', bg: '#FDF2F8' },
+  'gift set':                           { icon: 'gifts',         color: '#DB2777', bg: '#FDF2F8' },
+  'gifts':                              { icon: 'gifts',         color: '#DB2777', bg: '#FDF2F8' },
+  'beauty kits':                        { icon: 'gifts',         color: '#DB2777', bg: '#FDF2F8' },
+  'beauty kits & combos':               { icon: 'gifts',         color: '#DB2777', bg: '#FDF2F8' },
+  'kits':                               { icon: 'gifts',         color: '#DB2777', bg: '#FDF2F8' },
+  'combos':                             { icon: 'gifts',         color: '#DB2777', bg: '#FDF2F8' },
 
   // ── Eyes / Eye Makeup ─────────────────────────────────────────────────────
-  'eyes':                   { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'eye':                    { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'eye makeup':             { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'eye care':               { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'eyeliner':               { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'eyeshadow':              { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'mascara':                { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'kajal':                  { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'kohl':                   { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
+  'eyes':                               { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'eye':                                { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'eye makeup':                         { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'eye care':                           { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'eyeliner':                           { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'eyeshadow':                          { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'mascara':                            { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'kajal':                              { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'kohl':                               { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
 
   // ── Lips / Lip Makeup ─────────────────────────────────────────────────────
-  'lips':                   { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'lip':                    { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'lip care':               { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'lipstick':               { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'lip gloss':              { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'lip liner':              { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
+  'lips':                               { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
+  'lip':                                { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
+  'lip care':                           { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
+  'lipstick':                           { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
+  'lip gloss':                          { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
+  'lip liner':                          { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
 
   // ── Foundation / Complexion ───────────────────────────────────────────────
-  'foundation':             { icon: 'tint',          color: '#C2477A', bg: '#FFF0F5' },
-  'complexion':             { icon: 'tint',          color: '#C2477A', bg: '#FFF0F5' },
-  'concealer':              { icon: 'tint',          color: '#C2477A', bg: '#FFF0F5' },
-  'bb cream':               { icon: 'tint',          color: '#C2477A', bg: '#FFF0F5' },
-  'cc cream':               { icon: 'tint',          color: '#C2477A', bg: '#FFF0F5' },
+  'foundation':                         { icon: 'tint',          color: '#D97706', bg: '#FFFBEB' },
+  'complexion':                         { icon: 'tint',          color: '#D97706', bg: '#FFFBEB' },
+  'concealer':                          { icon: 'tint',          color: '#D97706', bg: '#FFFBEB' },
+  'bb cream':                           { icon: 'tint',          color: '#D97706', bg: '#FFFBEB' },
+  'cc cream':                           { icon: 'tint',          color: '#D97706', bg: '#FFFBEB' },
 
   // ── Serum / Treatments ────────────────────────────────────────────────────
-  'serum':                  { icon: 'flask',         color: '#2980B9', bg: '#E8F3FB' },
-  'treatment':              { icon: 'flask',         color: '#2980B9', bg: '#E8F3FB' },
-  'treatments':             { icon: 'flask',         color: '#2980B9', bg: '#E8F3FB' },
-  'actives':                { icon: 'flask',         color: '#2980B9', bg: '#E8F3FB' },
+  'serum':                              { icon: 'flask',         color: '#0284C7', bg: '#F0F9FF' },
+  'treatment':                          { icon: 'flask',         color: '#0284C7', bg: '#F0F9FF' },
+  'treatments':                         { icon: 'flask',         color: '#0284C7', bg: '#F0F9FF' },
+  'actives':                            { icon: 'flask',         color: '#0284C7', bg: '#F0F9FF' },
 
   // ── Sun Care / SPF ────────────────────────────────────────────────────────
-  'sun care':               { icon: 'sun',           color: '#E67E22', bg: '#FEF5E4' },
-  'suncare':                { icon: 'sun',           color: '#E67E22', bg: '#FEF5E4' },
-  'sunscreen':              { icon: 'sun',           color: '#E67E22', bg: '#FEF5E4' },
-  'spf':                    { icon: 'sun',           color: '#E67E22', bg: '#FEF5E4' },
-
-  // ── Salon Products ────────────────────────────────────────────────────────
-  'salon':                  { icon: 'award',         color: '#8E44AD', bg: '#F5EAF9' },
-  'salon products':         { icon: 'award',         color: '#8E44AD', bg: '#F5EAF9' },
-  'professional':           { icon: 'award',         color: '#8E44AD', bg: '#F5EAF9' },
+  'sun care':                           { icon: 'sun',           color: '#EA580C', bg: '#FFF7ED' },
+  'suncare':                            { icon: 'sun',           color: '#EA580C', bg: '#FFF7ED' },
+  'sunscreen':                          { icon: 'sun',           color: '#EA580C', bg: '#FFF7ED' },
+  'spf':                                { icon: 'sun',           color: '#EA580C', bg: '#FFF7ED' },
 
   // ── Moisturiser / Cream ───────────────────────────────────────────────────
-  'moisturiser':            { icon: 'tint',          color: '#27AE60', bg: '#E9F7EF' },
-  'moisturizer':            { icon: 'tint',          color: '#27AE60', bg: '#E9F7EF' },
-  'cream':                  { icon: 'tint',          color: '#27AE60', bg: '#E9F7EF' },
-  'lotion':                 { icon: 'tint',          color: '#27AE60', bg: '#E9F7EF' },
+  'moisturiser':                        { icon: 'tint',          color: '#059669', bg: '#ECFDF5' },
+  'moisturizer':                        { icon: 'tint',          color: '#059669', bg: '#ECFDF5' },
+  'cream':                              { icon: 'tint',          color: '#059669', bg: '#ECFDF5' },
+  'lotion':                             { icon: 'tint',          color: '#059669', bg: '#ECFDF5' },
 
   // ── Blush / Cheeks ────────────────────────────────────────────────────────
-  'blush':                  { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'cheeks':                 { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'bronzer':                { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'highlighter':            { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
+  'blush':                              { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
+  'cheeks':                             { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
+  'bronzer':                            { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
+  'highlighter':                        { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
 
-  // ── Wellness / Fitness ────────────────────────────────────────────────────
-  'fitness':                { icon: 'dumbbell',      color: '#E74C3C', bg: '#FDECEA' },
-
-  // ── Organic / Natural ─────────────────────────────────────────────────────
-  'organic':                { icon: 'seedling',      color: '#27AE60', bg: '#E9F7EF' },
-  'natural':                { icon: 'seedling',      color: '#27AE60', bg: '#E9F7EF' },
-  'herbal':                 { icon: 'seedling',      color: '#27AE60', bg: '#E9F7EF' },
+  // ── Organic / Natural / Wellness ──────────────────────────────────────────
+  'organic':                            { icon: 'seedling',      color: '#16A34A', bg: '#F0FDF4' },
+  'natural':                            { icon: 'seedling',      color: '#16A34A', bg: '#F0FDF4' },
+  'herbal':                             { icon: 'seedling',      color: '#16A34A', bg: '#F0FDF4' },
+  'wellness':                           { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
+  'health':                             { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
 };
 
-// Default fallback when no key matches
-const DEFAULT_ICON = { icon: 'star', color: '#C2477A', bg: '#FFF0F5' };
+// Default fallback when no key matches: a clean, elegant cosmetics brush
+const DEFAULT_ICON = { icon: 'brush', color: '#C2477A', bg: '#FFF0F5' };
 
 /**
  * Returns FontAwesome5 icon config for a given category name.
@@ -198,96 +196,94 @@ export const getCategoryFA5Icon = (categoryName) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUBCATEGORY ICON MAP
-// Covers subcategories that appear in CategoryDetailView / SubcategoryView.
-// Same shape as main map.
 // ─────────────────────────────────────────────────────────────────────────────
 export const SUBCATEGORY_FA5_ICONS = {
   // Skincare subcategories
-  'face wash':              { icon: 'pump-soap',     color: '#3A8A6A', bg: '#EEF7F3' },
-  'cleanser':               { icon: 'pump-soap',     color: '#3A8A6A', bg: '#EEF7F3' },
-  'toner':                  { icon: 'tint',          color: '#3A8A6A', bg: '#EEF7F3' },
-  'moisturiser':            { icon: 'tint',          color: '#3A8A6A', bg: '#EEF7F3' },
-  'moisturizer':            { icon: 'tint',          color: '#3A8A6A', bg: '#EEF7F3' },
-  'serum':                  { icon: 'flask',         color: '#2980B9', bg: '#E8F3FB' },
-  'eye cream':              { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'sunscreen':              { icon: 'sun',           color: '#E67E22', bg: '#FEF5E4' },
-  'spf':                    { icon: 'sun',           color: '#E67E22', bg: '#FEF5E4' },
-  'sheet mask':             { icon: 'spa',           color: '#3A8A6A', bg: '#EEF7F3' },
-  'face mask':              { icon: 'spa',           color: '#3A8A6A', bg: '#EEF7F3' },
-  'exfoliator':             { icon: 'star',          color: '#3A8A6A', bg: '#EEF7F3' },
-  'scrub':                  { icon: 'star',          color: '#3A8A6A', bg: '#EEF7F3' },
+  'face wash':                          { icon: 'soap',          color: '#059669', bg: '#ECFDF5' },
+  'cleanser':                           { icon: 'soap',          color: '#059669', bg: '#ECFDF5' },
+  'toner':                              { icon: 'tint',          color: '#059669', bg: '#ECFDF5' },
+  'moisturiser':                        { icon: 'tint',          color: '#059669', bg: '#ECFDF5' },
+  'moisturizer':                        { icon: 'tint',          color: '#059669', bg: '#ECFDF5' },
+  'serum':                              { icon: 'flask',         color: '#0284C7', bg: '#F0F9FF' },
+  'eye cream':                          { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'sunscreen':                          { icon: 'sun',           color: '#EA580C', bg: '#FFF7ED' },
+  'spf':                                { icon: 'sun',           color: '#EA580C', bg: '#FFF7ED' },
+  'sheet mask':                         { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
+  'face mask':                          { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
+  'exfoliator':                         { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
+  'scrub':                              { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
 
   // Makeup subcategories
-  'foundation':             { icon: 'tint',          color: '#C2477A', bg: '#FFF0F5' },
-  'concealer':              { icon: 'tint',          color: '#C2477A', bg: '#FFF0F5' },
-  'primer':                 { icon: 'magic',         color: '#C2477A', bg: '#FFF0F5' },
-  'blush':                  { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'bronzer':                { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'highlighter':            { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'contour':                { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'setting powder':         { icon: 'palette',       color: '#C2477A', bg: '#FFF0F5' },
-  'setting spray':          { icon: 'spray-can',     color: '#C2477A', bg: '#FFF0F5' },
-  'lipstick':               { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'lip gloss':              { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'lip liner':              { icon: 'palette',       color: '#E05585', bg: '#FCEAF2' },
-  'eyeliner':               { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'eyeshadow':              { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'mascara':                { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'kajal':                  { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
-  'eyebrow':                { icon: 'eye',           color: '#34495E', bg: '#ECF0F4' },
+  'foundation':                         { icon: 'tint',          color: '#D97706', bg: '#FFFBEB' },
+  'concealer':                          { icon: 'tint',          color: '#D97706', bg: '#FFFBEB' },
+  'primer':                             { icon: 'tint',          color: '#C2477A', bg: '#FFF0F5' },
+  'blush':                              { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
+  'bronzer':                            { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
+  'highlighter':                        { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
+  'contour':                            { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
+  'setting powder':                     { icon: 'brush',         color: '#C2477A', bg: '#FFF0F5' },
+  'setting spray':                      { icon: 'air-freshener', color: '#C2477A', bg: '#FFF0F5' },
+  'lipstick':                           { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
+  'lip gloss':                          { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
+  'lip liner':                          { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
+  'eyeliner':                           { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'eyeshadow':                          { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'mascara':                            { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'kajal':                              { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'eyebrow':                            { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
 
   // Hair subcategories
-  'shampoo':                { icon: 'leaf',          color: '#A0661E', bg: '#FDF5E8' },
-  'conditioner':            { icon: 'leaf',          color: '#A0661E', bg: '#FDF5E8' },
-  'hair mask':              { icon: 'leaf',          color: '#A0661E', bg: '#FDF5E8' },
-  'hair oil':               { icon: 'tint',          color: '#A0661E', bg: '#FDF5E8' },
-  'hair serum':             { icon: 'flask',         color: '#A0661E', bg: '#FDF5E8' },
-  'hair colour':            { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
-  'hair color':             { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
-  'hair dryer':             { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
-  'straightener':           { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
-  'curler':                 { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
-  'hair spray':             { icon: 'spray-can',     color: '#7B3FA0', bg: '#F5EEF9' },
-  'styling gel':            { icon: 'magic',         color: '#7B3FA0', bg: '#F5EEF9' },
+  'shampoo':                            { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
+  'conditioner':                        { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
+  'hair mask':                          { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
+  'hair oil':                           { icon: 'tint',          color: '#7C3AED', bg: '#F5F3FF' },
+  'hair serum':                         { icon: 'flask',         color: '#7C3AED', bg: '#F5F3FF' },
+  'hair colour':                        { icon: 'palette',       color: '#9333EA', bg: '#FAF5FF' },
+  'hair color':                         { icon: 'palette',       color: '#9333EA', bg: '#FAF5FF' },
+  'hair dryer':                         { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
+  'straightener':                       { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
+  'curler':                             { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
+  'hair spray':                         { icon: 'air-freshener', color: '#9333EA', bg: '#FAF5FF' },
+  'styling gel':                        { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
 
   // Bath & Body subcategories
-  'body wash':              { icon: 'shower',        color: '#1A7A88', bg: '#E6F5F7' },
-  'shower gel':             { icon: 'shower',        color: '#1A7A88', bg: '#E6F5F7' },
-  'body lotion':            { icon: 'tint',          color: '#1A7A88', bg: '#E6F5F7' },
-  'body butter':            { icon: 'tint',          color: '#1A7A88', bg: '#E6F5F7' },
-  'body scrub':             { icon: 'star',          color: '#1A7A88', bg: '#E6F5F7' },
-  'hand cream':             { icon: 'pump-soap',     color: '#1A7A88', bg: '#E6F5F7' },
-  'foot care':              { icon: 'pump-soap',     color: '#1A7A88', bg: '#E6F5F7' },
+  'body wash':                          { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
+  'shower gel':                         { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
+  'body lotion':                        { icon: 'tint',          color: '#0D9488', bg: '#F0FDFA' },
+  'body butter':                        { icon: 'tint',          color: '#0D9488', bg: '#F0FDFA' },
+  'body scrub':                         { icon: 'soap',          color: '#0D9488', bg: '#F0FDFA' },
+  'hand cream':                         { icon: 'soap',          color: '#0D9488', bg: '#F0FDFA' },
+  'foot care':                          { icon: 'soap',          color: '#0D9488', bg: '#F0FDFA' },
 
   // Fragrance subcategories
-  'eau de parfum':          { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
-  'eau de toilette':        { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
-  'body mist':              { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
-  'roll on':                { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
-  'attar':                  { icon: 'spray-can',     color: '#8B4DB8', bg: '#F3EBF9' },
+  'eau de parfum':                      { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'eau de toilette':                    { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'body mist':                          { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'roll on':                            { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'attar':                              { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
 
   // Nail subcategories
-  'nail polish':            { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
-  'nail paint':             { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
-  'nail remover':           { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
-  'nail care':              { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
-  'nail art':               { icon: 'gem',           color: '#D4477A', bg: '#FDE9F2' },
+  'nail polish':                        { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
+  'nail paint':                         { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
+  'nail remover':                       { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
+  'nail care':                          { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
+  'nail art':                           { icon: 'hand-sparkles', color: '#E11D48', bg: '#FFF1F2' },
 
   // Men's grooming subcategories
-  'face wash for men':      { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
-  'shaving cream':          { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
-  'after shave':            { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
-  'beard oil':              { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
-  'beard care':             { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
-  'men moisturizer':        { icon: 'male',          color: '#2A6496', bg: '#E8F2FA' },
+  'face wash for men':                  { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'shaving cream':                      { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'after shave':                        { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'beard oil':                          { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'beard care':                         { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'men moisturizer':                    { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
 
-  // Tools subcategories
-  'makeup brush':           { icon: 'paint-brush',   color: '#5A5A8A', bg: '#EDEDF7' },
-  'sponge':                 { icon: 'tools',         color: '#5A5A8A', bg: '#EDEDF7' },
-  'beauty blender':         { icon: 'tools',         color: '#5A5A8A', bg: '#EDEDF7' },
-  'mirror':                 { icon: 'eye',           color: '#5A5A8A', bg: '#EDEDF7' },
-  'tweezer':                { icon: 'tools',         color: '#5A5A8A', bg: '#EDEDF7' },
-  'eyelash curler':         { icon: 'eye',           color: '#5A5A8A', bg: '#EDEDF7' },
+  // Beauty Tools subcategories
+  'makeup brush':                       { icon: 'brush',         color: '#BE185D', bg: '#FDF2F8' },
+  'sponge':                             { icon: 'heart',         color: '#BE185D', bg: '#FDF2F8' },
+  'beauty blender':                     { icon: 'heart',         color: '#BE185D', bg: '#FDF2F8' },
+  'mirror':                             { icon: 'eye',           color: '#BE185D', bg: '#FDF2F8' },
+  'tweezer':                            { icon: 'cut',           color: '#475569', bg: '#F1F5F9' },
+  'eyelash curler':                     { icon: 'eye',           color: '#BE185D', bg: '#FDF2F8' },
 };
 
 /**

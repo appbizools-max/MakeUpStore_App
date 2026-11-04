@@ -932,8 +932,8 @@ export const HomeScreen = () => {
                       <View
                         style={{
                           width: 62, height: 62,
-                          borderRadius: 14, borderWidth: 1, borderColor: '#F0E3EA',
-                          backgroundColor: '#FFFFFF', marginBottom: 6,
+                          borderRadius: 16, borderWidth: 1, borderColor: cat.color ? cat.color + '25' : '#FCE4EC',
+                          backgroundColor: cat.bg || '#FFF0F5', marginBottom: 6,
                           alignItems: 'center', justifyContent: 'center',
                         }}
                       >

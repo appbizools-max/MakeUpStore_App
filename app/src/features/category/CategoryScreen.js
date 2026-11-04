@@ -424,16 +424,16 @@ export const CategoryScreen = () => {
                     style={{
                       width: '100%',
                       height: 116,
-                      borderRadius: 14,
-                      backgroundColor: '#FFFFFF',
-                      borderColor: '#F0E3EA',
+                      borderRadius: 16,
+                      backgroundColor: bg || '#FFF0F5',
+                      borderColor: color ? color + '25' : '#FCE4EC',
                       borderWidth: 1,
                       marginBottom: 8,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <FontAwesome5 name={icon} size={48} color={color} solid />
+                    <FontAwesome5 name={icon} size={44} color={color || '#C2477A'} solid />
                   </View>
                 );
               })()}
@@ -444,10 +444,10 @@ export const CategoryScreen = () => {
                 return (
                   <View className="flex-row items-center gap-1.5 mb-1">
                     <View
-                      style={{ borderColor: '#F0E3EA', borderWidth: 1, backgroundColor: '#FFFFFF', width: 24, height: 24, borderRadius: 12 }}
+                      style={{ borderColor: color ? color + '30' : '#FCE4EC', borderWidth: 1, backgroundColor: bg || '#FFF0F5', width: 24, height: 24, borderRadius: 12 }}
                       className="items-center justify-center shrink-0"
                     >
-                      <FontAwesome5 name={icon} size={11} color={color} solid />
+                      <FontAwesome5 name={icon} size={11} color={color || '#C2477A'} solid />
                     </View>
                     <Text
                       style={{ color: '#33252F' }}
