@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { getSafeImageSource } from '../utils/imageUtils';
 import { getCartKey, getSafeProductShadesList } from '../utils/cartKeyUtils';
+import { cleanProductDisplayName } from '../utils/productDisplayNameUtils';
 
 export const PurplleProductCard = ({
   product,
@@ -122,14 +123,14 @@ export const PurplleProductCard = ({
   return (
     <View
       style={[{ width: cardWidth }, style]}
-      className={`bg-white rounded-2xl p-2.5 shadow-2xs border border-[#FCE4EC] justify-between ${className}`}
+      className={`bg-white rounded-2xl p-2.5 shadow-2xs border border-gray-100 justify-between ${className}`}
     >
       {/* 1. PRODUCT IMAGE & WISHLIST */}
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={() => onPressProduct?.(product, selectedShade)}
       >
-        <View className="relative w-full aspect-square rounded-xl overflow-hidden mb-2 bg-[#FFF5F8] border border-[#F0E3EA] items-center justify-center p-2">
+        <View className="relative w-full aspect-square rounded-xl overflow-hidden mb-2 bg-[#FAFAFA] border border-gray-100 items-center justify-center p-2">
           <Image
             source={getSafeImageSource(displayImage, '')}
             style={{ width: '92%', height: '92%' }}
@@ -165,7 +166,7 @@ export const PurplleProductCard = ({
           {product?.brandName || product?.brand || 'SALBEAU'}
         </Text>
         <Text className="text-[11px] font-bold text-[#3A2430] leading-tight mb-1 min-h-[30px]" numberOfLines={2}>
-          {product?.name}
+          {cleanProductDisplayName(product?.name)}
         </Text>
       </TouchableOpacity>
 
@@ -235,7 +236,7 @@ export const PurplleProductCard = ({
       )}
 
       {/* 4. PRICE & SELECTED SHADE CART STEPPER / ADD BUTTON */}
-      <View className="flex-row items-center justify-between pt-1 border-t border-[#FCE4EC]/50 mt-auto">
+      <View className="flex-row items-center justify-between pt-1 border-t border-gray-100 mt-auto">
         <View>
           {mrp > rolePrice && (
             <Text className="text-[8.5px] font-semibold text-[#8C7078] line-through">

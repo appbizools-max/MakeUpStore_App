@@ -1,3 +1,4 @@
+import { cleanProductDisplayName } from '../../utils/productDisplayNameUtils';
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, TextInput, Alert, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

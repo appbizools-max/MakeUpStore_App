@@ -298,78 +298,31 @@ export const exportBrandsToExcel = (brandsList = [], options = {}) => {
 };
 
 /**
- * Generates Blank Brand Import Template Excel
+ * Generates Blank Simplified Brand Import Template Excel
+ * Strictly contains ONLY two columns: | Brand Name | Category |
+ * No sample records, no unnecessary instructions sheet.
  */
 export const downloadBrandImportTemplate = () => {
-  const headers = [
-    'S.No',
-    'Brand Name',
-    'Categories',
-    'Logo URL',
-    'Visibility',
-    'Brand Description',
-    'Internal Notes'
-  ];
+  const headers = ['Brand Name', 'Category'];
 
-  const sampleRows = [
-    [
-      1,
-      'AGARO',
-      'Beauty Tools & Devices',
-      'https://example.com/agaro.png',
-      'Active',
-      'Leading personal care appliances and beauty tools',
-      'Approved manufacturer partner'
-    ],
-    [
-      2,
-      'LAKME',
-      'LAK-002',
-      'Makeup; Lips & Eyes',
-      '',
-      'Active',
-      'Indian cosmetics brand',
-      'New brand addition'
-    ]
-  ];
-
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
+  // Single sheet, empty template with bold headers and appropriate column widths
+  const ws = XLSX.utils.aoa_to_sheet([headers]);
   ws['!cols'] = [
-    { wch: 15 },
-    { wch: 28 },
-    { wch: 16 },
-    { wch: 30 },
-    { wch: 35 },
-    { wch: 14 },
-    { wch: 40 },
-    { wch: 30 }
+    { wch: 32 }, // Brand Name
+    { wch: 28 }  // Category
   ];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Template');
+  XLSX.utils.book_append_sheet(wb, ws, 'Brands');
 
-  // Add Instructions Sheet
-  const instructions = [
-    ['SALBEAU BRAND MASTER IMPORT INSTRUCTIONS'],
-    [''],
-    ['Column', 'Rules & Requirements'],
-    ['S.No / Brand Number', 'Numeric order (1, 2, 3...) or Brand Number (BR001, BR002). Leave BLANK to auto-number sequentially.'],
-    ['Brand Name', 'REQUIRED. Official unique brand name.'],
-    ['Categories', 'Optional. Semicolon or comma-separated list of existing categories (e.g. "Makeup; Skin Care").'],
-    ['Logo URL', 'Optional. Direct web image link (PNG, JPG, WebP).'],
-    ['Visibility', '"Active" or "Inactive". Defaults to "Active" if blank.'],
-    ['Brand Description', 'Optional short description of the brand.'],
-    ['Internal Notes', 'Optional administrative notes.']
-  ];
-  const wsGuide = XLSX.utils.aoa_to_sheet(instructions);
-  wsGuide['!cols'] = [{ wch: 22 }, { wch: 70 }];
-  XLSX.utils.book_append_sheet(wb, wsGuide, 'Guide');
-
-  XLSX.writeFile(wb, 'salbeau_brand_import_template.xlsx');
+  XLSX.writeFile(wb, 'Brand_Import_Template.xlsx');
 };
 
 /**
- * Parses and validates Brand Excel workbook for import
+ * Parses and validates Brand Excel workbook for import.
+ * Strictly reads ONLY Brand Name and Category (both mandatory).
+ * Detects duplicates, matches categories exactly against Supabase Master Categories,
+ * and provides row-level validation auditing.
  */
 export const parseAndValidateBrandExcel = async (file, masterCategories = [], existingBrands = []) => {
   return new Promise((resolve, reject) => {
@@ -391,7 +344,7 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
           return;
         }
 
-        // Map column variations flexibly (handles spaces, underscores, dots, hyphens)
+        // Map column variations strictly for Brand Name and Category
         const getFieldVal = (row, candidates) => {
           for (const key of Object.keys(row)) {
             const cleanKey = key.trim().toLowerCase().replace(/[\s_.-]+/g, '');
@@ -404,13 +357,9 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
           return '';
         };
 
-        const existingBrandNumbersMap = new Map();
         const existingBrandNamesMap = new Map();
-
-        existingBrands.forEach(b => {
-          const num = (b.brandNumber || b.brand_number || '').trim().toUpperCase();
-          const name = normalizeBrandName(b.name).toLowerCase();
-          if (num) existingBrandNumbersMap.set(num, b);
+        (existingBrands || []).forEach(b => {
+          const name = normalizeBrandName(b.name || b.brandName || '').toLowerCase();
           if (name) existingBrandNamesMap.set(name, b);
         });
 
@@ -421,174 +370,99 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
         });
         const missingCategoriesSet = new Set();
 
-        // Highest existing sequence number among active catalog brands
         const maxExistingSeq = (existingBrands || []).reduce((max, b) => {
           const seq = parseBrandNumberSeq(b.brandNumber || b.brand_number || b.sort_order || b.sortOrder);
           return seq && seq > max ? seq : max;
         }, 0);
 
         const parsedRows = [];
-        const seenInFileNumbers = new Set();
-        const seenInFileCodes = new Set();
         const seenInFileNames = new Set();
 
         let validCount = 0;
         let invalidCount = 0;
-        let newBrandsCount = 0;
-        let existingBrandsCount = 0;
         let duplicateRecordsCount = 0;
-        let duplicateCodesCount = 0;
         let invalidCategoriesCount = 0;
 
         rawJson.forEach((row, index) => {
-          const rowNum = index + 2; // 1-based, row 1 is header
+          const rowNum = index + 2; // Row 1 is header in Excel
           const errors = [];
           const warnings = [];
 
-          // Candidate variations for S.No / Brand Number
-          const rawBrandNumber = getFieldVal(row, [
-            'S.No', 'SNo', 'S No', 'Sl No', 'Sl.No', 'Sr No', 'Sr.No', 'Serial No', 'Serial Number', 'No',
-            'Brand Number', 'BrandNumber', 'Brand ID', 'BrandId', 'ID'
-          ]);
-
+          // Read ONLY Brand Name and Category
           const brandName = getFieldVal(row, [
-            'Brand Name', 'BrandName', 'Standardized Brand Name', 'Name', 'Brand'
+            'Brand Name', 'BrandName', 'Brand', 'Name'
           ]);
 
-          const rawBrandCode = '';
-
-          const categoriesRaw = getFieldVal(row, [
-            'Categories', 'Category', 'Primary Category', 'Other Categories'
+          const categoryRaw = getFieldVal(row, [
+            'Category', 'Categories', 'Primary Category', 'Main Category'
           ]);
 
-          const logoUrl = getFieldVal(row, [
-            'Logo URL', 'Logo', 'LogoURL', 'Image URL'
-          ]);
-
-          const visibilityRaw = getFieldVal(row, [
-            'Visibility', 'Status', 'Brand Status', 'Active', 'Enabled'
-          ]);
-
-          const description = getFieldVal(row, [
-            'Brand Description', 'Description'
-          ]);
-
-          const internalNotes = getFieldVal(row, [
-            'Internal Notes', 'Notes', 'InternalNotes'
-          ]);
-
-          // 1. Validate Brand Name
+          // 1. Mandatory Validation: Brand Name
           if (!brandName) {
             errors.push('Brand Name is required.');
           } else {
             const nameNorm = normalizeBrandName(brandName).toLowerCase();
             if (seenInFileNames.has(nameNorm)) {
-              errors.push(`Duplicate brand name "${brandName}" found multiple times in this spreadsheet.`);
+              errors.push(`Duplicate brand "${brandName}" found multiple times in this spreadsheet.`);
+              duplicateRecordsCount++;
+            } else if (existingBrandNamesMap.has(nameNorm)) {
+              errors.push(`Brand "${brandName}" already exists in the database.`);
               duplicateRecordsCount++;
             } else {
               seenInFileNames.add(nameNorm);
             }
           }
 
-          // 2. Resolve S.No & Brand Number (accepts 1, 2, 3 or BR001, BR002)
-          let isExisting = false;
-          let matchedExistingBrand = null;
-          let brandNumber = '';
-
-          if (rawBrandNumber) {
-            const numMatch = rawBrandNumber.match(/\d+/);
-            if (/^BR\d+$/i.test(rawBrandNumber.trim())) {
-              const seq = parseInt(rawBrandNumber.trim().replace(/^BR/i, ''), 10);
-              if (!isNaN(seq) && seq > 0) {
-                brandNumber = formatBrandNumber(seq);
-              }
-            } else if (numMatch) {
-              const seq = parseInt(numMatch[0], 10);
-              if (!isNaN(seq) && seq > 0) {
-                brandNumber = formatBrandNumber(seq);
-              }
-            }
-          }
-
-          // If no Brand Number / S.No was provided, assign sequentially starting from S.No 1 (or continuing from maxExistingSeq)
-          if (!brandNumber) {
-            brandNumber = formatBrandNumber(maxExistingSeq + index + 1);
-          }
-
-          // Prevent collisions in same file by incrementing
-          if (seenInFileNumbers.has(brandNumber)) {
-            let nextCandidate = maxExistingSeq + index + 1;
-            while (seenInFileNumbers.has(formatBrandNumber(nextCandidate))) {
-              nextCandidate++;
-            }
-            brandNumber = formatBrandNumber(nextCandidate);
-          }
-          seenInFileNumbers.add(brandNumber);
-
-          if (existingBrandNumbersMap.has(brandNumber)) {
-            isExisting = true;
-            matchedExistingBrand = existingBrandNumbersMap.get(brandNumber);
-          }
-
-          // Match by name if brandNumber was not given in DB
-          if (!isExisting && brandName) {
-            const nameNorm = normalizeBrandName(brandName).toLowerCase();
-            if (existingBrandNamesMap.has(nameNorm)) {
-              isExisting = true;
-              matchedExistingBrand = existingBrandNamesMap.get(nameNorm);
-            }
-          }
-
-          if (isExisting) {
-            existingBrandsCount++;
-          } else {
-            newBrandsCount++;
-          }
-
-          // 4. Exact Category Matching & Validation
+          // 2. Mandatory Validation: Category
           const parsedCategories = [];
           const rowMissingCategories = [];
-          if (categoriesRaw) {
-            const splitted = categoriesRaw.split(/[;,|]/).map(s => s.trim()).filter(Boolean);
-            splitted.forEach(cat => {
-              const lower = cat.toLowerCase();
-              if (validMasterCatMap.has(lower)) {
-                const canonical = validMasterCatMap.get(lower);
-                if (!parsedCategories.includes(canonical)) {
-                  parsedCategories.push(canonical);
+
+          if (!categoryRaw) {
+            errors.push('Category is required.');
+          } else {
+            const splitted = categoryRaw.split(/[;,|]/).map(s => s.trim()).filter(Boolean);
+            if (splitted.length === 0) {
+              errors.push('Category is required.');
+            } else {
+              splitted.forEach(cat => {
+                const lower = cat.toLowerCase();
+                if (validMasterCatMap.has(lower)) {
+                  const canonical = validMasterCatMap.get(lower);
+                  if (!parsedCategories.includes(canonical)) {
+                    parsedCategories.push(canonical);
+                  }
+                } else {
+                  parsedCategories.push(cat);
+                  rowMissingCategories.push(cat);
+                  missingCategoriesSet.add(cat);
                 }
-              } else {
-                parsedCategories.push(cat);
-                rowMissingCategories.push(cat);
-                missingCategoriesSet.add(cat);
-              }
-            });
+              });
+            }
           }
 
           if (rowMissingCategories.length > 0) {
-            errors.push(`Category "${rowMissingCategories.join(', ')}" does not exist in the Categories List page. Please add it to Categories before proceeding.`);
+            errors.push(`Invalid Category: "${rowMissingCategories.join(', ')}" does not exist in the Categories List.`);
             invalidCategoriesCount++;
           }
 
-          // 5. Visibility normalization
-          const isEnabled = visibilityRaw ? !/^(inactive|false|0|disabled|no)$/i.test(visibilityRaw) : true;
-
+          const brandNumber = formatBrandNumber(maxExistingSeq + index + 1);
           const isValid = errors.length === 0;
+
           if (isValid) validCount++;
           else invalidCount++;
 
           parsedRows.push({
             rowNumber: rowNum,
             isValid,
-            isExisting,
-            matchedBrandId: matchedExistingBrand ? matchedExistingBrand.id : null,
-            brandNumber: brandNumber || (matchedExistingBrand?.brandNumber || ''),
+            isExisting: Boolean(brandName && existingBrandNamesMap.has(normalizeBrandName(brandName).toLowerCase())),
+            brandNumber,
             brandName,
+            category: parsedCategories[0] || categoryRaw,
             categories: parsedCategories,
-            logoUrl,
-            enabled: isEnabled,
-            description,
-            internalNotes,
+            logoUrl: '',
+            enabled: true,
+            description: '',
+            internalNotes: '',
             errors,
             warnings
           });
@@ -599,10 +473,7 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
           totalRows: rawJson.length,
           validRows: validCount,
           invalidRows: invalidCount,
-          newBrands: newBrandsCount,
-          existingBrands: existingBrandsCount,
           duplicateRecords: duplicateRecordsCount,
-          duplicateCodes: duplicateCodesCount,
           invalidCategories: invalidCategoriesCount,
           missingCategories: Array.from(missingCategoriesSet),
           missingCategoriesCount: missingCategoriesSet.size,
@@ -620,41 +491,39 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
 
 /**
  * Generates an Excel error audit report for download
+ * Identifying the exact Excel row and reason for failure
  */
 export const downloadBrandImportErrorReport = (parsedRows = []) => {
   const headers = [
-    'Row #',
+    'Excel Row',
     'Status',
-    'Brand Number', 'Brand Name',
-    'Errors',
-    'Warnings'
+    'Brand Name',
+    'Category',
+    'Failure Reason'
   ];
 
   const dataRows = parsedRows
-    .filter(r => !r.isValid || r.warnings.length > 0)
+    .filter(r => !r.isValid)
     .map(r => [
-      r.rowNumber,
-      r.isValid ? 'Valid with Warnings' : 'Failed / Invalid',
-      r.brandNumber,
-      r.brandName,
-      r.errors.join(' | '),
-      r.warnings.join(' | ')
+      `Row ${r.rowNumber}`,
+      'Failed',
+      r.brandName || '(Blank)',
+      r.category || (Array.isArray(r.categories) ? r.categories.join('; ') : '') || '(Blank)',
+      r.errors.join(' | ')
     ]);
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
   ws['!cols'] = [
-    { wch: 8 },
-    { wch: 18 },
-    { wch: 15 },
-    { wch: 25 },
-    { wch: 16 },
-    { wch: 50 },
-    { wch: 40 }
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 30 },
+    { wch: 26 },
+    { wch: 55 }
   ];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Import Errors');
-  XLSX.writeFile(wb, `brand_import_error_report_${new Date().toISOString().split('T')[0]}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, 'Failed Records');
+  XLSX.writeFile(wb, 'Brand_Import_Errors.xlsx');
 };
 
 

@@ -1,3 +1,4 @@
+import { cleanProductDisplayName } from '../../utils/productDisplayNameUtils';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,

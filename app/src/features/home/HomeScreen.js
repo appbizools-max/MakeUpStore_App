@@ -16,6 +16,7 @@ import { getSafeImageSource } from '../../utils/imageUtils';
 import { storage } from '../../utils/storage';
 import { getCartQuantityMap, getCartKey, getSafeProductShadesList } from '../../utils/cartKeyUtils';
 import { getCategoryFA5Icon } from '../../utils/categoryIcons';
+import { cleanProductDisplayName } from '../../utils/productDisplayNameUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 600);
@@ -70,8 +71,7 @@ const SectionHeader = ({
 // Skeleton Loading Placeholders for zero-flicker cold starts
 const SkeletonCategoryCard = () => (
   <View
-    style={{ width: 84, borderColor: '#FCE4EC', borderWidth: 1 }}
-    className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs"
+    style={{ width: 78 }} className="items-center mr-3"
   >
     <View style={{ width: 62, height: 62 }} className="rounded-xl mb-1.5 bg-[#FFF0F5] opacity-60" />
     <View style={{ width: 52, height: 10 }} className="rounded bg-[#FCE4EC] opacity-60" />
@@ -215,20 +215,13 @@ const HomeProductCard = React.memo(({
       onPress={() => onSelectProduct(product, hasShades ? selectedShade : null)}
       style={{
         width: 172,
-        borderColor: '#FCE4EC',
-        borderWidth: 1,
-        shadowColor: '#C2477A',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
+        borderColor: '#F3F4F6', borderWidth: 1, shadowColor: '#000000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
       }}
       className="mr-3 bg-white rounded-2xl p-2.5 flex-col"
     >
       {/* 1. Product Image Box with Badge & Wishlist Heart */}
       <View
-        style={{ width: '100%', height: 126, borderColor: '#FCE4EC', borderWidth: 1 }}
-        className="relative rounded-xl overflow-hidden mb-2 bg-white items-center justify-center"
+        style={{ width: '100%', height: 126, borderColor: '#F3F4F6', borderWidth: 1 }} className="relative rounded-xl overflow-hidden mb-2 bg-[#F9FAFB] items-center justify-center"
       >
         <Image
           source={getSafeImageSource(displayImage, '')}
@@ -270,7 +263,7 @@ const HomeProductCard = React.memo(({
 
       {/* 3. Product Name - Full 2-line Visibility */}
       <Text className="text-[11.5px] font-black text-[#1F2937] leading-tight mb-1 min-h-[30px]" numberOfLines={2}>
-        {product.name}
+        {cleanProductDisplayName(product.name)}
       </Text>
 
       {/* 4. Shade Selection / Swatches */}

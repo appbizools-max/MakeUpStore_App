@@ -5,7 +5,8 @@ import {
   Upload,
   Trash2,
   X,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 
@@ -15,7 +16,7 @@ import { useAdmin } from '../../context/AdminContext';
  * - Option 1: Search Google Images (queries [Entity Name + Type])
  * - Option 2: Upload Local File (opens file picker from computer/device)
  * - Option 3: Direct URL paste field
- * - Live thumbnail with remove button
+ * - Live thumbnail with remove button and robust broken-image fallback
  */
 export default function InlineImageSection({
   imageUrl = '',
@@ -30,6 +31,7 @@ export default function InlineImageSection({
 
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [hasImgError, setHasImgError] = useState(false);
 
   const getDefaultQuery = (name, type) => {
     const clean = (name || '').trim();
@@ -43,6 +45,7 @@ export default function InlineImageSection({
   useEffect(() => {
     setSearchQuery(getDefaultQuery(entityName, entityType));
     setUrlInput(imageUrl || '');
+    setHasImgError(false);
   }, [entityName, entityType, imageUrl]);
 
   const handleOpenGoogleImages = () => {
@@ -53,6 +56,7 @@ export default function InlineImageSection({
 
   const handleApplyUrl = (val) => {
     setUrlInput(val);
+    setHasImgError(false);
     if (typeof onChange === 'function') {
       onChange(val.trim());
     }
@@ -63,6 +67,7 @@ export default function InlineImageSection({
     if (!file) return;
 
     setIsUploading(true);
+    setHasImgError(false);
     try {
       if (typeof uploadImage === 'function') {
         const uploadedUrl = await uploadImage(file, { folder, filenamePrefix });
@@ -76,7 +81,6 @@ export default function InlineImageSection({
       }
     } catch (err) {
       console.error('Image upload failed:', err);
-      // Fallback to data URL
       const reader = new FileReader();
       reader.onload = () => handleApplyUrl(reader.result);
       reader.readAsDataURL(file);
@@ -128,12 +132,23 @@ export default function InlineImageSection({
         </div>
       </div>
 
-      {/* Input Row: Thumbnail Preview + Clean Status or URL Input (No Raw Supabase Text) */}
+      {/* Input Row: Thumbnail Preview + Clean Status or URL Input */}
       <div className="flex items-center gap-2.5">
         {imageUrl ? (
           <>
-            <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-pink-200 bg-white shrink-0 shadow-2xs group">
-              <img src={imageUrl} alt="preview" className="w-full h-full object-cover" />
+            <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-pink-200 bg-white shrink-0 shadow-2xs group flex items-center justify-center">
+              {!hasImgError ? (
+                <img
+                  src={imageUrl}
+                  alt=""
+                  onError={() => setHasImgError(true)}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-rose-50 text-rose-500 p-1" title="Image failed to load">
+                  <AlertCircle size={16} />
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => handleApplyUrl('')}
@@ -146,9 +161,19 @@ export default function InlineImageSection({
 
             <div className="flex-1 min-w-0 flex items-center justify-between px-3 py-2 rounded-xl bg-white border border-pink-100">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-xs font-bold text-gray-800 truncate">Image Attached</span>
-                <span className="text-[10px] text-emerald-600 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Active</span>
+                {!hasImgError ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-xs font-bold text-gray-800 truncate">Image Attached</span>
+                    <span className="text-[10px] text-emerald-600 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Active</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                    <span className="text-xs font-bold text-rose-700 truncate">Invalid Image URL</span>
+                    <span className="text-[10px] text-rose-600 font-extrabold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">Broken Link</span>
+                  </>
+                )}
               </div>
               <button
                 type="button"

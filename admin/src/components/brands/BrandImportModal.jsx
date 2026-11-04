@@ -343,23 +343,27 @@ export default function BrandImportModal({
                 </button>
               </div>
 
-              {/* Validation Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {/* 5 Standard Preview Metrics (Total, Valid, Duplicates, Invalid Categories, Failed) */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                 <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200 text-center">
                   <span className="block text-lg font-black text-gray-800">{previewData.totalRows}</span>
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Rows</span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Records</span>
                 </div>
                 <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-center">
                   <span className="block text-lg font-black text-emerald-700">{previewData.validRows}</span>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Valid Rows</span>
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Valid Records</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200 text-center">
+                  <span className="block text-lg font-black text-amber-700">{previewData.duplicateRecords || 0}</span>
+                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Duplicate Brands</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-purple-50/70 border border-purple-200 text-center">
+                  <span className="block text-lg font-black text-purple-700">{previewData.invalidCategories || 0}</span>
+                  <span className="text-[10px] font-bold text-purple-800 uppercase tracking-wider">Invalid Categories</span>
                 </div>
                 <div className="p-3 rounded-2xl bg-rose-50/70 border border-rose-200 text-center">
                   <span className="block text-lg font-black text-rose-700">{previewData.invalidRows}</span>
-                  <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider">Invalid Rows</span>
-                </div>
-                <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200 text-center">
-                  <span className="block text-lg font-black text-amber-700">{previewData.existingBrands}</span>
-                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Existing</span>
+                  <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider">Failed Records</span>
                 </div>
               </div>
 
@@ -422,57 +426,60 @@ export default function BrandImportModal({
                 </div>
               )}
 
-              {/* Sub-metrics */}
-              <div className="p-3 rounded-2xl bg-[#FFF8FA] border border-pink-100/70 flex flex-wrap items-center justify-between gap-3 text-[11px] text-gray-600">
-                <span>New Brands to Create: <strong className="text-gray-900 font-bold">{previewData.newBrands}</strong></span>
-                <span>Duplicate Records: <strong className="text-gray-900 font-bold">{previewData.duplicateRecords}</strong></span>
-                <span>Category Issues: <strong className={previewData.invalidCategories > 0 ? 'text-amber-700 font-bold' : 'text-gray-900 font-bold'}>{previewData.invalidCategories}</strong></span>
-              </div>
-
-              {/* Row-Level Preview Sample (First 6 Rows) */}
+              {/* Row-Level Preview Sample (First 8 Rows) */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-900 block">
-                  Category Mapping Sample Preview:
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-900 block">
+                    Spreadsheet Import Preview:
+                  </label>
+                  {previewData.invalidRows > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => downloadBrandImportErrorReport(previewData.rows)}
+                      className="text-[11px] font-bold text-[#C2477A] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Download size={12} />
+                      <span>Download Error Report (.xlsx)</span>
+                    </button>
+                  )}
+                </div>
                 <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-2xs">
                   <table className="w-full text-left text-[11px]">
                     <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold">
                       <tr>
-                        <th className="py-2 px-3">Row</th>
-                        <th className="py-2 px-3">Brand Number</th>
-                        <th className="py-2 px-3">Brand Name</th>
-                        <th className="py-2 px-3">Mapped Categories</th>
-                        <th className="py-2 px-3 text-right">Status</th>
+                        <th className="py-2.5 px-3">Row</th>
+                        <th className="py-2.5 px-3">Brand Name</th>
+                        <th className="py-2.5 px-3">Category</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Reason / Details</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {previewData.rows.slice(0, 6).map((r) => (
+                      {previewData.rows.slice(0, 10).map((r) => (
                         <tr key={r.rowNumber} className={!r.isValid ? 'bg-rose-50/40' : 'hover:bg-gray-50/50'}>
                           <td className="py-2 px-3 text-gray-500 font-mono font-medium">#{r.rowNumber}</td>
-                          <td className="py-2 px-3 font-mono font-bold text-[#C2477A]">{r.brandNumber}</td>
-                          <td className="py-2 px-3 font-bold text-gray-900">{r.brandName}</td>
+                          <td className="py-2 px-3 font-bold text-gray-900">{r.brandName || <span className="text-rose-500 italic">Missing</span>}</td>
                           <td className="py-2 px-3">
-                            <div className="flex flex-wrap gap-1 max-w-xs">
-                              {r.categories && r.categories.length > 0 ? (
-                                r.categories.map((c, i) => (
-                                  <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-50 text-[#C2477A] border border-pink-200">
-                                    {c}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="text-gray-400 italic">None</span>
-                              )}
-                            </div>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-50 text-[#C2477A] border border-pink-200">
+                              {r.category || (Array.isArray(r.categories) && r.categories[0]) || <span className="text-rose-500 italic">Missing</span>}
+                            </span>
                           </td>
-                          <td className="py-2 px-3 text-right font-bold">
+                          <td className="py-2 px-3 font-bold">
                             {r.isValid ? (
                               <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px]">
                                 Valid
                               </span>
                             ) : (
-                              <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full text-[10px]" title={r.errors?.join(' | ')}>
-                                Error
+                              <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full text-[10px]">
+                                Failed
                               </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-gray-600 text-[10.5px]">
+                            {r.isValid ? (
+                              <span className="text-emerald-700">Ready to import</span>
+                            ) : (
+                              <span className="text-rose-600 font-medium">{r.errors?.join('; ')}</span>
                             )}
                           </td>
                         </tr>

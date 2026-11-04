@@ -1,3 +1,4 @@
+import { cleanProductDisplayName } from '../../utils/productDisplayNameUtils';
 import React, { useMemo } from 'react';
 import {
   View,
@@ -164,7 +165,7 @@ export const WishlistScreen = () => {
         <View className="flex-row items-center gap-3">
           <TouchableOpacity
             onPress={() => setCurrentScreen('home')}
-            style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
+            style={{ borderColor: '#F3F4F6', borderWidth: 1 }}
             className="w-9 h-9 rounded-full bg-white items-center justify-center shadow-xs"
           >
             <Ionicons name="chevron-back" size={18} color="#C2477A" />
@@ -314,7 +315,7 @@ export const WishlistScreen = () => {
                       className="text-[11px] font-bold text-[#1E1B1D] leading-tight mb-2 h-7"
                       numberOfLines={2}
                     >
-                      {item.name}
+                      {cleanProductDisplayName(item.name)}
                     </Text>
                   </View>
 
