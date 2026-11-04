@@ -33,7 +33,7 @@ export const hexToRgbString = (hex) => {
 // Confirm correct GST slab with accountant.
 export const DEFAULT_GST_SLAB = 18;
 
-// Exactly these 18 headers must be present in the upload template
+// Strict 17-column header schema (SELECT_CATEGORY removed per business specification)
 export const REQUIRED_HEADERS = Object.freeze([
   'BARCODE',
   'BRAND',
@@ -42,7 +42,6 @@ export const REQUIRED_HEADERS = Object.freeze([
   'PRODUCT_NAME',
   'CATEGORY',
   'SUBCATEGORY',
-  'SELECT_CATEGORY',
   'SHADE_NAME',
   'HEX & SWATCH',
   'SIZE_OR_WEIGHT',
@@ -53,6 +52,16 @@ export const REQUIRED_HEADERS = Object.freeze([
   'BEAUTICIAN_PRICE',
   'PRODUCT_ACTIVE',
   'STATUS'
+]);
+
+// Permitted legacy columns that should not trigger extra-column validation errors
+export const OPTIONAL_LEGACY_HEADERS = new Set([
+  'SELECT_CATEGORY',
+  'SELECT CATEGORY',
+  'PRODUCT_TYPE',
+  'PRODUCT TYPE',
+  'LEAF_CATEGORY',
+  'ITEM_TYPE'
 ]);
 
 /**
@@ -293,9 +302,9 @@ export const validateExcelHeaders = (input, sheetName = '') => {
   const headerSet = new Set(trimmedHeaders);
   const missing = REQUIRED_HEADERS.filter(req => !headerSet.has(req));
 
-  // 2. Extra columns: headers present in file that are not in REQUIRED_HEADERS
+  // 2. Extra columns: headers present in file that are not in REQUIRED_HEADERS (ignoring permitted legacy headers like SELECT_CATEGORY)
   const requiredSet = new Set(REQUIRED_HEADERS);
-  const extra = Array.from(new Set(trimmedHeaders.filter(h => !requiredSet.has(h))));
+  const extra = Array.from(new Set(trimmedHeaders.filter(h => !requiredSet.has(h) && !OPTIONAL_LEGACY_HEADERS.has(h))));
 
   // 3. Renamed column hints
   const hints = findHeaderHints(missing, extra);

@@ -812,7 +812,7 @@ export const DEFAULT_COLUMN_CONFIG = [
   { key: 'index', label: '#', canonicalCol: null, group: 'Controls', visible: true, mandatory: true },
   { key: 'select', label: 'Select Checkbox', canonicalCol: null, group: 'Controls', visible: true, mandatory: true },
 
-  // Exact 18 Canonical Product Columns in requested sequence (1-18) + Actions (19)
+  // Exact 17 Canonical Product Columns in requested sequence (1-17) + Actions (18)
   { key: 'barcode', label: 'Barcode', canonicalCol: 1, canonicalName: 'Barcode', group: 'Product Master', visible: true, mandatory: false },
   { key: 'brand', label: 'Brand', canonicalCol: 2, canonicalName: 'Brand', group: 'Product Master', visible: true, mandatory: true },
   { key: 'images', label: 'Image', canonicalCol: 3, canonicalName: 'Image', group: 'Product Master', visible: true, mandatory: false },
@@ -821,17 +821,17 @@ export const DEFAULT_COLUMN_CONFIG = [
   { key: 'category', label: 'Category', canonicalCol: 6, canonicalName: 'Category', group: 'Product Master', visible: true, mandatory: true },
   { key: 'subcategory', label: 'Subcategory', canonicalCol: 7, canonicalName: 'Subcategory', group: 'Product Master', visible: true, mandatory: true },
   
-  { key: 'shade', label: 'Shade Name', canonicalCol: 9, canonicalName: 'Shade_Name', group: 'Variant Details', visible: true, mandatory: false },
-  { key: 'swatch', label: 'HEX & Swatch', canonicalCol: 10, canonicalName: 'HEX_Swatch', group: 'Variant Details', visible: true, mandatory: false },
-  { key: 'size', label: 'Size / Weight', canonicalCol: 11, canonicalName: 'Size_or_Weight', group: 'Variant Details', visible: true, mandatory: false },
-  { key: 'mrp', label: 'MRP', canonicalCol: 12, canonicalName: 'MRP', group: 'Role Pricing', visible: true, mandatory: true },
-  { key: 'generalPrice', label: 'General Price', canonicalCol: 13, canonicalName: 'General_User_Price', group: 'Role Pricing', visible: true, mandatory: false },
-  { key: 'salonPrice', label: 'Salon Price', canonicalCol: 14, canonicalName: 'Salon_Price', group: 'Role Pricing', visible: true, mandatory: false },
-  { key: 'artistPrice', label: 'Makeup Artist Price', canonicalCol: 15, canonicalName: 'Makeup_Artist_Price', group: 'Role Pricing', visible: true, mandatory: false },
-  { key: 'beauticianPrice', label: 'Beautician Price', canonicalCol: 16, canonicalName: 'Beautician_Price', group: 'Role Pricing', visible: true, mandatory: false },
-  { key: 'productActive', label: 'Product Active', canonicalCol: 17, canonicalName: 'Product_Active', group: 'Publication', visible: true, mandatory: false },
-  { key: 'status', label: 'Status', canonicalCol: 18, canonicalName: 'Status', group: 'Publication', visible: true, mandatory: false },
-  { key: 'actions', label: 'Actions', canonicalCol: 19, canonicalName: 'Actions', group: 'Controls', visible: true, mandatory: true },
+  { key: 'shade', label: 'Shade Name', canonicalCol: 8, canonicalName: 'Shade_Name', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'swatch', label: 'HEX & Swatch', canonicalCol: 9, canonicalName: 'HEX_Swatch', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'size', label: 'Size / Weight', canonicalCol: 10, canonicalName: 'Size_or_Weight', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'mrp', label: 'MRP', canonicalCol: 11, canonicalName: 'MRP', group: 'Role Pricing', visible: true, mandatory: true },
+  { key: 'generalPrice', label: 'General Price', canonicalCol: 12, canonicalName: 'General_User_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'salonPrice', label: 'Salon Price', canonicalCol: 13, canonicalName: 'Salon_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'artistPrice', label: 'Makeup Artist Price', canonicalCol: 14, canonicalName: 'Makeup_Artist_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'beauticianPrice', label: 'Beautician Price', canonicalCol: 15, canonicalName: 'Beautician_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'productActive', label: 'Product Active', canonicalCol: 16, canonicalName: 'Product_Active', group: 'Publication', visible: true, mandatory: false },
+  { key: 'status', label: 'Status', canonicalCol: 17, canonicalName: 'Status', group: 'Publication', visible: true, mandatory: false },
+  { key: 'actions', label: 'Actions', canonicalCol: 18, canonicalName: 'Actions', group: 'Controls', visible: true, mandatory: true },
 
   // Non-default / secondary attributes (toggleable via Column Manager or accessible in All Details)
   { key: 'description', label: 'Product Description', canonicalCol: null, canonicalName: 'Product_Description', group: 'Product Master', visible: false, mandatory: false },
@@ -1829,7 +1829,7 @@ export const BulkProductEntryModal = ({
     return classifyDataset(rows, refCache);
   }, [rows, refCache]);
 
-  // Logical field order for seamless Tab/Enter auto-advance navigation matching 27-column template sequence
+  // Logical field order for seamless Tab/Enter auto-advance navigation matching template sequence
     const FIELD_ORDER = useMemo(() => [
     'barcode',
     'brand',
@@ -1837,7 +1837,6 @@ export const BulkProductEntryModal = ({
     'name',
     'category',
     'subcategory',
-    'productType',
     'shade',
     'size',
     'mrp',

@@ -34,8 +34,7 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
       'Lakmé Forever Matte Liquid Lip Colour',                                   // 5. PRODUCT_NAME
       'Makeup',                                                                  // 6. CATEGORY
       'Lips',                                                                    // 7. SUBCATEGORY
-      'Liquid Lipstick',                                                         // 8. SELECT_CATEGORY
-      '01 Red Carpet',                                                           // 9. SHADE_NAME
+      '01 Red Carpet',                                                           // 8. SHADE_NAME
       '#C71585',                                                                 // 10. HEX & SWATCH
       '5.6 ml',                                                                  // 11. SIZE_OR_WEIGHT
       399,                                                                       // 12. MRP
@@ -55,8 +54,7 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
       'Lakmé Forever Matte Liquid Lip Colour',                                   // 5. PRODUCT_NAME
       'Makeup',                                                                  // 6. CATEGORY
       'Lips',                                                                    // 7. SUBCATEGORY
-      'Liquid Lipstick',                                                         // 8. SELECT_CATEGORY
-      '02 Nude Myth',                                                            // 9. SHADE_NAME
+      '02 Nude Myth',                                                            // 8. SHADE_NAME
       '#D2691E',                                                                 // 10. HEX & SWATCH
       '5.6 ml',                                                                  // 11. SIZE_OR_WEIGHT
       399,                                                                       // 12. MRP
@@ -76,8 +74,7 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
       "L'Oréal Paris Revitalift 1.5% Hyaluronic Acid Serum",                     // 5. PRODUCT_NAME
       'Skincare',                                                                // 6. CATEGORY
       'Face Serums',                                                             // 7. SUBCATEGORY
-      'Face Serum',                                                              // 8. SELECT_CATEGORY
-      '',                                                                        // 9. SHADE_NAME
+      '',                                                                        // 8. SHADE_NAME
       '',                                                                        // 10. HEX & SWATCH
       '30 ml',                                                                   // 11. SIZE_OR_WEIGHT
       999,                                                                       // 12. MRP
@@ -97,32 +94,31 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
   const wsTemplate = XLSX.utils.aoa_to_sheet(wsTemplateData);
 
   wsTemplate['!cols'] = [
-    { wch: 18 }, // BARCODE
-    { wch: 35 }, // IMAGE
-    { wch: 18 }, // PARENT_SKU
-    { wch: 38 }, // PRODUCT_NAME
-    { wch: 16 }, // CATEGORY
-    { wch: 20 }, // SUBCATEGORY
-    { wch: 20 }, // BRAND
-    { wch: 18 }, // VARIANT_SKU
-    { wch: 18 }, // SHADE_NAME
-    { wch: 16 }, // HEX & SWATCH
-    { wch: 16 }, // SIZE_OR_WEIGHT
-    { wch: 12 }, // MRP
-    { wch: 20 }, // GENERAL_USER_PRICE
-    { wch: 16 }, // SALON_PRICE
-    { wch: 22 }, // MAKEUP_ARTIST_PRICE
-    { wch: 18 }, // BEAUTICIAN_PRICE
-    { wch: 16 }, // PRODUCT_ACTIVE
-    { wch: 14 }  // STATUS
+    { wch: 18 }, // 1. BARCODE
+    { wch: 20 }, // 2. BRAND
+    { wch: 35 }, // 3. IMAGE
+    { wch: 18 }, // 4. SKU_NUMBER
+    { wch: 38 }, // 5. PRODUCT_NAME
+    { wch: 16 }, // 6. CATEGORY
+    { wch: 20 }, // 7. SUBCATEGORY
+    { wch: 18 }, // 8. SHADE_NAME
+    { wch: 16 }, // 9. HEX & SWATCH
+    { wch: 16 }, // 10. SIZE_OR_WEIGHT
+    { wch: 12 }, // 11. MRP
+    { wch: 20 }, // 12. GENERAL_USER_PRICE
+    { wch: 16 }, // 13. SALON_PRICE
+    { wch: 22 }, // 14. MAKEUP_ARTIST_PRICE
+    { wch: 18 }, // 15. BEAUTICIAN_PRICE
+    { wch: 16 }, // 16. PRODUCT_ACTIVE
+    { wch: 14 }  // 17. STATUS
   ];
 
   // Freeze top header row
   wsTemplate['!views'] = [{ state: 'frozen', ySplit: 1 }];
   wsTemplate['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
 
-  // Auto-filter across all 18 headers
-  wsTemplate['!autofilter'] = { ref: `A1:R${sampleRows.length + 1}` };
+  // Auto-filter across all 17 headers
+  wsTemplate['!autofilter'] = { ref: `A1:Q${sampleRows.length + 1}` };
 
   // ---------------------------------------------------------------------------
   // SHEET 2: Field Guide (Notes & Formatting Rules - Ignored during import)
@@ -132,7 +128,7 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
     ['NOTE: This sheet is a reference guide only and is completely ignored by the import engine.'],
     ['All product data must be placed in the "Bulk Product Upload" sheet.'],
     [''],
-    ['18 FIXED REQUIRED COLUMNS REFERENCE (IN EXACT SEQUENCE):'],
+    ['17 FIXED REQUIRED COLUMNS REFERENCE (IN EXACT SEQUENCE):'],
     ['Column Header', 'Required?', 'Sample Value', 'Description & Rules'],
     ['BARCODE', 'Optional', '8901030383811', 'EAN-13, UPC, or custom barcode for scanner checkout. Format as text.'],
     ['BRAND', 'REQUIRED', 'Lakmé', 'Brand name matching your catalog (Brand placed before Image).'],
@@ -141,7 +137,6 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
     ['PRODUCT_NAME', 'REQUIRED', 'Lakmé Forever Matte Liquid Lip Colour', 'Full display name of the product.'],
     ['CATEGORY', 'REQUIRED', 'Makeup', 'Master product category (e.g. Makeup, Skincare, Hair Care).'],
     ['SUBCATEGORY', 'Optional', 'Lips', 'Subcategory under category (e.g. Lips, Eyes, Face).'],
-    ['SELECT_CATEGORY', 'Optional', 'Liquid Lipstick', 'Level 3 specific product type under the subcategory.'],
     ['SHADE_NAME', 'Optional', '01 Red Carpet', 'Color name for shade variants (mandatory for color variants).'],
     ['HEX & SWATCH', 'Optional', '#C71585', 'Hex color code for shade swatch circle (e.g. #C71585 or #D2691E).'],
     ['SIZE_OR_WEIGHT', 'Optional', '5.6 ml', 'Volume or net weight (e.g. 5.6 ml, 30 ml, 50 g).'],
@@ -203,7 +198,6 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
     'Category',
     'Subcategory',
     'Brand',
-    'Product_Type',
     'Finish',
     'Skin_Type',
     'Coverage',
@@ -216,7 +210,6 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
       liveCategories[i] || '',
       liveSubcategories[i] || '',
       liveBrands[i] || '',
-      productTypes[i] || '',
       finishes[i] || '',
       skinTypes[i] || '',
       coverages[i] || '',
@@ -293,7 +286,6 @@ export const exportStagedProductsToExcel = (stagedRows = [], options = {}) => {
       'PRODUCT_NAME': r.name || r.productName || r.product_name || '',
       'CATEGORY': r.category || '',
       'SUBCATEGORY': r.subcategory || '',
-      'SELECT_CATEGORY': r.productType || '',
       'SHADE_NAME': r.shade || r.shadeName || '',
       'HEX & SWATCH': r.hexColor || '',
       'SIZE_OR_WEIGHT': r.size || r.sizeOrWeight || '',
@@ -309,24 +301,23 @@ export const exportStagedProductsToExcel = (stagedRows = [], options = {}) => {
 
   const worksheet = XLSX.utils.json_to_sheet(exportData, { header: REQUIRED_HEADERS });
   worksheet['!cols'] = [
-    { wch: 18 }, // BARCODE
-    { wch: 35 }, // IMAGE
-    { wch: 18 }, // PARENT_SKU
-    { wch: 38 }, // PRODUCT_NAME
-    { wch: 16 }, // CATEGORY
-    { wch: 20 }, // SUBCATEGORY
-    { wch: 20 }, // BRAND
-    { wch: 18 }, // VARIANT_SKU
-    { wch: 18 }, // SHADE_NAME
-    { wch: 16 }, // HEX & SWATCH
-    { wch: 16 }, // SIZE_OR_WEIGHT
-    { wch: 12 }, // MRP
-    { wch: 20 }, // GENERAL_USER_PRICE
-    { wch: 16 }, // SALON_PRICE
-    { wch: 22 }, // MAKEUP_ARTIST_PRICE
-    { wch: 18 }, // BEAUTICIAN_PRICE
-    { wch: 16 }, // PRODUCT_ACTIVE
-    { wch: 14 }  // STATUS
+    { wch: 18 }, // 1. BARCODE
+    { wch: 20 }, // 2. BRAND
+    { wch: 35 }, // 3. IMAGE
+    { wch: 18 }, // 4. SKU_NUMBER
+    { wch: 38 }, // 5. PRODUCT_NAME
+    { wch: 16 }, // 6. CATEGORY
+    { wch: 20 }, // 7. SUBCATEGORY
+    { wch: 18 }, // 8. SHADE_NAME
+    { wch: 16 }, // 9. HEX & SWATCH
+    { wch: 16 }, // 10. SIZE_OR_WEIGHT
+    { wch: 12 }, // 11. MRP
+    { wch: 20 }, // 12. GENERAL_USER_PRICE
+    { wch: 16 }, // 13. SALON_PRICE
+    { wch: 22 }, // 14. MAKEUP_ARTIST_PRICE
+    { wch: 18 }, // 15. BEAUTICIAN_PRICE
+    { wch: 16 }, // 16. PRODUCT_ACTIVE
+    { wch: 14 }  // 17. STATUS
   ];
 
   const workbook = XLSX.utils.book_new();
