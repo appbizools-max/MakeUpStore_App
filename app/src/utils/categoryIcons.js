@@ -194,9 +194,6 @@ export const getCategoryFA5Icon = (categoryName) => {
   return DEFAULT_ICON;
 };
 
-// Re-export getSafeImageSource for components importing image helpers
-export { getSafeImageSource } from './imageUtils';
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SUBCATEGORY ICON MAP
 // ─────────────────────────────────────────────────────────────────────────────
