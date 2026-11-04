@@ -16,6 +16,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import HexColorPicker from '../common/HexColorPicker';
+import { useAdmin } from '../../context/AdminContext';
 import {
   ATTRIBUTE_GROUPS,
   loadAttributeMasterFromDb,
@@ -25,6 +26,17 @@ import {
 } from '../../utils/attributeMasterData';
 
 export default function AttributesMasterPage({ categories = [] }) {
+  const adminCtx = useAdmin?.() || {};
+  // Master Data Control: Only authorized administrators can add, edit, or delete attributes & values.
+  // Employees can view and select existing attributes, but cannot mutate attribute master data.
+  const isEmployee = adminCtx?.currentAuthUser?.role === 'employee' || adminCtx?.currentAuthUser?.role === 'staff';
+  const isAdmin = Boolean(
+    !isEmployee && (
+      !adminCtx?.currentAuthUser?.role ||
+      adminCtx?.currentAuthUser?.role === 'admin' ||
+      adminCtx?.currentAuthUser?.role === 'superadmin'
+    )
+  );
   const [activeSubTab, setActiveSubTab] = useState('master'); // 'master' | 'category_mapping'
   const [attributes, setAttributes] = useState([]);
   const [categoryMap, setCategoryMap] = useState({});
@@ -329,14 +341,21 @@ export default function AttributesMasterPage({ categories = [] }) {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleOpenAddAttribute}
-              className="px-4 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
-            >
-              <Plus size={14} />
-              <span>Add Attribute</span>
-            </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={handleOpenAddAttribute}
+                className="px-4 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <Plus size={14} />
+                <span>Add Attribute</span>
+              </button>
+            ) : (
+              <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                <span>View & Select Only • Admin manages attributes</span>
+              </span>
+            )}
           </div>
 
           {/* Attributes Master Table */}
@@ -381,8 +400,9 @@ export default function AttributesMasterPage({ categories = [] }) {
                       <td className="py-3 px-3 text-center">
                         <button
                           type="button"
-                          onClick={() => handleToggleAttributeStatus(attr.id)}
-                          className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold cursor-pointer transition-colors ${
+                          onClick={() => { if (isAdmin) handleToggleAttributeStatus(attr.id); }}
+                          disabled={!isAdmin}
+                          className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold transition-colors ${isAdmin ? 'cursor-pointer' : 'cursor-default opacity-80'} ${
                             attr.status === 'active'
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : 'bg-gray-100 text-gray-500 border border-gray-200'
@@ -397,26 +417,30 @@ export default function AttributesMasterPage({ categories = [] }) {
                             type="button"
                             onClick={() => setManagingValuesAttr(attr)}
                             className="px-2.5 py-1 rounded-xl bg-white hover:bg-[#FDF2F8] text-black font-bold text-[11px] cursor-pointer shadow-2xs"
-                            title="Manage Values"
+                            title={isAdmin ? "Manage Values" : "View Values"}
                           >
-                            Manage Values
+                            {isAdmin ? 'Manage Values' : 'View Values'}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditAttribute(attr)}
-                            className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-600 cursor-pointer"
-                            title="Edit Attribute"
-                          >
-                            <Edit2 size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteAttribute(attr.id)}
-                            className="p-1.5 rounded-xl hover:bg-rose-50 text-gray-400 hover:text-rose-600 cursor-pointer"
-                            title="Delete Attribute"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          {isAdmin && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditAttribute(attr)}
+                                className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-600 cursor-pointer"
+                                title="Edit Attribute"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAttribute(attr.id)}
+                                className="p-1.5 rounded-xl hover:bg-rose-50 text-gray-400 hover:text-rose-600 cursor-pointer"
+                                title="Delete Attribute"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -468,8 +492,9 @@ export default function AttributesMasterPage({ categories = [] }) {
                         <button
                           key={attr.id}
                           type="button"
-                          onClick={() => handleToggleCategoryAttribute(catName, attr.name)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                          onClick={() => { if (isAdmin) handleToggleCategoryAttribute(catName, attr.name); }}
+                          disabled={!isAdmin}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all border ${isAdmin ? 'cursor-pointer' : 'cursor-default'} ${
                             isMapped
                               ? 'bg-white text-black border-[#F8B4CB] shadow-2xs font-extrabold'
                               : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
@@ -643,61 +668,69 @@ export default function AttributesMasterPage({ categories = [] }) {
                         )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteValueFromAttr(val.id || valName)}
-                        className="text-gray-400 hover:text-rose-600 cursor-pointer p-1"
-                        title="Delete Value"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteValueFromAttr(val.id || valName)}
+                          className="text-gray-400 hover:text-rose-600 cursor-pointer p-1"
+                          title="Delete Value"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   );
                 })
               )}
             </div>
 
-            {/* Add New Value Form */}
-            <div className="pt-3 border-t border-gray-100 space-y-2">
-              <span className="text-[11px] font-extrabold text-gray-700 uppercase block">
-                + Add Value to {managingValuesAttr.name}
-              </span>
+            {/* Add New Value Form (Admin Only) */}
+            {isAdmin ? (
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                <span className="text-[11px] font-extrabold text-gray-700 uppercase block">
+                  + Add Value to {managingValuesAttr.name}
+                </span>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Value name (e.g. Ruby Red, Matte, 100 ml)..."
-                  value={newValueDraft.name}
-                  onChange={(e) => setNewValueDraft({ ...newValueDraft, name: e.target.value })}
-                  className="flex-1 p-2 rounded-xl border border-gray-200 text-xs font-bold outline-none focus:border-[#C2477A]"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Value name (e.g. Ruby Red, Matte, 100 ml)..."
+                    value={newValueDraft.name}
+                    onChange={(e) => setNewValueDraft({ ...newValueDraft, name: e.target.value })}
+                    className="flex-1 p-2 rounded-xl border border-gray-200 text-xs font-bold outline-none focus:border-[#C2477A]"
+                  />
 
-                {managingValuesAttr.inputType === 'color_swatch' && (
-                  <div className="w-36">
-                    <HexColorPicker
-                      value={newValueDraft.hexColor || '#C2477A'}
-                      onChange={(hex, autoName) => {
-                        setNewValueDraft({
-                          ...newValueDraft,
-                          hexColor: hex,
-                          name: autoName || newValueDraft.name
-                        });
-                      }}
-                      align="right"
-                    />
-                  </div>
-                )}
+                  {managingValuesAttr.inputType === 'color_swatch' && (
+                    <div className="w-36">
+                      <HexColorPicker
+                        value={newValueDraft.hexColor || '#C2477A'}
+                        onChange={(hex, autoName) => {
+                          setNewValueDraft({
+                            ...newValueDraft,
+                            hexColor: hex,
+                            name: autoName || newValueDraft.name
+                          });
+                        }}
+                        align="right"
+                      />
+                    </div>
+                  )}
 
-                <button
-                  type="button"
-                  onClick={handleAddValueToAttr}
-                  disabled={!newValueDraft.name.trim()}
-                  className="px-4 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white text-xs font-bold transition-all disabled:opacity-40 cursor-pointer shadow-2xs"
-                >
-                  Add
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleAddValueToAttr}
+                    disabled={!newValueDraft.name.trim()}
+                    className="px-4 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white text-xs font-bold transition-all disabled:opacity-40 cursor-pointer shadow-2xs"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="pt-2 text-center text-[11px] text-gray-400 font-medium">
+                Configured attribute values are managed exclusively by Administrators.
+              </div>
+            )}
 
             <div className="pt-2 text-right">
               <button

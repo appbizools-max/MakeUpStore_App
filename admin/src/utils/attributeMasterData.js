@@ -1124,6 +1124,15 @@ export async function loadAttributeMasterFromDb() {
  */
 export async function saveAttributeMasterToDb(attributesList) {
   try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const session = localStorage.getItem('salbeau_auth_session');
+      if (session) {
+        const parsed = JSON.parse(session);
+        if (parsed?.role === 'employee' || parsed?.role === 'staff') {
+          throw new Error("Master Data Restriction: Employees do not have permission to modify attribute master data.");
+        }
+      }
+    }
     localStorage.setItem(ATTR_MASTER_STORAGE_KEY, JSON.stringify(attributesList));
     const payload = {
       id: 'app_attribute_master_config',
@@ -1287,6 +1296,15 @@ export function resolveCategoryAttributes(category = '', subcategory = '') {
 
 export async function saveCategoryAttributeMapToDb(categoryMap) {
   try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const session = localStorage.getItem('salbeau_auth_session');
+      if (session) {
+        const parsed = JSON.parse(session);
+        if (parsed?.role === 'employee' || parsed?.role === 'staff') {
+          throw new Error("Master Data Restriction: Employees do not have permission to modify category attribute mappings.");
+        }
+      }
+    }
     localStorage.setItem(CAT_ATTR_STORAGE_KEY, JSON.stringify(categoryMap));
     const payload = {
       id: 'app_category_attributes_config',

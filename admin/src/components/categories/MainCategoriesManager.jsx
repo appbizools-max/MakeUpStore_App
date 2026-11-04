@@ -51,14 +51,15 @@ export default function MainCategoriesManager({
   onNavigateToProducts
 }) {
   const adminCtx = useAdmin?.() || {};
-  // Admins and Employees have full authorization to add, edit, update, delete categories, subcategories & images
+  // Master Data Control: Only authorized administrators can add, edit, or delete categories & subcategories.
+  // Employees can view and select existing categories, but cannot mutate master hierarchy.
+  const isEmployee = adminCtx?.currentAuthUser?.role === 'employee' || adminCtx?.currentAuthUser?.role === 'staff';
   const isAdmin = Boolean(
-    !adminCtx?.currentAuthUser?.role ||
-    adminCtx?.currentAuthUser?.role === 'admin' ||
-    adminCtx?.currentAuthUser?.role === 'employee' ||
-    adminCtx?.currentAuthUser?.role === 'manager' ||
-    adminCtx?.currentAuthUser?.role === 'superadmin' ||
-    adminCtx?.currentAuthUser?.role !== 'customer'
+    !isEmployee && (
+      !adminCtx?.currentAuthUser?.role ||
+      adminCtx?.currentAuthUser?.role === 'admin' ||
+      adminCtx?.currentAuthUser?.role === 'superadmin'
+    )
   );
 
   // Core Data States from Supabase
@@ -2085,27 +2086,36 @@ export default function MainCategoriesManager({
                 <span>Export Hierarchy</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setImportScope('all');
-                  setIsImportModalOpen(true);
-                }}
-                title="Import category hierarchy from Excel (.xlsx)"
-                className="bg-white hover:bg-pink-50 text-[#C2477A] border border-pink-300 hover:border-[#C2477A] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              >
-                <Upload size={15} className="text-[#C2477A]" />
-                <span>Import Excel</span>
-              </button>
+              {isAdmin ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportScope('all');
+                      setIsImportModalOpen(true);
+                    }}
+                    title="Import category hierarchy from Excel (.xlsx)"
+                    className="bg-white hover:bg-pink-50 text-[#C2477A] border border-pink-300 hover:border-[#C2477A] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                  >
+                    <Upload size={15} className="text-[#C2477A]" />
+                    <span>Import Excel</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={openAddCategoryModal}
-                className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              >
-                <PlusCircle size={16} />
-                <span>+ Add Main Category</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={openAddCategoryModal}
+                    className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                  >
+                    <PlusCircle size={16} />
+                    <span>+ Add Main Category</span>
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                  <AlertCircle size={15} className="text-amber-600 shrink-0" />
+                  <span>View Only • Admin required to add categories</span>
+                </span>
+              )}
             </div>
           </div>
 
@@ -2416,18 +2426,20 @@ export default function MainCategoriesManager({
                 <span>Export Subcategories</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setImportScope('subcategories');
-                  setIsImportModalOpen(true);
-                }}
-                title={`Import subcategories under ${selectedCategory?.name} from Excel`}
-                className="bg-white hover:bg-pink-50 text-[#C2477A] border border-pink-300 hover:border-[#C2477A] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              >
-                <Upload size={15} className="text-[#C2477A]" />
-                <span>Import Excel</span>
-              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportScope('subcategories');
+                    setIsImportModalOpen(true);
+                  }}
+                  title={`Import subcategories under ${selectedCategory?.name} from Excel`}
+                  className="bg-white hover:bg-pink-50 text-[#C2477A] border border-pink-300 hover:border-[#C2477A] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                >
+                  <Upload size={15} className="text-[#C2477A]" />
+                  <span>Import Excel</span>
+                </button>
+              )}
 
               {isAdmin ? (
                 <button

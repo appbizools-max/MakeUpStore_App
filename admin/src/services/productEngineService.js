@@ -1246,15 +1246,8 @@ export const chunkedBulkSave = async (products, options = {}) => {
           item.brand_name = matched.name;
           item.brand_id = matched.id;
         } else {
-          try {
-            const bRes = await findOrCreateBrand(bName, allBrandsList, supabase);
-            if (bRes && bRes.brand) {
-              brandLookupCache.set(normalizeBrandKey(bName), bRes.brand);
-              allBrandsList.push(bRes.brand);
-              item.brand_name = bRes.brand.name;
-              item.brand_id = bRes.brand.id;
-            }
-          } catch (_) {}
+          // Master Data Rule: Do not automatically create new brands during bulk import or product saving.
+          throw new Error(`Master Data Restriction: Brand "${bName}" does not exist in Brand Master. Only authorized administrators can create new brands.`);
         }
       }
     }

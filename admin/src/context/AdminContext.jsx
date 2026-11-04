@@ -1258,18 +1258,9 @@ export const AdminProvider = ({ children }) => {
   };
 
   const addBrand = async (newBrand, isDirectAdminWrite = false) => {
-    // If current actor is an employee without direct publish permission, stage operation for Admin approval
-    if (currentAuthUser?.role === 'employee' && !isDirectAdminWrite) {
-      const staged = await stageEmployeeOperation({
-        operationType: 'CREATE_BRAND',
-        module: 'brands',
-        entityType: 'brand',
-        entityId: newBrand.id || ('b_' + Date.now()),
-        recordTitle: newBrand.name || 'New Brand Submission',
-        oldData: null,
-        newData: newBrand
-      });
-      return { success: true, staged: true, message: 'Brand submitted to Approval Center for review.', operation: staged.operation };
+    // Master Data Control: Employees strictly cannot create new brands.
+    if (currentAuthUser?.role === 'employee' || currentAuthUser?.role === 'staff') {
+      throw new Error("Master Data Restriction: Employees do not have permission to create new brands. Please select an existing brand from Brand Master.");
     }
 
     const dbClient = supabaseAdmin || supabase;
@@ -1324,6 +1315,10 @@ export const AdminProvider = ({ children }) => {
   };
 
   const updateBrand = async (brandId, updatedFields) => {
+    // Master Data Control: Employees strictly cannot modify brands.
+    if (currentAuthUser?.role === 'employee' || currentAuthUser?.role === 'staff') {
+      throw new Error("Master Data Restriction: Employees do not have permission to edit Brand Master records.");
+    }
     const isEnabled = updatedFields.enabled !== undefined
       ? (updatedFields.enabled !== false && updatedFields.enabled !== 'false' && updatedFields.enabled !== 0)
       : undefined;
@@ -1440,6 +1435,10 @@ export const AdminProvider = ({ children }) => {
   };
 
   const deleteBrand = async (brandId) => {
+    // Master Data Control: Employees strictly cannot delete brands.
+    if (currentAuthUser?.role === 'employee' || currentAuthUser?.role === 'staff') {
+      throw new Error("Master Data Restriction: Employees do not have permission to delete Brand Master records.");
+    }
     const brand = brands.find(b => b.id === brandId);
     if (!brand) return { success: false, message: 'Brand not found.' };
 
@@ -3210,6 +3209,10 @@ export const AdminProvider = ({ children }) => {
   };
 
   const addCategory = async (newCat) => {
+    // Master Data Control: Employees strictly cannot add categories.
+    if (currentAuthUser?.role === 'employee' || currentAuthUser?.role === 'staff') {
+      throw new Error("Master Data Restriction: Employees do not have permission to add new categories. Please select an existing category.");
+    }
     const newId = 'cat_' + Date.now();
     let catImage = newCat.image || newCat.imageUrl || '';
     if (catImage && (catImage.startsWith('data:') || catImage instanceof Blob)) {
@@ -3251,6 +3254,10 @@ export const AdminProvider = ({ children }) => {
   };
 
   const deleteCategory = async (categoryId) => {
+    // Master Data Control: Employees strictly cannot delete categories.
+    if (currentAuthUser?.role === 'employee' || currentAuthUser?.role === 'staff') {
+      throw new Error("Master Data Restriction: Employees do not have permission to delete categories.");
+    }
     const updatedList = categories.filter(c => c.id !== categoryId);
     setCategories(updatedList);
     try {
@@ -3295,6 +3302,10 @@ export const AdminProvider = ({ children }) => {
   };
 
   const updateCategory = async (categoryId, updatedFields) => {
+    // Master Data Control: Employees strictly cannot modify categories.
+    if (currentAuthUser?.role === 'employee' || currentAuthUser?.role === 'staff') {
+      throw new Error("Master Data Restriction: Employees do not have permission to edit categories.");
+    }
     let finalFields = { ...updatedFields };
     let catImage = updatedFields.image !== undefined ? updatedFields.image : updatedFields.imageUrl;
     if (catImage && (catImage.startsWith('data:') || catImage instanceof Blob)) {

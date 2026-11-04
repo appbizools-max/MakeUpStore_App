@@ -1097,14 +1097,15 @@ export const BulkProductEntryModal = ({
   const [customVariantTypes, setCustomVariantTypes] = useState([]);
 
   const [selectCategoriesMap, setSelectCategoriesMap] = useState({});
-  // Admins and Employees have full authorization to add, edit, update, delete products & images
+  // Master Data Control: Only authorized administrators can add, edit, or delete master data.
+  // Employees can view and select existing master data, but cannot create or mutate brands, categories, subcategories, or attributes.
+  const isEmployee = adminCtx?.currentAuthUser?.role === 'employee' || adminCtx?.currentAuthUser?.role === 'staff';
   const isAdmin = Boolean(
-    !adminCtx?.currentAuthUser?.role ||
-    adminCtx?.currentAuthUser?.role === 'admin' ||
-    adminCtx?.currentAuthUser?.role === 'employee' ||
-    adminCtx?.currentAuthUser?.role === 'manager' ||
-    adminCtx?.currentAuthUser?.role === 'superadmin' ||
-    adminCtx?.currentAuthUser?.role !== 'customer'
+    !isEmployee && (
+      !adminCtx?.currentAuthUser?.role ||
+      adminCtx?.currentAuthUser?.role === 'admin' ||
+      adminCtx?.currentAuthUser?.role === 'superadmin'
+    )
   );
 
   // Master hierarchy fetched from Supabase (subcategories + variant types per category)
@@ -1602,20 +1603,25 @@ export const BulkProductEntryModal = ({
           fieldErrors.mrp = 'MRP must be > 0';
         }
 
-        // 2. Master Data Validation
+        // 2. Centralized Master Data Validation (Strict Database-backed Verification)
         if (category && availableCategories.length > 0) {
           const matchedCategory = findNormalizedMatch(availableCategories, category);
           if (!matchedCategory) {
-            errors.push(`Category "${category}" not found in Master Categories`);
+            errors.push(`Row ${idx + 1} (Column CATEGORY): Category "${category}" not found in Master Categories`);
             fieldErrors.category = 'Category not in Master Data';
+          } else {
+            row.category = matchedCategory;
           }
         }
 
         if (category && subcategory) {
           const allowedSubcategories = getSubcategoriesForCategory(category);
-          if (allowedSubcategories.length > 0 && !allowedSubcategories.some(s => normalizeText(s) === normalizeText(subcategory))) {
-            warnings.push(`Subcategory "${subcategory}" is not in Master list for ${category}`);
-            fieldErrors.subcategory = 'Not in Master list';
+          const matchedSubcategory = allowedSubcategories.find(s => normalizeText(s) === normalizeText(subcategory));
+          if (allowedSubcategories.length > 0 && !matchedSubcategory) {
+            errors.push(`Row ${idx + 1} (Column SUBCATEGORY): "${subcategory}" is not in Master list for category "${category}"`);
+            fieldErrors.subcategory = 'Subcategory not in Master Data';
+          } else if (matchedSubcategory) {
+            row.subcategory = matchedSubcategory;
           }
         }
 
@@ -1630,8 +1636,8 @@ export const BulkProductEntryModal = ({
             row.brandId = brandMatch.brand.id;
             row.brand_name = brandMatch.brand.name;
             row.brand_id = brandMatch.brand.id;
-          } else if (!availableBrands.some(b => normalizeBrandKey(b) === normalizeBrandKey(brandClean))) {
-            errors.push(`Unknown brand "${brand}". Please select a verified brand from Brand Master.`);
+          } else {
+            errors.push(`Row ${idx + 1} (Column BRAND): Unknown brand "${brand}". Please select a verified brand from Brand Master.`);
             fieldErrors.brand = 'Brand not in Brand Master';
           }
         }

@@ -124,14 +124,15 @@ export default function AddNewProductPage({
     currentAuthUser
   } = useAdmin();
 
-  // Admins and Employees have full authorization to add, edit, update, delete products, brands & images
+  // Master Data Control: Only administrators can create or mutate Master Data.
+  // Employees can view and select existing brands, categories, subcategories, and attributes.
+  const isEmployee = currentAuthUser?.role === 'employee' || currentAuthUser?.role === 'staff';
   const isAdmin = Boolean(
-    !currentAuthUser?.role ||
-    currentAuthUser?.role === 'admin' ||
-    currentAuthUser?.role === 'employee' ||
-    currentAuthUser?.role === 'manager' ||
-    currentAuthUser?.role === 'superadmin' ||
-    currentAuthUser?.role !== 'customer'
+    !isEmployee && (
+      !currentAuthUser?.role ||
+      currentAuthUser?.role === 'admin' ||
+      currentAuthUser?.role === 'superadmin'
+    )
   );
 
   const [isInlineAddBrandOpen, setIsInlineAddBrandOpen] = useState(false);
@@ -1795,7 +1796,7 @@ export default function AddNewProductPage({
                         <span>Add Brand</span>
                       </button>
                     ) : (
-                      <span className="text-[10px] text-gray-400 font-semibold">(Admin Only)</span>
+                      <span className="text-[10.5px] text-gray-400 font-semibold">(Master Brand Only)</span>
                     )}
                   </div>
                   <SearchableSelect
@@ -2605,47 +2606,61 @@ export default function AddNewProductPage({
                               </button>
                             </div>
 
-                            {attr.type === 'dropdown' ? (
-                              <div className="relative">
-                                <select
-                                  value={currentVal}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      categoryAttributes: {
-                                        ...(prev.categoryAttributes || {}),
-                                        [attr.key]: val
-                                      }
-                                    }));
-                                  }}
-                                  className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-semibold text-gray-900 text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15 appearance-none cursor-pointer"
-                                >
-                                  <option value="">Select {attr.label}...</option>
-                                  {(attr.options || []).map(opt => (
-                                    <option key={opt} value={opt}>{opt}</option>
-                                  ))}
-                                </select>
-                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                              </div>
-                            ) : (
-                              <input
-                                type="text"
-                                placeholder={attr.placeholder || `Enter ${attr.label}...`}
-                                value={currentVal}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    categoryAttributes: {
-                                      ...(prev.categoryAttributes || {}),
-                                      [attr.key]: val
-                                    }
-                                  }));
-                                }}
-                                className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-semibold text-gray-900 text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15"
-                              />
-                            )}
+                            {(() => {
+                              const masterDef = getMasterAttributeByName(attr.key || attr.name || attr.label);
+                              const availableOptions = (attr.options && attr.options.length > 0)
+                                ? attr.options
+                                : (masterDef?.values || []).map(v => typeof v === 'object' ? v.name : v).filter(Boolean);
+
+                              if (availableOptions.length > 0) {
+                                return (
+                                  <div className="relative">
+                                    <select
+                                      value={currentVal}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          categoryAttributes: {
+                                            ...(prev.categoryAttributes || {}),
+                                            [attr.key]: val
+                                          }
+                                        }));
+                                      }}
+                                      className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-semibold text-gray-900 text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15 appearance-none cursor-pointer"
+                                    >
+                                      <option value="">Select {attr.label}...</option>
+                                      {availableOptions.map(opt => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div className="relative">
+                                  <select
+                                    value={currentVal}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        categoryAttributes: {
+                                          ...(prev.categoryAttributes || {}),
+                                          [attr.key]: val
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-semibold text-gray-900 text-xs outline-none focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15 appearance-none cursor-pointer"
+                                  >
+                                    <option value="">Select {attr.label} (Master Configured Only)...</option>
+                                  </select>
+                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })}

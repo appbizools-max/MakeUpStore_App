@@ -99,14 +99,15 @@ export default function BrandManagementPage({
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const adminCtx = useAdmin ? useAdmin() : null;
-  // Admins and Employees have full authorization to add, edit, update, delete brands & images
+  // Master Data Control: Only authorized administrators can add, edit, or delete Brand Master data.
+  // Employees can only view and select existing brands.
+  const isEmployee = adminCtx?.currentAuthUser?.role === 'employee' || adminCtx?.currentAuthUser?.role === 'staff';
   const isAdmin = Boolean(
-    !adminCtx?.currentAuthUser?.role ||
-    adminCtx?.currentAuthUser?.role === 'admin' ||
-    adminCtx?.currentAuthUser?.role === 'employee' ||
-    adminCtx?.currentAuthUser?.role === 'manager' ||
-    adminCtx?.currentAuthUser?.role === 'superadmin' ||
-    adminCtx?.currentAuthUser?.role !== 'customer'
+    !isEmployee && (
+      !adminCtx?.currentAuthUser?.role ||
+      adminCtx?.currentAuthUser?.role === 'admin' ||
+      adminCtx?.currentAuthUser?.role === 'superadmin'
+    )
   );
 
   const showToast = useCallback((msg, type = 'success') => {
@@ -558,23 +559,32 @@ export default function BrandManagementPage({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => setIsImportModalOpen(true)}
-              className="px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <Upload size={14} />
-              <span>Import Excel</span>
-            </button>
+            {isAdmin ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Upload size={14} />
+                  <span>Import Excel</span>
+                </button>
 
-            <button
-              type="button"
-              onClick={handleOpenAddBrand}
-              className="bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95"
-            >
-              <BadgePlus size={16} />
-              <span>Add New Brand</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={handleOpenAddBrand}
+                  className="bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <BadgePlus size={16} />
+                  <span>Add New Brand</span>
+                </button>
+              </>
+            ) : (
+              <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                <span>View & Select Only • Admin manages brands</span>
+              </span>
+            )}
           </div>
         </div>
 
