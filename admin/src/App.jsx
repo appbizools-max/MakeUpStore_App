@@ -2975,7 +2975,9 @@ const AdminDashboard = () => {
           ? 'p-0 bg-[#F8FAFD] overflow-hidden flex flex-col min-h-0'
           : activeTab === 'products/new'
             ? 'p-0 bg-white'
-            : 'p-4 sm:p-6 lg:p-8 bg-white'
+            : activeTab === 'products'
+              ? 'p-3 sm:p-5 lg:p-6 bg-white'
+              : 'p-4 sm:p-6 lg:p-8 bg-white'
         }`}>
         {/* Top Header (Shown for standard dashboard tabs) */}
         {activeTab !== 'products/new' && activeTab !== 'products/bulk' && (

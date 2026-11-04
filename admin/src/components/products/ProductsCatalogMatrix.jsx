@@ -172,38 +172,38 @@ export default function ProductsCatalogMatrix({
   };
 
   return (
-    <div className="bg-white p-5 sm:p-7 rounded-3xl border border-[#F3D7DF] shadow-xs space-y-5">
+    <div className="bg-white p-4 sm:p-5 lg:p-6 rounded-3xl border border-[#F3D7DF] shadow-xs space-y-4">
       {/* 1. Header with Stats & Actions */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-pink-100/70">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3.5 border-b border-pink-100/70">
         <div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="w-8 h-8 rounded-xl bg-pink-100 text-[#C2477A] flex items-center justify-center shadow-2xs shrink-0">
-              <Package size={18} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="w-7 h-7 rounded-xl bg-pink-100 text-[#C2477A] flex items-center justify-center shadow-2xs shrink-0">
+              <Package size={16} />
             </div>
-            <h3 className="font-black text-base sm:text-lg text-gray-900 tracking-tight">
+            <h3 className="font-black text-sm sm:text-base text-gray-900 tracking-tight">
               Products Catalog Matrix
             </h3>
-            <span className="text-[10px] font-extrabold text-[#C2477A] bg-white border border-pink-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+            <span className="text-[10px] font-extrabold text-[#C2477A] bg-white border border-pink-200 px-2 py-0.5 rounded-full shadow-2xs">
               {isFiltered
                 ? `${filteredProducts.length} of ${catalogViewMode === 'variants' ? totalVariantsCount : totalFamiliesCount} ${catalogViewMode === 'variants' ? 'Variants' : 'Families'}`
                 : `${filteredProducts.length} ${catalogViewMode === 'variants' ? 'Sellable Variants' : 'Product Families'}`}
             </span>
           </div>
-          <p className="text-[11px] text-gray-500 font-medium mt-1">
+          <p className="text-[11px] text-gray-500 font-medium mt-0.5">
             Complete beauty-commerce catalog matrix showing all product details, 4-role multi-tier pricing, category attributes, variants & catalog status.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap xl:flex-nowrap shrink-0">
           {/* Segmented View Mode Toggle */}
-          <div className="flex items-center bg-white p-1 rounded-xl border border-pink-100/80 shadow-2xs">
+          <div className="flex items-center bg-white p-0.5 rounded-xl border border-pink-100/80 shadow-2xs">
             <button
               type="button"
               onClick={() => {
                 setCatalogViewMode('all');
                 setProductCurrentPage(1);
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 catalogViewMode === 'all'
                   ? 'bg-white text-[#C2477A] shadow-xs'
                   : 'text-gray-500 hover:text-gray-900'
@@ -218,28 +218,28 @@ export default function ProductsCatalogMatrix({
                 setCatalogViewMode('variants');
                 setProductCurrentPage(1);
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 catalogViewMode === 'variants'
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
                   : 'text-gray-500 hover:text-gray-900'
               }`}
               title="View all individual sellable child variants + families without DB record duplication"
             >
-              <Layers size={13} />
+              <Layers size={12} />
               <span>All Sellable Variants</span>
             </button>
           </div>
 
           {/* Action Buttons: Add Product (Primary), Bulk Add (Secondary), Expand All Details (Tertiary) */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Primary Action: + Add Product */}
             <button
               type="button"
               onClick={handleOpenAddProduct}
-              className="bg-gradient-to-r from-[#C2477A] to-[#9E2D5B] hover:from-[#9E2D5B] hover:to-[#cc0052] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              className="bg-gradient-to-r from-[#C2477A] to-[#9E2D5B] hover:from-[#9E2D5B] hover:to-[#cc0052] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               title="Add a new product with complete variants and details"
             >
-              <PlusCircle size={15} />
+              <PlusCircle size={14} />
               <span>+ Add Product</span>
             </button>
 
@@ -250,10 +250,10 @@ export default function ProductsCatalogMatrix({
                 if (handleOpenBulkAdd) handleOpenBulkAdd();
                 else if (typeof window !== 'undefined') window.location.assign('/admin/products/bulk');
               }}
-              className="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-extrabold text-xs px-3.5 py-2.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              className="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               title="Open high-speed bulk product entry console"
             >
-              <Table size={14} className="text-purple-600" />
+              <Table size={13} className="text-purple-600" />
               <span>Bulk Add</span>
             </button>
 
@@ -261,10 +261,10 @@ export default function ProductsCatalogMatrix({
             <button
               type="button"
               onClick={expandAllDetails}
-              className="bg-white hover:bg-pink-100 border border-pink-200 text-[#C2477A] font-extrabold text-xs px-3 py-2.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              className="bg-white hover:bg-pink-100 border border-pink-200 text-[#C2477A] font-extrabold text-xs px-2.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               title="Expand/collapse full details for all products on current page"
             >
-              <Eye size={14} />
+              <Eye size={13} />
               <span>{expandedDetailsProductIds.size === paginatedProducts.length && paginatedProducts.length > 0 ? 'Collapse Details' : 'Expand All Details'}</span>
             </button>
           </div>
@@ -272,7 +272,76 @@ export default function ProductsCatalogMatrix({
       </div>
 
       {/* 2. Search & Filters Bar */}
-      <div className="p-3 bg-white rounded-2xl border border-pink-100/90 flex flex-wrap items-center gap-2.5">
+      <div className="p-2.5 bg-white rounded-2xl border border-pink-100/90 flex flex-wrap items-center gap-2">
+        {/* Search Bar */}
+        <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-pink-100 shadow-2xs flex-1 min-w-[200px] focus-within:border-[#C2477A] transition-colors">
+          <Search size={14} className="text-[#C2477A] shrink-0" />
+          <input
+            type="text"
+            placeholder="Search by product name, brand, barcode, category or attributes..."
+            value={productSearch}
+            onChange={(e) => {
+              setProductSearch(e.target.value);
+              setProductCurrentPage(1);
+            }}
+            className="bg-transparent text-xs outline-none text-gray-900 placeholder-gray-400 font-medium w-full"
+          />
+          {productSearch && (
+            <button
+              type="button"
+              onClick={() => {
+                setProductSearch('');
+                setProductCurrentPage(1);
+              }}
+              className="text-gray-400 hover:text-gray-600 cursor-pointer p-0.5 rounded-full hover:bg-gray-100"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Scan Barcode Button */}
+        <button
+          type="button"
+          onClick={() => setIsCatalogScannerOpen(true)}
+          className="px-3 py-2 rounded-xl font-bold text-xs bg-gradient-to-r from-[#C2477A] to-[#9E2D5B] hover:from-[#9E2D5B] text-white shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-all active:scale-95"
+          title="Scan physical product barcode with camera"
+        >
+          <ScanBarcode size={14} />
+          <span>Scan Barcode</span>
+        </button>
+
+        {/* Brand Filter */}
+        <div className="w-[145px] sm:w-[160px] shrink-0">
+          <SearchableSelect
+            options={['All Brands', ...availableProductBrands.filter(b => b && b !== 'all')]}
+            value={productBrandFilter === 'all' ? 'All Brands' : productBrandFilter}
+            onChange={(val) => {
+              setProductBrandFilter(val === 'All Brands' ? 'all' : val);
+              setProductCurrentPage(1);
+            }}
+            placeholder="All Brands"
+            searchPlaceholder="Search brand..."
+            emptyMessage="No brands found"
+            compact={true}
+          />
+        </div>
+
+        {/* Category Filter */}
+        <div className="w-[145px] sm:w-[160px] shrink-0">
+          <SearchableSelect
+            options={['All Categories', ...availableProductCategories.filter(c => c && c !== 'all')]}
+            value={productCategoryFilter === 'all' ? 'All Categories' : productCategoryFilter}
+            onChange={(val) => {
+              setProductCategoryFilter(val === 'All Categories' ? 'all' : val);
+              setProductCurrentPage(1);
+            }}
+            placeholder="All Categories"
+            searchPlaceholder="Search category..."
+            emptyMessage="No categories found"
+            compact={true}
+          />
+        </div>
         {/* Search Bar */}
         <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100 shadow-2xs flex-1 min-w-[220px] focus-within:border-[#C2477A] transition-colors">
           <Search size={15} className="text-[#C2477A] shrink-0" />
@@ -503,17 +572,17 @@ export default function ProductsCatalogMatrix({
       <div className="hidden md:block overflow-x-auto rounded-2xl border border-pink-100 shadow-2xs custom-scrollbar bg-white">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="bg-white backdrop-blur-md text-gray-700 uppercase font-black text-[10.5px] tracking-wider border-b border-pink-200/80 sticky top-0 z-10 shadow-2xs">
-              <th className="py-3.5 px-3 text-center w-14">IMAGE</th>
-              <th className="py-3.5 px-4 text-left min-w-[280px]">PRODUCT & DETAILS</th>
-              <th className="py-3.5 px-3 text-left whitespace-nowrap">BARCODE</th>
-              <th className="py-3.5 px-3 text-left whitespace-nowrap">BRAND</th>
-              <th className="py-3.5 px-3 text-right whitespace-nowrap">ORIGINAL MRP (₹)</th>
-              <th className="py-3.5 px-3 text-right whitespace-nowrap">GENERAL USER (₹)</th>
-              <th className="py-3.5 px-3 text-right whitespace-nowrap text-[#C2477A]">SALON OWNER (₹)</th>
-              <th className="py-3.5 px-3 text-right whitespace-nowrap text-purple-700">ARTIST PRICE (₹)</th>
-              <th className="py-3.5 px-3 text-right whitespace-nowrap text-indigo-700">BEAUTICIAN (₹)</th>
-              <th className="py-3.5 px-4 text-right whitespace-nowrap">ACTIONS</th>
+            <tr className="bg-white backdrop-blur-md text-gray-700 uppercase font-black text-[10px] tracking-wide border-b border-pink-200/80 sticky top-0 z-10 shadow-2xs">
+              <th className="py-3 px-2 text-center w-12 shrink-0">IMAGE</th>
+              <th className="py-3 px-3 text-left min-w-[200px]">PRODUCT & DETAILS</th>
+              <th className="py-3 px-2 text-left whitespace-nowrap">BARCODE</th>
+              <th className="py-3 px-2 text-left whitespace-nowrap">BRAND</th>
+              <th className="py-3 px-1.5 text-right whitespace-nowrap">ORIGINAL MRP (₹)</th>
+              <th className="py-3 px-1.5 text-right whitespace-nowrap">GENERAL USER (₹)</th>
+              <th className="py-3 px-1.5 text-right whitespace-nowrap text-[#C2477A]">SALON OWNER (₹)</th>
+              <th className="py-3 px-1.5 text-right whitespace-nowrap text-purple-700">ARTIST PRICE (₹)</th>
+              <th className="py-3 px-1.5 text-right whitespace-nowrap text-indigo-700">BEAUTICIAN (₹)</th>
+              <th className="py-3 px-3 text-right whitespace-nowrap">ACTIONS</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -632,12 +701,12 @@ export default function ProductsCatalogMatrix({
                       }`}
                     >
                       {/* 1. Thumbnail Image & Gallery Indicator */}
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-2.5 px-2 text-center">
                         <div
                           onClick={() => {
                             if (pImage) setActiveImagePreview(pImage);
                           }}
-                          className="relative w-12 h-12 rounded-xl overflow-hidden bg-white border border-pink-100 flex items-center justify-center mx-auto shadow-2xs group cursor-pointer"
+                          className="relative w-10 h-10 rounded-xl overflow-hidden bg-white border border-pink-100 flex items-center justify-center mx-auto shadow-2xs group cursor-pointer"
                           title="Click to view full image"
                         >
                           {pImage ? (
@@ -650,10 +719,10 @@ export default function ProductsCatalogMatrix({
                               }}
                             />
                           ) : (
-                            <Package size={20} className="text-pink-300" />
+                            <Package size={18} className="text-pink-300" />
                           )}
                           {allImages.length > 1 && (
-                            <span className="absolute bottom-0 right-0 bg-black/70 text-white text-[8.5px] font-black px-1 rounded-tl shadow-xs">
+                            <span className="absolute bottom-0 right-0 bg-black/70 text-white text-[8px] font-black px-1 rounded-tl shadow-xs">
                               +{allImages.length - 1}
                             </span>
                           )}
@@ -661,10 +730,10 @@ export default function ProductsCatalogMatrix({
                       </td>
 
                       {/* 2. Product Title & All Metadata Badges */}
-                      <td className="py-3 px-4">
-                        <div className="space-y-1.5">
+                      <td className="py-2.5 px-3">
+                        <div className="space-y-1">
                           {/* Title & Detail Toggle */}
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start justify-between gap-1.5">
                             <div className="font-extrabold text-xs text-gray-900 flex items-center gap-1.5 flex-wrap">
                               <span
                                 onClick={() => toggleProductDetails(p.id)}
@@ -676,7 +745,7 @@ export default function ProductsCatalogMatrix({
 
                               {/* Standalone vs Variant vs Product Family badge */}
                               {p.isVariantChild ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[#C2477A] border border-pink-200 text-[10px] font-bold">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white text-[#C2477A] border border-pink-200 text-[9.5px] font-bold">
                                   {p.hexColor && (
                                     <span
                                       className="w-2.5 h-2.5 rounded-full border border-gray-300"
@@ -689,7 +758,7 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => toggleExpandProduct(p.id)}
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold border transition-all cursor-pointer ${
                                     isExpandedVariants
                                       ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-2xs'
                                       : 'bg-white text-[#C2477A] border-pink-200 hover:bg-pink-100'
@@ -697,7 +766,7 @@ export default function ProductsCatalogMatrix({
                                   title={isExpandedVariants ? 'Collapse variants' : 'Expand all child variants'}
                                 >
                                   <ChevronDown
-                                    size={11}
+                                    size={10}
                                     className={`transform transition-transform duration-200 ${
                                       isExpandedVariants ? 'rotate-180' : ''
                                     }`}
@@ -707,7 +776,7 @@ export default function ProductsCatalogMatrix({
                                   </span>
                                 </button>
                               ) : (
-                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-medium text-gray-500 bg-gray-100">
+                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-medium text-gray-500 bg-gray-100">
                                   Standalone
                                 </span>
                               )}
@@ -717,14 +786,14 @@ export default function ProductsCatalogMatrix({
                             <button
                               type="button"
                               onClick={() => toggleProductDetails(p.id)}
-                              className={`p-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                              className={`p-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
                                 isExpandedDetails
                                   ? 'bg-[#C2477A] text-white shadow-2xs'
                                   : 'text-gray-400 hover:text-[#C2477A] hover:bg-pink-50'
                               }`}
                               title={isExpandedDetails ? 'Hide details' : 'Show all details'}
                             >
-                              {isExpandedDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              {isExpandedDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                             </button>
                           </div>
 
@@ -736,7 +805,7 @@ export default function ProductsCatalogMatrix({
                           )}
 
                           {/* Primary Metadata Badges (Category, Subcategory, Variant Type, Size, Net Qty, GST) */}
-                          <div className="text-[10px] text-gray-600 font-medium flex items-center gap-1.5 flex-wrap">
+                          <div className="text-[9.5px] text-gray-600 font-medium flex items-center gap-1 flex-wrap">
                             {/* Interactive Catalog Status Toggle */}
                             {(() => {
                               const isProdActive = p.enabled !== false && (p.status || 'published').toLowerCase() === 'published';
@@ -753,7 +822,7 @@ export default function ProductsCatalogMatrix({
                                       });
                                     }
                                   }}
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold text-[9px] uppercase border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold text-[8.5px] uppercase border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${
                                     isProdActive
                                       ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
                                       : p.status === 'draft'
@@ -770,35 +839,35 @@ export default function ProductsCatalogMatrix({
 
                             {/* Category */}
                             {p.category && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white text-[#C2477A] font-bold text-[9.5px] border border-pink-100">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-white text-[#C2477A] font-bold text-[9px] border border-pink-100">
                                 {p.category.trim()}
                               </span>
                             )}
 
                             {/* Subcategory */}
                             {p.subcategory && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[9.5px] border border-slate-200">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[9px] border border-slate-200">
                                 {p.subcategory.trim()}
                               </span>
                             )}
 
                             {/* Variant Type */}
                             {p.variantType && p.variantType !== 'Standard' && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-semibold text-[9.5px] border border-purple-200">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 font-semibold text-[9px] border border-purple-200">
                                 {p.variantType.trim()}
                               </span>
                             )}
 
                             {/* Size / Net Qty */}
                             {(p.size || p.netQty) && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold text-[9.5px] border border-blue-200">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold text-[9px] border border-blue-200">
                                 {p.size || p.netQty}
                               </span>
                             )}
 
                             {/* GST % */}
                             {p.gstPercent !== undefined && p.gstPercent !== null && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 font-bold text-[9px] border border-amber-200">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 font-bold text-[8.5px] border border-amber-200">
                                 GST: {p.gstPercent}%
                               </span>
                             )}
@@ -812,7 +881,7 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => handleToggleProductShadesPanel(p)}
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9.5px] font-bold transition-all border cursor-pointer ${
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all border cursor-pointer ${
                                     editingShadeProductId === p.id
                                       ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-2xs'
                                       : 'bg-white text-[#C2477A] border-pink-200 hover:bg-pink-100'
@@ -820,14 +889,14 @@ export default function ProductsCatalogMatrix({
                                   title="Manage shade variants and role prices"
                                 >
                                   <Palette
-                                    size={10}
+                                    size={9}
                                     className={editingShadeProductId === p.id ? 'text-white' : 'text-[#C2477A]'}
                                   />
                                   <span>
                                     {shadesCount} {shadesCount === 1 ? 'Shade' : 'Shades'}
                                   </span>
                                   <ChevronDown
-                                    size={10}
+                                    size={9}
                                     className={`transform transition-transform ${
                                       editingShadeProductId === p.id ? 'rotate-180' : ''
                                     }`}
@@ -847,7 +916,7 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => handleToggleProductTiersPanel(p)}
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9.5px] font-bold transition-all border cursor-pointer ${
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all border cursor-pointer ${
                                     editingTiersProductId === p.id
                                       ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-2xs'
                                       : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
@@ -855,14 +924,14 @@ export default function ProductsCatalogMatrix({
                                   title="Configure per-product quantity discount tiers"
                                 >
                                   <BadgePercent
-                                    size={10}
+                                    size={9}
                                     className={editingTiersProductId === p.id ? 'text-white' : 'text-amber-600'}
                                   />
                                   <span>
                                     {tiersCount} {tiersCount === 1 ? 'Qty Tier' : 'Qty Tiers'}
                                   </span>
                                   <ChevronDown
-                                    size={10}
+                                    size={9}
                                     className={`transform transition-transform ${
                                       editingTiersProductId === p.id ? 'rotate-180' : ''
                                     }`}
@@ -878,7 +947,7 @@ export default function ProductsCatalogMatrix({
                               {attrEntries.slice(0, 3).map(([k, val]) => (
                                 <span
                                   key={k}
-                                  className="text-[9px] font-medium text-gray-600 bg-gray-50 px-1.5 py-0.2 rounded border border-gray-200"
+                                  className="text-[8.5px] font-medium text-gray-600 bg-gray-50 px-1.5 py-0.2 rounded border border-gray-200"
                                 >
                                   <span className="text-gray-400">{k}:</span> <span className="font-semibold text-gray-800">{String(val)}</span>
                                 </span>
@@ -887,7 +956,7 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => toggleProductDetails(p.id)}
-                                  className="text-[9px] font-bold text-[#C2477A] hover:underline cursor-pointer"
+                                  className="text-[8.5px] font-bold text-[#C2477A] hover:underline cursor-pointer"
                                 >
                                   +{attrEntries.length - 3} more specs
                                 </button>
@@ -898,18 +967,18 @@ export default function ProductsCatalogMatrix({
                       </td>
 
                       {/* 3. Barcode */}
-                      <td className="py-3 px-3 whitespace-nowrap">
+                      <td className="py-2.5 px-2 whitespace-nowrap">
                         {isEditing ? (
                           <input
                             type="text"
                             placeholder="Barcode..."
                             value={editPrices.barcode !== undefined ? editPrices.barcode : p.barcode || ''}
                             onChange={(e) => setEditPrices({ ...editPrices, barcode: e.target.value })}
-                            className="w-32 p-1.5 border border-[#C2477A] rounded-lg font-mono text-xs font-semibold text-gray-900 outline-none"
+                            className="w-28 p-1.5 border border-[#C2477A] rounded-lg font-mono text-xs font-semibold text-gray-900 outline-none"
                           />
                         ) : p.barcode ? (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 text-gray-800 font-mono text-[11px] font-bold border border-gray-200 shadow-2xs group">
-                            <Barcode size={13} className="text-[#C2477A]" />
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-50 text-gray-800 font-mono text-[10.5px] font-bold border border-gray-200 shadow-2xs group">
+                            <Barcode size={12} className="text-[#C2477A]" />
                             <span>{p.barcode}</span>
                             <button
                               type="button"
@@ -917,7 +986,7 @@ export default function ProductsCatalogMatrix({
                               className="text-gray-400 hover:text-gray-700 ml-0.5 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
                               title="Copy Barcode"
                             >
-                              {copiedKey === `barcode_${p.id}` ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                              {copiedKey === `barcode_${p.id}` ? <Check size={10} className="text-emerald-600" /> : <Copy size={10} />}
                             </button>
                           </div>
                         ) : (
@@ -926,14 +995,14 @@ export default function ProductsCatalogMatrix({
                       </td>
 
                       {/* 4. Brand */}
-                      <td className="py-3 px-3 whitespace-nowrap">
-                        <span className="font-bold text-xs text-gray-800 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
+                      <td className="py-2.5 px-2 whitespace-nowrap">
+                        <span className="font-bold text-[10.5px] text-gray-800 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-200">
                           {p.brandName || brands?.find(b => b.id === p.brandId)?.name || '—'}
                         </span>
                       </td>
 
                       {/* 6. Original MRP */}
-                      <td className="py-3 px-3 whitespace-nowrap text-right">
+                      <td className="py-2.5 px-1.5 whitespace-nowrap text-right">
                         {isEditing ? (
                           <input
                             type="number"
@@ -942,17 +1011,17 @@ export default function ProductsCatalogMatrix({
                             onChange={(e) =>
                               setEditPrices({ ...editPrices, mrp: Math.max(0, Number(e.target.value)) })
                             }
-                            className="w-20 p-1.5 border border-[#C2477A] rounded-lg font-bold text-gray-900 outline-none text-right"
+                            className="w-18 p-1 border border-[#C2477A] rounded-lg font-bold text-gray-900 outline-none text-right text-xs"
                           />
                         ) : (
-                          <span className="font-semibold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 inline-block min-w-[65px] text-right shadow-2xs">
+                          <span className="font-semibold text-gray-600 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                             ₹{p.mrp ?? 0}
                           </span>
                         )}
                       </td>
 
                       {/* 7. General User MRP */}
-                      <td className="py-3 px-3 whitespace-nowrap text-right">
+                      <td className="py-2.5 px-1.5 whitespace-nowrap text-right">
                         {isEditing ? (
                           <input
                             type="number"
@@ -964,18 +1033,18 @@ export default function ProductsCatalogMatrix({
                                 generalPrice: Math.max(0, Number(e.target.value))
                               })
                             }
-                            className="w-20 p-1.5 border border-[#C2477A] rounded-lg font-bold text-gray-900 outline-none text-right"
+                            className="w-18 p-1 border border-[#C2477A] rounded-lg font-bold text-gray-900 outline-none text-right text-xs"
                           />
                         ) : (
                           <div className="flex items-center justify-end gap-1">
-                            <span className="font-bold text-gray-900 bg-white px-2 py-1 rounded-lg border border-gray-200 inline-block min-w-[65px] text-right shadow-2xs">
+                            <span className="font-bold text-gray-900 bg-white px-1.5 py-0.5 rounded-lg border border-gray-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                               ₹
                               {p.generalPrice !== undefined && p.generalPrice !== null && p.generalPrice !== ''
                                 ? p.generalPrice
                                 : p.mrp ?? 0}
                             </span>
                             {genDisc > 0 && (
-                              <span className="text-[9.5px] font-extrabold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
+                              <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
                                 {genDisc}%
                               </span>
                             )}
@@ -984,7 +1053,7 @@ export default function ProductsCatalogMatrix({
                       </td>
 
                       {/* 8. Salon Owner Price */}
-                      <td className="py-3 px-3 whitespace-nowrap text-right">
+                      <td className="py-2.5 px-1.5 whitespace-nowrap text-right">
                         {isEditing ? (
                           <input
                             type="number"
@@ -996,18 +1065,18 @@ export default function ProductsCatalogMatrix({
                                 salonPrice: Math.max(0, Number(e.target.value))
                               })
                             }
-                            className="w-20 p-1.5 border border-[#C2477A] rounded-lg font-bold text-[#C2477A] outline-none text-right"
+                            className="w-18 p-1 border border-[#C2477A] rounded-lg font-bold text-[#C2477A] outline-none text-right text-xs"
                           />
                         ) : (
                           <div className="flex items-center justify-end gap-1">
-                            <span className="font-extrabold text-[#C2477A] bg-white px-2 py-1 rounded-lg border border-pink-200/80 inline-block min-w-[65px] text-right shadow-2xs">
+                            <span className="font-extrabold text-[#C2477A] bg-white px-1.5 py-0.5 rounded-lg border border-pink-200/80 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                               ₹
                               {p.salonPrice !== undefined && p.salonPrice !== null && p.salonPrice !== ''
                                 ? p.salonPrice
                                 : p.mrp ?? 0}
                             </span>
                             {salonDisc > 0 && (
-                              <span className="text-[9.5px] font-extrabold text-[#C2477A] bg-white px-1 py-0.5 rounded border border-pink-200">
+                              <span className="text-[9px] font-extrabold text-[#C2477A] bg-white px-1 py-0.5 rounded border border-pink-200">
                                 {salonDisc}%
                               </span>
                             )}
@@ -1016,7 +1085,7 @@ export default function ProductsCatalogMatrix({
                       </td>
 
                       {/* 9. Makeup Artist Price */}
-                      <td className="py-3 px-3 whitespace-nowrap text-right">
+                      <td className="py-2.5 px-1.5 whitespace-nowrap text-right">
                         {isEditing ? (
                           <input
                             type="number"
@@ -1028,18 +1097,18 @@ export default function ProductsCatalogMatrix({
                                 artistPrice: Math.max(0, Number(e.target.value))
                               })
                             }
-                            className="w-20 p-1.5 border border-purple-500 rounded-lg font-bold text-purple-700 outline-none text-right"
+                            className="w-18 p-1 border border-purple-500 rounded-lg font-bold text-purple-700 outline-none text-right text-xs"
                           />
                         ) : (
                           <div className="flex items-center justify-end gap-1">
-                            <span className="font-extrabold text-purple-700 bg-purple-50/70 px-2 py-1 rounded-lg border border-purple-200 inline-block min-w-[65px] text-right shadow-2xs">
+                            <span className="font-extrabold text-purple-700 bg-purple-50/70 px-1.5 py-0.5 rounded-lg border border-purple-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                               ₹
                               {p.artistPrice !== undefined && p.artistPrice !== null && p.artistPrice !== ''
                                 ? p.artistPrice
                                 : p.mrp ?? 0}
                             </span>
                             {artistDisc > 0 && (
-                              <span className="text-[9.5px] font-extrabold text-purple-700 bg-purple-50 px-1 py-0.5 rounded border border-purple-200">
+                              <span className="text-[9px] font-extrabold text-purple-700 bg-purple-50 px-1 py-0.5 rounded border border-purple-200">
                                 {artistDisc}%
                               </span>
                             )}
@@ -1048,7 +1117,7 @@ export default function ProductsCatalogMatrix({
                       </td>
 
                       {/* 10. Beautician Price */}
-                      <td className="py-3 px-3 whitespace-nowrap text-right">
+                      <td className="py-2.5 px-1.5 whitespace-nowrap text-right">
                         {isEditing ? (
                           <input
                             type="number"
@@ -1060,11 +1129,11 @@ export default function ProductsCatalogMatrix({
                                 beauticianPrice: Math.max(0, Number(e.target.value))
                               })
                             }
-                            className="w-20 p-1.5 border border-indigo-500 rounded-lg font-bold text-indigo-700 outline-none text-right"
+                            className="w-18 p-1 border border-indigo-500 rounded-lg font-bold text-indigo-700 outline-none text-right text-xs"
                           />
                         ) : (
                           <div className="flex items-center justify-end gap-1">
-                            <span className="font-extrabold text-indigo-700 bg-indigo-50/70 px-2 py-1 rounded-lg border border-indigo-200 inline-block min-w-[65px] text-right shadow-2xs">
+                            <span className="font-extrabold text-indigo-700 bg-indigo-50/70 px-1.5 py-0.5 rounded-lg border border-indigo-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                               ₹
                               {p.beauticianPrice !== undefined &&
                               p.beauticianPrice !== null &&
@@ -1073,7 +1142,7 @@ export default function ProductsCatalogMatrix({
                                 : p.mrp ?? 0}
                             </span>
                             {beauticianDisc > 0 && (
-                              <span className="text-[9.5px] font-extrabold text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded border border-indigo-200">
+                              <span className="text-[9px] font-extrabold text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded border border-indigo-200">
                                 {beauticianDisc}%
                               </span>
                             )}
@@ -1082,42 +1151,42 @@ export default function ProductsCatalogMatrix({
                       </td>
 
                       {/* 11. Actions */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
                         {isEditing ? (
                           <button
                             onClick={() => handleSavePrices(p.id)}
-                            className="bg-[#C2477A] hover:bg-[#9E2D5B] text-white px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs text-[11px] ml-auto cursor-pointer transition-all active:scale-95"
+                            className="bg-[#C2477A] hover:bg-[#9E2D5B] text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs text-[10.5px] ml-auto cursor-pointer transition-all active:scale-95"
                           >
-                            <Save size={13} />
+                            <Save size={12} />
                             <span>Save</span>
                           </button>
                         ) : (
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1">
                             {/* View Full Details Button */}
                             <button
                               type="button"
                               onClick={() => setSelectedDetailModalProduct(p)}
-                              className="bg-purple-50 hover:bg-purple-600 text-purple-700 hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-purple-200 transition-all text-[11px] cursor-pointer shadow-2xs"
+                              className="bg-purple-50 hover:bg-purple-600 text-purple-700 hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-purple-200 transition-all text-[10px] cursor-pointer shadow-2xs"
                               title="Open comprehensive product details modal"
                             >
-                              <Eye size={12} />
+                              <Eye size={11} />
                               <span>Details</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleOpenEditProduct(p)}
-                              className="bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-pink-200 transition-all text-[11px] cursor-pointer shadow-2xs"
+                              className="bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
                               title="Edit product details & barcode"
                             >
-                              <Edit size={12} />
+                              <Edit size={11} />
                               <span>Edit</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleStartEditProduct(p)}
-                              className="bg-gray-50 hover:bg-gray-100 text-gray-700 px-2 py-1.5 rounded-xl font-semibold flex items-center gap-1 border border-gray-200 transition-all text-[10.5px] cursor-pointer"
+                              className="bg-gray-50 hover:bg-gray-100 text-gray-700 px-1.5 py-1 rounded-lg font-semibold flex items-center gap-1 border border-gray-200 transition-all text-[10px] cursor-pointer"
                               title="Quick edit prices inline"
                             >
                               Prices
@@ -1126,10 +1195,10 @@ export default function ProductsCatalogMatrix({
                             <button
                               type="button"
                               onClick={() => handleOpenDeleteProduct(p)}
-                              className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-rose-200 transition-all text-[10.5px] cursor-pointer shadow-2xs"
+                              className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white p-1 rounded-lg font-bold flex items-center gap-1 border border-rose-200 transition-all text-[10px] cursor-pointer shadow-2xs"
                               title="Delete this product"
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={11} />
                             </button>
                           </div>
                         )}
@@ -1425,10 +1494,10 @@ export default function ProductsCatalogMatrix({
                             </td>
 
                             {/* 3. Barcode (Dedicated Barcode Column - single source of truth) */}
-                            <td className="py-2.5 px-3 whitespace-nowrap align-middle">
+                            <td className="py-2 px-2 whitespace-nowrap align-middle">
                               {v.barcode ? (
-                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 text-gray-800 font-mono text-[11px] font-bold border border-gray-200 shadow-2xs group">
-                                  <Barcode size={13} className="text-[#C2477A]" />
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-50 text-gray-800 font-mono text-[10.5px] font-bold border border-gray-200 shadow-2xs group">
+                                  <Barcode size={12} className="text-[#C2477A]" />
                                   <span>{v.barcode}</span>
                                   <button
                                     type="button"
@@ -1436,7 +1505,7 @@ export default function ProductsCatalogMatrix({
                                     className="text-gray-400 hover:text-gray-700 ml-0.5 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
                                     title="Copy Barcode"
                                   >
-                                    {copiedKey === `barcode_${p.id}_${v.id || vIdx}` ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                                    {copiedKey === `barcode_${p.id}_${v.id || vIdx}` ? <Check size={10} className="text-emerald-600" /> : <Copy size={10} />}
                                   </button>
                                 </div>
                               ) : (
@@ -1445,54 +1514,54 @@ export default function ProductsCatalogMatrix({
                             </td>
 
                             {/* 4. Brand */}
-                            <td className="py-2.5 px-3 whitespace-nowrap align-middle">
-                              <span className="font-bold text-xs text-gray-800 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
+                            <td className="py-2 px-2 whitespace-nowrap align-middle">
+                              <span className="font-bold text-[10.5px] text-gray-800 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-200">
                                 {p.brandName || brands?.find(b => b.id === p.brandId)?.name || '—'}
                               </span>
                             </td>
 
                             {/* 5. Original MRP */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
-                              <span className="font-semibold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 inline-block min-w-[65px] text-right shadow-2xs">
+                            <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
+                              <span className="font-semibold text-gray-600 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vOriginalMrp}
                               </span>
                             </td>
 
                             {/* 6. General MRP */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
-                              <span className="font-bold text-gray-900 bg-white px-2 py-1 rounded-lg border border-gray-200 inline-block min-w-[65px] text-right shadow-2xs">
+                            <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
+                              <span className="font-bold text-gray-900 bg-white px-1.5 py-0.5 rounded-lg border border-gray-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vGen}
                               </span>
                             </td>
 
                             {/* 7. Salon Price */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
-                              <span className="font-extrabold text-[#C2477A] bg-white px-2 py-1 rounded-lg border border-pink-200/80 inline-block min-w-[65px] text-right shadow-2xs">
+                            <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
+                              <span className="font-extrabold text-[#C2477A] bg-white px-1.5 py-0.5 rounded-lg border border-pink-200/80 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vSalon}
                               </span>
                             </td>
 
                             {/* 8. Artist Price */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
-                              <span className="font-extrabold text-purple-700 bg-purple-50/70 px-2 py-1 rounded-lg border border-purple-200 inline-block min-w-[65px] text-right shadow-2xs">
+                            <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
+                              <span className="font-extrabold text-purple-700 bg-purple-50/70 px-1.5 py-0.5 rounded-lg border border-purple-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vArtist}
                               </span>
                             </td>
 
                             {/* 9. Beautician Price */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
-                              <span className="font-extrabold text-indigo-700 bg-indigo-50/70 px-2 py-1 rounded-lg border border-indigo-200 inline-block min-w-[65px] text-right shadow-2xs">
+                            <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
+                              <span className="font-extrabold text-indigo-700 bg-indigo-50/70 px-1.5 py-0.5 rounded-lg border border-indigo-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vBeautician}
                               </span>
                             </td>
 
                             {/* 10. Actions */}
-                            <td className="py-2.5 px-4 text-right whitespace-nowrap align-middle">
-                              <div className="flex items-center justify-end gap-1.5">
+                            <td className="py-2 px-3 text-right whitespace-nowrap align-middle">
+                              <div className="flex items-center justify-end gap-1">
                                 <button
                                   type="button"
                                   onClick={() => handleToggleProductShadesPanel(p)}
-                                  className="bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-pink-200 transition-all text-[11px] cursor-pointer shadow-2xs"
+                                  className="bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
                                   title="Edit variant details"
                                 >
                                   <span>Edit Variant</span>
@@ -1500,11 +1569,11 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => handleOpenDeleteProduct(p, v)}
-                                  className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-rose-200 transition-all text-[11px] cursor-pointer shadow-2xs"
+                                  className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white p-1 rounded-lg font-bold flex items-center gap-1 border border-rose-200 transition-all text-[10px] cursor-pointer shadow-2xs"
                                   title="Delete this variant"
                                   aria-label={`Delete variant ${shadeName || vName}`}
                                 >
-                                  <Trash2 size={12} />
+                                  <Trash2 size={11} />
                                 </button>
                               </div>
                             </td>
