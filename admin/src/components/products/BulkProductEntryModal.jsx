@@ -967,6 +967,11 @@ export const BulkProductEntryModal = ({
     return buildReferenceCache(brands, categories, existingProducts);
   }, [brands, categories, existingProducts]);
 
+  // Brand Master Lookup Map for Global Case/Accent/Noise-Insensitive Matching
+  const brandLookupMap = useMemo(() => {
+    return buildBrandLookupMap(brands || []);
+  }, [brands]);
+
   // Duplicate Strategy: 'skip' (Default) vs 'update' vs 'create_variant'
   const [duplicateStrategy, setDuplicateStrategy] = useState('skip');
   const [allowBlankOverwrite, setAllowBlankOverwrite] = useState(false);
@@ -1755,7 +1760,7 @@ export const BulkProductEntryModal = ({
         status
       };
     });
-  }, [rows, existingProducts, availableCategories, availableBrands, availableVariantTypes, getSubcategoriesForCategory, calculateSellingPrices, submissionValidationErrors]);
+  }, [rows, existingProducts, availableCategories, availableBrands, availableVariantTypes, getSubcategoriesForCategory, calculateSellingPrices, submissionValidationErrors, brandLookupMap]);
 
   // Status counters for Header Badges
   const summaryCounters = useMemo(() => {
