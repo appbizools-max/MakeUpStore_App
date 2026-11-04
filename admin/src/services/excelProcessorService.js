@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 import { validateBarcodeChecksum, detectBarcodeFormat } from './barcodeLookupService.js';
 import { matchBeautyShade } from './aiColorService.js';
 import { APPROVED_BRAND_MASTER } from '../utils/brandMasterApprovedData.js';
-import { deriveBrandMnemonic } from '../utils/brandUtils.js';
+import { deriveBrandMnemonic, normalizeBrandKey, matchBrandMaster, buildBrandLookupMap } from '../utils/brandUtils.js';
 
 // Comprehensive Column Mapping Dictionary with Canonical and Legacy Synonyms
 export const COLUMN_SYNONYMS = {
@@ -224,21 +224,19 @@ export const KNOWN_BRAND_CODES = {
 
 export const generateBrandCode = (brand) => {
   if (!brand || typeof brand !== 'string') return 'GEN';
-  // Strip diacritics/accents (e.g. Lakmé -> lakme, L'Oréal -> l'oreal)
-  const normalized = brand.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  const clean = normalized.replace(/[^a-z0-9]/g, '');
-
-  // 1. Check approved Brand Master dictionary
-  const masterMatch = APPROVED_BRAND_MASTER.find(b =>
-    b.name.toLowerCase() === normalized ||
-    b.name.toLowerCase().replace(/[^a-z0-9]/g, '') === clean ||
-    b.brandCode.toLowerCase() === normalized ||
-    b.brandNumber.toLowerCase() === normalized
-  );
-  if (masterMatch && masterMatch.name) {
-    const letters = masterMatch.name.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  
+  // 1. Check approved Brand Master dictionary using case & accent insensitive engine
+  const masterMatch = matchBrandMaster(brand, APPROVED_BRAND_MASTER);
+  if (masterMatch.matched && masterMatch.brand) {
+    if (masterMatch.brand.brandCode) {
+      return masterMatch.brand.brandCode.toUpperCase();
+    }
+    const letters = (masterMatch.brand.name || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     return letters.slice(0, 3).padEnd(3, 'X');
   }
+
+  const normalized = normalizeBrandKey(brand);
+  const clean = normalized.replace(/[^a-z0-9]/g, '');
 
   if (KNOWN_BRAND_CODES[normalized]) {
     return KNOWN_BRAND_CODES[normalized];
@@ -364,7 +362,10 @@ export const normalizeRow = (r, idx, mapping, existingProducts = []) => {
   const productType = getVal('productType');
   const category = getVal('category');
   const subcategory = getVal('subcategory');
-  const brand = getVal('brand');
+  const rawBrand = getVal('brand');
+  const brandMatch = rawBrand ? matchBrandMaster(rawBrand, APPROVED_BRAND_MASTER) : { matched: false, brand: null };
+  const brand = (brandMatch.matched && brandMatch.brand) ? brandMatch.brand.name : rawBrand;
+  const brandId = (brandMatch.matched && brandMatch.brand) ? brandMatch.brand.id : null;
   const productDescription = getVal('productDescription');
   const highlights = getVal('highlights');
 
@@ -457,6 +458,10 @@ export const normalizeRow = (r, idx, mapping, existingProducts = []) => {
     category,
     subcategory,
     brand,
+    brandName: brand,
+    brand_name: brand,
+    brandId,
+    brand_id: brandId,
     productDescription,
     highlights: highlights ? highlights.split(';').map(h => h.trim()).filter(Boolean) : [],
     variantSku: resolvedVariantSku,
@@ -544,7 +549,7 @@ export const groupSheetRowsIntoProducts = (sheet, mapping, existingProducts = []
   const nameBrandToExplicitParentSku = new Map();
   normalizedRows.forEach(r => {
     if (r._rawParentSku && r.brand && r.productName) {
-      const cleanBrand = r.brand.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      const cleanBrand = normalizeBrandKey(r.brand);
       const cleanName = r.productName.toLowerCase().trim();
       const nbKey = `${cleanBrand}:::${cleanName}`;
       if (!nameBrandToExplicitParentSku.has(nbKey)) {
@@ -560,7 +565,7 @@ export const groupSheetRowsIntoProducts = (sheet, mapping, existingProducts = []
     if (relationshipConfig.mode === 'independent') {
       groupKey = `row_${r._rowIndex}`;
     } else {
-      const cleanBrand = (r.brand || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      const cleanBrand = normalizeBrandKey(r.brand || '');
       const cleanName = (r.productName || '').toLowerCase().trim();
       const nbKey = (cleanBrand && cleanName) ? `${cleanBrand}:::${cleanName}` : '';
 
@@ -620,7 +625,7 @@ export const groupSheetRowsIntoProducts = (sheet, mapping, existingProducts = []
     } else if (primaryRow.barcode && existingBarcodeMap.has(primaryRow.barcode)) {
       existingParent = existingBarcodeMap.get(primaryRow.barcode);
     } else if (primaryRow.brand && primaryRow.productName) {
-      const cleanBrand = primaryRow.brand.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      const cleanBrand = normalizeBrandKey(primaryRow.brand);
       const cleanName = primaryRow.productName.toLowerCase().trim();
       const nbKey = `${cleanBrand}:::${cleanName}`;
       if (existingNameBrandMap.has(nbKey)) {
@@ -723,7 +728,11 @@ export const groupSheetRowsIntoProducts = (sheet, mapping, existingProducts = []
       parentSku: canonicalParentSku,
       isSkuAutoGenerated: !hasExplicitParentSku,
       barcode: primaryRow.barcode || childVariants[0]?.barcode || '',
+      brand: primaryRow.brand,
       brandName: primaryRow.brand,
+      brand_name: primaryRow.brand,
+      brandId: primaryRow.brandId || null,
+      brand_id: primaryRow.brandId || null,
       category: primaryRow.category,
       subcategory: primaryRow.subcategory || '',
       productType: primaryRow.productType || '',

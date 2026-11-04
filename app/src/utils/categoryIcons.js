@@ -333,4 +333,4 @@ export const getSubcategoryFA5Icon = (subcategoryName, parentCategoryName) => {
 };
 
 // Re-export getSafeImageSource for components importing image helpers
-export { getSafeImageSource } from './imageUtils';
+export { getSafeImageSource } from './imageUtils.js';

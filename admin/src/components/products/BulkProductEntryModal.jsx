@@ -40,6 +40,7 @@ import {
   Globe
 } from 'lucide-react';
 import { ColumnManagerModal } from './ColumnManagerModal';
+import { buildBrandLookupMap, matchBrandMaster, normalizeBrandKey } from '../../utils/brandUtils';
 import InPanelImageBrowserDrawer from './InPanelImageBrowserDrawer';
 import { lookupBarcodeData, detectBarcodeFormat } from '../../services/barcodeLookupService';
 import { extractColorsFromImage, matchBeautyShade, BEAUTY_SHADE_DICTIONARY } from '../../services/aiColorService';
@@ -1614,17 +1615,17 @@ export const BulkProductEntryModal = ({
         }
 
         if (brand) {
-          // Match by Brand Number (e.g. BR001) or normalized Brand Name
+          // Match using Global Case-Insensitive, Accent-Insensitive Brand Master Engine
           const brandClean = brand.trim();
-          const matchedBrandObj = (brands || []).find(b => {
-            const bNum = (b.brandNumber || b.brand_number || '').trim().toUpperCase();
-            const bName = (b.name || '').trim().toLowerCase();
-            const inputUpper = brandClean.toUpperCase();
-            const inputLower = brandClean.toLowerCase();
-            return bNum === inputUpper || bName === inputLower;
-          });
+          const brandMatch = matchBrandMaster(brandClean, brandLookupMap);
 
-          if (!matchedBrandObj && !availableBrands.some(b => normalizeText(b) === normalizeText(brandClean))) {
+          if (brandMatch.matched && brandMatch.brand) {
+            // Automatically map canonical Brand Master Name and Brand ID
+            row.brand = brandMatch.brand.name;
+            row.brandId = brandMatch.brand.id;
+            row.brand_name = brandMatch.brand.name;
+            row.brand_id = brandMatch.brand.id;
+          } else if (!availableBrands.some(b => normalizeBrandKey(b) === normalizeBrandKey(brandClean))) {
             errors.push(`Unknown brand "${brand}". Please select a verified brand from Brand Master.`);
             fieldErrors.brand = 'Brand not in Brand Master';
           }
@@ -2797,7 +2798,17 @@ export const BulkProductEntryModal = ({
         }
 
         const imported = rawObjects.map((item, idx) => {
-          return normalizeStrictImportRow(item, idx);
+          const normalized = normalizeStrictImportRow(item, idx);
+          if (normalized.brand) {
+            const bMatch = matchBrandMaster(normalized.brand, brandLookupMap);
+            if (bMatch.matched && bMatch.brand) {
+              normalized.brand = bMatch.brand.name;
+              normalized.brandId = bMatch.brand.id;
+              normalized.brand_name = bMatch.brand.name;
+              normalized.brand_id = bMatch.brand.id;
+            }
+          }
+          return normalized;
         });
 
         // Group child variants to parents sharing canonical getProductFamilyGroupingKey
@@ -3069,8 +3080,17 @@ export const BulkProductEntryModal = ({
           };
         });
 
+        const brandMatch = matchBrandMaster(primaryRow.brand, brandLookupMap);
+        const canonicalBrandName = (brandMatch.matched && brandMatch.brand) ? brandMatch.brand.name : primaryRow.brand;
+        const canonicalBrandId = (brandMatch.matched && brandMatch.brand) ? brandMatch.brand.id : (primaryRow.brandId || null);
+
         consolidatedProducts.push({
           ...primaryRow,
+          brand: canonicalBrandName,
+          brandName: canonicalBrandName,
+          brand_name: canonicalBrandName,
+          brandId: canonicalBrandId,
+          brand_id: canonicalBrandId,
           sku: resolvedSku,
           parentSku: resolvedSku,
           isParent: rowsInGroup.length > 1,
@@ -4342,25 +4362,16 @@ export const BulkProductEntryModal = ({
                                 )}
                               </div>
 
-                              {/* Direct Browser & In-Panel Image Search Options */}
-                              <div className="flex items-center gap-1">
+                              {/* Google Images Search Option Only (Browser button removed per user request) */}
+                              <div className="flex items-center justify-center">
                                 <button
                                   type="button"
                                   onClick={() => handleSearchGoogleImages(row)}
-                                  className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded text-[9.5px] font-extrabold flex items-center gap-0.5 cursor-pointer shadow-2xs transition-all active:scale-95"
+                                  className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 rounded-md text-[10px] font-extrabold flex items-center justify-center gap-1 cursor-pointer shadow-2xs transition-all active:scale-95"
                                   title={`Search Google Images for "${row.name || 'product'}" in a new browser tab`}
                                 >
-                                  <Globe className="w-2.5 h-2.5 text-amber-600" />
+                                  <Globe className="w-3 h-3 text-amber-600" />
                                   <span>Google ↗</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setInPanelBrowserRowId(row._id)}
-                                  className="px-1.5 py-0.5 bg-pink-50 hover:bg-pink-100 text-[#C2477A] border border-pink-200 rounded text-[9.5px] font-extrabold flex items-center gap-0.5 cursor-pointer shadow-2xs transition-all active:scale-95"
-                                  title="Open In-Panel Image Search Browser Drawer"
-                                >
-                                  <Search className="w-2.5 h-2.5 text-[#C2477A]" />
-                                  <span>Browser</span>
                                 </button>
                               </div>
                             </div>

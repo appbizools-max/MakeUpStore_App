@@ -70,3 +70,4 @@ export const CompactCategoryBanner = ({
 };
 
 export default CompactCategoryBanner;
+

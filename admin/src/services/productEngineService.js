@@ -16,7 +16,7 @@ import { matchBeautyShade } from './aiColorService.js';
 import { DEFAULT_GST_SLAB } from './excelHeaderValidator.js';
 import { resolveCategoryAttributes } from '../utils/attributeMasterData.js';
 import { generateProductSku, generateVariantInternalSku } from './skuService.js';
-import { findOrCreateBrand } from '../utils/brandUtils.js';
+import { findOrCreateBrand, buildBrandLookupMap, matchBrandMaster, normalizeBrandKey } from '../utils/brandUtils.js';
 
 // ==============================================================================
 // 1. CANONICAL PRODUCT SCHEMA DEFINITION
@@ -462,18 +462,11 @@ export const getDefaultTierMatrix = () => ({
  * Builds normalized reference caches for O(1) in-memory resolution of 100,000+ rows
  */
 export const buildReferenceCache = (brands = [], categories = [], existingProducts = []) => {
-  const brandMap = new Map();
+  const brandMap = buildBrandLookupMap(brands);
   const categoryMap = new Map();
   const subcategoryMap = new Map();
   const existingBarcodeMap = new Map();
   const existingNameMap = new Map();
-
-  brands.forEach(b => {
-    const norm = normalizeText(b.name || b.brand_name);
-    if (norm) {
-      brandMap.set(norm, { id: b.id, name: b.name || b.brand_name });
-    }
-  });
 
   categories.forEach(c => {
     const norm = normalizeText(c.name);
@@ -527,8 +520,11 @@ export const buildReferenceCache = (brands = [], categories = [], existingProduc
     existingNameMap,
     resolveBrand: (name) => {
       if (!name || !String(name).trim()) return { id: null, name: '' };
-      const norm = normalizeText(name);
-      return brandMap.get(norm) || { id: null, name: String(name).trim() };
+      const match = matchBrandMaster(name, brandMap);
+      if (match.matched && match.brand) {
+        return { id: match.brand.id, name: match.brand.name };
+      }
+      return { id: null, name: String(name).trim() };
     },
     resolveCategory: (name) => {
       if (!name || !String(name).trim()) return { id: null, name: '' };
@@ -1208,6 +1204,14 @@ export const chunkedBulkSave = async (products, options = {}) => {
   const errors = [];
   const savedProducts = [];
 
+  // Load existing Brand Master records upfront once for ultra-fast O(1) in-memory resolution (100,000+ items)
+  let allBrandsList = [];
+  try {
+    const { data: bData } = await supabase.from('brands').select('id, name, brand_name, brand_number, brandNumber');
+    if (Array.isArray(bData)) allBrandsList = bData;
+  } catch (_) {}
+  const brandLookupCache = buildBrandLookupMap(allBrandsList);
+
   for (let i = 0; i < total; i += chunkSize) {
     const chunk = products.slice(i, i + chunkSize);
     const chunkNumber = Math.floor(i / chunkSize) + 1;
@@ -1227,21 +1231,31 @@ export const chunkedBulkSave = async (products, options = {}) => {
     const payloads = chunk.map(toSupabaseProductPayload);
 
     // Canonical Find-or-Create Brand normalization for all products in batch
-    const brandCache = new Map();
     for (const item of payloads) {
       const bName = (item.brand_name || '').trim();
-      if (bName && !brandCache.has(bName.toLowerCase())) {
-        try {
-          const bRes = await findOrCreateBrand(bName, [], supabase);
-          if (bRes && bRes.brand) {
-            brandCache.set(bName.toLowerCase(), bRes.brand);
+      if (bName) {
+        let matched = brandLookupCache.get(normalizeBrandKey(bName));
+        if (!matched) {
+          const bMatch = matchBrandMaster(bName, brandLookupCache);
+          if (bMatch.matched && bMatch.brand) {
+            matched = bMatch.brand;
+            brandLookupCache.set(normalizeBrandKey(bName), matched);
           }
-        } catch (_) {}
-      }
-      if (bName && brandCache.has(bName.toLowerCase())) {
-        const b = brandCache.get(bName.toLowerCase());
-        item.brand_name = b.name;
-        item.brand_id = b.id;
+        }
+        if (matched) {
+          item.brand_name = matched.name;
+          item.brand_id = matched.id;
+        } else {
+          try {
+            const bRes = await findOrCreateBrand(bName, allBrandsList, supabase);
+            if (bRes && bRes.brand) {
+              brandLookupCache.set(normalizeBrandKey(bName), bRes.brand);
+              allBrandsList.push(bRes.brand);
+              item.brand_name = bRes.brand.name;
+              item.brand_id = bRes.brand.id;
+            }
+          } catch (_) {}
+        }
       }
     }
 

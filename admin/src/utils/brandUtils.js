@@ -15,11 +15,126 @@ import { APPROVED_BRAND_MASTER } from './brandMasterApprovedData.js';
 const BRAND_SEQ_STORAGE_KEY = 'salbeau_brand_max_sequence_v1';
 
 /**
- * Normalizes a brand name for comparison (trims extra spaces, lowercases)
+ * Global Brand Normalization Engine:
+ * 1. Converts to string and trims leading/trailing whitespace
+ * 2. Normalizes multiple spaces to a single space
+ * 3. Normalizes Unicode NFD decomposition to strip diacritics / accents (e.g. 'LAKMÉ' -> 'lakme', 'é' -> 'e')
+ * 4. Normalizes typographic quotes / apostrophes (’ / ‘ / ` -> ')
+ * 5. Lowercases for case-insensitive matching
+ */
+export const normalizeBrandKey = (name) => {
+  if (!name && name !== 0) return '';
+  return String(name)
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[’‘`]/g, "'")
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+};
+
+/**
+ * Normalizes a brand name for presentation while preserving clean casing & spacing
  */
 export const normalizeBrandName = (name) => {
-  if (!name) return '';
-  return name.toString().trim().replace(/\s+/g, ' ');
+  if (!name && name !== 0) return '';
+  return String(name).trim().replace(/\s+/g, ' ');
+};
+
+/**
+ * Builds an ultra-fast O(1) normalized lookup map from an array of Brand Master records.
+ * Indexes each brand by:
+ * - Normalized key (e.g. 'lakme', 'l\'oreal', 'maybelline')
+ * - Punctuation-stripped key (e.g. 'loreal')
+ * - Brand Number (e.g. 'br001', 'br002')
+ * - Brand ID (e.g. 'b_001', uuid)
+ */
+export const buildBrandLookupMap = (brands = []) => {
+  const map = new Map();
+
+  (brands || []).forEach(b => {
+    if (!b) return;
+    const rawName = b.brand_name || b.brandName || b.name || '';
+    const canonicalName = String(rawName).trim();
+    if (!canonicalName) return;
+
+    const brandRecord = {
+      id: b.id,
+      name: canonicalName,
+      brand_name: canonicalName,
+      brandName: canonicalName,
+      brandNumber: b.brandNumber || b.brand_number || '',
+      brand_number: b.brandNumber || b.brand_number || '',
+      categories: b.categories || [],
+      logo_url: b.logo_url || b.logoUrl || '',
+      raw: b
+    };
+
+    // Index by normalized key (accents removed, lowercased, single spaced)
+    const normKey = normalizeBrandKey(canonicalName);
+    if (normKey && !map.has(normKey)) {
+      map.set(normKey, brandRecord);
+    }
+
+    // Also index with punctuation stripped as secondary fallback (e.g. "LOREAL" vs "L'OREAL")
+    const strippedKey = normKey.replace(/[^a-z0-9]/g, '');
+    if (strippedKey && strippedKey !== normKey && !map.has(strippedKey)) {
+      map.set(strippedKey, brandRecord);
+    }
+
+    // Index by Brand Number (e.g. BR001)
+    const bNum = String(b.brandNumber || b.brand_number || '').trim().toLowerCase();
+    if (bNum && !map.has(bNum)) {
+      map.set(bNum, brandRecord);
+    }
+
+    // Index by ID
+    const bId = String(b.id || '').trim().toLowerCase();
+    if (bId && !map.has(bId)) {
+      map.set(bId, brandRecord);
+    }
+  });
+
+  return map;
+};
+
+/**
+ * Matches an input brand against Brand Master using case-insensitive, accent-insensitive logic.
+ * Returns { matched: true, brand: brandRecord } or { matched: false, brand: null }
+ */
+export const matchBrandMaster = (inputBrand, brandsOrMap) => {
+  if (!inputBrand && inputBrand !== 0) {
+    return { matched: false, brand: null };
+  }
+
+  const lookupMap = brandsOrMap instanceof Map
+    ? brandsOrMap
+    : buildBrandLookupMap(brandsOrMap || []);
+
+  const rawInput = String(inputBrand).trim();
+  if (!rawInput) {
+    return { matched: false, brand: null };
+  }
+
+  // 1. Direct normalized key match
+  const normKey = normalizeBrandKey(rawInput);
+  if (lookupMap.has(normKey)) {
+    return { matched: true, brand: lookupMap.get(normKey) };
+  }
+
+  // 2. Stripped punctuation match (e.g. LOREAL vs L'Oreal)
+  const strippedKey = normKey.replace(/[^a-z0-9]/g, '');
+  if (strippedKey && lookupMap.has(strippedKey)) {
+    return { matched: true, brand: lookupMap.get(strippedKey) };
+  }
+
+  // 3. Brand number match (e.g. BR001, BR12)
+  const inputLower = rawInput.toLowerCase();
+  if (lookupMap.has(inputLower)) {
+    return { matched: true, brand: lookupMap.get(inputLower) };
+  }
+
+  return { matched: false, brand: null };
 };
 
 /**
@@ -559,18 +674,20 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
     ? (brandInput.parent_brand_id || brandInput.parentBrandId || null)
     : null;
 
-  // 1. Match existing brand (Case-insensitive, normalized comparison)
+  // 1. Match existing brand using global case-insensitive, accent-insensitive engine
+  const existingMatch = matchBrandMaster(rawName, existingBrands);
+  if (existingMatch.matched && existingMatch.brand) {
+    // REUSE existing brand! Do not create duplicate!
+    return { brand: existingMatch.brand, created: false };
+  }
+
   const existing = (existingBrands || []).find(b => {
     if (!b) return false;
     if (typeof brandInput === 'object' && brandInput.id && b.id === brandInput.id) return true;
-    const bName = normalizeBrandName(b.name || b.brandName || b.brand || '').toLowerCase();
-    if (bName === normalizedLower) return true;
-    
-    return false;
+    return normalizeBrandKey(b.name || b.brandName || b.brand || '') === normalizeBrandKey(rawName);
   });
 
   if (existing) {
-    // REUSE existing brand! Do not create duplicate!
     return { brand: existing, created: false };
   }
 

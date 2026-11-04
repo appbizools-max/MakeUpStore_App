@@ -124,3 +124,4 @@ export const HorizontalSubcategoryNavigation = ({
 };
 
 export default HorizontalSubcategoryNavigation;
+

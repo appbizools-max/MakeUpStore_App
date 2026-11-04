@@ -102,3 +102,4 @@ export const CategoryTitleRow = ({
 };
 
 export default CategoryTitleRow;
+

@@ -219,3 +219,4 @@ export const SubcategorySearchBar = ({
 };
 
 export default SubcategorySearchBar;
+
