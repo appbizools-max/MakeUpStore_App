@@ -437,8 +437,8 @@ export default function AddNewProductPage({
         ...prev,
         id: editingProduct.id,
         name: editingProduct.name || '',
-        brandName: editingProduct.brandName || editingProduct.brand || prev.brandName,
-        brandId: editingProduct.brandId || prev.brandId,
+        brandName: editingProduct.brandName || editingProduct.brand || '',
+        brandId: editingProduct.brandId || '',
         category: editingProduct.category || prev.category,
         subcategory: editingProduct.subcategory || '',
         description: editingProduct.description || '',
@@ -1383,7 +1383,7 @@ export default function AddNewProductPage({
       parent_id: null,
       brandName: formData.brandName ? formData.brandName.trim() : '',
       brandId: formData.brandId || (formData.brandName ? (brands.find(b => b.name === formData.brandName)?.id || '') : '') || '',
-      category: formData.category || 'Makeup',
+      category: formData.category ? formData.category.trim() : '',
       subcategory: formData.subcategory ? formData.subcategory.trim() : undefined,
       description: formData.description ? formData.description.trim() : undefined,
       sku: autoSku,
@@ -1868,11 +1868,11 @@ export default function AddNewProductPage({
                         ...prev,
                         brandName: selectedName || '',
                         brandId: selected?.id || '',
-                        category: selected?.category || prev.category
+                        category: prev.category || selected?.category || ''
                       }));
                     }}
                     placeholder="Select Brand..."
-                    searchPlaceholder="Search brand name, number (BR001), or code (AGA-001)..."
+                    searchPlaceholder="Search brand name or number (BR001)..."
                     emptyMessage="No matching brands found"
                     labelKey="name"
                     valueKey="name"

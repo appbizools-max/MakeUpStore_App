@@ -114,6 +114,26 @@ export default function BrandManagementPage({
     setTimeout(() => setToastMessage(null), 3500);
   }, []);
 
+  // Dynamic Brand Master Statistics
+  const brandStats = useMemo(() => {
+    let active = 0;
+    let inactive = 0;
+    let uncategorized = 0;
+    (brands || []).forEach(b => {
+      if (!b || b.id?.startsWith('app_') || b.id?.startsWith('salbeau_') || b.category === 'SystemConfig') return;
+      if (b.enabled !== false) active++;
+      else inactive++;
+      const cats = Array.isArray(b.categories) ? b.categories : (b.category ? [b.category] : []);
+      if (cats.length === 0) uncategorized++;
+    });
+    return {
+      total: active + inactive,
+      active,
+      inactive,
+      uncategorized
+    };
+  }, [brands]);
+
   // Filtered & Sorted Brands Computation
   const filteredBrands = useMemo(() => {
     return (brands || []).filter(b => {
@@ -134,8 +154,12 @@ export default function BrandManagementPage({
         const brandCats = Array.isArray(b.categories)
           ? b.categories
           : (b.category ? [b.category] : []);
-        const hasCat = brandCats.some(c => c.toLowerCase() === selectedCategoryFilter.toLowerCase());
-        if (!hasCat) return false;
+        if (selectedCategoryFilter === 'uncategorized') {
+          if (brandCats.length > 0) return false;
+        } else {
+          const hasCat = brandCats.some(c => c.toLowerCase() === selectedCategoryFilter.toLowerCase());
+          if (!hasCat) return false;
+        }
       }
 
       // 3. Status Filter Match
@@ -554,6 +578,57 @@ export default function BrandManagementPage({
           </div>
         </div>
 
+        {/* Brand Master KPI Metric Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <div className="p-3.5 rounded-2xl bg-[#FFF9FB] border border-pink-100 flex items-center justify-between shadow-2xs">
+            <div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Brands</span>
+              <span className="text-xl font-black text-gray-900">{brandStats.total}</span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-pink-100/70 text-[#C2477A] flex items-center justify-center font-bold">
+              <Store size={16} />
+            </div>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-emerald-50/50 border border-emerald-100 flex items-center justify-between shadow-2xs">
+            <div>
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Active Brands</span>
+              <span className="text-xl font-black text-emerald-800">{brandStats.active}</span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center font-bold">
+              <Eye size={16} />
+            </div>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between shadow-2xs">
+            <div>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Inactive Brands</span>
+              <span className="text-xl font-black text-gray-700">{brandStats.inactive}</span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-gray-200/80 text-gray-600 flex items-center justify-center font-bold">
+              <EyeOff size={16} />
+            </div>
+          </div>
+          <div 
+            onClick={() => {
+              setSelectedCategoryFilter(selectedCategoryFilter === 'uncategorized' ? 'all' : 'uncategorized');
+              setCurrentPage(1);
+            }}
+            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between shadow-2xs ${
+              selectedCategoryFilter === 'uncategorized'
+                ? 'bg-amber-100 border-amber-300 ring-2 ring-amber-400/40'
+                : 'bg-amber-50/50 border-amber-200 hover:bg-amber-100/40'
+            }`}
+            title="Click to toggle unassigned categories filter"
+          >
+            <div>
+              <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">Unassigned Category</span>
+              <span className="text-xl font-black text-amber-900">{brandStats.uncategorized}</span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-amber-200/70 text-amber-800 flex items-center justify-center font-bold">
+              <Sparkles size={16} />
+            </div>
+          </div>
+        </div>
+
         {/* Filter & Search Toolbar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 p-3.5 rounded-2xl bg-[#FFF8FA] border border-pink-100/80">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
@@ -596,6 +671,9 @@ export default function BrandManagementPage({
                 className="bg-transparent text-xs font-bold text-gray-700 outline-none cursor-pointer pr-1"
               >
                 <option value="all">All Categories</option>
+                {brandStats.uncategorized > 0 && (
+                  <option value="uncategorized">⚠️ Unassigned Categories ({brandStats.uncategorized})</option>
+                )}
                 {masterCategoryOptions.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -813,8 +891,24 @@ export default function BrandManagementPage({
 
                       {/* COLUMN 2: Brand Name */}
                       <td className="py-3 px-4 align-middle">
-                        <div className="font-extrabold text-xs text-gray-900 leading-snug truncate" title={brand.name}>
-                          {brand.name}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {brand.logo ? (
+                            <img
+                              src={brand.logo}
+                              alt=""
+                              className="w-7 h-7 rounded-lg object-contain bg-white border border-pink-100 p-0.5 shrink-0 shadow-2xs"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="w-7 h-7 rounded-lg bg-pink-50 border border-pink-100 flex items-center justify-center shrink-0 text-[#C2477A]">
+                              <Store size={13} />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="font-extrabold text-xs text-gray-900 leading-snug truncate" title={brand.name}>
+                              {brand.name}
+                            </div>
+                          </div>
                         </div>
                         {brand.description && (
                           <div className="text-[10px] text-gray-400 truncate max-w-xs mt-0.5" title={brand.description}>
@@ -827,7 +921,9 @@ export default function BrandManagementPage({
                       <td className="py-3 px-4 align-middle">
                         <div className="flex flex-wrap gap-1 max-w-xs">
                           {brandCats.length === 0 ? (
-                            <span className="text-[10px] text-gray-400 italic">None assigned</span>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              Unassigned
+                            </span>
                           ) : (
                             brandCats.map((cat) => (
                               <span
@@ -1026,6 +1122,7 @@ export default function BrandManagementPage({
           isOpen={isImportModalOpen}
           masterCategories={categories}
           existingBrands={brands}
+          onAddCategory={adminCtx?.addCategory}
           onClose={() => setIsImportModalOpen(false)}
           onConfirmImport={async (parsedRows, mode) => {
             const results = await onBulkImportBrands(parsedRows, mode);

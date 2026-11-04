@@ -860,11 +860,14 @@ export const AdminProvider = ({ children }) => {
           )
           .map(b => {
             const mapped = mapBrandFromDb(b, brandMetaDict);
-            const primaryCat = mapped.categories?.[0] || categoryDict[b.name] || b.category || 'General';
+            const primaryCat = mapped.categories?.[0] || categoryDict[b.name] || '';
+            const cats = mapped.categories && mapped.categories.length > 0
+              ? mapped.categories
+              : (primaryCat ? [primaryCat] : (b.category && b.category !== 'General' ? [b.category] : []));
             return {
               ...mapped,
-              category: primaryCat,
-              categories: mapped.categories?.length > 0 ? mapped.categories : [primaryCat]
+              category: cats[0] || '',
+              categories: cats
             };
           })
           .sort((a, b) => {
@@ -1360,7 +1363,7 @@ export const AdminProvider = ({ children }) => {
           brandNumber: preservedBrandNumber,
           brand_number: preservedBrandNumber,
           categories: categoriesList,
-          category: categoriesList && categoriesList.length > 0 ? categoriesList[0] : (b.category || 'Makeup'),
+          category: (categoriesList && categoriesList.length > 0) ? categoriesList[0] : (updatedFields.category !== undefined ? updatedFields.category : (b.category || '')),
           ...(isEnabled !== undefined ? { enabled: isEnabled } : {})
         };
         return updatedBrandObj;
@@ -1603,7 +1606,7 @@ export const AdminProvider = ({ children }) => {
           brandNumber,
           brand_number: brandNumber,
           categories: row.categories || [],
-          category: row.categories?.[0] || 'Makeup',
+          category: (row.categories && row.categories.length > 0) ? row.categories[0] : '',
           logo: finalImportLogo,
           enabled: row.enabled,
           description: row.description || '',
@@ -1640,7 +1643,7 @@ export const AdminProvider = ({ children }) => {
         const insertPayloads = newBrandsToInsert.map(b => ({
           id: b.id,
           name: b.name,
-          category: (b.categories && b.categories[0]) || b.category || 'General',
+          category: (b.categories && b.categories[0]) || b.category || null,
           sort_order: parseBrandNumberSeq(b.brandNumber) || 0,
           enabled: b.enabled !== false,
           logo: b.logo || ''
@@ -2041,9 +2044,7 @@ export const AdminProvider = ({ children }) => {
       }
     }
 
-    const resolvedCategory = (newProduct.category || '').trim() ||
-      resolvedBrandObj?.category ||
-      'General';
+    const resolvedCategory = (newProduct.category || '').trim() || resolvedBrandObj?.category || '';
 
     const productId = 'p_' + Date.now();
     const productObj = {

@@ -414,9 +414,12 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
           if (name) existingBrandNamesMap.set(name, b);
         });
 
-        const validMasterCatNames = new Set(
-          (masterCategories || []).map(c => (typeof c === 'string' ? c : c.name || '').trim().toLowerCase()).filter(Boolean)
-        );
+        const validMasterCatMap = new Map();
+        (masterCategories || []).forEach(c => {
+          const name = (typeof c === 'string' ? c : c.name || '').trim();
+          if (name) validMasterCatMap.set(name.toLowerCase(), name);
+        });
+        const missingCategoriesSet = new Set();
 
         // Highest existing sequence number among active catalog brands
         const maxExistingSeq = (existingBrands || []).reduce((max, b) => {
@@ -542,20 +545,29 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
             newBrandsCount++;
           }
 
-          // 4. Validate Categories
+          // 4. Exact Category Matching & Validation
           const parsedCategories = [];
+          const rowMissingCategories = [];
           if (categoriesRaw) {
             const splitted = categoriesRaw.split(/[;,|]/).map(s => s.trim()).filter(Boolean);
             splitted.forEach(cat => {
-              parsedCategories.push(cat);
-              if (validMasterCatNames.size > 0 && !validMasterCatNames.has(cat.toLowerCase())) {
-                warnings.push(`Category "${cat}" is not currently in the Master Category list.`);
-                invalidCategoriesCount++;
+              const lower = cat.toLowerCase();
+              if (validMasterCatMap.has(lower)) {
+                const canonical = validMasterCatMap.get(lower);
+                if (!parsedCategories.includes(canonical)) {
+                  parsedCategories.push(canonical);
+                }
+              } else {
+                parsedCategories.push(cat);
+                rowMissingCategories.push(cat);
+                missingCategoriesSet.add(cat);
               }
             });
           }
-          if (parsedCategories.length === 0) {
-            parsedCategories.push('Makeup');
+
+          if (rowMissingCategories.length > 0) {
+            errors.push(`Category "${rowMissingCategories.join(', ')}" does not exist in the Categories List page. Please add it to Categories before proceeding.`);
+            invalidCategoriesCount++;
           }
 
           // 5. Visibility normalization
@@ -592,6 +604,8 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
           duplicateRecords: duplicateRecordsCount,
           duplicateCodes: duplicateCodesCount,
           invalidCategories: invalidCategoriesCount,
+          missingCategories: Array.from(missingCategoriesSet),
+          missingCategoriesCount: missingCategoriesSet.size,
           rows: parsedRows
         });
       } catch (err) {
@@ -718,7 +732,7 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
 
   const categoriesList = (typeof brandInput === 'object' && Array.isArray(brandInput.categories))
     ? brandInput.categories
-    : ((typeof brandInput === 'object' && brandInput.category) ? [brandInput.category] : ['Makeup']);
+    : ((typeof brandInput === 'object' && brandInput.category) ? [brandInput.category] : []);
 
   const sortOrder = parseBrandNumberSeq(brandNumber) || (existingBrands.length + 1);
 
@@ -728,7 +742,7 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
     brandNumber,
     brand_number: brandNumber,
     categories: categoriesList,
-    category: categoriesList[0] || 'Makeup',
+    category: categoriesList[0] || '',
     description: (typeof brandInput === 'object' && brandInput.description) || '',
     internalNotes: (typeof brandInput === 'object' && (brandInput.internalNotes || brandInput.internal_notes)) || '',
     enabled: true,
@@ -746,7 +760,7 @@ export const findOrCreateBrand = async (brandInput, existingBrands = [], supabas
       const { error: insErr } = await supabaseClient.from('brands').upsert({
         id: newBrandObj.id,
         name: newBrandObj.name,
-        category: newBrandObj.category || (newBrandObj.categories?.[0] || 'General'),
+        category: newBrandObj.category || (newBrandObj.categories?.[0] || null),
         sort_order: sortOrder,
         enabled: newBrandObj.enabled !== false,
         logo: newBrandObj.logo || ''

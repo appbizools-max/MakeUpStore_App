@@ -258,12 +258,18 @@ export default function ProductFormRightPanel({
               {formData.name?.trim() || 'Untitled Product'}
             </div>
             <div className="flex flex-wrap items-center gap-1 text-[10px]">
-              <span className="font-bold text-[#C2477A] bg-pink-50 px-1.5 py-0.5 rounded">
-                {formData.brandName || 'Brand Partner'}
-              </span>
+              {formData.brandName ? (
+                <span className="font-bold text-[#C2477A] bg-pink-50 px-1.5 py-0.5 rounded">
+                  {formData.brandName}
+                </span>
+              ) : (
+                <span className="font-medium text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded italic">
+                  No Brand
+                </span>
+              )}
               <span className="text-gray-400">•</span>
               <span className="text-gray-600 font-medium">
-                {formData.category || 'Makeup'}
+                {formData.category || 'Uncategorized'}
               </span>
               {formData.subcategory && (
                 <>

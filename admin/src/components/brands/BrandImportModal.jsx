@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Upload,
   FileSpreadsheet,
@@ -10,7 +10,10 @@ import {
   FileText,
   Loader2,
   RefreshCw,
-  Info
+  Info,
+  Tag,
+  BadgePlus,
+  ArrowRight
 } from 'lucide-react';
 import {
   parseAndValidateBrandExcel,
@@ -21,19 +24,20 @@ import {
 /**
  * BrandImportModal Component
  * 
- * Implements the 6-step Excel Import workflow:
- * 1. Upload & Drag-and-Drop Excel
- * 2. Parse & Validate
- * 3. Comprehensive Preview Metrics
- * 4. Administrator Choice: "Add New Brands" vs "Update Existing Brands"
- * 5. Confirmation & Safe Batch Processing
- * 6. Results Report with Downloadable Row-Level Audit
+ * Implements strict Excel Category Mapping & Validation:
+ * 1. Upload & Drag-and-Drop Excel (.xlsx, .xls, .csv)
+ * 2. Exact Category Matching against Categories List page
+ * 3. Proactive Missing Category Detection with One-Click Registration into Categories List
+ * 4. Zero default category assignments (preserves exact categories from spreadsheet)
+ * 5. Comprehensive Preview Metrics & Row Audit
+ * 6. Batch processing with permanent Supabase synchronization
  */
 export default function BrandImportModal({
   isOpen,
   onClose,
   masterCategories = [],
   existingBrands = [],
+  onAddCategory = null,
   onConfirmImport
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -44,7 +48,37 @@ export default function BrandImportModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [importResults, setImportResults] = useState(null);
   const [generalError, setGeneralError] = useState(null);
+
+  // Missing categories management state
+  const [currentMasterCategories, setCurrentMasterCategories] = useState(masterCategories);
+  const [isAddingCategories, setIsAddingCategories] = useState(false);
+  const [categoryAddSuccess, setCategoryAddSuccess] = useState(null);
+
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    setCurrentMasterCategories(masterCategories);
+  }, [masterCategories]);
+
+  const runValidation = async (file, cats) => {
+    setIsValidating(true);
+    setGeneralError(null);
+    try {
+      const res = await parseAndValidateBrandExcel(file, cats, existingBrands);
+      if (!res.success) {
+        setGeneralError(res.error || 'Failed to parse Excel file.');
+        setPreviewData(null);
+      } else {
+        setPreviewData(res);
+      }
+    } catch (err) {
+      console.error('Validation error:', err);
+      setGeneralError('Error reading spreadsheet: ' + (err.message || 'Corrupt or unreadable file.'));
+      setPreviewData(null);
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   const handleFileSelect = async (file) => {
     if (!file) return;
@@ -58,25 +92,47 @@ export default function BrandImportModal({
       return;
     }
 
-    setGeneralError(null);
     setSelectedFile(file);
-    setIsValidating(true);
     setImportResults(null);
+    setCategoryAddSuccess(null);
+    await runValidation(file, currentMasterCategories);
+  };
+
+  // Add all detected missing categories directly to the Categories List page
+  const handleAddAllMissingCategories = async () => {
+    if (!previewData?.missingCategories || previewData.missingCategories.length === 0) return;
+    if (typeof onAddCategory !== 'function') {
+      setGeneralError('Category creation service is unavailable. Please navigate to Categories List page to add the missing categories.');
+      return;
+    }
+
+    setIsAddingCategories(true);
+    setGeneralError(null);
+    setCategoryAddSuccess(null);
 
     try {
-      const res = await parseAndValidateBrandExcel(file, masterCategories, existingBrands);
-      if (!res.success) {
-        setGeneralError(res.error || 'Failed to parse Excel file.');
-        setPreviewData(null);
-      } else {
-        setPreviewData(res);
+      const newlyAdded = [];
+      for (const catName of previewData.missingCategories) {
+        await onAddCategory({
+          name: catName,
+          enabled: true
+        });
+        newlyAdded.push({ id: 'cat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), name: catName });
+      }
+
+      const updatedMasterCats = [...currentMasterCategories, ...newlyAdded];
+      setCurrentMasterCategories(updatedMasterCats);
+      setCategoryAddSuccess(`Successfully added ${newlyAdded.length} missing category (${previewData.missingCategories.join(', ')}) to the Categories List! Re-validating...`);
+
+      // Re-validate immediately with the updated category master!
+      if (selectedFile) {
+        await runValidation(selectedFile, updatedMasterCats);
       }
     } catch (err) {
-      console.error('Validation error:', err);
-      setGeneralError('Error reading spreadsheet: ' + (err.message || 'Corrupt or unreadable file.'));
-      setPreviewData(null);
+      console.error('Error adding missing categories:', err);
+      setGeneralError('Failed to register categories: ' + (err.message || 'Unknown error'));
     } finally {
-      setIsValidating(false);
+      setIsAddingCategories(false);
     }
   };
 
@@ -102,13 +158,16 @@ export default function BrandImportModal({
     setPreviewData(null);
     setImportResults(null);
     setGeneralError(null);
+    setCategoryAddSuccess(null);
   };
 
   if (!isOpen) return null;
 
+  const hasMissingCategories = Boolean(previewData?.missingCategories && previewData.missingCategories.length > 0);
+
   return (
     <div 
-      className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px] transition-all"
+      className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs transition-all animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isProcessing) onClose();
       }}
@@ -118,9 +177,9 @@ export default function BrandImportModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-pink-50/70 via-white to-pink-50/40">
+        <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-pink-50/70 via-white to-pink-50/40 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
               <FileSpreadsheet size={22} />
             </div>
             <div>
@@ -128,29 +187,30 @@ export default function BrandImportModal({
                 Import Brands from Excel
               </h3>
               <p className="text-[11px] text-gray-500 font-medium">
-                Batch import or synchronize partner brand master records
+                Exact Category Mapping &bull; Zero Default Fallback &bull; Supabase Persistent
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            title="Close"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar text-xs">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 custom-scrollbar text-xs">
           {/* Action Bar with Download Template */}
           <div className="p-4 rounded-2xl bg-[#FFF8FA] border border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-2.5">
               <Info size={16} className="text-[#C2477A] shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-gray-900 text-xs">Use the Standard Brand Format</p>
-                <p className="text-[11px] text-gray-500">
-                  Brand Number, Brand Name, Categories, Logo URL, Visibility, Description, Notes.
+                <p className="font-bold text-gray-900 text-xs">Exact Category Matching Required</p>
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  Categories must match existing names in Categories List page. Unregistered categories will be identified so you can register them before importing.
                 </p>
               </div>
             </div>
@@ -165,9 +225,16 @@ export default function BrandImportModal({
           </div>
 
           {generalError && (
-            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-              <AlertCircle size={16} className="shrink-0" />
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 animate-fade-in font-medium">
+              <AlertCircle size={16} className="shrink-0 text-rose-600" />
               <span>{generalError}</span>
+            </div>
+          )}
+
+          {categoryAddSuccess && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 animate-fade-in font-medium">
+              <CheckCircle size={16} className="shrink-0 text-emerald-600" />
+              <span>{categoryAddSuccess}</span>
             </div>
           )}
 
@@ -177,10 +244,10 @@ export default function BrandImportModal({
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 space-y-2">
                 <div className="flex items-center gap-2 font-black text-sm">
                   <CheckCircle size={18} className="text-emerald-600" />
-                  <span>Saved Permanently to Supabase Database!</span>
+                  <span>Import Completed & Saved to Database!</span>
                 </div>
-                <p className="text-xs text-emerald-700">
-                  All valid brands and their categories have been validated and saved permanently to Supabase. Records persist across page reloads and refreshes.
+                <p className="text-xs text-emerald-700 leading-relaxed">
+                  All brands have been accurately mapped to their designated categories and saved permanently to Supabase. Records reflect dynamically across Brand Master, Product Management, and the User App.
                 </p>
               </div>
 
@@ -250,10 +317,10 @@ export default function BrandImportModal({
                 }}
               />
               <div className="w-14 h-14 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center mb-3 shadow-2xs">
-                {isValidating ? <Loader2 size={26} className="animate-spin" /> : <Upload size={26} />}
+                {isValidating ? <Loader2 size={26} className="animate-spin text-[#C2477A]" /> : <Upload size={26} />}
               </div>
               <h4 className="font-extrabold text-sm text-gray-900 mb-1">
-                {isValidating ? 'Parsing and Validating File...' : 'Drop your Excel file here or click to browse'}
+                {isValidating ? 'Parsing & Matching Categories...' : 'Drop your Excel file here or click to browse'}
               </h4>
               <p className="text-[11px] text-gray-400">
                 Supports .XLSX, .XLS, and .CSV workbooks up to 30 MB
@@ -265,7 +332,7 @@ export default function BrandImportModal({
               <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                 <div>
                   <span className="font-bold text-gray-900 text-xs block">File: {selectedFile?.name}</span>
-                  <span className="text-[11px] text-gray-400">Pre-import validation completed</span>
+                  <span className="text-[11px] text-gray-400">Exact category validation complete</span>
                 </div>
                 <button
                   type="button"
@@ -296,12 +363,123 @@ export default function BrandImportModal({
                 </div>
               </div>
 
+              {/* Unregistered Categories Alert & Quick Action */}
+              {hasMissingCategories && (
+                <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-900 space-y-3 animate-fade-in shadow-2xs">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h4 className="font-extrabold text-xs text-amber-950 uppercase tracking-wide">
+                          Missing Categories Detected ({previewData.missingCategories.length})
+                        </h4>
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                          Action Required
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
+                        The following categories were provided in your spreadsheet but do not exist in the <strong>Categories List</strong> page. They will not be replaced with any default category:
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 mt-2.5">
+                        {previewData.missingCategories.map((c) => (
+                          <span
+                            key={c}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-amber-900 border border-amber-300 shadow-2xs"
+                          >
+                            <Tag size={12} className="text-amber-600" />
+                            <span>{c}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {onAddCategory && (
+                    <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-amber-200/80">
+                      <span className="text-[10.5px] text-amber-800 font-medium">
+                        Register these categories immediately to update Categories List and validate all rows:
+                      </span>
+                      <button
+                        type="button"
+                        disabled={isAddingCategories}
+                        onClick={handleAddAllMissingCategories}
+                        className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 shrink-0"
+                      >
+                        {isAddingCategories ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin" />
+                            <span>Adding to Categories List...</span>
+                          </>
+                        ) : (
+                          <>
+                            <BadgePlus size={14} />
+                            <span>Add Missing Categories & Re-validate</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Sub-metrics */}
               <div className="p-3 rounded-2xl bg-[#FFF8FA] border border-pink-100/70 flex flex-wrap items-center justify-between gap-3 text-[11px] text-gray-600">
                 <span>New Brands to Create: <strong className="text-gray-900 font-bold">{previewData.newBrands}</strong></span>
                 <span>Duplicate Records: <strong className="text-gray-900 font-bold">{previewData.duplicateRecords}</strong></span>
-                <span>Duplicate Codes: <strong className="text-gray-900 font-bold">{previewData.duplicateCodes}</strong></span>
-                <span>Category Warnings: <strong className="text-gray-900 font-bold">{previewData.invalidCategories}</strong></span>
+                <span>Category Issues: <strong className={previewData.invalidCategories > 0 ? 'text-amber-700 font-bold' : 'text-gray-900 font-bold'}>{previewData.invalidCategories}</strong></span>
+              </div>
+
+              {/* Row-Level Preview Sample (First 6 Rows) */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-900 block">
+                  Category Mapping Sample Preview:
+                </label>
+                <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-2xs">
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold">
+                      <tr>
+                        <th className="py-2 px-3">Row</th>
+                        <th className="py-2 px-3">Brand Number</th>
+                        <th className="py-2 px-3">Brand Name</th>
+                        <th className="py-2 px-3">Mapped Categories</th>
+                        <th className="py-2 px-3 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {previewData.rows.slice(0, 6).map((r) => (
+                        <tr key={r.rowNumber} className={!r.isValid ? 'bg-rose-50/40' : 'hover:bg-gray-50/50'}>
+                          <td className="py-2 px-3 text-gray-500 font-mono font-medium">#{r.rowNumber}</td>
+                          <td className="py-2 px-3 font-mono font-bold text-[#C2477A]">{r.brandNumber}</td>
+                          <td className="py-2 px-3 font-bold text-gray-900">{r.brandName}</td>
+                          <td className="py-2 px-3">
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {r.categories && r.categories.length > 0 ? (
+                                r.categories.map((c, i) => (
+                                  <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-50 text-[#C2477A] border border-pink-200">
+                                    {c}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-gray-400 italic">None</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold">
+                            {r.isValid ? (
+                              <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px]">
+                                Valid
+                              </span>
+                            ) : (
+                              <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full text-[10px]" title={r.errors?.join(' | ')}>
+                                Error
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Mode Selection */}
@@ -352,7 +530,7 @@ export default function BrandImportModal({
                       />
                     </div>
                     <p className="text-[10px] text-gray-500 leading-tight">
-                      Updates matched brands with new categories, logo, or description while preserving permanent Brand Numbers.
+                      Updates matched brands with exact categories, logo, and metadata while preserving permanent Brand Numbers.
                     </p>
                   </div>
                 </div>
@@ -360,7 +538,7 @@ export default function BrandImportModal({
 
               {previewData.invalidRows > 0 && (
                 <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px]">
-                  <span>{previewData.invalidRows} row(s) contain validation errors and will be skipped.</span>
+                  <span>{previewData.invalidRows} row(s) contain validation errors and will be skipped unless resolved.</span>
                   <button
                     type="button"
                     onClick={() => downloadBrandImportErrorReport(previewData.rows)}

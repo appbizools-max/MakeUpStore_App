@@ -286,7 +286,7 @@ export default function BrandFormModal({
         name: normalizeBrandName(formData.name),
         logo: formData.logo || '',
         categories: formData.categories,
-        category: formData.categories[0] || 'General',
+        category: (formData.categories && formData.categories.length > 0) ? formData.categories[0] : '',
         enabled: formData.enabled
       };
 
@@ -474,6 +474,9 @@ export default function BrandFormModal({
                 </div>
               </div>
             )}
+            <p className="text-[10.5px] text-gray-400 font-medium">
+              Mapped strictly to the Categories List page. No default category is automatically assigned.
+            </p>
           </div>
 
           {/* ════════════════════════════════════════════════════════════════ */}
