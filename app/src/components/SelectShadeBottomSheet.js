@@ -111,8 +111,7 @@ export const SelectShadeBottomSheet = ({
         if (passedInitialShade && allShades.some(s => (s.id || s.name) === (passedInitialShade.id || passedInitialShade.name))) {
           setSelectedShade(passedInitialShade);
         } else {
-          const firstInStock = allShades.find(s => s.inStock !== false && s.soldOut !== true && s.stock !== 0);
-          setSelectedShade(firstInStock || allShades[0]);
+          setSelectedShade(allShades[0]);
         }
       } else {
         setSelectedShade(null);
@@ -191,15 +190,7 @@ export const SelectShadeBottomSheet = ({
   const discountPercent = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 15;
   const savingsAmount = (mrp > rolePrice ? mrp - rolePrice : 44.85).toFixed(2);
 
-  const isSelectedShadeSoldOut = useMemo(() => {
-    if (!selectedShade) return false;
-    return (
-      selectedShade.inStock === false ||
-      selectedShade.soldOut === true ||
-      selectedShade.stock === 0 ||
-      selectedShade.status === 'out_of_stock'
-    );
-  }, [selectedShade]);
+  const isSelectedShadeSoldOut = false;
 
   const isLiked = isFavorite ? isFavorite(activeProduct?.id) : false;
 
@@ -449,13 +440,7 @@ export const SelectShadeBottomSheet = ({
                     (selectedShade.name && shade.name && selectedShade.name === shade.name)
                   );
 
-                  const isSoldOut = (
-                    shade.inStock === false ||
-                    shade.soldOut === true ||
-                    shade.stock === 0 ||
-                    shade.status === 'out_of_stock'
-                  );
-
+                  const isSoldOut = false;
                   const colorHex = shade.hexColor || shade.hex_color || '#F4A18D';
 
                   return (
@@ -466,7 +451,7 @@ export const SelectShadeBottomSheet = ({
                       style={{
                         marginRight: 14,
                         alignItems: 'center',
-                        opacity: isSoldOut ? 0.45 : 1,
+                        opacity: 1,
                       }}
                     >
                       {/* Outer Ring & Circular Swatch Container */}

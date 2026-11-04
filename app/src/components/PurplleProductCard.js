@@ -31,26 +31,32 @@ export const PurplleProductCard = ({
 
   const hasShades = shades.length > 0;
 
-  // Purplle rule: First shade is selected by default
+  // Nykaa/Purplle rule: Variant-specific card initializes with its specific variant
   const [selectedShade, setSelectedShade] = useState(() => {
+    if (product?.isVariantChild && product?.variantData) {
+      return product.variantData;
+    }
     return hasShades ? shades[0] : null;
   });
 
   // Keep selectedShade in sync if product changes
   React.useEffect(() => {
-    if (hasShades) {
+    if (product?.isVariantChild && product?.variantData) {
+      setSelectedShade(product.variantData);
+    } else if (hasShades) {
       if (!selectedShade || !shades.some(s => (s.id || s.name) === (selectedShade.id || selectedShade.name))) {
         setSelectedShade(shades[0]);
       }
     } else {
       setSelectedShade(null);
     }
-  }, [product?.id, hasShades, shades]);
+  }, [product?.id, product?.realVariantId, hasShades, shades]);
 
-  // Purplle rule: Active cartKey belongs STRICTLY to selected shade (or parent if no shades)
+  // Active cartKey belongs STRICTLY to selected shade (or parent if no shades)
+  const effectiveParentId = product?.parentProduct?.id || product?.parentProductId || product?.id;
   const currentCartKey = useMemo(() => {
-    return getCartKey(product?.id, hasShades ? selectedShade : null);
-  }, [product?.id, hasShades, selectedShade]);
+    return getCartKey(effectiveParentId, hasShades ? selectedShade : (product?.variantData || null));
+  }, [effectiveParentId, hasShades, selectedShade, product?.variantData]);
 
   // Counter strictly looks up currentCartKey
   const currentQty = (cartQuantityMap && currentCartKey)
@@ -77,8 +83,10 @@ export const PurplleProductCard = ({
 
   const discountPercent = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 0;
 
-  // Active image: updates if selected shade has an image
-  const displayImage = selectedShade?.image || selectedShade?.imageUrl || product?.image;
+  // Active image: updates if selected shade has an image or variant has its own image
+  const displayImage = product?.isVariantChild
+    ? (product.image || product.imageUrl || selectedShade?.image || selectedShade?.imageUrl)
+    : (selectedShade?.image || selectedShade?.imageUrl || product?.image);
 
   // Cart actions strictly pass currentCartKey & selectedShade
   const handleAdd = (e) => {

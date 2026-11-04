@@ -37,7 +37,8 @@ import {
   Boxes,
   Maximize2,
   DollarSign,
-  Building2
+  Building2,
+  Upload
 } from 'lucide-react';
 import SearchableSelect from '../common/SearchableSelect';
 import RoleQuantityTiersManager from './RoleQuantityTiersManager';
@@ -1231,7 +1232,6 @@ export default function ProductsCatalogMatrix({
                                     <span>Brand: <strong className="text-gray-800">{p.brandName || brands?.find(b => b.id === p.brandId)?.name || '—'}</strong></span>
                                     <span>Subcategory: <strong className="text-gray-800">{p.subcategory || '—'}</strong></span>
                                     <span>Variant Type: <strong className="text-gray-800">{p.variantType || 'Standard'}</strong></span>
-                                    <span>ID: <code className="text-xs font-mono text-gray-600">{p.id}</code></span>
                                   </p>
                                 </div>
                               </div>
@@ -1665,6 +1665,7 @@ export default function ProductsCatalogMatrix({
                                 <thead className="bg-white text-gray-800 uppercase font-black text-[10px] tracking-wider border-b border-[#FCE4EC]">
                                   <tr>
                                     <th className="py-2.5 px-3">Variant / Attributes</th>
+                                    <th className="py-2.5 px-3">Variant Image</th>
                                     <th className="py-2.5 px-3">MRP (General)</th>
                                     <th className="py-2.5 px-3">Salon Price</th>
                                     <th className="py-2.5 px-3">Artist Price</th>
@@ -1676,7 +1677,7 @@ export default function ProductsCatalogMatrix({
                                 <tbody className="divide-y divide-gray-100">
                                   {productShadesLocal.length === 0 ? (
                                     <tr>
-                                      <td colSpan={7} className="py-6 text-center text-gray-400 font-medium text-xs">
+                                      <td colSpan={8} className="py-6 text-center text-gray-400 font-medium text-xs">
                                         No variants configured for this product yet. Add a variant below.
                                       </td>
                                     </tr>
@@ -1734,6 +1735,106 @@ export default function ProductsCatalogMatrix({
                                                       </span>
                                                     ))}
                                                   </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </td>
+                                          <td className="py-3 px-3">
+                                            <div className="flex items-center gap-2">
+                                              <div className="relative w-8 h-8 rounded-lg border border-pink-200 bg-white overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group/vimg">
+                                                {(shade.image || shade.imageUrl || (shade.images && shade.images[0])) ? (
+                                                  <img
+                                                    src={shade.image || shade.imageUrl || shade.images[0]}
+                                                    alt={shade.name}
+                                                    className="w-full h-full object-cover"
+                                                  />
+                                                ) : (
+                                                  <ImageIcon size={14} className="text-pink-300" />
+                                                )}
+                                                <label
+                                                  className="absolute inset-0 bg-black/50 opacity-0 group-hover/vimg:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-white"
+                                                  title="Upload Image"
+                                                >
+                                                  <Upload size={12} />
+                                                  <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                      const file = e.target.files?.[0];
+                                                      if (!file) return;
+                                                      try {
+                                                        let uploadedUrl = null;
+                                                        if (adminCtx?.uploadImage) {
+                                                          uploadedUrl = await adminCtx.uploadImage(file, 'products', `var_${shade.sku || shade.id || Date.now()}`);
+                                                        }
+                                                        if (uploadedUrl) {
+                                                          setProductShadesLocal((prev) => prev.map((s, idx) => {
+                                                            if (idx !== sIdx) return s;
+                                                            const newImages = [uploadedUrl, ...(s.images || []).filter(u => u !== uploadedUrl)];
+                                                            return {
+                                                              ...s,
+                                                              image: uploadedUrl,
+                                                              imageUrl: uploadedUrl,
+                                                              images: newImages
+                                                            };
+                                                          }));
+                                                        }
+                                                      } catch (err) {
+                                                        console.error('Variant image upload failed:', err);
+                                                        alert('Failed to upload image. Please try again.');
+                                                      }
+                                                    }}
+                                                  />
+                                                </label>
+                                              </div>
+                                              <div className="flex flex-col">
+                                                <label className="text-[9.5px] font-bold text-[#C2477A] hover:underline cursor-pointer">
+                                                  Upload
+                                                  <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                      const file = e.target.files?.[0];
+                                                      if (!file) return;
+                                                      try {
+                                                        let uploadedUrl = null;
+                                                        if (adminCtx?.uploadImage) {
+                                                          uploadedUrl = await adminCtx.uploadImage(file, 'products', `var_${shade.sku || shade.id || Date.now()}`);
+                                                        }
+                                                        if (uploadedUrl) {
+                                                          setProductShadesLocal((prev) => prev.map((s, idx) => {
+                                                            if (idx !== sIdx) return s;
+                                                            const newImages = [uploadedUrl, ...(s.images || []).filter(u => u !== uploadedUrl)];
+                                                            return {
+                                                              ...s,
+                                                              image: uploadedUrl,
+                                                              imageUrl: uploadedUrl,
+                                                              images: newImages
+                                                            };
+                                                          }));
+                                                        }
+                                                      } catch (err) {
+                                                        console.error('Variant image upload failed:', err);
+                                                        alert('Failed to upload image. Please try again.');
+                                                      }
+                                                    }}
+                                                  />
+                                                </label>
+                                                {(shade.image || shade.imageUrl || (shade.images && shade.images.length > 0)) && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      setProductShadesLocal((prev) => prev.map((s, idx) => {
+                                                        if (idx !== sIdx) return s;
+                                                        return { ...s, image: null, imageUrl: null, images: [] };
+                                                      }));
+                                                    }}
+                                                    className="text-[8.5px] text-rose-500 hover:underline font-semibold text-left"
+                                                  >
+                                                    Clear
+                                                  </button>
                                                 )}
                                               </div>
                                             </div>
@@ -1996,7 +2097,7 @@ export default function ProductsCatalogMatrix({
                     {selectedDetailModalProduct.name}
                   </h3>
                   <p className="text-xs text-gray-500 font-medium mt-0.5">
-                    Product Master Inspector · ID: <span className="font-mono font-bold text-gray-700">{selectedDetailModalProduct.id}</span>
+                    Product Master Inspector · <span className="font-bold text-gray-700">{selectedDetailModalProduct.brandName || selectedDetailModalProduct.brand || 'Catalog Record'}</span>
                   </p>
                 </div>
               </div>

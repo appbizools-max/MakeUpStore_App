@@ -432,3 +432,117 @@ export const flattenProductsToIndividualVariants = (products = []) => {
 
   return flattened;
 };
+
+/**
+ * Nykaa-Style Product Catalog Explosion:
+ * Every sellable variant appears as an individual product card
+ * (e.g., 10 shades = 10 cards with variant-specific image, shade name, product name, brand, MRP, 4-tier role prices, discount %).
+ * Standalone products without variants appear as 1 card.
+ * Does not emit duplicate parent cards when variants exist.
+ */
+export const flattenToSellableNykaaCatalog = (products = []) => {
+  const flattened = [];
+
+  products.forEach(p => {
+    if (!p) return;
+
+    if (p.parentId) {
+      flattened.push({
+        ...p,
+        isParent: false,
+        isVariantChild: true,
+        catalogDisplayName: p.name,
+        typeLabel: 'Variant',
+        parentProductId: p.parentId,
+        variantName: p.shadeName || p.name
+      });
+      return;
+    }
+
+    const variants = getSafeActiveVariants(p);
+
+    if (variants.length === 0) {
+      flattened.push({
+        ...p,
+        isParent: false,
+        isVariantChild: false,
+        catalogDisplayName: p.name,
+        typeLabel: 'Standalone',
+        parentProduct: p
+      });
+    } else {
+      // Explode each variant as an individual sellable card
+      variants.forEach((v, vIdx) => {
+        const variantId = v.id || v.sku || `${p.id}_var_${vIdx}`;
+        const rawVariantLabel = v.title || v.name || (v.attributes && Object.keys(v.attributes).length > 0
+          ? Object.entries(v.attributes).map(([_, val]) => `${val}`).join(' / ')
+          : (v.code ? `Shade ${v.code}` : `Variant ${vIdx + 1}`));
+
+        const variantNameClean = String(rawVariantLabel).trim();
+        const fullVariantName = variantNameClean.toLowerCase().includes(String(p.name).toLowerCase())
+          ? variantNameClean
+          : `${p.name} — ${variantNameClean}`;
+
+        const vMrp = Number(v.mrp !== undefined && v.mrp !== '' ? v.mrp : (v.priceOverride !== undefined && v.priceOverride !== '' ? v.priceOverride : (p.mrp || 0)));
+        const vOriginalMrp = Number(v.originalMrp !== undefined && v.originalMrp !== '' ? v.originalMrp : (p.originalMrp || vMrp));
+        const vGeneralPrice = Number(v.generalPrice !== undefined && v.generalPrice !== '' ? v.generalPrice : (v.general_price !== undefined && v.general_price !== '' ? v.general_price : (p.generalPrice ?? vMrp)));
+        const vSalonPrice = Number(v.salonPrice !== undefined && v.salonPrice !== '' ? v.salonPrice : (v.salon_price !== undefined && v.salon_price !== '' ? v.salon_price : (p.salonPrice ?? vGeneralPrice)));
+        const vArtistPrice = Number(v.artistPrice !== undefined && v.artistPrice !== '' ? v.artistPrice : (v.artist_price !== undefined && v.artist_price !== '' ? v.artist_price : (p.artistPrice ?? vSalonPrice)));
+        const vBeauticianPrice = Number(v.beauticianPrice !== undefined && v.beauticianPrice !== '' ? v.beauticianPrice : (v.beautician_price !== undefined && v.beautician_price !== '' ? v.beautician_price : (p.beauticianPrice ?? vSalonPrice)));
+        const vImg = v.imageUrl || v.image || p.imageUrl || p.image;
+        const vBarcode = v.barcode || p.barcode || '';
+        const vSku = v.sku || (p.sku ? `${p.sku}-${v.code || vIdx + 1}` : undefined);
+
+        flattened.push({
+          ...p,
+          id: `${p.id}_var_${variantId}`,
+          realVariantId: variantId,
+          parentProductId: p.id,
+          parentName: p.name,
+          parentProduct: p,
+          isParent: false,
+          isVariantChild: true,
+          typeLabel: 'Variant',
+          catalogDisplayName: fullVariantName,
+          name: fullVariantName,
+          variantName: variantNameClean,
+          variantTitle: variantNameClean,
+          variantCode: v.code || '',
+          sku: vSku,
+          barcode: vBarcode,
+          image: vImg,
+          imageUrl: vImg,
+          images: v.images && Array.isArray(v.images) && v.images.length > 0 ? v.images : (vImg ? [vImg] : p.images || []),
+          hexColor: v.hexColor || v.hex_color || null,
+          mrp: vMrp,
+          originalMrp: vOriginalMrp,
+          generalPrice: vGeneralPrice,
+          salonPrice: vSalonPrice,
+          artistPrice: vArtistPrice,
+          beauticianPrice: vBeauticianPrice,
+          quantityTiers: v.quantityTiers || p.quantityTiers,
+          active: v.active !== false,
+          isSellable: v.isSellable !== false,
+          attributes: v.attributes || (v.hexColor ? { Shade: variantNameClean } : {}),
+          variantData: {
+            ...v,
+            name: variantNameClean,
+            title: variantNameClean,
+            mrp: vMrp,
+            originalMrp: vOriginalMrp,
+            generalPrice: vGeneralPrice,
+            salonPrice: vSalonPrice,
+            artistPrice: vArtistPrice,
+            beauticianPrice: vBeauticianPrice,
+            image: vImg,
+            imageUrl: vImg,
+            barcode: vBarcode,
+            sku: vSku
+          }
+        });
+      });
+    }
+  });
+
+  return flattened;
+};

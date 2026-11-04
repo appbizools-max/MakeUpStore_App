@@ -51,10 +51,17 @@ export const ProductDetailScreen = () => {
     rememberSelectedShade
   } = useApp();
 
-  // Extract all active, valid shades
-  const allSubProducts = useMemo(() => {
-    return getSafeProductShadesList(selectedProduct);
+  // Resolve true parent product and sibling variants (Nykaa 2-level hierarchy)
+  const effectiveProduct = useMemo(() => {
+    return (selectedProduct?.isVariantChild && selectedProduct?.parentProduct)
+      ? selectedProduct.parentProduct
+      : (selectedProduct || {});
   }, [selectedProduct]);
+
+  // Extract all active, valid shades from parent
+  const allSubProducts = useMemo(() => {
+    return getSafeProductShadesList(effectiveProduct);
+  }, [effectiveProduct]);
 
   // Distinguish pure color shades vs sizes/variants
   const { shadeList, variantList } = useMemo(() => {
@@ -87,8 +94,11 @@ export const ProductDetailScreen = () => {
     return { shadeList: sList.length > 0 ? sList : allSubProducts, variantList: vList };
   }, [allSubProducts]);
 
-  // Active shade state
+  // Active shade state (pre-selects clicked variant if opened from variant card)
   const [selectedShade, setSelectedShade] = useState(() => {
+    if (selectedProduct?.isVariantChild && selectedProduct?.variantData) {
+      return selectedProduct.variantData;
+    }
     if (contextSelectedShade && allSubProducts.some(s => (s.id || s.name) === (contextSelectedShade.id || contextSelectedShade.name))) {
       return contextSelectedShade;
     }
@@ -101,7 +111,9 @@ export const ProductDetailScreen = () => {
 
   // Sync selected shade when product changes
   useEffect(() => {
-    if (contextSelectedShade && allSubProducts.some(s => (s.id || s.name) === (contextSelectedShade.id || contextSelectedShade.name))) {
+    if (selectedProduct?.isVariantChild && selectedProduct?.variantData) {
+      setSelectedShade(selectedProduct.variantData);
+    } else if (contextSelectedShade && allSubProducts.some(s => (s.id || s.name) === (contextSelectedShade.id || contextSelectedShade.name))) {
       setSelectedShade(contextSelectedShade);
     } else if (allSubProducts.length > 0) {
       if (!selectedShade || !allSubProducts.some(s => (s.id || s.name) === (selectedShade.id || selectedShade.name))) {
@@ -110,7 +122,7 @@ export const ProductDetailScreen = () => {
     } else {
       setSelectedShade(null);
     }
-  }, [selectedProduct?.id, contextSelectedShade, allSubProducts]);
+  }, [selectedProduct?.id, selectedProduct?.realVariantId, contextSelectedShade, allSubProducts]);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -128,28 +140,34 @@ export const ProductDetailScreen = () => {
     }
   };
 
-  // Compile high-res gallery images
+  // Compile high-res gallery images: variant images first, then parent images
   const productImages = useMemo(() => {
     const list = [];
-    const shadeImg = selectedShade?.imageUrl || selectedShade?.image || selectedShade?.image_url;
-    if (shadeImg) {
-      const safe = getSafeImageUri(shadeImg);
-      if (safe) list.push(safe);
-    }
-    if (selectedProduct?.images && selectedProduct.images.length > 0) {
-      selectedProduct.images.forEach(img => {
+    if (selectedShade?.images && Array.isArray(selectedShade.images) && selectedShade.images.length > 0) {
+      selectedShade.images.forEach(img => {
         const safe = getSafeImageUri(img);
         if (safe && !list.includes(safe)) list.push(safe);
       });
-    } else if (selectedProduct?.image) {
-      const safe = getSafeImageUri(selectedProduct.image);
+    }
+    const shadeImg = selectedShade?.imageUrl || selectedShade?.image || selectedShade?.image_url;
+    if (shadeImg) {
+      const safe = getSafeImageUri(shadeImg);
+      if (safe && !list.includes(safe)) list.push(safe);
+    }
+    if (effectiveProduct?.images && effectiveProduct.images.length > 0) {
+      effectiveProduct.images.forEach(img => {
+        const safe = getSafeImageUri(img);
+        if (safe && !list.includes(safe)) list.push(safe);
+      });
+    } else if (effectiveProduct?.image) {
+      const safe = getSafeImageUri(effectiveProduct.image);
       if (safe && !list.includes(safe)) list.push(safe);
     }
     if (list.length === 0) {
       list.push('');
     }
     return list;
-  }, [selectedProduct, selectedShade]);
+  }, [effectiveProduct, selectedShade]);
 
   useEffect(() => {
     setCurrentImageIndex(0);
@@ -173,7 +191,7 @@ export const ProductDetailScreen = () => {
   }
 
   // Cart information
-  const cartItemId = getCartKey(selectedProduct.id, selectedShade);
+  const cartItemId = getCartKey(effectiveProduct?.id || selectedProduct?.id, selectedShade);
   const cartItem = (cart || []).find(c => c.id === cartItemId);
   const cartQty = cartItem ? cartItem.quantity : 0;
   const cartBadgeCount = (cart || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -206,11 +224,11 @@ export const ProductDetailScreen = () => {
     return activeProducts.filter(p => p.id !== selectedProduct.id).slice(0, 8);
   }, [selectedProduct.id, brandName, activeProducts]);
 
-  // Add to Cart Action
+  // Add to Cart Action (strictly adds selected variant)
   const handleAddToCart = () => {
-    addToCart(selectedProduct, 1, selectedShade);
+    addToCart(effectiveProduct || selectedProduct, 1, selectedShade);
     const shadeTitle = selectedShade?.name || selectedShade?.title || '';
-    setAddedToastMessage(`Added ${selectedProduct.name}${shadeTitle ? ` (${shadeTitle})` : ''} to cart! ✨`);
+    setAddedToastMessage(`Added ${(effectiveProduct || selectedProduct).name}${shadeTitle ? ` (${shadeTitle})` : ''} to cart! ✨`);
   };
 
   const isLiked = isFavorite ? isFavorite(selectedProduct?.id) : false;
@@ -364,6 +382,46 @@ export const ProductDetailScreen = () => {
             {fullTitle}
           </Text>
         </View>
+
+        {/* Dynamic Manual Description: Only displayed if entered manually */}
+        {(() => {
+          const desc = String(effectiveProduct?.description || selectedProduct?.description || '').trim();
+          if (!desc) return null;
+          return (
+            <View className="px-4 py-3 bg-white border-b border-[#F0F0F0]">
+              <Text className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-1">
+                Description
+              </Text>
+              <Text className="text-xs text-gray-700 leading-relaxed font-normal">
+                {desc}
+              </Text>
+            </View>
+          );
+        })()}
+
+        {/* Dynamic Master Attributes (from Attributes Master) */}
+        {(() => {
+          const rawAttrs = effectiveProduct?.attributes || selectedProduct?.attributes || selectedShade?.attributes;
+          if (!rawAttrs || typeof rawAttrs !== 'object' || Object.keys(rawAttrs).length === 0) return null;
+          const validEntries = Object.entries(rawAttrs).filter(([_, v]) => v !== undefined && v !== null && String(v).trim().length > 0);
+          if (validEntries.length === 0) return null;
+
+          return (
+            <View className="px-4 py-3 bg-white border-b border-[#F0F0F0]">
+              <Text className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-2">
+                Product Specifications
+              </Text>
+              <View className="flex-row flex-wrap gap-1.5">
+                {validEntries.map(([k, v]) => (
+                  <View key={k} className="px-2.5 py-1 rounded-lg bg-pink-50/70 border border-pink-100 flex-row items-center gap-1">
+                    <Text className="text-[10px] font-bold text-gray-500 uppercase">{k}:</Text>
+                    <Text className="text-[10.5px] font-black text-[#C2477A]">{String(v)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          );
+        })()}
 
         {/* 4. PRICE AND DISCOUNT LAYOUT */}
         <View className="px-4 py-3 bg-white flex-row items-center justify-between border-b border-[#F0F0F0]">

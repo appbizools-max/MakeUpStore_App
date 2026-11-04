@@ -584,7 +584,7 @@ export default function BarcodeScannerModal({
                         {duplicateProduct.name}
                       </div>
                       <div className="text-[11px] text-gray-500 font-medium">
-                        Brand: {duplicateProduct.brand_name || duplicateProduct.brandName || 'N/A'} • ID: {duplicateProduct.id}
+                        Brand: {duplicateProduct.brand_name || duplicateProduct.brandName || 'N/A'}
                       </div>
                     </div>
                   )}

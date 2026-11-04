@@ -257,28 +257,9 @@ export const AdminNotificationBell = ({
       }
     });
 
-    // 6. LOW STOCK ALERTS: Inventory running out
-    (products || []).forEach(prod => {
-      const stock = Number(prod.stock != null ? prod.stock : prod.inventory_count);
-      if (!isNaN(stock) && stock >= 0 && stock <= 5) {
-        list.push({
-          id: `stock_${prod.id}`,
-          rawId: prod.id,
-          category: 'stock',
-          type: 'low_stock',
-          title: stock === 0 ? `Out of Stock: ${prod.name}` : `Low Stock Alert (${stock} left)`,
-          message: `Product "${prod.name}" has ${stock} units remaining. Restock recommended.`,
-          timestamp: prod.updated_at || new Date().toISOString(),
-          targetTab: 'products',
-          priority: stock === 0 ? 'high' : 'medium',
-          badge: stock === 0 ? 'Out of Stock' : `${stock} Left`
-        });
-      }
-    });
-
     // Sort descending by timestamp
     return list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  }, [orders, b2bVerifications, employeeOperations, searchRequests, abandonedCarts, products]);
+  }, [orders, b2bVerifications, employeeOperations, searchRequests, abandonedCarts]);
 
   // Unread count
   const unreadNotifications = useMemo(() => {
@@ -360,12 +341,6 @@ export const AdminNotificationBell = ({
         return item.type === 'search_request'
           ? { icon: Search, bg: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-600' }
           : { icon: ShoppingCart, bg: 'bg-orange-100 text-orange-800 border-orange-200', dot: 'bg-orange-600' };
-      case 'stock':
-        return {
-          icon: Boxes,
-          bg: 'bg-rose-100 text-rose-800 border-rose-200',
-          dot: 'bg-rose-600'
-        };
       default:
         return {
           icon: Bell,
@@ -497,8 +472,7 @@ export const AdminNotificationBell = ({
               { id: 'orders', label: 'Orders', count: aggregatedNotifications.filter(n => n.category === 'orders').length },
               { id: 'b2b', label: 'B2B', count: aggregatedNotifications.filter(n => n.category === 'b2b').length },
               { id: 'approvals', label: 'Approvals', count: aggregatedNotifications.filter(n => n.category === 'approvals').length },
-              { id: 'activity', label: 'Search/Carts', count: aggregatedNotifications.filter(n => n.category === 'activity').length },
-              { id: 'stock', label: 'Low Stock', count: aggregatedNotifications.filter(n => n.category === 'stock').length }
+              { id: 'activity', label: 'Search/Carts', count: aggregatedNotifications.filter(n => n.category === 'activity').length }
             ].map(tab => (
               <button
                 key={tab.id}

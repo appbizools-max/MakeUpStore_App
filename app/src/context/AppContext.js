@@ -13,6 +13,7 @@ import {
 } from '../utils/quantityTiersUtils';
 import { generateSalbeauOrderId } from '../utils/orderIdUtils';
 import { getCartKey } from '../utils/cartKeyUtils';
+import { flattenToSellableNykaaCatalog } from '../utils/productSearchEngine';
 import {
   isB2BRole,
   isUserB2BVerified,
@@ -2178,8 +2179,12 @@ export const AppProvider = ({ children }) => {
 
   // Standard unified catalog products (1 card per product with interactive shade chips, Purplle style)
   // Each product has 1 card with shade chips instead of exploding into duplicate cards
+  // Nykaa-style sellable catalog:
+  // Every sellable variant appears as an individual product card
+  // (e.g. 10 shades = 10 cards with variant image, shade name, 4-tier role prices, discount %).
+  // Standalone products (0 variants) remain as 1 card.
   const activeProducts = useMemo(() => {
-    return activeProductFamilies;
+    return flattenToSellableNykaaCatalog(activeProductFamilies);
   }, [activeProductFamilies]);
 
   const addToCart = useCallback((product, quantity = 1, shade = null) => {
