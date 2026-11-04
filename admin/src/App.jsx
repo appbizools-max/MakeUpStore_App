@@ -1299,7 +1299,7 @@ const AdminDashboard = () => {
   const [newBrand, setNewBrand] = useState({
     name: '',
     logo: '',
-    category: 'Makeup',
+    category: '',
     enabled: true
   });
   const [editingBrand, setEditingBrand] = useState(null);
@@ -1983,7 +1983,7 @@ const AdminDashboard = () => {
     setNewBrand({
       name: '',
       logo: '',
-      category: 'Makeup',
+      category: '',
       enabled: true
     });
     setIsAddBrandModalOpen(true);
@@ -1994,7 +1994,7 @@ const AdminDashboard = () => {
       id: brand.id,
       name: brand.name || '',
       logo: brand.logo || '',
-      category: brand.category || 'Makeup',
+      category: brand.category || '',
       enabled: brand.enabled !== false
     });
     setIsEditBrandModalOpen(true);
@@ -2007,7 +2007,7 @@ const AdminDashboard = () => {
     setNewBrand({
       name: '',
       logo: '',
-      category: 'Makeup',
+      category: '',
       enabled: true
     });
     setShowBrandSuccess(true);

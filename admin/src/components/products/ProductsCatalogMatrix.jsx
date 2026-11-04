@@ -408,12 +408,16 @@ export default function ProductsCatalogMatrix({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="px-2 py-0.5 rounded-full bg-pink-100 text-[#C2477A] text-[9.5px] font-extrabold uppercase">
-                        {p.brandName || 'Brand'}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[9.5px] font-semibold">
-                        {p.category || 'Beauty'}
-                      </span>
+                      {p.brandName && (
+                        <span className="px-2 py-0.5 rounded-full bg-pink-100 text-[#C2477A] text-[9.5px] font-extrabold uppercase">
+                          {p.brandName}
+                        </span>
+                      )}
+                      {p.category && (
+                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[9.5px] font-semibold">
+                          {p.category}
+                        </span>
+                      )}
                       {variantsList.length > 0 && (
                         <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[9.5px] font-bold">
                           {variantsList.length} shades

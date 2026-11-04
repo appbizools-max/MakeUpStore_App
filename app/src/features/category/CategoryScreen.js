@@ -365,19 +365,13 @@ export const CategoryScreen = () => {
                   )}
                 </View>
 
-                {/* Typography Area */}
+                {/* Typography Area: Category Name */}
                 <View style={{ flex: 1, justifyContent: 'center' }}>
                   <Text
                     style={{ color: '#2B1A24', fontSize: 15, fontWeight: '800', lineHeight: 20 }}
                     numberOfLines={2}
                   >
                     {cat.name}
-                  </Text>
-                  <Text
-                    style={{ color: '#8A7A84', fontSize: 11.5, fontWeight: '500', marginTop: 2 }}
-                    numberOfLines={1}
-                  >
-                    {cat.subcategoriesCount > 0 ? `${cat.subcategoriesCount} Curated Collections` : cat.tagline}
                   </Text>
                 </View>
               </View>

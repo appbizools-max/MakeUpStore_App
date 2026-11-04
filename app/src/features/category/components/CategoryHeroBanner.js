@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { getSafeImageSource } from '../../../utils/categoryIcons';
+import { getSafeImageSource } from '../../../utils/imageUtils';
 
 /**
  * CategoryHeroBanner - Premium 3D cosmetic banner strip.
@@ -9,7 +9,7 @@ import { getSafeImageSource } from '../../../utils/categoryIcons';
  */
 export const CategoryHeroBanner = ({
   title = 'Category',
-  subtitle = 'Discover our curated collection.',
+  subtitle = null,
   ctaText = 'Explore Products',
   image = null,
   onExplore,

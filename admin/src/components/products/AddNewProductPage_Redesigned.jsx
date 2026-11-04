@@ -1340,11 +1340,11 @@ export default function AddNewProductPage({
     const autoSku = formData.sku && formData.sku.trim()
       ? formData.sku.trim()
       : generateProductSku({
-          brand: formData.brandName,
-          category: formData.category,
-          name: formData.name,
-          existingSkus
-        });
+        brand: formData.brandName,
+        category: formData.category,
+        name: formData.name,
+        existingSkus
+      });
 
     const sanitizedShades = hasVariants ? (formData.shades || []).map((shade, idx) => ({
       id: shade.id || `var_${Date.now()}_${idx}`,
@@ -2196,7 +2196,7 @@ export default function AddNewProductPage({
                           {barcodeStatus.matchedProduct?.name || 'Existing Catalog Product'}
                         </div>
                         <div className="text-[11px] text-gray-500 font-semibold">
-                          Brand: {barcodeStatus.matchedProduct?.brand_name || barcodeStatus.matchedProduct?.brandName || 'Brand'}
+                          Brand: {barcodeStatus.matchedProduct?.brand_name || barcodeStatus.matchedProduct?.brandName || '—'}
                           {barcodeStatus.matchedProduct?.sku ? ` • SKU: ${barcodeStatus.matchedProduct.sku}` : ''}
                         </div>
                         {barcodeStatus.matchedVariant && (
@@ -2558,11 +2558,10 @@ export default function AddNewProductPage({
                   <button
                     type="button"
                     onClick={() => setIsAttributesExpanded(!isAttributesExpanded)}
-                    className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 ${
-                      isAttributesExpanded
+                    className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 ${isAttributesExpanded
                         ? 'bg-[#E11D48] text-white border-[#E11D48]'
                         : 'bg-white hover:bg-pink-100 text-[#E11D48] border-pink-200'
-                    }`}
+                      }`}
                   >
                     <Sliders size={13} />
                     <span>{isAttributesExpanded ? 'Hide Attributes' : 'Attributes'}</span>
@@ -2915,16 +2914,14 @@ export default function AddNewProductPage({
                         key={role.id}
                         type="button"
                         onClick={() => setActiveTierRole(role.id)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-                          isActive
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${isActive
                             ? 'bg-[#E11D48] text-white shadow-md'
                             : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                        }`}
+                          }`}
                       >
                         <span>{role.name}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
-                          isActive ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-700'
-                        }`}>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${isActive ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-700'
+                          }`}>
                           {tierCount} {tierCount === 1 ? 'Tier' : 'Tiers'}
                         </span>
                       </button>
@@ -3353,10 +3350,10 @@ export default function AddNewProductPage({
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-extrabold uppercase tracking-wider text-[#E11D48]">
-                      {formData.brandName || 'Brand'}
+                      {formData.brandName || '—'}
                     </span>
                     <span className="text-gray-400 font-medium">
-                      {formData.category || 'Category'} {formData.subcategory ? `› ${formData.subcategory}` : ''}
+                      {formData.category || '—'} {formData.subcategory ? `› ${formData.subcategory}` : ''}
                     </span>
                   </div>
 
@@ -3513,11 +3510,11 @@ export default function AddNewProductPage({
                   <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden bg-white text-[11px]">
                     <div className="flex justify-between p-2">
                       <span className="text-gray-500">Brand</span>
-                      <span className="font-bold text-gray-800">{formData.brandName || 'Brand'}</span>
+                      <span className="font-bold text-gray-800">{formData.brandName || '—'}</span>
                     </div>
                     <div className="flex justify-between p-2">
                       <span className="text-gray-500">Category</span>
-                      <span className="font-bold text-gray-800">{formData.category || 'Makeup'}</span>
+                      <span className="font-bold text-gray-800">{formData.category || '—'}</span>
                     </div>
                     {formData.subcategory && (
                       <div className="flex justify-between p-2">

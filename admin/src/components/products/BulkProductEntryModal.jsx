@@ -810,34 +810,34 @@ export const DEFAULT_COLUMN_CONFIG = [
   { key: 'select', label: 'Select Checkbox', canonicalCol: null, group: 'Controls', visible: true, mandatory: true },
 
   // Exact 18 Canonical Product Columns in requested sequence (1-18) + Actions (19)
-  { key: 'barcode', label: 'Barcode [Col 1]', canonicalCol: 1, canonicalName: 'Barcode', group: 'Product Master', visible: true, mandatory: false },
-  { key: 'brand', label: 'Brand [Col 2]', canonicalCol: 2, canonicalName: 'Brand', group: 'Product Master', visible: true, mandatory: true },
-  { key: 'images', label: 'Image [Col 3]', canonicalCol: 3, canonicalName: 'Image', group: 'Product Master', visible: true, mandatory: false },
-  { key: 'parentSku', label: 'SKU number [Col 4]', canonicalCol: 4, canonicalName: 'SKU_Number', group: 'Product Master', visible: true, mandatory: false },
-  { key: 'name', label: 'Product_Name [Col 5]', canonicalCol: 5, canonicalName: 'Product_Name', group: 'Product Master', visible: true, mandatory: true },
-  { key: 'category', label: 'Category [Col 6]', canonicalCol: 6, canonicalName: 'Category', group: 'Product Master', visible: true, mandatory: true },
-  { key: 'subcategory', label: 'Subcategory [Col 7]', canonicalCol: 7, canonicalName: 'Subcategory', group: 'Product Master', visible: true, mandatory: true },
+  { key: 'barcode', label: 'Barcode', canonicalCol: 1, canonicalName: 'Barcode', group: 'Product Master', visible: true, mandatory: false },
+  { key: 'brand', label: 'Brand', canonicalCol: 2, canonicalName: 'Brand', group: 'Product Master', visible: true, mandatory: true },
+  { key: 'images', label: 'Image', canonicalCol: 3, canonicalName: 'Image', group: 'Product Master', visible: true, mandatory: false },
+  { key: 'parentSku', label: 'SKU Number', canonicalCol: 4, canonicalName: 'SKU_Number', group: 'Product Master', visible: true, mandatory: false },
+  { key: 'name', label: 'Product Name', canonicalCol: 5, canonicalName: 'Product_Name', group: 'Product Master', visible: true, mandatory: true },
+  { key: 'category', label: 'Category', canonicalCol: 6, canonicalName: 'Category', group: 'Product Master', visible: true, mandatory: true },
+  { key: 'subcategory', label: 'Subcategory', canonicalCol: 7, canonicalName: 'Subcategory', group: 'Product Master', visible: true, mandatory: true },
   
-  { key: 'shade', label: 'Shade_Name [Col 9]', canonicalCol: 9, canonicalName: 'Shade_Name', group: 'Variant Details', visible: true, mandatory: false },
-  { key: 'swatch', label: 'HEX & Swatch [Col 10]', canonicalCol: 10, canonicalName: 'HEX_Swatch', group: 'Variant Details', visible: true, mandatory: false },
-  { key: 'size', label: 'Size_or_Weight [Col 11]', canonicalCol: 11, canonicalName: 'Size_or_Weight', group: 'Variant Details', visible: true, mandatory: false },
-  { key: 'mrp', label: 'MRP [Col 12]', canonicalCol: 12, canonicalName: 'MRP', group: 'Role Pricing', visible: true, mandatory: true },
-  { key: 'generalPrice', label: 'General_User_Price [Col 13]', canonicalCol: 13, canonicalName: 'General_User_Price', group: 'Role Pricing', visible: true, mandatory: false },
-  { key: 'salonPrice', label: 'Salon_Price [Col 14]', canonicalCol: 14, canonicalName: 'Salon_Price', group: 'Role Pricing', visible: true, mandatory: false },
-  { key: 'artistPrice', label: 'Makeup_Artist_Price [Col 15]', canonicalCol: 15, canonicalName: 'Makeup_Artist_Price', group: 'Role Pricing', visible: true, mandatory: false },
-  { key: 'beauticianPrice', label: 'Beautician_Price [Col 16]', canonicalCol: 16, canonicalName: 'Beautician_Price', group: 'Role Pricing', visible: true, mandatory: false },
-  { key: 'productActive', label: 'Product_Active [Col 17]', canonicalCol: 17, canonicalName: 'Product_Active', group: 'Publication', visible: true, mandatory: false },
-  { key: 'status', label: 'Status [Col 18]', canonicalCol: 18, canonicalName: 'Status', group: 'Publication', visible: true, mandatory: false },
-  { key: 'actions', label: 'Actions [Col 19]', canonicalCol: 19, canonicalName: 'Actions', group: 'Controls', visible: true, mandatory: true },
+  { key: 'shade', label: 'Shade Name', canonicalCol: 9, canonicalName: 'Shade_Name', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'swatch', label: 'HEX & Swatch', canonicalCol: 10, canonicalName: 'HEX_Swatch', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'size', label: 'Size / Weight', canonicalCol: 11, canonicalName: 'Size_or_Weight', group: 'Variant Details', visible: true, mandatory: false },
+  { key: 'mrp', label: 'MRP', canonicalCol: 12, canonicalName: 'MRP', group: 'Role Pricing', visible: true, mandatory: true },
+  { key: 'generalPrice', label: 'General Price', canonicalCol: 13, canonicalName: 'General_User_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'salonPrice', label: 'Salon Price', canonicalCol: 14, canonicalName: 'Salon_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'artistPrice', label: 'Makeup Artist Price', canonicalCol: 15, canonicalName: 'Makeup_Artist_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'beauticianPrice', label: 'Beautician Price', canonicalCol: 16, canonicalName: 'Beautician_Price', group: 'Role Pricing', visible: true, mandatory: false },
+  { key: 'productActive', label: 'Product Active', canonicalCol: 17, canonicalName: 'Product_Active', group: 'Publication', visible: true, mandatory: false },
+  { key: 'status', label: 'Status', canonicalCol: 18, canonicalName: 'Status', group: 'Publication', visible: true, mandatory: false },
+  { key: 'actions', label: 'Actions', canonicalCol: 19, canonicalName: 'Actions', group: 'Controls', visible: true, mandatory: true },
 
   // Non-default / secondary attributes (toggleable via Column Manager or accessible in All Details)
-  { key: 'description', label: 'Product_Description', canonicalCol: null, canonicalName: 'Product_Description', group: 'Product Master', visible: false, mandatory: false },
+  { key: 'description', label: 'Product Description', canonicalCol: null, canonicalName: 'Product_Description', group: 'Product Master', visible: false, mandatory: false },
   { key: 'highlights', label: 'Highlights', canonicalCol: null, canonicalName: 'Highlights', group: 'Product Master', visible: false, mandatory: false },
-  { key: 'variantName', label: 'Variant_Name', canonicalCol: null, canonicalName: 'Variant_Name', group: 'Variant Details', visible: false, mandatory: false },
-  { key: 'shadeCode', label: 'Shade_Code', canonicalCol: null, canonicalName: 'Shade_Code', group: 'Variant Details', visible: false, mandatory: false },
-  { key: 'variantBarcode', label: 'Variant_Barcode', canonicalCol: null, canonicalName: 'Variant_Barcode', group: 'Variant Details', visible: false, mandatory: false },
+  { key: 'variantName', label: 'Variant Name', canonicalCol: null, canonicalName: 'Variant_Name', group: 'Variant Details', visible: false, mandatory: false },
+  { key: 'shadeCode', label: 'Shade Code', canonicalCol: null, canonicalName: 'Shade_Code', group: 'Variant Details', visible: false, mandatory: false },
+  { key: 'variantBarcode', label: 'Variant Barcode', canonicalCol: null, canonicalName: 'Variant_Barcode', group: 'Variant Details', visible: false, mandatory: false },
   { key: 'finish', label: 'Finish', canonicalCol: null, canonicalName: 'Finish', group: 'Attributes', visible: false, mandatory: false },
-  { key: 'skinType', label: 'Skin_Type', canonicalCol: null, canonicalName: 'Skin_Type', group: 'Attributes', visible: false, mandatory: false },
+  { key: 'skinType', label: 'Skin Type', canonicalCol: null, canonicalName: 'Skin_Type', group: 'Attributes', visible: false, mandatory: false },
   { key: 'coverage', label: 'Coverage', canonicalCol: null, canonicalName: 'Coverage', group: 'Attributes', visible: false, mandatory: false },
   { key: 'productImageUrl', label: 'Product_Image_URL', canonicalCol: null, canonicalName: 'Product_Image_URL', group: 'Publication', visible: false, mandatory: false },
   { key: 'variantActive', label: 'Variant_Active', canonicalCol: null, canonicalName: 'Variant_Active', group: 'Publication', visible: false, mandatory: false }
@@ -3876,7 +3876,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('barcode') && (
                     <th className="min-w-[210px] w-[210px] max-w-[210px] px-3.5 text-left bg-[#EEF2FF] border-r border-slate-200 text-slate-900">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 1</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BARCODE</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">Scan / Enter</div>
@@ -3887,7 +3886,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('brand') && (
                     <th className="min-w-[190px] px-3 text-left bg-[#EEF2FF] text-slate-900">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 2</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BRAND</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">Manufacturer</div>
@@ -3898,7 +3896,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('images') && (
                     <th className="min-w-[105px] px-2 text-center bg-[#EEF2FF] text-slate-900">
                       <div className="flex items-center justify-center gap-1">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 3</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">IMAGE</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">Thumbnail</div>
@@ -3909,7 +3906,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('parentSku') && (
                     <th className="min-w-[170px] px-3 text-left bg-[#EEF2FF] text-slate-900">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 4</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SKU NUMBER</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">Group Code</div>
@@ -3920,8 +3916,7 @@ export const BulkProductEntryModal = ({
                   {isColVisible('name') && (
                     <th className="min-w-[320px] w-[320px] px-3.5 text-left bg-[#EEF2FF] border-r border-slate-200 text-slate-900">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 5</span>
-                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT_NAME</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT NAME</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">Catalog Title</div>
                     </th>
@@ -3931,7 +3926,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('category') && (
                     <th className="min-w-[200px] px-3 text-left bg-[#EEF2FF] text-slate-900">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 6</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">CATEGORY</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">Main Department</div>
@@ -3942,7 +3936,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('subcategory') && (
                     <th className="min-w-[200px] px-3 text-left bg-[#EEF2FF] text-slate-900">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 7</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SUBCATEGORY</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">Subdepartment</div>
@@ -3953,8 +3946,7 @@ export const BulkProductEntryModal = ({
                   {isColVisible('shade') && (
                     <th className="min-w-[180px] px-2.5 text-left bg-white text-[#831843]">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 8</span>
-                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SHADE_NAME</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SHADE NAME</span>
                       </div>
                       <div className="text-[11px] font-bold text-pink-700">Color Name</div>
                     </th>
@@ -3964,7 +3956,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('swatch') && (
                     <th className="min-w-[180px] px-3 text-left bg-white text-[#831843]">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 10</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">HEX & SWATCH</span>
                       </div>
                       <div className="text-[11px] font-bold text-pink-700">Color Swatch & RGB</div>
@@ -3975,8 +3966,7 @@ export const BulkProductEntryModal = ({
                   {isColVisible('size') && (
                     <th className="min-w-[130px] px-2.5 text-left bg-white text-[#831843]">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 11</span>
-                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SIZE_OR_WEIGHT</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SIZE / WEIGHT</span>
                       </div>
                       <div className="text-[11px] font-bold text-pink-700">e.g. 5.6ml, 30g</div>
                     </th>
@@ -3986,7 +3976,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('mrp') && (
                     <th className="min-w-[130px] px-3 text-right bg-[#FAF5FF] text-[#581C87]">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 12</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">MRP</span>
                       </div>
                       <div className="text-[11px] font-bold text-purple-700">₹ Retail MRP</div>
@@ -3997,8 +3986,7 @@ export const BulkProductEntryModal = ({
                   {isColVisible('generalPrice') && (
                     <th className="min-w-[140px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 13</span>
-                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">GENERAL_USER_PRICE</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">GENERAL PRICE</span>
                       </div>
                       <div className="text-[11px] font-bold text-purple-700">₹ Price & % Disc</div>
                     </th>
@@ -4008,8 +3996,7 @@ export const BulkProductEntryModal = ({
                   {isColVisible('salonPrice') && (
                     <th className="min-w-[140px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 14</span>
-                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SALON_PRICE</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SALON PRICE</span>
                       </div>
                       <div className="text-[11px] font-bold text-purple-700">₹ Salon Wholesale</div>
                     </th>
@@ -4019,8 +4006,7 @@ export const BulkProductEntryModal = ({
                   {isColVisible('artistPrice') && (
                     <th className="min-w-[140px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 15</span>
-                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">MAKEUP_ARTIST_PRICE</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">ARTIST PRICE</span>
                       </div>
                       <div className="text-[11px] font-bold text-purple-700">₹ Pro MUA Price</div>
                     </th>
@@ -4030,8 +4016,7 @@ export const BulkProductEntryModal = ({
                   {isColVisible('beauticianPrice') && (
                     <th className="min-w-[140px] px-2.5 text-right bg-[#FAF5FF] text-[#581C87]">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">COL 16</span>
-                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BEAUTICIAN_PRICE</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">BEAUTICIAN PRICE</span>
                       </div>
                       <div className="text-[11px] font-bold text-purple-700">₹ Beautician Rate</div>
                     </th>
@@ -4041,8 +4026,7 @@ export const BulkProductEntryModal = ({
                   {isColVisible('productActive') && (
                     <th className="w-28 min-w-[110px] px-2 text-center bg-slate-200 text-slate-900">
                       <div className="flex items-center justify-center gap-1">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-slate-300 text-slate-700">COL 17</span>
-                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT_ACTIVE</span>
+                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">ACTIVE</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">TRUE / FALSE</div>
                     </th>
@@ -4052,7 +4036,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('status') && (
                     <th className="w-32 min-w-[130px] px-2.5 text-center bg-slate-200 text-slate-900">
                       <div className="flex items-center justify-center gap-1">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-slate-300 text-slate-700">COL 18</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">STATUS</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">Draft / Ready</div>
@@ -4063,7 +4046,6 @@ export const BulkProductEntryModal = ({
                   {isColVisible('actions') && (
                     <th className="w-32 min-w-[125px] px-2 text-center bg-slate-200 text-slate-900">
                       <div className="flex items-center justify-center gap-1">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-slate-300 text-slate-700">COL 19</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">ACTIONS</span>
                       </div>
                       <div className="text-[11px] font-bold text-slate-600">Row Controls</div>
@@ -4073,7 +4055,7 @@ export const BulkProductEntryModal = ({
                   {/* Secondary/Hidden Columns (if made visible by Column Manager) */}
                   {isColVisible('description') && (
                     <th className="min-w-[280px] px-3 text-left bg-[#EEF2FF] text-slate-900">
-                      <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">PRODUCT_DESCRIPTION</div>
+                      <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">DESCRIPTION</div>
                       <div className="text-[11px] font-bold text-slate-600">Marketing Overview</div>
                     </th>
                   )}
@@ -5022,15 +5004,7 @@ export const BulkProductEntryModal = ({
                                       />
                                     </div>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => setInPanelBrowserRowId(row._id)}
-                                      className="w-full py-1.5 px-2 bg-white hover:bg-pink-100 border border-pink-200 text-[#C2477A] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
-                                      title="Open Image Search Browser on the right"
-                                    >
-                                      <Search className="w-3 h-3 text-[#C2477A]" />
-                                      <span>Image Search</span>
-                                    </button>
+                                    
 
                                     <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
                                       {(row.images || []).map((imgUrl, imgIdx) => (
@@ -5289,15 +5263,7 @@ export const BulkProductEntryModal = ({
                                       <ImageIcon className="w-4 h-4 text-indigo-600" />
                                       <span>Product Images ({row.images?.length || 0}/10)</span>
                                     </h3>
-                                    <button
-                                      type="button"
-                                      onClick={() => setInPanelBrowserRowId(row._id)}
-                                      className="py-1 px-3 bg-[#C2477A] hover:bg-[#9A3460] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-                                      title="Open Image Search Browser on the right"
-                                    >
-                                      <Search className="w-3.5 h-3.5" />
-                                      <span>Image Search</span>
-                                    </button>
+                                    
                                   </div>
 
                                   <div

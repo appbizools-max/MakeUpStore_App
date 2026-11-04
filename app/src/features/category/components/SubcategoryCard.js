@@ -76,24 +76,18 @@ export const SubcategoryCard = ({
       </View>
 
       {/* Title & Product Count */}
-      <View style={{ flex: 1, paddingRight: 8 }}>
+      <View style={{ flex: 1, paddingRight: 8, justifyContent: 'center' }}>
         <Text
           style={{
             color: '#2B1A24',
             fontSize: 14.5,
             fontWeight: '800',
             lineHeight: 19,
-            marginBottom: 2
           }}
           numberOfLines={2}
         >
           {title}
         </Text>
-        {description ? (
-          <Text style={{ color: '#82727C', fontSize: 11.5, fontWeight: '500' }} numberOfLines={1}>
-            {description}
-          </Text>
-        ) : null}
         {productCount > 0 ? (
           <Text style={{ color: '#C2477A', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
             {productCount} Products

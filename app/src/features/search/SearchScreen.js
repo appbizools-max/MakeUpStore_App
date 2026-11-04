@@ -64,6 +64,7 @@ export const SearchScreen = () => {
     brands = [],
     isCatalogLoading = false,
     categories = [],
+    subcategories = [],
     userRole,
     userProfile,
     getRolePrice,
@@ -82,11 +83,13 @@ export const SearchScreen = () => {
 
   const [query, setQuery] = useState(globalSearchQuery || '');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedBrand, setSelectedBrand] = useState('All');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('All');
+  const [selectedBrands, setSelectedBrands] = useState([]); // Multi-select brands
   const [selectedPriceRange, setSelectedPriceRange] = useState('all'); // 'all' | 'u500' | '500_1000' | '1000_2000' | 'a2000'
-  const [minRating, setMinRating] = useState(0); // 0 | 4 | 3
-  const [inStockOnly, setInStockOnly] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [brandFilterSearch, setBrandFilterSearch] = useState('');
   const [isRecentExpanded, setIsRecentExpanded] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -164,24 +167,61 @@ export const SearchScreen = () => {
     return getCartQuantityMap(cart);
   }, [cart]);
 
-  // Count active applied filters
+  // Count active applied filters (Nykaa Specification: Category, Brand, Price Range)
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedCategory !== 'All') count++;
-    if (selectedBrand !== 'All') count++;
+    if (selectedSubcategory !== 'All') count++;
+    if (selectedBrands.length > 0) count += selectedBrands.length;
     if (selectedPriceRange !== 'all') count++;
-    if (minRating > 0) count++;
-    if (inStockOnly) count++;
     return count;
-  }, [selectedCategory, selectedBrand, selectedPriceRange, minRating, inStockOnly]);
+  }, [selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange]);
 
   const resetAllFilters = () => {
     setSelectedCategory('All');
-    setSelectedBrand('All');
+    setSelectedSubcategory('All');
+    setSelectedBrands([]);
     setSelectedPriceRange('all');
-    setMinRating(0);
-    setInStockOnly(false);
+    setBrandFilterSearch('');
   };
+
+  const handleVoiceApply = (spokenText) => {
+    const clean = (spokenText || '').trim();
+    if (clean) {
+      setQuery(clean);
+      addRecentSearch(clean);
+      setShowSuggestions(false);
+    }
+    setIsVoiceModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (!isVoiceModalOpen) return;
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = false;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+          recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            if (transcript) {
+              setVoiceTranscript(transcript);
+              if (event.results[0].isFinal) {
+                handleVoiceApply(transcript);
+              }
+            }
+          };
+          recognition.start();
+          return () => {
+            try { recognition.stop(); } catch (_) {}
+          };
+        } catch (_) {}
+      }
+    }
+  }, [isVoiceModalOpen]);
 
   // Active / Available Brands computation (always fresh)
   const displayBrands = useMemo(() => {
@@ -233,18 +273,25 @@ export const SearchScreen = () => {
         if (!matchesQuery) return false;
       }
 
-      // Category filter
+      // Category filter (Exact / Partial match)
       if (selectedCategory !== 'All') {
-        const pCat = `${p.category || ''} ${p.subcategory || ''}`.toLowerCase();
-        const sCat = selectedCategory.toLowerCase();
+        const pCat = (p.category || '').toLowerCase().trim();
+        const sCat = selectedCategory.toLowerCase().trim();
         if (!pCat.includes(sCat) && !sCat.includes(pCat)) return false;
       }
 
-      // Brand filter
-      if (selectedBrand !== 'All') {
-        const pBrand = (p.brandName || p.brand || '').toLowerCase();
-        const sBrand = selectedBrand.toLowerCase();
-        if (pBrand !== sBrand) return false;
+      // Subcategory filter
+      if (selectedSubcategory !== 'All') {
+        const pSub = (p.subcategory || '').toLowerCase().trim();
+        const sSub = selectedSubcategory.toLowerCase().trim();
+        if (!pSub.includes(sSub) && !sSub.includes(pSub)) return false;
+      }
+
+      // Brand filter (Multi-select)
+      if (selectedBrands.length > 0) {
+        const pBrand = (p.brandName || p.brand || '').toLowerCase().trim();
+        const isMatch = selectedBrands.some(b => b.toLowerCase().trim() === pBrand);
+        if (!isMatch) return false;
       }
 
       // Price filter
@@ -256,20 +303,9 @@ export const SearchScreen = () => {
         if (selectedPriceRange === 'a2000' && price <= 2000) return false;
       }
 
-      // Rating filter
-      if (minRating > 0) {
-        const pRating = Number(p.rating || 4.5);
-        if (pRating < minRating) return false;
-      }
-
-      // In stock only
-      if (inStockOnly) {
-        if (p.inStock === false || p.stock === 0 || p.status === 'out_of_stock') return false;
-      }
-
       return true;
     });
-  }, [activeProducts, query, selectedCategory, selectedBrand, selectedPriceRange, minRating, inStockOnly, userRole, getRolePrice]);
+  }, [activeProducts, query, selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, userRole, getRolePrice]);
 
   // Customer Search Analytics Tracking
   useEffect(() => {
@@ -379,8 +415,12 @@ export const SearchScreen = () => {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                onPress={() => searchInputRef.current?.focus()}
+                onPress={() => {
+                  setVoiceTranscript('');
+                  setIsVoiceModalOpen(true);
+                }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
               >
                 <Ionicons name="mic-outline" size={18} color="#B34D7D" />
               </TouchableOpacity>
@@ -538,7 +578,10 @@ export const SearchScreen = () => {
         >
           {selectedCategory !== 'All' && (
             <TouchableOpacity
-              onPress={() => setSelectedCategory('All')}
+              onPress={() => {
+                setSelectedCategory('All');
+                setSelectedSubcategory('All');
+              }}
               className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
             >
               <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
@@ -548,17 +591,30 @@ export const SearchScreen = () => {
             </TouchableOpacity>
           )}
 
-          {selectedBrand !== 'All' && (
+          {selectedSubcategory !== 'All' && (
             <TouchableOpacity
-              onPress={() => setSelectedBrand('All')}
+              onPress={() => setSelectedSubcategory('All')}
               className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
             >
               <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
-                Brand: {selectedBrand}
+                Sub: {selectedSubcategory}
               </Text>
               <Ionicons name="close" size={13} color="#B34D7D" />
             </TouchableOpacity>
           )}
+
+          {selectedBrands.map((bName) => (
+            <TouchableOpacity
+              key={bName}
+              onPress={() => setSelectedBrands(prev => prev.filter(b => b !== bName))}
+              className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
+            >
+              <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
+                Brand: {bName}
+              </Text>
+              <Ionicons name="close" size={13} color="#B34D7D" />
+            </TouchableOpacity>
+          ))}
 
           {selectedPriceRange !== 'all' && (
             <TouchableOpacity
@@ -566,31 +622,7 @@ export const SearchScreen = () => {
               className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
             >
               <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
-                Price: {selectedPriceRange}
-              </Text>
-              <Ionicons name="close" size={13} color="#B34D7D" />
-            </TouchableOpacity>
-          )}
-
-          {minRating > 0 && (
-            <TouchableOpacity
-              onPress={() => setMinRating(0)}
-              className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
-            >
-              <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
-                Rating: {minRating}★+
-              </Text>
-              <Ionicons name="close" size={13} color="#B34D7D" />
-            </TouchableOpacity>
-          )}
-
-          {inStockOnly && (
-            <TouchableOpacity
-              onPress={() => setInStockOnly(false)}
-              className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
-            >
-              <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
-                In Stock Only
+                Price: {selectedPriceRange === 'u500' ? '< ₹500' : selectedPriceRange === '500_1000' ? '₹500-1k' : selectedPriceRange === '1000_2000' ? '₹1k-2k' : '> ₹2k'}
               </Text>
               <Ionicons name="close" size={13} color="#B34D7D" />
             </TouchableOpacity>
@@ -598,7 +630,7 @@ export const SearchScreen = () => {
 
           <TouchableOpacity onPress={resetAllFilters} className="ml-auto py-1 px-2">
             <Text style={{ color: '#B34D7D' }} className="text-[11px] font-extrabold">
-              Reset All
+              Clear All
             </Text>
           </TouchableOpacity>
         </View>
@@ -948,7 +980,7 @@ export const SearchScreen = () => {
         )}
       </ScrollView>
 
-      {/* ── 8. COMPREHENSIVE FILTER BOTTOM SHEET MODAL ────────────────── */}
+            {/* ── 8. COMPREHENSIVE NYKAA-STYLE FILTER MODAL ────────────────── */}
       <Modal
         visible={isFilterModalOpen}
         transparent
@@ -963,7 +995,7 @@ export const SearchScreen = () => {
                   backgroundColor: '#FFFFFF',
                   borderTopLeftRadius: 24,
                   borderTopRightRadius: 24,
-                  maxHeight: '82%',
+                  maxHeight: '85%',
                   borderColor: '#F0E3EA',
                   borderTopWidth: 1,
                   shadowColor: '#000',
@@ -980,22 +1012,200 @@ export const SearchScreen = () => {
                 </View>
 
                 {/* Modal Header */}
-                <View className="flex-row items-center justify-between pb-3 border-b border-[#F0E3EA] mb-4">
+                <View className="flex-row items-center justify-between pb-3 border-b border-[#F0E3EA] mb-3">
                   <View className="flex-row items-center gap-2">
-                    <Ionicons name="options-outline" size={18} color="#B34D7D" />
-                    <Text style={{ color: '#352832' }} className="text-base font-extrabold">
+                    <Ionicons name="options-outline" size={18} color="#C2477A" />
+                    <Text style={{ color: '#2B1A24' }} className="text-base font-extrabold">
                       Filter Products
                     </Text>
+                    {activeFilterCount > 0 && (
+                      <View className="bg-[#C2477A] px-2 py-0.5 rounded-full">
+                        <Text className="text-white text-[10px] font-black">{activeFilterCount}</Text>
+                      </View>
+                    )}
                   </View>
-                  <TouchableOpacity onPress={() => setIsFilterModalOpen(false)}>
+                  <TouchableOpacity onPress={() => setIsFilterModalOpen(false)} className="p-1">
                     <Ionicons name="close" size={20} color="#8A7B85" />
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false} className="space-y-4">
-                  {/* Filter: Price Range */}
+                  {/* Filter 1: Dynamic Categories (from Supabase) */}
                   <View>
-                    <Text style={{ color: '#352832' }} className="text-xs font-bold uppercase tracking-wider mb-2">
+                    <Text style={{ color: '#2B1A24' }} className="text-xs font-bold uppercase tracking-wider mb-2">
+                      Category
+                    </Text>
+                    <View className="flex-row flex-wrap gap-2">
+                      {['All', ...(categories && categories.length > 0 ? categories.filter(c => c.is_active !== false).map(c => c.name) : ['Skincare', 'Makeup', 'Haircare', 'Fragrance', 'Bath & Body', "Men's Grooming", 'Nail Care', 'Beauty Tools'])].map((catName) => {
+                        const isSelected = selectedCategory === catName;
+                        return (
+                          <TouchableOpacity
+                            key={catName}
+                            onPress={() => {
+                              setSelectedCategory(catName);
+                              setSelectedSubcategory('All');
+                            }}
+                            style={{
+                              backgroundColor: isSelected ? '#C2477A' : '#FFFFFF',
+                              borderColor: isSelected ? '#C2477A' : '#F0E3EA',
+                              borderWidth: 1,
+                              borderRadius: 16,
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: isSelected ? '#FFFFFF' : '#352832',
+                                fontSize: 11,
+                                fontWeight: isSelected ? '700' : '500',
+                              }}
+                            >
+                              {catName}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {/* Dependent Subcategories under Selected Category */}
+                    {selectedCategory !== 'All' && (() => {
+                      const parentCatObj = (categories || []).find(c => c.name?.toLowerCase() === selectedCategory.toLowerCase());
+                      const matchingSubs = (subcategories || []).filter(s =>
+                        (parentCatObj && (s.category_id === parentCatObj.id || s.categoryId === parentCatObj.id)) ||
+                        (s.categoryName && s.categoryName.toLowerCase() === selectedCategory.toLowerCase())
+                      );
+
+                      if (!matchingSubs || matchingSubs.length === 0) return null;
+
+                      return (
+                        <View className="mt-2.5 pt-2 border-t border-dashed border-[#F0E3EA]">
+                          <Text style={{ color: '#C2477A' }} className="text-[11px] font-bold mb-1.5">
+                            Subcategories in {selectedCategory}:
+                          </Text>
+                          <View className="flex-row flex-wrap gap-1.5">
+                            {['All', ...matchingSubs.map(s => s.name)].map((subName) => {
+                              const isSubSelected = selectedSubcategory === subName;
+                              return (
+                                <TouchableOpacity
+                                  key={subName}
+                                  onPress={() => setSelectedSubcategory(subName)}
+                                  style={{
+                                    backgroundColor: isSubSelected ? '#2B1A24' : '#FFFFFF',
+                                    borderColor: isSubSelected ? '#2B1A24' : '#E8E8E8',
+                                    borderWidth: 1,
+                                    borderRadius: 12,
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 4.5,
+                                  }}
+                                >
+                                  <Text
+                                    style={{
+                                      color: isSubSelected ? '#FFFFFF' : '#4A3B45',
+                                      fontSize: 10.5,
+                                      fontWeight: isSubSelected ? '700' : '500',
+                                    }}
+                                  >
+                                    {subName}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      );
+                    })()}
+                  </View>
+
+                  {/* Filter 2: Dedicated Brand Filter with In-Filter Search & Multi-Select */}
+                  <View className="mt-3">
+                    <View className="flex-row items-center justify-between mb-2">
+                      <Text style={{ color: '#2B1A24' }} className="text-xs font-bold uppercase tracking-wider">
+                        Brand Partner {selectedBrands.length > 0 ? `(${selectedBrands.length} selected)` : ''}
+                      </Text>
+                      {selectedBrands.length > 0 && (
+                        <TouchableOpacity onPress={() => setSelectedBrands([])}>
+                          <Text style={{ color: '#C2477A' }} className="text-[11px] font-bold">Clear Brands</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Brand Filter Search Box */}
+                    <View
+                      style={{
+                        borderColor: '#F0E3EA',
+                        borderWidth: 1,
+                        borderRadius: 14,
+                        backgroundColor: '#FFFFFF',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Ionicons name="search-outline" size={14} color="#8A7B85" />
+                      <TextInput
+                        value={brandFilterSearch}
+                        onChangeText={setBrandFilterSearch}
+                        placeholder="Search brands (e.g. Maybelline, Lakme, Agaro)..."
+                        placeholderTextColor="#9CA3AF"
+                        style={{ flex: 1, fontSize: 11, color: '#1F2937', padding: 0, marginLeft: 6 }}
+                      />
+                      {brandFilterSearch.length > 0 && (
+                        <TouchableOpacity onPress={() => setBrandFilterSearch('')}>
+                          <Ionicons name="close-circle" size={14} color="#8A7B85" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Multi-Select Brand Chips */}
+                    <View className="flex-row flex-wrap gap-2 max-h-40 overflow-y-auto">
+                      {(displayBrands || [])
+                        .filter(b => !brandFilterSearch || (b.name || '').toLowerCase().includes(brandFilterSearch.toLowerCase()))
+                        .map((b) => {
+                          const isBrandSelected = selectedBrands.includes(b.name);
+                          return (
+                            <TouchableOpacity
+                              key={b.id || b.name}
+                              onPress={() => {
+                                setSelectedBrands(prev =>
+                                  prev.includes(b.name)
+                                    ? prev.filter(x => x !== b.name)
+                                    : [...prev, b.name]
+                                );
+                              }}
+                              style={{
+                                backgroundColor: isBrandSelected ? '#C2477A' : '#FFFFFF',
+                                borderColor: isBrandSelected ? '#C2477A' : '#F0E3EA',
+                                borderWidth: 1,
+                                borderRadius: 16,
+                                paddingHorizontal: 11,
+                                paddingVertical: 5.5,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              {isBrandSelected && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+                              <Text
+                                style={{
+                                  color: isBrandSelected ? '#FFFFFF' : '#352832',
+                                  fontSize: 11,
+                                  fontWeight: isBrandSelected ? '700' : '500',
+                                }}
+                              >
+                                {b.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                    </View>
+                  </View>
+
+                  {/* Filter 3: Price Range */}
+                  <View className="mt-3 mb-2">
+                    <Text style={{ color: '#2B1A24' }} className="text-xs font-bold uppercase tracking-wider mb-2">
                       Price Range
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
@@ -1012,8 +1222,8 @@ export const SearchScreen = () => {
                             key={p.id}
                             onPress={() => setSelectedPriceRange(p.id)}
                             style={{
-                              backgroundColor: isSelected ? '#B34D7D' : '#FFFFFF',
-                              borderColor: isSelected ? '#B34D7D' : '#F0E3EA',
+                              backgroundColor: isSelected ? '#C2477A' : '#FFFFFF',
+                              borderColor: isSelected ? '#C2477A' : '#F0E3EA',
                               borderWidth: 1,
                               borderRadius: 16,
                               paddingHorizontal: 12,
@@ -1034,153 +1244,6 @@ export const SearchScreen = () => {
                       })}
                     </View>
                   </View>
-
-                  {/* Filter: Category */}
-                  <View className="mt-3">
-                    <Text style={{ color: '#352832' }} className="text-xs font-bold uppercase tracking-wider mb-2">
-                      Category
-                    </Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {['All', 'Skincare', 'Makeup', 'Hair Care', 'Hair Styling', 'Fragrance'].map((c) => {
-                        const isSelected = selectedCategory === c;
-                        return (
-                          <TouchableOpacity
-                            key={c}
-                            onPress={() => setSelectedCategory(c)}
-                            style={{
-                              backgroundColor: isSelected ? '#B34D7D' : '#FFFFFF',
-                              borderColor: isSelected ? '#B34D7D' : '#F0E3EA',
-                              borderWidth: 1,
-                              borderRadius: 16,
-                              paddingHorizontal: 12,
-                              paddingVertical: 6,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: isSelected ? '#FFFFFF' : '#352832',
-                                fontSize: 11,
-                                fontWeight: isSelected ? '700' : '500',
-                              }}
-                            >
-                              {c}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-
-                  {/* Filter: Brand */}
-                  {activeBrands && activeBrands.length > 0 && (
-                    <View className="mt-3">
-                      <Text style={{ color: '#352832' }} className="text-xs font-bold uppercase tracking-wider mb-2">
-                        Brand
-                      </Text>
-                      <View className="flex-row flex-wrap gap-2">
-                        {['All', ...activeBrands.slice(0, 8).map(b => b.name)].map((bName) => {
-                          const isSelected = selectedBrand === bName;
-                          return (
-                            <TouchableOpacity
-                              key={bName}
-                              onPress={() => setSelectedBrand(bName)}
-                              style={{
-                                backgroundColor: isSelected ? '#352832' : '#FFFFFF',
-                                borderColor: isSelected ? '#352832' : '#F0E3EA',
-                                borderWidth: 1,
-                                borderRadius: 16,
-                                paddingHorizontal: 12,
-                                paddingVertical: 6,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  color: isSelected ? '#FFFFFF' : '#352832',
-                                  fontSize: 11,
-                                  fontWeight: isSelected ? '700' : '500',
-                                }}
-                              >
-                                {bName}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Filter: Minimum Customer Rating */}
-                  <View className="mt-3">
-                    <Text style={{ color: '#352832' }} className="text-xs font-bold uppercase tracking-wider mb-2">
-                      Customer Rating
-                    </Text>
-                    <View className="flex-row gap-2">
-                      {[
-                        { val: 0, label: 'All Ratings' },
-                        { val: 4, label: '4★ & Above' },
-                        { val: 3, label: '3★ & Above' },
-                      ].map((r) => {
-                        const isSelected = minRating === r.val;
-                        return (
-                          <TouchableOpacity
-                            key={r.val}
-                            onPress={() => setMinRating(r.val)}
-                            style={{
-                              backgroundColor: isSelected ? '#B34D7D' : '#FFFFFF',
-                              borderColor: isSelected ? '#B34D7D' : '#F0E3EA',
-                              borderWidth: 1,
-                              borderRadius: 16,
-                              paddingHorizontal: 12,
-                              paddingVertical: 6,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: isSelected ? '#FFFFFF' : '#352832',
-                                fontSize: 11,
-                                fontWeight: isSelected ? '700' : '500',
-                              }}
-                            >
-                              {r.label}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-
-                  {/* Filter: Availability Toggle */}
-                  <View className="mt-3 mb-4 flex-row items-center justify-between p-3 bg-[#FFFFFF] rounded-2xl border border-[#F0E3EA]">
-                    <View>
-                      <Text style={{ color: '#352832' }} className="text-xs font-bold">
-                        In Stock Only
-                      </Text>
-                      <Text style={{ color: '#8A7B85' }} className="text-[10px] mt-0.5">
-                        Exclude sold out and unavailable items
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => setInStockOnly(!inStockOnly)}
-                      style={{
-                        width: 44,
-                        height: 24,
-                        borderRadius: 12,
-                        backgroundColor: inStockOnly ? '#B34D7D' : '#E2E8F0',
-                        padding: 2,
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 10,
-                          backgroundColor: '#FFFFFF',
-                          alignSelf: inStockOnly ? 'flex-end' : 'flex-start',
-                        }}
-                      />
-                    </TouchableOpacity>
-                  </View>
                 </ScrollView>
 
                 {/* Modal Footer Actions */}
@@ -1192,22 +1255,212 @@ export const SearchScreen = () => {
                       borderWidth: 1,
                       backgroundColor: '#FFFFFF',
                     }}
-                    className="flex-1 py-3 rounded-xl items-center justify-center"
+                    className="flex-1 py-3 rounded-xl items-center justify-center cursor-pointer"
                   >
                     <Text style={{ color: '#8A7B85' }} className="text-xs font-bold">
-                      Reset Filters
+                      Clear All
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     onPress={() => setIsFilterModalOpen(false)}
-                    style={{ backgroundColor: '#B34D7D' }}
-                    className="flex-1 py-3 rounded-xl items-center justify-center shadow-xs"
+                    style={{ backgroundColor: '#C2477A' }}
+                    className="flex-1 py-3 rounded-xl items-center justify-center shadow-xs cursor-pointer"
                   >
                     <Text className="text-xs font-bold text-white">
                       Apply Filters ({activeFilterCount})
                     </Text>
                   </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ── 9. VOICE SEARCH MODAL ─────────────────────────────────────── */}
+      <Modal
+        visible={isVoiceModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsVoiceModalOpen(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setIsVoiceModalOpen(false)}>
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} className="flex-1 items-center justify-center p-5">
+            <TouchableWithoutFeedback>
+              <View
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 28,
+                  borderColor: '#F0E3EA',
+                  borderWidth: 1.5,
+                  maxWidth: 380,
+                  width: '100%',
+                  shadowColor: '#C2477A',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 16,
+                  elevation: 10,
+                }}
+                className="p-6 items-center"
+              >
+                {/* Header with Close */}
+                <View className="flex-row items-center justify-between w-full mb-4">
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="mic" size={18} color="#C2477A" />
+                    <Text style={{ color: '#2B1A24' }} className="text-sm font-extrabold">
+                      Voice Search
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setIsVoiceModalOpen(false)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    className="p-1"
+                  >
+                    <Ionicons name="close" size={20} color="#8A7B85" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Animated Pulsing Mic Avatar */}
+                <View
+                  style={{
+                    width: 88,
+                    height: 88,
+                    borderRadius: 44,
+                    backgroundColor: '#FFF0F5',
+                    borderColor: '#F8B4D9',
+                    borderWidth: 2,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 14,
+                    shadowColor: '#C2477A',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 8,
+                    elevation: 3,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 32,
+                      backgroundColor: '#C2477A',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="mic" size={32} color="#FFFFFF" />
+                  </View>
+                </View>
+
+                {/* Listening Status */}
+                <Text style={{ color: '#2B1A24', fontSize: 16, fontWeight: '800', marginBottom: 4 }}>
+                  Listening for Cosmetics...
+                </Text>
+                <Text style={{ color: '#8A7B85', fontSize: 12, textAlign: 'center', marginBottom: 14 }}>
+                  Speak the name of any cosmetic product, brand, or shade
+                </Text>
+
+                {/* Speech Input Field */}
+                <View
+                  style={{
+                    borderColor: '#F0E3EA',
+                    borderWidth: 1.5,
+                    borderRadius: 16,
+                    backgroundColor: '#FFFFFF',
+                    width: '100%',
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginBottom: 14,
+                  }}
+                >
+                  <TextInput
+                    value={voiceTranscript}
+                    onChangeText={setVoiceTranscript}
+                    placeholder="e.g. Maybelline Foundation, Matte Lipstick..."
+                    placeholderTextColor="#9CA3AF"
+                    style={{ flex: 1, fontSize: 13, fontWeight: '600', color: '#1F2937', padding: 0 }}
+                    onSubmitEditing={() => {
+                      if (voiceTranscript.trim()) {
+                        handleVoiceApply(voiceTranscript.trim());
+                      }
+                    }}
+                  />
+                  {voiceTranscript.length > 0 && (
+                    <TouchableOpacity onPress={() => handleVoiceApply(voiceTranscript.trim())}>
+                      <Ionicons name="arrow-forward-circle" size={24} color="#C2477A" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Quick Voice Suggestion Chips */}
+                <Text style={{ color: '#8A7B85', fontSize: 11, fontWeight: '700', alignSelf: 'flex-start', marginBottom: 8 }}>
+                  Try Saying:
+                </Text>
+                <View className="flex-row flex-wrap gap-2 w-full mb-4">
+                  {[
+                    'Matte Lipstick',
+                    'Vitamin C Serum',
+                    'Sunscreen SPF 50',
+                    'Foundation',
+                    'Face Wash',
+                    'Kajal',
+                    'Perfume',
+                  ].map((phrase) => (
+                    <TouchableOpacity
+                      key={phrase}
+                      onPress={() => handleVoiceApply(phrase)}
+                      activeOpacity={0.75}
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        borderColor: '#F0E3EA',
+                        borderWidth: 1,
+                        borderRadius: 14,
+                        paddingHorizontal: 11,
+                        paddingVertical: 5.5,
+                      }}
+                    >
+                      <Text style={{ color: '#C2477A', fontSize: 11, fontWeight: '700' }}>
+                        "{phrase}"
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Action Buttons */}
+                <View className="flex-row gap-2.5 w-full">
+                  <TouchableOpacity
+                    onPress={() => setIsVoiceModalOpen(false)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 11,
+                      borderRadius: 14,
+                      backgroundColor: '#FFFFFF',
+                      borderColor: '#E5E7EB',
+                      borderWidth: 1,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '700' }}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  {voiceTranscript.trim().length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => handleVoiceApply(voiceTranscript.trim())}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 11,
+                        borderRadius: 14,
+                        backgroundColor: '#C2477A',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>Search Now</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </TouchableWithoutFeedback>

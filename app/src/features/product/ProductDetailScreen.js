@@ -215,22 +215,23 @@ export const ProductDetailScreen = () => {
 
   const isLiked = isFavorite ? isFavorite(selectedProduct?.id) : false;
 
-  // Construct full descriptive title matching Screenshot 2's comprehensive styling
+  // Display only: Product Name – Variant Name (Strict Nykaa Specification)
   const fullTitle = useMemo(() => {
-    const parts = [];
-    const brand = (selectedProduct.brandName || selectedProduct.brand || '').toUpperCase();
-    if (brand) parts.push(brand);
-    if (selectedProduct.name) parts.push(selectedProduct.name);
-    if (selectedShade?.name) parts.push(`- ${selectedShade.name}`);
-    const size = selectedProduct.size || selectedProduct.netQty || selectedShade?.size;
-    if (size) parts.push(size);
-    if (Array.isArray(selectedProduct.highlights) && selectedProduct.highlights.length > 0) {
-      parts.push(`| ${selectedProduct.highlights.slice(0, 3).join(' | ')}`);
-    } else if (selectedProduct.description) {
-      const snippet = selectedProduct.description.split('.')[0];
-      if (snippet) parts.push(`| ${snippet}`);
+    const parentName = (selectedProduct.name || selectedProduct.title || '').trim();
+    const variantName = (
+      selectedShade?.name ||
+      selectedShade?.title ||
+      selectedShade?.shade ||
+      selectedProduct.variantName ||
+      selectedProduct.variant ||
+      selectedProduct.size ||
+      ''
+    ).trim();
+
+    if (variantName && variantName.toLowerCase() !== parentName.toLowerCase()) {
+      return `${parentName} – ${variantName}`;
     }
-    return parts.join(' ');
+    return parentName;
   }, [selectedProduct, selectedShade]);
 
   return (

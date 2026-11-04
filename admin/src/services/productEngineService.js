@@ -1151,8 +1151,8 @@ export const safeProductDbWrite = async (operation, payload, onConflict = 'id') 
   const minimalObj = {
     id: currentObj.id,
     name: currentObj.name,
-    brand_name: currentObj.brand_name || 'General',
-    category: currentObj.category || 'General',
+    brand_name: currentObj.brand_name || '',
+    category: currentObj.category || '',
     mrp: Number(currentObj.mrp || 0),
     salon_price: Number(currentObj.salon_price || currentObj.mrp || 0),
     artist_price: Number(currentObj.artist_price || currentObj.mrp || 0),

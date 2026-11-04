@@ -16,7 +16,7 @@ export const CategoryPage = ({
   parentTitle = 'Categories',
   title = 'Category',
   bannerTitle,
-  bannerSubtitle = 'Discover our curated collection.',
+  bannerSubtitle = null,
   image = null,
   subcategories = [],
   sectionTitle = 'SUBCATEGORIES',

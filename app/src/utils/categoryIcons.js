@@ -194,6 +194,9 @@ export const getCategoryFA5Icon = (categoryName) => {
   return DEFAULT_ICON;
 };
 
+// Re-export getSafeImageSource for components importing image helpers
+export { getSafeImageSource } from './imageUtils';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SUBCATEGORY ICON MAP
 // ─────────────────────────────────────────────────────────────────────────────
@@ -213,11 +216,14 @@ export const SUBCATEGORY_FA5_ICONS = {
   'exfoliator':                         { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
   'scrub':                              { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
 
-  // Makeup subcategories
+  // Makeup subcategories (Nykaa Style Icons)
   'foundation':                         { icon: 'tint',          color: '#D97706', bg: '#FFFBEB' },
   'concealer':                          { icon: 'tint',          color: '#D97706', bg: '#FFFBEB' },
+  'compact':                            { icon: 'palette',       color: '#D97706', bg: '#FFFBEB' },
+  'compact powder':                     { icon: 'palette',       color: '#D97706', bg: '#FFFBEB' },
   'primer':                             { icon: 'tint',          color: '#C2477A', bg: '#FFF0F5' },
   'blush':                              { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
+  'blush & highlighter':                { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
   'bronzer':                            { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
   'highlighter':                        { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
   'contour':                            { icon: 'palette',       color: '#E11D48', bg: '#FFF1F2' },
@@ -226,25 +232,37 @@ export const SUBCATEGORY_FA5_ICONS = {
   'lipstick':                           { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
   'lip gloss':                          { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
   'lip liner':                          { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
+  'liquid lipstick':                    { icon: 'heart',         color: '#E11D48', bg: '#FFF1F2' },
   'eyeliner':                           { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
+  'eyeliner & kajal':                   { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
   'eyeshadow':                          { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
   'mascara':                            { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
   'kajal':                              { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
   'eyebrow':                            { icon: 'eye',           color: '#475569', bg: '#F1F5F9' },
 
-  // Hair subcategories
+  // Hair subcategories (Nykaa Style Icons)
+  'spray':                              { icon: 'air-freshener', color: '#9333EA', bg: '#FAF5FF' },
+  'hair spray':                         { icon: 'air-freshener', color: '#9333EA', bg: '#FAF5FF' },
+  'dry shampoo':                        { icon: 'air-freshener', color: '#7C3AED', bg: '#F5F3FF' },
+  'colour':                             { icon: 'palette',       color: '#9333EA', bg: '#FAF5FF' },
+  'hair colour':                        { icon: 'palette',       color: '#9333EA', bg: '#FAF5FF' },
+  'hair color':                         { icon: 'palette',       color: '#9333EA', bg: '#FAF5FF' },
+  'combos':                             { icon: 'gifts',         color: '#7C3AED', bg: '#F5F3FF' },
+  'hair combos':                        { icon: 'gifts',         color: '#7C3AED', bg: '#F5F3FF' },
+  'gels & waxes':                       { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
+  'styling gel':                        { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
+  'brushes & combs':                    { icon: 'brush',         color: '#7C3AED', bg: '#F5F3FF' },
+  'hair fibers':                        { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
+  'kids shampoo & conditioner':         { icon: 'soap',          color: '#0D9488', bg: '#F0FDFA' },
+  'postpartum haircare':                { icon: 'spa',           color: '#059669', bg: '#ECFDF5' },
   'shampoo':                            { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
   'conditioner':                        { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
   'hair mask':                          { icon: 'cut',           color: '#7C3AED', bg: '#F5F3FF' },
   'hair oil':                           { icon: 'tint',          color: '#7C3AED', bg: '#F5F3FF' },
   'hair serum':                         { icon: 'flask',         color: '#7C3AED', bg: '#F5F3FF' },
-  'hair colour':                        { icon: 'palette',       color: '#9333EA', bg: '#FAF5FF' },
-  'hair color':                         { icon: 'palette',       color: '#9333EA', bg: '#FAF5FF' },
   'hair dryer':                         { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
   'straightener':                       { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
   'curler':                             { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
-  'hair spray':                         { icon: 'air-freshener', color: '#9333EA', bg: '#FAF5FF' },
-  'styling gel':                        { icon: 'wind',          color: '#9333EA', bg: '#FAF5FF' },
 
   // Bath & Body subcategories
   'body wash':                          { icon: 'bath',          color: '#0D9488', bg: '#F0FDFA' },
@@ -255,10 +273,17 @@ export const SUBCATEGORY_FA5_ICONS = {
   'hand cream':                         { icon: 'soap',          color: '#0D9488', bg: '#F0FDFA' },
   'foot care':                          { icon: 'soap',          color: '#0D9488', bg: '#F0FDFA' },
 
-  // Fragrance subcategories
+  // Fragrance subcategories (Nykaa Style Icons)
+  'luxury scents':                      { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'for men':                            { icon: 'user-tie',      color: '#334155', bg: '#F1F5F9' },
+  'for women':                          { icon: 'air-freshener', color: '#DB2777', bg: '#FDF2F8' },
+  'niche scents':                       { icon: 'crown',         color: '#6D28D9', bg: '#EDE9FE' },
+  'floral & fruity':                    { icon: 'spa',           color: '#E11D48', bg: '#FFF1F2' },
   'eau de parfum':                      { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
   'eau de toilette':                    { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
   'body mist':                          { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'roll on':                            { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
+  'attar':                              { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
   'roll on':                            { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
   'attar':                              { icon: 'air-freshener', color: '#C026D3', bg: '#FDF4FF' },
 
@@ -309,3 +334,6 @@ export const getSubcategoryFA5Icon = (subcategoryName, parentCategoryName) => {
 
   return DEFAULT_ICON;
 };
+
+// Re-export getSafeImageSource for components importing image helpers
+export { getSafeImageSource } from './imageUtils';
