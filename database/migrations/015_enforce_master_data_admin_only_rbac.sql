@@ -66,3 +66,4 @@ WITH CHECK (
 COMMENT ON TABLE public.brands IS 'Master Data: Brands. Strictly writable only by Admins. Readable by Employees and Customers.';
 COMMENT ON TABLE public.categories IS 'Master Data: Main Categories. Strictly writable only by Admins. Readable by Employees and Customers.';
 COMMENT ON TABLE public.subcategories IS 'Master Data: Subcategories. Strictly writable only by Admins. Readable by Employees and Customers.';
+

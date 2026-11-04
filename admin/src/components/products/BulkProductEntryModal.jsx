@@ -1610,7 +1610,7 @@ export const BulkProductEntryModal = ({
             errors.push(`Row ${idx + 1} (Column CATEGORY): Category "${category}" not found in Master Categories`);
             fieldErrors.category = 'Category not in Master Data';
           } else {
-            row.category = matchedCategory;
+            r.category = matchedCategory;
           }
         }
 
@@ -1621,7 +1621,7 @@ export const BulkProductEntryModal = ({
             errors.push(`Row ${idx + 1} (Column SUBCATEGORY): "${subcategory}" is not in Master list for category "${category}"`);
             fieldErrors.subcategory = 'Subcategory not in Master Data';
           } else if (matchedSubcategory) {
-            row.subcategory = matchedSubcategory;
+            r.subcategory = matchedSubcategory;
           }
         }
 
@@ -1632,10 +1632,10 @@ export const BulkProductEntryModal = ({
 
           if (brandMatch.matched && brandMatch.brand) {
             // Automatically map canonical Brand Master Name and Brand ID
-            row.brand = brandMatch.brand.name;
-            row.brandId = brandMatch.brand.id;
-            row.brand_name = brandMatch.brand.name;
-            row.brand_id = brandMatch.brand.id;
+            r.brand = brandMatch.brand.name;
+            r.brandId = brandMatch.brand.id;
+            r.brand_name = brandMatch.brand.name;
+            r.brand_id = brandMatch.brand.id;
           } else {
             errors.push(`Row ${idx + 1} (Column BRAND): Unknown brand "${brand}". Please select a verified brand from Brand Master.`);
             fieldErrors.brand = 'Brand not in Brand Master';

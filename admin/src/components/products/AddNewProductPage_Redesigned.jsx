@@ -914,32 +914,25 @@ export default function AddNewProductPage({
     }
   };
 
-  const handleOpenImageSearch = () => {
-    setIsInPanelBrowserOpen(true);
-  };
+  // Role-Based Google Search Integration: Accessible to BOTH Admin and Employee accounts
+  const handleSearchGoogleImages = () => {
+    const variantNames = (hasVariants && Array.isArray(formData.shades) && formData.shades.length > 0)
+      ? formData.shades.map(s => s.name || s.color_name).filter(Boolean).slice(0, 2).join(' ')
+      : (formData.shade || '');
 
-  const currentProductRowAdapter = useMemo(() => ({
-    _id: editingProduct?.id || 'new_product',
-    brand: formData.brandName || '',
-    name: formData.name || '',
-    shade: formData.shade || '',
-    sku: formData.sku || '',
-    images: formData.images || []
-  }), [editingProduct?.id, formData.brandName, formData.name, formData.shade, formData.sku, formData.images]);
+    const queryParts = [
+      formData.name,
+      formData.brandName,
+      formData.category,
+      formData.subcategory,
+      variantNames
+    ].filter(Boolean);
 
-  const handleAddImageFromBrowser = (rowId, imgUrl) => {
-    if (!imgUrl) return;
-    setFormData(prev => ({
-      ...prev,
-      images: [...(prev.images || []), imgUrl]
-    }));
-  };
-
-  const handleRemoveImageFromBrowser = (rowId, imgIdx) => {
-    setFormData(prev => ({
-      ...prev,
-      images: (prev.images || []).filter((_, i) => i !== imgIdx)
-    }));
+    const query = queryParts.join(' ').trim() || 'beauty makeup cosmetics packshot';
+    const searchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+    if (typeof window !== 'undefined') {
+      window.open(searchUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const handleImageDrop = (e) => {
@@ -2290,12 +2283,12 @@ export default function AddNewProductPage({
                   </button>
                   <button
                     type="button"
-                    onClick={handleOpenImageSearch}
-                    className="px-2.5 py-1.5 rounded-xl border border-pink-200 text-[#E11D48] bg-white hover:bg-pink-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                    title="Open Image Search Browser on the right"
+                    onClick={handleSearchGoogleImages}
+                    className="px-2.5 py-1.5 rounded-xl border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    title="Search Google Images in a new browser tab"
                   >
-                    <Search size={12} />
-                    <span>Image Search</span>
+                    <Globe size={13} className="text-amber-600" />
+                    <span>Search Google Images ↗</span>
                   </button>
                 </div>
               </div>
@@ -3802,24 +3795,6 @@ export default function AddNewProductPage({
               brandId: saved.id
             }));
             setIsInlineAddBrandOpen(false);
-          }}
-        />
-      )}
-
-      {isInPanelBrowserOpen && (
-        <InPanelImageBrowserDrawer
-          isOpen={isInPanelBrowserOpen}
-          onClose={() => setIsInPanelBrowserOpen(false)}
-          row={currentProductRowAdapter}
-          rowIndex={0}
-          totalRows={1}
-          onAddImageToRow={handleAddImageFromBrowser}
-          onRemoveImageFromRow={handleRemoveImageFromBrowser}
-          onUploadProductImage={async (file) => {
-            if (typeof uploadProductImage === 'function') {
-              return await uploadProductImage(file, 'products', 'prod');
-            }
-            return null;
           }}
         />
       )}

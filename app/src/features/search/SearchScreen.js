@@ -805,15 +805,19 @@ export const SearchScreen = () => {
                 >
                   {displayBrands.length > 0
                     ? displayBrands.slice(0, 20).map((brand) => {
-                        const isSelected = (selectedBrand || '').toLowerCase() === (brand.name || '').toLowerCase();
+                        const isSelected = selectedBrands.some(
+                          b => (b || '').toLowerCase() === (brand.name || '').toLowerCase()
+                        );
                         return (
                           <TouchableOpacity
                             key={brand.id || brand.name}
                             activeOpacity={0.8}
                             onPress={() => {
-                              const newBrand = isSelected ? 'All' : brand.name;
-                              setSelectedBrand(newBrand);
-                              setQuery(isSelected ? '' : brand.name);
+                              setSelectedBrands(prev =>
+                                prev.some(b => (b || '').toLowerCase() === (brand.name || '').toLowerCase())
+                                  ? prev.filter(b => (b || '').toLowerCase() !== (brand.name || '').toLowerCase())
+                                  : [...prev, brand.name]
+                              );
                               if (!isSelected) addRecentSearch(brand.name);
                             }}
                             style={{
