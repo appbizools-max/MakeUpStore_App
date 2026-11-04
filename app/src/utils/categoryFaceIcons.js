@@ -84,3 +84,4 @@ export const getCategory3DFaceSource = (categoryName, dbImage) => {
   // Default fallback to 3D glam makeup face
   return CATEGORY_3D_FACE_ASSETS['makeup'];
 };
+

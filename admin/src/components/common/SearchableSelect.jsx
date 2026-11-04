@@ -30,7 +30,8 @@ export default function SearchableSelect({
   // Support multi-key searching and custom option rendering
   renderOption = null,
   renderTrigger = null,
-  searchKeys = []
+  searchKeys = [],
+  clearable = true
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -199,6 +200,13 @@ export default function SearchableSelect({
 
   // Select an option and close dropdown
   const handleSelect = (option) => {
+    if (!option) {
+      if (onChange) {
+        onChange('', null);
+      }
+      setIsOpen(false);
+      return;
+    }
     const optValue = getOptionValue(option);
     if (onChange) {
       onChange(optValue, option);
@@ -261,10 +269,26 @@ export default function SearchableSelect({
             {selectedDisplayLabel || placeholder}
           </span>
         )}
-        <ChevronDown
-          size={compact ? 13 : 16}
-          className={`text-gray-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#CE4270]' : ''}`}
-        />
+        <div className="flex items-center gap-1.5 shrink-0 ml-1">
+          {clearable && Boolean(selectedDisplayLabel) && !disabled && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelect(null);
+              }}
+              className="text-gray-400 hover:text-red-500 hover:bg-pink-50 p-0.5 rounded transition-colors cursor-pointer"
+              title="Clear selection"
+            >
+              <X size={compact ? 12 : 14} />
+            </span>
+          )}
+          <ChevronDown
+            size={compact ? 13 : 16}
+            className={`text-gray-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#CE4270]' : ''}`}
+          />
+        </div>
       </button>
 
       {/* Floating Searchable Dropdown */}
@@ -310,6 +334,18 @@ export default function SearchableSelect({
             style={{ maxHeight: `${placement.maxHeight}px` }}
             className="overflow-y-auto custom-scrollbar p-1.5 space-y-0.5"
           >
+            {clearable && !searchQuery && (
+              <button
+                type="button"
+                onClick={() => handleSelect(null)}
+                className="w-full px-3 py-2 rounded-xl text-left font-semibold text-xs flex items-center justify-between transition-colors cursor-pointer text-gray-400 hover:text-gray-700 hover:bg-gray-50 border-b border-gray-100 mb-1"
+              >
+                <span className="italic">— None / Clear —</span>
+                {(!value || value === '') && (
+                  <Check size={14} className="text-gray-400 shrink-0" strokeWidth={2.5} />
+                )}
+              </button>
+            )}
             {filteredOptions.length === 0 ? (
               <div className="py-6 text-center text-xs text-gray-400 font-medium">
                 {emptyMessage}

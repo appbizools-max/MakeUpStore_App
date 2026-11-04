@@ -935,7 +935,7 @@ export const toSupabaseProductPayload = (p) => {
     id: p.id || p._id || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     name: p.name,
     brand_id: p.brandId || p.brand_id || null,
-    brand_name: p.brand || p.brand_name || p.brandName || 'General',
+    brand_name: p.brand || p.brand_name || p.brandName || '',
     sku: mainSku,
     category: p.category || p.category_name || 'General',
     subcategory: p.subcategory || p.sub_category || null,

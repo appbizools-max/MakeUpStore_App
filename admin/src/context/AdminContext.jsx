@@ -2589,8 +2589,8 @@ export const AdminProvider = ({ children }) => {
       if (updatedFields.parent_id !== undefined || updatedFields.parentId !== undefined) {
         payload.parent_id = updatedFields.parent_id !== undefined ? updatedFields.parent_id : updatedFields.parentId;
       }
-      if (updatedFields.brandName !== undefined) payload.brand_name = updatedFields.brandName;
-      if (updatedFields.brandId !== undefined) payload.brand_id = updatedFields.brandId;
+      if (updatedFields.brandName !== undefined) payload.brand_name = updatedFields.brandName || null;
+      if (updatedFields.brandId !== undefined) payload.brand_id = updatedFields.brandId || null;
       if (updatedFields.category !== undefined) payload.category = updatedFields.category;
       if (updatedFields.barcode !== undefined) {
         payload.barcode = cleanBarcode || null;

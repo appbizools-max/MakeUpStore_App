@@ -1381,8 +1381,8 @@ export default function AddNewProductPage({
     const payload = {
       name: formData.name ? formData.name.trim() : (asDraft ? 'Untitled Draft Product' : 'Untitled Product'),
       parent_id: null,
-      brandName: formData.brandName || brands[0]?.name || 'Lakmé',
-      brandId: formData.brandId || brands.find(b => b.name === formData.brandName)?.id || '',
+      brandName: formData.brandName ? formData.brandName.trim() : '',
+      brandId: formData.brandId || (formData.brandName ? (brands.find(b => b.name === formData.brandName)?.id || '') : '') || '',
       category: formData.category || 'Makeup',
       subcategory: formData.subcategory ? formData.subcategory.trim() : undefined,
       description: formData.description ? formData.description.trim() : undefined,
@@ -1875,10 +1875,10 @@ export default function AddNewProductPage({
                       );
                     }}
                     onChange={(selectedName, selectedObj) => {
-                      const selected = selectedObj || activeBrandOptions.find(b => b.name === selectedName);
+                      const selected = selectedObj || (selectedName ? activeBrandOptions.find(b => b.name === selectedName) : null);
                       setFormData(prev => ({
                         ...prev,
-                        brandName: selectedName,
+                        brandName: selectedName || '',
                         brandId: selected?.id || '',
                         category: selected?.category || prev.category
                       }));
@@ -1888,6 +1888,7 @@ export default function AddNewProductPage({
                     emptyMessage="No matching brands found"
                     labelKey="name"
                     valueKey="name"
+                    clearable={true}
                   />
                 </div>
 

@@ -1349,7 +1349,7 @@ const AdminDashboard = () => {
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: '',
-    brandName: 'Lakmé',
+    brandName: '',
     barcode: '',
     mrp: '',
     generalPrice: '',
@@ -2211,7 +2211,7 @@ const AdminDashboard = () => {
 
       setNewProduct({
         name: '',
-        brandName: brands[0]?.name || 'Lakmé',
+        brandName: '',
         barcode: '',
         mrp: '',
         generalPrice: '',
@@ -2304,13 +2304,16 @@ const AdminDashboard = () => {
       barcode: ''
     });
 
+    const resolvedBrandName = targetProduct.brandName || targetProduct.brand || targetProduct.brand_name || (targetProduct.brandId ? (brands.find(b => b.id === targetProduct.brandId)?.name || '') : '') || '';
+    const resolvedBrandId = targetProduct.brandId || targetProduct.brand_id || (resolvedBrandName ? (brands.find(b => b.name === resolvedBrandName)?.id || '') : '') || '';
+
     setEditingProductData({
       id: targetProduct.id,
       name: targetProduct.name,
       category: finalCategory,
       subcategory: finalSubcategory,
-      brandName: targetProduct.brandName || brands[0]?.name || 'Lakmé',
-      brandId: targetProduct.brandId || '',
+      brandName: resolvedBrandName,
+      brandId: resolvedBrandId,
       barcode: targetProduct.barcode || '',
       mrp: targetProduct.mrp || '',
       generalPrice: targetProduct.generalPrice || targetProduct.mrp || '',
@@ -7409,11 +7412,11 @@ const AdminDashboard = () => {
                           options={brands}
                           value={editingProductData.brandName}
                           onChange={(selectedName, selectedObj) => {
-                            const selected = selectedObj || brands.find(b => b.name === selectedName);
+                            const selected = selectedObj || (selectedName ? brands.find(b => b.name === selectedName) : null);
                             setEditingProductData({
                               ...editingProductData,
-                              brandName: selectedName,
-                              brandId: selected?.id || editingProductData.brandId
+                              brandName: selectedName || '',
+                              brandId: selected?.id || ''
                             });
                           }}
                           placeholder="Select Brand Partner..."
@@ -7421,6 +7424,7 @@ const AdminDashboard = () => {
                           emptyMessage="No brands found"
                           labelKey="name"
                           valueKey="name"
+                          clearable={true}
                         />
                       </div>
 
