@@ -19,6 +19,7 @@ import {
 } from '../../config/categoriesHierarchy';
 
 import { getCategoryFA5Icon } from '../../utils/categoryIcons';
+import { getCategory3DFaceSource } from '../../utils/categoryFaceIcons';
 import { CategoryDetailView } from './CategoryDetailView';
 import { SubcategoryView } from './SubcategoryView';
 import { ProductListingView } from './ProductListingView';
@@ -416,49 +417,56 @@ export const CategoryScreen = () => {
               }}
               className="flex-col justify-between"
             >
-              {/* 1. FA5 Icon Box — replaces product category image */}
-              {(() => {
-                const { icon, color, bg } = getCategoryFA5Icon(cat.name);
-                return (
-                  <View
-                    style={{
-                      width: '100%',
-                      height: 116,
-                      borderRadius: 16,
-                      backgroundColor: bg || '#FFF0F5',
-                      borderColor: color ? color + '25' : '#FCE4EC',
-                      borderWidth: 1,
-                      marginBottom: 8,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <FontAwesome5 name={icon} size={44} color={color || '#C2477A'} solid />
-                  </View>
-                );
-              })()}
+              {/* 1. 3D Beauty Face Avatar Image Box */}
+              <View
+                style={{
+                  width: '100%',
+                  height: 116,
+                  borderRadius: 16,
+                  backgroundColor: '#FFF0F5',
+                  borderColor: '#FCE4EC',
+                  borderWidth: 1,
+                  marginBottom: 8,
+                  overflow: 'hidden',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Image
+                  source={getCategory3DFaceSource(cat.name, cat.image)}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+              </View>
 
-              {/* 2 & 3. FA5 icon badge + Category Title */}
-              {(() => {
-                const { icon, color, bg } = getCategoryFA5Icon(cat.name);
-                return (
-                  <View className="flex-row items-center gap-1.5 mb-1">
-                    <View
-                      style={{ borderColor: color ? color + '30' : '#FCE4EC', borderWidth: 1, backgroundColor: bg || '#FFF0F5', width: 24, height: 24, borderRadius: 12 }}
-                      className="items-center justify-center shrink-0"
-                    >
-                      <FontAwesome5 name={icon} size={11} color={color || '#C2477A'} solid />
-                    </View>
-                    <Text
-                      style={{ color: '#33252F' }}
-                      className="text-[12.5px] font-extrabold flex-1 leading-tight"
-                      numberOfLines={2}
-                    >
-                      {cat.name}
-                    </Text>
-                  </View>
-                );
-              })()}
+              {/* 2 & 3. 3D face avatar badge + Category Title */}
+              <View className="flex-row items-center gap-1.5 mb-1">
+                <View
+                  style={{
+                    borderColor: '#C2477A',
+                    borderWidth: 1,
+                    backgroundColor: '#FFF0F5',
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                  }}
+                  className="items-center justify-center shrink-0"
+                >
+                  <Image
+                    source={getCategory3DFaceSource(cat.name, cat.image)}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                </View>
+                <Text
+                  style={{ color: '#33252F' }}
+                  className="text-[12.5px] font-extrabold flex-1 leading-tight"
+                  numberOfLines={2}
+                >
+                  {cat.name}
+                </Text>
+              </View>
 
               {/* 4. Explore Products text with right arrow */}
               <View className="flex-row items-center gap-1 mt-0.5 pt-0.5">

@@ -16,6 +16,7 @@ import { getSafeImageSource } from '../../utils/imageUtils';
 import { storage } from '../../utils/storage';
 import { getCartQuantityMap, getCartKey, getSafeProductShadesList } from '../../utils/cartKeyUtils';
 import { getCategoryFA5Icon } from '../../utils/categoryIcons';
+import { getCategory3DFaceSource } from '../../utils/categoryFaceIcons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 600);
@@ -570,7 +571,8 @@ export const HomeScreen = () => {
       .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
       .map(cat => {
         const { icon, color, bg } = getCategoryFA5Icon(cat.name);
-        return { id: cat.id, name: cat.name, icon, color, bg };
+        const imageSource = getCategory3DFaceSource(cat.name, cat.image);
+        return { id: cat.id, name: cat.name, icon, color, bg, imageSource };
       });
   }, [categories]);
 
@@ -931,13 +933,28 @@ export const HomeScreen = () => {
                     >
                       <View
                         style={{
-                          width: 62, height: 62,
-                          borderRadius: 16, borderWidth: 1, borderColor: cat.color ? cat.color + '25' : '#FCE4EC',
-                          backgroundColor: cat.bg || '#FFF0F5', marginBottom: 6,
-                          alignItems: 'center', justifyContent: 'center',
+                          width: 64,
+                          height: 64,
+                          borderRadius: 32,
+                          borderWidth: 2,
+                          borderColor: '#C2477A',
+                          backgroundColor: '#FFF0F5',
+                          marginBottom: 6,
+                          overflow: 'hidden',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          elevation: 3,
+                          shadowColor: '#C2477A',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.18,
+                          shadowRadius: 4,
                         }}
                       >
-                        <FontAwesome5 name={cat.icon} size={26} color={cat.color} solid />
+                        <Image
+                          source={cat.imageSource || getCategory3DFaceSource(cat.name, cat.image)}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
                       </View>
                       <Text
                         className="text-[11px] font-bold text-[#3A2430] text-center min-h-[28px] leading-tight"
