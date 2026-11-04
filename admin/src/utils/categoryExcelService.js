@@ -239,14 +239,12 @@ export const downloadFullHierarchyTemplate = (categories = [], subcategories = [
 };
 
 /**
- * Universal Simple Category Template
- * Allows entering any combination of Main Category, Subcategory, and Select Category.
+ * Universal Simple Category Template (2-Level Hierarchy: Main Category -> Subcategory)
  */
 export const downloadSimpleCategoryTemplate = () => {
   const headers = [
     'Main Category',
     'Subcategory',
-    'Select Category',
     'Description',
     'Display Order',
     'Status',
@@ -255,19 +253,17 @@ export const downloadSimpleCategoryTemplate = () => {
   ];
 
   const sampleRows = [
-    ['Makeup', 'Lips', 'Matte Lipstick', 'Velvety matte lipstick', 1, 'Active', 'Yes', ''],
-    ['Makeup', 'Lips', 'Liquid Lipstick', 'Long stay liquid formula', 2, 'Active', 'Yes', ''],
-    ['Makeup', 'Eyes', 'Gel Eyeliner', 'Waterproof gel formula', 1, 'Active', 'Yes', ''],
-    ['Skincare', 'Cleansers', 'Foaming Face Wash', 'Gentle foaming cleanser', 1, 'Active', 'Yes', ''],
-    ['Hair Care', 'Shampoos', '', 'Salon quality daily shampoo', 1, 'Active', 'Yes', ''],
-    ['Fragrance', '', '', 'Perfumes, body mists and attars', 1, 'Active', 'Yes', '']
+    ['Makeup', 'Lips', 'Velvety matte & liquid lipsticks', 1, 'Active', 'Yes', ''],
+    ['Makeup', 'Eyes', 'Waterproof eyeliners, kajal and mascaras', 2, 'Active', 'Yes', ''],
+    ['Skincare', 'Cleansers', 'Gentle foaming face washes and cleansers', 1, 'Active', 'Yes', ''],
+    ['Hair Care', 'Shampoos', 'Salon quality daily shampoos', 1, 'Active', 'Yes', ''],
+    ['Fragrance', 'Perfumes', 'Luxury perfumes and mists', 1, 'Active', 'Yes', '']
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
   ws['!cols'] = [
     { wch: 20 },
     { wch: 22 },
-    { wch: 25 },
     { wch: 35 },
     { wch: 14 },
     { wch: 12 },
@@ -277,14 +273,13 @@ export const downloadSimpleCategoryTemplate = () => {
 
   const guideHeaders = ['Column', 'Required', 'Description'];
   const guideRows = [
-    ['Main Category', 'Optional / Level 1', 'Main category name (e.g. Makeup, Skincare). If importing subcategories only, you can leave this blank and assign a parent in the admin.'],
-    ['Subcategory', 'Optional / Level 2', 'Subcategory name (e.g. Lips, Eyes, Cleansers).'],
-    ['Select Category', 'Optional / Level 3', 'Select category or product type name (e.g. Matte Lipstick, Gel Eyeliner).'],
+    ['Main Category', 'Required (Level 1)', 'Main category name (e.g. Makeup, Skincare).'],
+    ['Subcategory', 'Required (Level 2)', 'Subcategory name (e.g. Lips, Eyes, Cleansers).'],
     ['Description', 'Optional', 'Brief summary, details, or tagline.'],
     ['Display Order', 'Optional', 'Sorting position (1, 2, 3...).'],
     ['Status', 'Optional', 'Active or Inactive (defaults to Active).'],
     ['Show in Mobile App', 'Optional', 'Yes or No (defaults to Yes).'],
-    ['Image URL', 'Optional', 'Direct link to category icon or photo.']
+    ['Image URL', 'Optional', 'Direct HTTPS link to image (e.g. Supabase Storage URL).']
   ];
   const wsGuide = XLSX.utils.aoa_to_sheet([guideHeaders, ...guideRows]);
   wsGuide['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 60 }];
@@ -356,7 +351,7 @@ export const exportCategoriesToExcel = ({
     XLSX.utils.book_append_sheet(wb, ws, 'Subcategories');
   }
 
-  if (scope === 'product_types' || scope === 'all') {
+  if (scope === 'product_types') {
     const filteredPTs = selectedSubcategory
       ? productTypes.filter(p => p.subcategory_id === selectedSubcategory.id || p.subcategoryId === selectedSubcategory.id)
       : productTypes;

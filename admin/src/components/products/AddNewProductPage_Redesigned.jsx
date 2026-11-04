@@ -95,7 +95,6 @@ import { optimizeImage } from '../../utils/imageOptimizer';
 import {
   isShadeApplicable,
   getSubcategoriesForCategory,
-  getVariantTypesForCategory,
   getCategoryAttributes,
   hexToRgbString,
   rgbToHex
@@ -519,15 +518,6 @@ export default function AddNewProductPage({
     }
     return list.map(s => ({ id: s, name: s }));
   }, [formData.category, formData.subcategory]);
-
-  // Dynamic Variant Types based on Category / Subcategory
-  const availableVariantTypes = useMemo(() => {
-    const list = getVariantTypesForCategory(formData.category, formData.subcategory);
-    if (formData.variantType && !list.includes(formData.variantType)) {
-      return [{ id: formData.variantType, name: formData.variantType }, ...list.map(v => ({ id: v, name: v }))];
-    }
-    return list.map(v => ({ id: v, name: v }));
-  }, [formData.category, formData.subcategory, formData.variantType]);
 
   // Category-Specific Dynamic Attributes from Master
   const dynamicCategoryAttributes = useMemo(() => {
@@ -1763,8 +1753,8 @@ export default function AddNewProductPage({
                 </div>
               </div>
 
-              {/* Row 1: Product Name, Brand, Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {/* Row 1: Product Name & Brand */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-gray-800 font-bold mb-1.5 text-xs">
                     Product Name <span className="text-[#E11D48]">*</span>
@@ -1879,7 +1869,10 @@ export default function AddNewProductPage({
                     clearable={true}
                   />
                 </div>
+              </div>
 
+              {/* Row 2: Category & Dependent Subcategory (2-Level Master Taxonomy) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
                 <div>
                   <label className="block text-gray-800 font-bold mb-1.5 text-xs">
                     Category <span className="text-[#E11D48]">*</span>
@@ -1904,10 +1897,7 @@ export default function AddNewProductPage({
                     valueKey="name"
                   />
                 </div>
-              </div>
 
-              {/* Row 2: Dependent Subcategory & Variant Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
                 <div>
                   <label className="block text-gray-800 font-bold mb-1.5 text-xs">
                     Subcategory {formData.category ? `(${formData.category})` : ''} <span className="text-[#E11D48]">*</span>
@@ -1929,31 +1919,6 @@ export default function AddNewProductPage({
                     labelKey="name"
                     valueKey="name"
                     disabled={!formData.category}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-800 font-bold mb-1.5 text-xs">
-                    Select Category {formData.subcategory ? `(${formData.subcategory})` : ''}
-                  </label>
-                  <SearchableSelect
-                    options={availableVariantTypes}
-                    value={formData.variantType}
-                    onChange={(selectedType) => {
-                      setFormData(prev => ({ ...prev, variantType: selectedType, productType: selectedType }));
-                    }}
-                    placeholder={
-                      !formData.category
-                        ? "Select Category First..."
-                        : !formData.subcategory
-                        ? "Select Subcategory First..."
-                        : "Select Category / Type..."
-                    }
-                    searchPlaceholder="Search select category..."
-                    emptyMessage="No select categories found"
-                    labelKey="name"
-                    valueKey="name"
-                    disabled={!formData.category || !formData.subcategory}
                   />
                 </div>
               </div>

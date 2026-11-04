@@ -411,7 +411,6 @@ export const ExcelImportModal = ({
                                   <option value="parentSku">Parent SKU (Groups Variants)</option>
                                   <option value="variantSku">Variant SKU</option>
                                   <option value="subcategory">Sub Category</option>
-                                  <option value="productType">Product Type / Sub-Type</option>
                                   <option value="barcode">Barcode (EAN / UPC)</option>
                                   <option value="variantBarcode">Variant Barcode</option>
                                 </optgroup>

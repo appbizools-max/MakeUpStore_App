@@ -817,7 +817,7 @@ export const DEFAULT_COLUMN_CONFIG = [
   { key: 'name', label: 'Product_Name [Col 5]', canonicalCol: 5, canonicalName: 'Product_Name', group: 'Product Master', visible: true, mandatory: true },
   { key: 'category', label: 'Category [Col 6]', canonicalCol: 6, canonicalName: 'Category', group: 'Product Master', visible: true, mandatory: true },
   { key: 'subcategory', label: 'Subcategory [Col 7]', canonicalCol: 7, canonicalName: 'Subcategory', group: 'Product Master', visible: true, mandatory: true },
-  { key: 'productType', label: 'Select Category [Col 8]', canonicalCol: 8, canonicalName: 'Select_Category', group: 'Product Master', visible: true, mandatory: true },
+  
   { key: 'shade', label: 'Shade_Name [Col 9]', canonicalCol: 9, canonicalName: 'Shade_Name', group: 'Variant Details', visible: true, mandatory: false },
   { key: 'swatch', label: 'HEX & Swatch [Col 10]', canonicalCol: 10, canonicalName: 'HEX_Swatch', group: 'Variant Details', visible: true, mandatory: false },
   { key: 'size', label: 'Size_or_Weight [Col 11]', canonicalCol: 11, canonicalName: 'Size_or_Weight', group: 'Variant Details', visible: true, mandatory: false },
@@ -997,7 +997,6 @@ export const BulkProductEntryModal = ({
   const [batchBrand, setBatchBrand] = useState('');
   const [batchCategory, setBatchCategory] = useState('');
   const [batchSubcategory, setBatchSubcategory] = useState('');
-  const [batchSelectCategory, setBatchSelectCategory] = useState('');
   const [columnConfig, setColumnConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('salbeau_bulk_column_prefs_v15');
@@ -1088,7 +1087,7 @@ export const BulkProductEntryModal = ({
   const [customCategories, setCustomCategories] = useState([]);
   const [customSubcategories, setCustomSubcategories] = useState({});
   const [customVariantTypes, setCustomVariantTypes] = useState([]);
-  const [customSelectCategories, setCustomSelectCategories] = useState({});
+
   const [selectCategoriesMap, setSelectCategoriesMap] = useState({});
   // Admins and Employees have full authorization to add, edit, update, delete products & images
   const isAdmin = Boolean(
@@ -1422,32 +1421,7 @@ export const BulkProductEntryModal = ({
     };
   }, []);
 
-  // Dynamic Select Categories (Level 3) lookup map based on Subcategory & Category
-  const getSelectCategoriesForSubcategory = useCallback((catName, subcatName) => {
-    if (!subcatName) return [];
-    const cleanCat = (catName || '').trim().toLowerCase();
-    const cleanSub = (subcatName || '').trim().toLowerCase();
-    const key = `${cleanCat}:::${cleanSub}`;
-    const list = selectCategoriesMap[key] || selectCategoriesMap[cleanSub] || [];
-    const customKey = `${cleanCat}:::${cleanSub}`;
-    const customList = customSelectCategories[customKey] || customSelectCategories[cleanSub] || [];
-    const combined = [...list];
-    customList.forEach(item => {
-      if (!combined.includes(item)) combined.push(item);
-    });
-    return combined;
-  }, [selectCategoriesMap, customSelectCategories]);
 
-  const handleCreateProductType = (catName, subcatName, typeName) => {
-    const clean = (typeName || '').trim();
-    if (!clean) return;
-    const key = `${catName || ''}:::${subcatName || ''}`.toLowerCase();
-    setCustomSelectCategories(prev => ({
-      ...prev,
-      [key]: [...(prev[key] || []), clean]
-    }));
-    setBulkNotice({ type: 'success', text: `Select Category "${clean}" added to catalog.` });
-  };
 
   // Dynamic Subcategories lookup map based on Category — purely from DB, no hardcoded fallback
   const getSubcategoriesForCategory = useCallback((catName) => {
@@ -2586,7 +2560,7 @@ export const BulkProductEntryModal = ({
 
   // Batch Taxonomy Application ("Set All Rows" header tool)
   const handleApplyBatchTaxonomy = () => {
-    if (!batchBrand && !batchCategory && !batchSubcategory && !batchSelectCategory) {
+    if (!batchBrand && !batchCategory && !batchSubcategory) {
       setIsBatchTaxonomyOpen(false);
       return;
     }
@@ -2605,8 +2579,7 @@ export const BulkProductEntryModal = ({
         ...r,
         ...(batchBrand ? { brand: batchBrand } : {}),
         ...(batchCategory ? { category: batchCategory } : {}),
-        ...(batchSubcategory ? { subcategory: batchSubcategory } : {}),
-        ...(batchSelectCategory ? { productType: batchSelectCategory, selectCategory: batchSelectCategory } : {})
+        ...(batchSubcategory ? { subcategory: batchSubcategory } : {})
       };
 
       return autoEnrichRowWithDescriptionAndHighlights(updated);
@@ -3413,15 +3386,7 @@ export const BulkProductEntryModal = ({
                 <span>Save Draft</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setIsColumnManagerOpen(true)}
-                className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-                title="Customize visible table columns"
-              >
-                <Columns className="w-4 h-4 text-purple-600" />
-                <span>Manage Columns</span>
-              </button>
+              
 
               {summaryCounters.error > 0 && (
                 <button
@@ -3435,15 +3400,7 @@ export const BulkProductEntryModal = ({
                 </button>
               )}
 
-              <button
-                type="button"
-                onClick={handleClearAllStaging}
-                className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Clear all staged rows"
-              >
-                <X className="w-3.5 h-3.5 text-slate-400" />
-                <span>Clear Staging</span>
-              </button>
+              
 
               {/* Batch Taxonomy Application Tool ("Set All Rows") */}
               <button
@@ -3691,14 +3648,7 @@ export const BulkProductEntryModal = ({
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={handleAddRow}
-                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>+ Add Row</span>
-              </button>
+              
             </div>
           </div>
         )}
@@ -3995,26 +3945,15 @@ export const BulkProductEntryModal = ({
                         <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 7</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SUBCATEGORY</span>
                       </div>
-                      <div className="text-[11px] font-bold text-slate-600">Leaf Category</div>
+                      <div className="text-[11px] font-bold text-slate-600">Subdepartment</div>
                     </th>
                   )}
 
-                  {/* Column 8: Select Category */}
-                  {isColVisible('productType') && (
-                    <th className="min-w-[190px] px-3 text-left bg-[#EEF2FF] text-slate-900">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700">COL 8</span>
-                        <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SELECT_CATEGORY</span>
-                      </div>
-                      <div className="text-[11px] font-bold text-slate-600">Level 3 Item Type</div>
-                    </th>
-                  )}
-
-                  {/* Column 9: Shade Name */}
+                  {/* Column 8: Shade Name */}
                   {isColVisible('shade') && (
                     <th className="min-w-[180px] px-2.5 text-left bg-white text-[#831843]">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 9</span>
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 8</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SHADE_NAME</span>
                       </div>
                       <div className="text-[11px] font-bold text-pink-700">Color Name</div>
@@ -4467,20 +4406,7 @@ export const BulkProductEntryModal = ({
                                 </span>
                               )}
                             </div>
-                            <div className="mt-0.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setInPanelBrowserRowId(row._id);
-                                }}
-                                className="px-1.5 py-0.5 bg-white hover:bg-pink-100 text-[#C2477A] hover:text-[#9A3460] border border-pink-200 rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                                title="Open Image Search Browser for this product"
-                              >
-                                <Search className="w-2.5 h-2.5 text-[#C2477A]" />
-                                <span>Image Search</span>
-                              </button>
-                            </div>
+                            
                           </td>
                         )}
 
@@ -4595,7 +4521,7 @@ export const BulkProductEntryModal = ({
                               id={`cell_subcategory_${row._id}`}
                               value={row.subcategory || ''}
                               onChange={(val) => handleCellChange(row._id, 'subcategory', val)}
-                              onNextFocus={() => focusField(row._id, 'productType')}
+                              onNextFocus={() => focusField(row._id, 'shade')}
                               options={getSubcategoriesForCategory(row.category)}
                               placeholder={row.category ? "Select Subcategory" : "Select Category First"}
                               searchPlaceholder="Search subcategory..."
@@ -4612,37 +4538,7 @@ export const BulkProductEntryModal = ({
                           </td>
                         )}
 
-                        {/* Column 8: Select Category */}
-                        {isColVisible('productType') && (
-                          <td className="min-w-[190px] px-3 py-2 bg-white">
-                            <SearchableCombobox
-                              id={`cell_productType_${row._id}`}
-                              value={row.productType || ''}
-                              onChange={(val) => handleCellChange(row._id, 'productType', val)}
-                              onNextFocus={() => focusField(row._id, 'shade')}
-                              options={getSelectCategoriesForSubcategory(row.category, row.subcategory)}
-                              placeholder={
-                                !row.category
-                                  ? "Select Category First"
-                                  : !row.subcategory
-                                  ? "Select Subcategory First"
-                                  : "Select Category / Type"
-                              }
-                              searchPlaceholder="Search select category..."
-                              disabled={!row.category || !row.subcategory}
-                              allowManual={false}
-                              externalNotice={{
-                                entityName: 'Select Category',
-                                pageName: 'Categories Manager',
-                                actionLabel: 'Go to Categories Page',
-                                onNavigate: handleNavCategories
-                              }}
-                              isAdmin={isAdmin}
-                            />
-                          </td>
-                        )}
-
-                        {/* Column 9: Shade Name */}
+                        {/* Column 8: Shade Name */}
                         {isColVisible('shade') && (
                           <td className="min-w-[180px] px-2.5 py-2 bg-white">
                             {rowHasShades ? (
@@ -6409,7 +6305,7 @@ export const BulkProductEntryModal = ({
                   </select>
                 </div>
 
-                {/* 3. Category Hierarchy Cascading Selection */}
+                {/* 3. Category Hierarchy Cascading Selection (2-Level: Category & Subcategory) */}
                 <div className="space-y-3 pt-2 border-t border-slate-100">
                   <div>
                     <label className="text-xs font-bold text-slate-700 mb-1 block">
@@ -6420,7 +6316,6 @@ export const BulkProductEntryModal = ({
                       onChange={(e) => {
                         setBatchCategory(e.target.value);
                         setBatchSubcategory('');
-                        setBatchSelectCategory('');
                       }}
                       className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none"
                     >
@@ -6440,30 +6335,12 @@ export const BulkProductEntryModal = ({
                       disabled={!batchCategory}
                       onChange={(e) => {
                         setBatchSubcategory(e.target.value);
-                        setBatchSelectCategory('');
                       }}
                       className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:opacity-50"
                     >
                       <option value="">-- {batchCategory ? 'Select Subcategory' : 'Select Category First'} --</option>
                       {batchCategory && getSubcategoriesForCategory(batchCategory).map(sc => (
                         <option key={sc} value={sc}>{sc}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1 block">
-                      Select Category:
-                    </label>
-                    <select
-                      value={batchSelectCategory}
-                      disabled={!batchCategory || !batchSubcategory}
-                      onChange={(e) => setBatchSelectCategory(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:ring-1 focus:ring-purple-600 outline-none disabled:opacity-50"
-                    >
-                      <option value="">-- {(!batchCategory || !batchSubcategory) ? 'Select Subcategory First' : 'Select Category Type'} --</option>
-                      {batchCategory && batchSubcategory && getSelectCategoriesForSubcategory(batchCategory, batchSubcategory).map(pt => (
-                        <option key={pt} value={pt}>{pt}</option>
                       ))}
                     </select>
                   </div>
@@ -6505,44 +6382,7 @@ export const BulkProductEntryModal = ({
         {/* =====================================================================
             10. IN-PANEL IMAGE SEARCH BROWSER DRAWER (Right-Side Drawer)
             ===================================================================== */}
-        {inPanelBrowserRowId && (
-          <InPanelImageBrowserDrawer
-            isOpen={Boolean(inPanelBrowserRowId)}
-            onClose={() => setInPanelBrowserRowId(null)}
-            row={rows.find(r => r._id === inPanelBrowserRowId)}
-            rowIndex={rows.findIndex(r => r._id === inPanelBrowserRowId)}
-            totalRows={rows.length}
-            onAddImageToRow={(imgUrl) => {
-              if (!inPanelBrowserRowId || !imgUrl) return;
-              setRows(prev => prev.map(r => {
-                if (r._id === inPanelBrowserRowId) {
-                  const existing = r.images || [];
-                  if (existing.includes(imgUrl)) return r;
-                  return { ...r, images: [...existing, imgUrl] };
-                }
-                return r;
-              }));
-            }}
-            onRemoveImageFromRow={(imgUrl) => {
-              if (!inPanelBrowserRowId || !imgUrl) return;
-              setRows(prev => prev.map(r => {
-                if (r._id === inPanelBrowserRowId) {
-                  return { ...r, images: (r.images || []).filter(u => u !== imgUrl) };
-                }
-                return r;
-              }));
-            }}
-            onSelectPrevRow={() => {
-              const idx = rows.findIndex(r => r._id === inPanelBrowserRowId);
-              if (idx > 0) setInPanelBrowserRowId(rows[idx - 1]._id);
-            }}
-            onSelectNextRow={() => {
-              const idx = rows.findIndex(r => r._id === inPanelBrowserRowId);
-              if (idx >= 0 && idx < rows.length - 1) setInPanelBrowserRowId(rows[idx + 1]._id);
-            }}
-            onUploadProductImage={(fileOrBlob) => uploadOptimizedImage(fileOrBlob, 'PRODUCT', { folder: 'products' })}
-          />
-        )}
+        
 
       </div>
     </div>

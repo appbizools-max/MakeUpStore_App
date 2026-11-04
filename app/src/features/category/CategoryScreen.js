@@ -162,15 +162,7 @@ export const CategoryScreen = () => {
   };
 
   const handleBack = () => {
-    if (navLevel === 4) {
-      if (activeLeafCategory) {
-        setNavLevel(3);
-      } else if (activeCategory?.subcategoriesCount > 0) {
-        setNavLevel(2);
-      } else {
-        setNavLevel(1);
-      }
-    } else if (navLevel === 3) {
+    if (navLevel === 3) {
       setNavLevel(2);
     } else if (navLevel === 2) {
       if (openedFromHome) {
@@ -196,29 +188,14 @@ export const CategoryScreen = () => {
     );
   }, [activeProducts, activeCategory, activeSubcategory, activeLeafCategory]);
 
-  // ── LEVEL 4: PRODUCT LISTING ────────────────────────────────────
-  if (navLevel === 4) {
+  // ── LEVEL 3: PRODUCT LISTING (2-Level Hierarchy: Main Category -> Subcategory) ──
+  if (navLevel === 3) {
     return (
       <ProductListingView
         category={activeCategory}
         subcategory={activeSubcategory}
-        leafCategory={activeLeafCategory}
         products={currentProducts}
         onBack={handleBack}
-      />
-    );
-  }
-
-  // ── LEVEL 3: SUBCATEGORY (LEAF CATEGORIES) ──────────────────────
-  if (navLevel === 3) {
-    return (
-      <SubcategoryView
-        category={activeCategory}
-        subcategory={activeSubcategory}
-        onSelectLeaf={handleSelectLeafCategory}
-        onDirectViewAll={handleViewAllProducts}
-        onBack={handleBack}
-        liveLeafCategories={liveLeafCategories}
       />
     );
   }

@@ -3,7 +3,7 @@ import { getSubcategoriesForCategory } from '../../config/categoriesHierarchy';
 import { CategoryPage } from './components/CategoryPage';
 
 /**
- * CategoryDetailView (Level 2) — no images.
+ * CategoryDetailView (Level 2) ï¿½ no images.
  */
 export const CategoryDetailView = ({
   category,
@@ -57,6 +57,7 @@ export const CategoryDetailView = ({
       title={category?.name || 'Category'}
       bannerTitle={category?.name || 'Category'}
       bannerSubtitle={category?.tagline || category?.description || 'Discover luxury beauty formulations.'}
+      image={category?.image || null}
       subcategories={subcategories}
       onBack={onBack}
       onShopAll={onViewAllProducts}

@@ -2037,20 +2037,6 @@ export default function MainCategoriesManager({
             </button>
           </>
         )}
-
-        {selectedSubcategory && currentView === 'product_types' && (
-          <>
-            <ChevronRight size={14} className="text-gray-300" />
-            <div className="flex items-center gap-1.5 text-gray-900 font-extrabold">
-              <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-100 text-[10px] uppercase font-bold">
-                Sub
-              </span>
-              <span>{selectedSubcategory.name}</span>
-            </div>
-            <ChevronRight size={14} className="text-gray-300" />
-            <span className="text-[#C2477A] font-extrabold">Select Category / Product Type</span>
-          </>
-        )}
       </div>
 
       {/* ════════════════════════════════════════════════════════════════ */}
@@ -2076,8 +2062,6 @@ export default function MainCategoriesManager({
                 <span className="text-xs font-extrabold text-[#C2477A]">{hierarchyStats.totalCategories} Main Categories</span>
                 <span className="text-pink-300">•</span>
                 <span className="text-xs font-bold text-gray-700">{hierarchyStats.totalSubcategories} Subcategories</span>
-                <span className="text-pink-300">•</span>
-                <span className="text-xs font-bold text-purple-700">{hierarchyStats.totalProductTypes} Select Categories</span>
               </div>
 
               <button
@@ -2094,7 +2078,7 @@ export default function MainCategoriesManager({
               <button
                 type="button"
                 onClick={() => handleExportScope('all')}
-                title="Export complete 3-level category hierarchy to Excel"
+                title="Export complete 2-level category hierarchy to Excel"
                 className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               >
                 <Download size={15} className="text-[#C2477A]" />
@@ -2550,15 +2534,13 @@ export default function MainCategoriesManager({
                       <th className="py-4 px-4 w-16 text-center">#</th>
                       <th className="py-4 px-4 min-w-[220px]">Sub Category</th>
                       <th className="py-4 px-4 min-w-[150px]">Main Category</th>
-                      <th className="py-4 px-4 text-center w-48">Select Categories</th>
                       <th className="py-4 px-4 text-center w-32">Mobile App</th>
                       <th className="py-4 px-4 text-center w-32">Status</th>
-                      <th className="py-4 px-4 text-right w-64">Actions</th>
+                      <th className="py-4 px-4 text-right w-36">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-pink-100/60 text-xs">
                     {filteredAndSortedSubcategories.map((sub, idx) => {
-                      const childPTs = productTypes.filter(pt => (pt.subcategory_id || pt.subcategoryId) === sub.id);
                       const isDragged = dragItemIndex === idx;
                       const isDragOver = dragOverIndex === idx;
 
@@ -2615,14 +2597,6 @@ export default function MainCategoriesManager({
                             </span>
                           </td>
 
-                          {/* Select Categories Badge */}
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-purple-50 text-purple-700 border border-purple-200">
-                              <Tag size={12} className="text-purple-600" />
-                              <span>{childPTs.length} Select Categories</span>
-                            </span>
-                          </td>
-
                           {/* Mobile App */}
                           <td className="py-3.5 px-4 text-center">
                             <button
@@ -2655,18 +2629,9 @@ export default function MainCategoriesManager({
                             </button>
                           </td>
 
-                          {/* Actions: Show Select Categories → | Edit | Delete */}
+                          {/* Actions: Edit | Delete */}
                           <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenSubcategoryProductTypes(sub)}
-                                className="px-3.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-600 text-purple-700 hover:text-white border border-purple-200 font-extrabold text-xs transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1.5 group/btn"
-                                title={`Show Select Categories for ${sub.name}`}
-                              >
-                                <span>Show Select Categories</span>
-                                <ArrowRight size={13} className="transition-transform group-hover/btn:translate-x-0.5" />
-                              </button>
                               {isAdmin && (
                                 <>
                                   <button
@@ -2700,340 +2665,6 @@ export default function MainCategoriesManager({
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* VIEW 3: SELECT CATEGORY / PRODUCT TYPE MANAGEMENT (LEVEL 3)     */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {currentView === 'product_types' && selectedSubcategory && (
-        <div className="space-y-6">
-          {/* Parent Context Banner */}
-          <div className="bg-gradient-to-r from-purple-50 via-[#FFF5F8] to-white p-6 sm:p-7 rounded-2xl border border-purple-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={handleBackToSubcategories}
-                className="p-2.5 rounded-xl border border-purple-200 bg-white text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer shrink-0 shadow-2xs"
-                title="Back to Subcategories"
-              >
-                <ArrowLeft size={18} />
-              </button>
-
-              <div className="w-14 h-14 rounded-2xl bg-white border border-purple-200/80 p-1 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
-                {selectedSubcategory.image ? (
-                  <img src={selectedSubcategory.image} alt={selectedSubcategory.name} className="w-full h-full object-cover rounded-xl" />
-                ) : (
-                  <Tag size={26} className="text-purple-600" />
-                )}
-              </div>
-
-              <div>
-                <div className="flex items-center flex-wrap gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-pink-100 text-[#C2477A]">
-                    {selectedCategory?.name || 'Main Category'}
-                  </span>
-                  <span className="text-gray-300">→</span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-100 text-purple-700">
-                    Sub Category: {selectedSubcategory.name}
-                  </span>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                    selectedSubcategory.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'
-                  }`}>
-                    {selectedSubcategory.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mt-1">
-                  Select Category / Product Type
-                </h1>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">
-                  Level 3 Hierarchy • {filteredAndSortedProductTypes.length} items under {selectedCategory?.name} → {selectedSubcategory.name}. Drag (⋮⋮) to reorder.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full md:w-auto">
-              <button
-                type="button"
-                onClick={() => loadHierarchyData()}
-                disabled={isLoading}
-                title="Refresh select categories from database"
-                className="bg-white hover:bg-purple-50 text-gray-700 hover:text-purple-700 border border-purple-200 hover:border-purple-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              >
-                <RefreshCw size={15} className={`text-purple-600 ${isLoading ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleExportScope('product_types')}
-                title={`Export select categories under ${selectedSubcategory?.name} to Excel`}
-                className="bg-white hover:bg-purple-50 text-gray-700 hover:text-purple-700 border border-purple-200 hover:border-purple-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              >
-                <Download size={15} className="text-purple-600" />
-                <span>Export Select Categories</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setImportScope('product_types');
-                  setIsImportModalOpen(true);
-                }}
-                title={`Import select categories under ${selectedSubcategory?.name} from Excel`}
-                className="bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 hover:border-purple-500 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              >
-                <Upload size={15} className="text-purple-600" />
-                <span>Import Excel</span>
-              </button>
-
-              {isAdmin ? (
-                <button
-                  type="button"
-                  onClick={() => openAddProductTypeModal(selectedCategory, selectedSubcategory)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-                >
-                  <PlusCircle size={16} />
-                  <span>+ Add Select Category</span>
-                </button>
-              ) : (
-                <span className="text-xs font-bold text-purple-800 bg-purple-50 border border-purple-200 px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
-                  <AlertCircle size={15} className="text-purple-600 shrink-0" />
-                  <span>View Only • Admin required to add select categories</span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Product Types Search & Filter Controls */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-purple-100/80 shadow-xs flex flex-wrap items-center justify-between gap-3.5">
-            <div className="flex items-center gap-2.5 bg-purple-50/50 px-3.5 py-2.5 rounded-xl border border-purple-100 flex-1 min-w-[260px]">
-              <Search size={16} className="text-purple-600 shrink-0" />
-              <input
-                type="text"
-                placeholder={`Search select categories in ${selectedSubcategory.name}...`}
-                value={ptSearch}
-                onChange={(e) => setPtSearch(e.target.value)}
-                className="bg-transparent text-xs sm:text-sm outline-none text-gray-900 placeholder-gray-400 font-medium w-full"
-              />
-              {ptSearch && (
-                <button type="button" onClick={() => setPtSearch('')} className="text-gray-400 hover:text-gray-600 p-0.5">
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-500">Status:</span>
-                <select
-                  value={ptStatusFilter}
-                  onChange={(e) => setPtStatusFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-purple-50/50 border border-purple-100 text-purple-700 outline-none cursor-pointer"
-                >
-                  <option value="all">All</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-500">Mobile App:</span>
-                <select
-                  value={ptMobileFilter}
-                  onChange={(e) => setPtMobileFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-purple-50/50 border border-purple-100 text-purple-700 outline-none cursor-pointer"
-                >
-                  <option value="all">All</option>
-                  <option value="visible">Visible</option>
-                  <option value="hidden">Hidden</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Select Category Table: # | PRODUCT TYPE | SUB CATEGORY | MAIN CATEGORY | MOBILE APP | STATUS | ACTIONS */}
-          {filteredAndSortedProductTypes.length === 0 ? (
-            <div className="bg-white p-16 rounded-2xl border border-purple-100 text-center space-y-3">
-              <Tag size={36} className="text-gray-300 mx-auto" />
-              <h3 className="font-bold text-gray-800 text-base">
-                {ptSearch ? 'No matching select categories found' : 'No select categories found'}
-              </h3>
-              <p className="text-gray-400 text-xs">
-                {ptSearch
-                  ? `No items matching "${ptSearch}" under ${selectedSubcategory.name}.`
-                  : `Get started by adding your first select category under ${selectedSubcategory.name}.`}
-              </p>
-              {ptSearch ? (
-                <button
-                  type="button"
-                  onClick={() => setPtSearch('')}
-                  className="px-4 py-2 rounded-xl border border-purple-200 text-purple-700 text-xs font-bold cursor-pointer hover:bg-purple-50"
-                >
-                  Clear Search
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => openAddProductTypeModal(selectedCategory, selectedSubcategory)}
-                  className="px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-2"
-                >
-                  <PlusCircle size={14} />
-                  <span>+ Add Select Category</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl border border-purple-100/80 shadow-xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[950px]">
-                  <thead>
-                    <tr className="border-b border-purple-100 bg-purple-50/60 text-[11px] font-extrabold text-gray-600 uppercase tracking-wider">
-                      <th className="py-4 px-4 w-16 text-center">#</th>
-                      <th className="py-4 px-4 min-w-[220px]">Select Category / Product Type</th>
-                      <th className="py-4 px-4 min-w-[150px]">Sub Category</th>
-                      <th className="py-4 px-4 min-w-[150px]">Main Category</th>
-                      <th className="py-4 px-4 text-center w-32">Mobile App</th>
-                      <th className="py-4 px-4 text-center w-32">Status</th>
-                      <th className="py-4 px-4 text-right w-44">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-purple-100/50 text-xs">
-                    {filteredAndSortedProductTypes.map((pt, idx) => {
-                      const isDragged = dragItemIndex === idx;
-                      const isDragOver = dragOverIndex === idx;
-
-                      return (
-                        <tr
-                          key={pt.id}
-                          draggable
-                          onDragStart={() => handleProductTypeDragStart(idx)}
-                          onDragEnter={() => handleProductTypeDragEnter(idx)}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={() => handleProductTypeDrop(idx)}
-                          className={`transition-all group ${
-                            isDragged ? 'opacity-40 bg-purple-50' : isDragOver ? 'bg-purple-100/50' : 'hover:bg-purple-50/30'
-                          }`}
-                        >
-                          {/* # Priority & Editable Sequence */}
-                          <td className="py-3.5 px-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-purple-600" title="Drag to reorder">
-                                <GripVertical size={14} />
-                              </span>
-                              <input
-                                type="number"
-                                min="1"
-                                max={filteredAndSortedProductTypes.length}
-                                defaultValue={idx + 1}
-                                key={`pt_seq_${pt.id}_${idx + 1}`}
-                                onBlur={(e) => handleProductTypeSequenceChange(pt.id, parseInt(e.target.value, 10))}
-                                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
-                                className="w-10 h-7 text-center rounded-lg border border-purple-200 bg-purple-50/70 text-xs font-black text-gray-800 focus:border-purple-600 focus:bg-white outline-none shadow-2xs"
-                                title="Edit priority sequence number directly"
-                              />
-                            </div>
-                          </td>
-
-                          {/* Product Type Name (No image folder box) */}
-                          <td className="py-3.5 px-4">
-                            <div>
-                              <span className="font-extrabold text-sm text-gray-900 block leading-tight">
-                                {pt.name}
-                              </span>
-                              {pt.description && (
-                                <span className="text-[11px] text-gray-500 font-medium line-clamp-1 mt-0.5">
-                                  {pt.description}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Sub Category */}
-                          <td className="py-3.5 px-4">
-                            <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100">
-                              {selectedSubcategory.name}
-                            </span>
-                          </td>
-
-                          {/* Main Category */}
-                          <td className="py-3.5 px-4">
-                            <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold bg-white text-[#C2477A] border border-pink-100">
-                              {selectedCategory?.name || 'Main Category'}
-                            </span>
-                          </td>
-
-                          {/* Mobile App */}
-                          <td className="py-3.5 px-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleProductTypeMobile(pt)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${
-                                pt.show_in_mobile_app
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                  : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
-                              }`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${pt.show_in_mobile_app ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-                              <span>{pt.show_in_mobile_app ? 'Yes' : 'No'}</span>
-                            </button>
-                          </td>
-
-                          {/* Status */}
-                          <td className="py-3.5 px-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleProductTypeStatus(pt)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${
-                                pt.is_active
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                  : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                              }`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${pt.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                              <span>{pt.is_active ? 'Active' : 'Inactive'}</span>
-                            </button>
-                          </td>
-
-                          {/* Actions: View / Edit | Delete */}
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {isAdmin ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => openEditProductTypeModal(pt)}
-                                    className="px-3 py-1.5 rounded-xl border border-purple-200 hover:bg-purple-50 text-purple-700 font-extrabold text-xs transition-colors cursor-pointer bg-white shadow-2xs inline-flex items-center gap-1"
-                                    title="View & Edit Select Category"
-                                  >
-                                    <Edit2 size={13} />
-                                    <span>View / Edit</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => initiateProductTypeDelete(pt)}
-                                    className="p-2 rounded-xl border border-gray-200 hover:border-rose-300 hover:text-rose-600 text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
-                                    title="Delete Select Category"
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
-                                </>
-                              ) : (
-                                <span className="text-[10px] font-bold text-gray-400 bg-gray-50 border border-gray-200 px-2 py-1 rounded-lg">
-                                  View Only
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════ */}
       {/* 11. ADD / EDIT MAIN CATEGORY MODAL (INTEGRATED IMAGE SECTION)    */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {(modalMode === 'add_category' || modalMode === 'edit_category') && (
@@ -3348,213 +2979,6 @@ export default function MainCategoriesManager({
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* 13. ADD / EDIT SELECT CATEGORY MODAL (INTEGRATED IMAGE SECTION)  */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {(modalMode === 'add_product_type' || modalMode === 'edit_product_type') && (
-        <div 
-          className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-[1px] transition-all" focus-trap="true"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isSaving) {
-              closeModal();
-            }
-          }}
-        >
-          <div 
-            className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-purple-200 animate-slide-left relative overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header - Sticky with prominent Close (✕) button */}
-            <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-purple-50 via-[#FAF5FF] to-white border-b border-purple-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
-              <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                  <Tag size={20} />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-base sm:text-lg font-black text-gray-900 truncate">
-                    {modalMode === 'add_product_type' ? 'Add Select Category' : `Edit Select Category: ${editingItem?.name}`}
-                  </h2>
-                  <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">
-                    Level 3 Catalog: Select Category / Product Type
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={closeModal}
-                disabled={isSaving}
-                className="w-10 h-10 rounded-2xl bg-white hover:bg-rose-50 text-gray-500 hover:text-rose-600 border border-purple-200/90 hover:border-rose-300 shadow-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 ml-3 group focus:outline-none focus:ring-2 focus:ring-rose-200"
-                aria-label="Close modal"
-                title="Close (✕)"
-              >
-                <X size={20} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-200" />
-              </button>
-            </div>
-
-            {/* Scrollable Form Body with Clean Non-Overlapping Action Footer */}
-            <form onSubmit={handleProductTypeFormSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div ref={drawerScrollRef} className="flex-1 overflow-y-auto overscroll-y-auto touch-pan-y p-4 sm:p-5 space-y-3 pb-4">
-                {/* Hierarchical Dependent Dropdowns */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* 1. Parent Main Category Dropdown */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                      <span>Main Category <span className="text-rose-500">*</span></span>
-                      {formErrors.category_id && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.category_id}</span>}
-                    </label>
-                    <select
-                      required
-                      value={ptFormData.category_id}
-                      onChange={(e) => {
-                        const newCatId = e.target.value;
-                        const validSubs = subcategories.filter(s => s.category_id === newCatId);
-                        const defaultSubId = validSubs[0] ? validSubs[0].id : '';
-
-                        setPtFormData(prev => ({
-                          ...prev,
-                          category_id: newCatId,
-                          subcategory_id: defaultSubId
-                        }));
-                        if (formErrors.category_id) setFormErrors(prev => ({ ...prev, category_id: null }));
-                      }}
-                      className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 text-sm font-bold text-gray-800 bg-purple-50/40 outline-none transition-all cursor-pointer"
-                    >
-                      <option value="" disabled>Select Main Category...</option>
-                      {categories.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} {c.is_active ? '' : '(Inactive)'}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* 2. Parent Sub Category (Dependent Dropdown!) */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                      <span>Sub Category <span className="text-rose-500">*</span></span>
-                      {formErrors.subcategory_id && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.subcategory_id}</span>}
-                    </label>
-                    <select
-                      required
-                      value={ptFormData.subcategory_id}
-                      onChange={(e) => {
-                        const newSubId = e.target.value;
-                        setPtFormData(prev => ({ ...prev, subcategory_id: newSubId }));
-                        if (formErrors.subcategory_id) setFormErrors(prev => ({ ...prev, subcategory_id: null }));
-                      }}
-                      disabled={dependentSubcategoryOptions.length === 0}
-                      className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 text-sm font-bold text-gray-800 bg-purple-50/40 outline-none transition-all cursor-pointer disabled:bg-gray-100 disabled:text-gray-400"
-                    >
-                      <option value="" disabled>
-                        {dependentSubcategoryOptions.length === 0 ? 'No subcategories available' : 'Select Sub Category...'}
-                      </option>
-                      {dependentSubcategoryOptions.map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} {s.is_active ? '' : '(Inactive)'}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Select Category / Product Type Name */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                    <span>Select Category / Product Type Name <span className="text-rose-500">*</span></span>
-                    {formErrors.name && <span className="text-rose-500 font-semibold text-[11px]">{formErrors.name}</span>}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Lipstick, Liquid Foundation, Day Cream"
-                    value={ptFormData.name}
-                    onChange={(e) => {
-                      setPtFormData(prev => ({ ...prev, name: e.target.value }));
-                      if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
-                    }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 text-sm font-medium outline-none transition-all"
-                  />
-                </div>
-
-                {/* Description */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">Description</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Enter a descriptive summary for this select category..."
-                    value={ptFormData.description}
-                    onChange={(e) => setPtFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl border border-purple-100 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
-                  />
-                </div>
-
-                {/* Mobile App & Status Switches */}
-                <div className="bg-purple-50/40 p-3.5 rounded-xl border border-purple-100/80 flex items-center justify-around">
-                  <div className="flex flex-col items-center gap-1.5 text-center">
-                    <span className="text-xs font-bold text-gray-700">Show in Mobile App</span>
-                    <button
-                      type="button"
-                      onClick={() => setPtFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        ptFormData.show_in_mobile_app ? 'bg-purple-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        ptFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
-                      }`} />
-                    </button>
-                    <span className={`text-[10px] font-extrabold ${ptFormData.show_in_mobile_app ? 'text-purple-700' : 'text-gray-400'}`}>
-                      {ptFormData.show_in_mobile_app ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col items-center gap-1.5 text-center border-l border-purple-200/60 pl-6">
-                    <span className="text-xs font-bold text-gray-700">Active Status</span>
-                    <button
-                      type="button"
-                      onClick={() => setPtFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        ptFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        ptFormData.is_active ? 'translate-x-5' : 'translate-x-0'
-                      }`} />
-                    </button>
-                    <span className={`text-[10px] font-extrabold ${ptFormData.is_active ? 'text-emerald-700' : 'text-gray-400'}`}>
-                      {ptFormData.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Select Category is Name-only per specification */}
-                
-                {/* Action Bar Directly Below Inputs (Zero Empty Space) */}
-                <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-purple-100">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    disabled={isSaving}
-                    className="px-5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-xs cursor-pointer transition-colors shadow-2xs"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="px-6 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
-                  >
-                    {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                    <span>{modalMode === 'add_product_type' ? 'Create Select Category' : 'Save Changes'}</span>
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════ */}
       {/* 14. SAFE DELETE CONFIRMATION MODAL                              */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {deleteModal.isOpen && deleteModal.item && (

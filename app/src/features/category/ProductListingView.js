@@ -332,78 +332,66 @@ export const ProductListingView = ({
           paddingBottom: 110, // Safe-area bottom padding to prevent bottom navigation overlap
         }}
       >
-        {/* Level 3 Select Category (Typography & Text Only) / Subcategory Full Banner (Total Container) */}
-        {leafCategory ? (
-          /* Select Category: NO image - show only content in proper typography, text in container */
+        {/* Subcategory Clean Header Card with 3D Icon & Explore CTA */}
+        {subcategory ? (
           <View
             style={{
-              borderRadius: 18,
+              borderRadius: 20,
               backgroundColor: '#FFFFFF',
               borderColor: '#F0E3EA',
               borderWidth: 1,
-              padding: 16,
+              paddingVertical: 14,
+              paddingHorizontal: 16,
               marginBottom: 14,
-              shadowColor: '#B64F7D',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 5,
-              elevation: 2,
-            }}
-          >
-            <View className="self-start px-2.5 py-0.5 rounded-full bg-[#B64F7D] mb-2">
-              <Text className="text-[10px] font-extrabold text-white uppercase tracking-wider">
-                Select Category
-              </Text>
-            </View>
-            <Text
-              style={{ color: '#33252F' }}
-              className="text-lg font-black leading-tight mb-1"
-              numberOfLines={2}
-            >
-              {leafCategory.name}
-            </Text>
-            {leafCategory.description ? (
-              <Text
-                style={{ color: '#82727C' }}
-                className="text-xs font-semibold leading-relaxed mb-2"
-                numberOfLines={2}
-              >
-                {leafCategory.description}
-              </Text>
-            ) : null}
-            <Text style={{ color: '#B64F7D' }} className="text-xs font-bold">
-              {filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products Available'}
-            </Text>
-          </View>
-        ) : subcategory?.image ? (
-          /* Subcategory Full Banner: Fills total container (Not in a box) */
-          <View
-            style={{
-              borderRadius: 18,
-              overflow: 'hidden',
-              marginBottom: 14,
-              height: 140,
-              backgroundColor: '#FFFFFF',
-              borderColor: '#F0E3EA',
-              borderWidth: 1,
-              shadowColor: '#B64F7D',
+              shadowColor: '#C2477A',
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.08,
-              shadowRadius: 5,
-              elevation: 2,
+              shadowRadius: 8,
+              elevation: 3,
+              flexDirection: 'row',
+              alignItems: 'center',
             }}
           >
-            <Image
-              source={getSafeImageSource(subcategory.image)}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="cover"
-            />
+            {subcategory.image ? (
+              <View
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: 29,
+                  backgroundColor: '#FFFFFF',
+                  borderColor: '#F8B4D9',
+                  borderWidth: 1.5,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 14,
+                  overflow: 'hidden',
+                  elevation: 2,
+                }}
+              >
+                <Image
+                  source={getSafeImageSource(subcategory.image)}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : null}
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ color: '#1F2937' }}
+                className="text-base font-black leading-tight mb-1"
+                numberOfLines={1}
+              >
+                {subcategory.name}
+              </Text>
+              <Text style={{ color: '#C2477A' }} className="text-xs font-bold">
+                {filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products Available'}
+              </Text>
+            </View>
           </View>
         ) : (
-          /* Editorial Content when no banner image */
           <View
             style={{
-              borderRadius: 18,
+              borderRadius: 20,
               backgroundColor: '#FFFFFF',
               borderColor: '#F0E3EA',
               borderWidth: 1,
@@ -411,11 +399,11 @@ export const ProductListingView = ({
               marginBottom: 14,
             }}
           >
-            <Text style={{ color: '#33252F' }} className="text-lg font-black leading-tight mb-1">
-              {subcategory?.name || category?.name}
+            <Text style={{ color: '#1F2937' }} className="text-base font-black leading-tight mb-1">
+              {category?.name || 'Products'}
             </Text>
-            <Text style={{ color: '#B64F7D' }} className="text-xs font-bold">
-              {filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products'}
+            <Text style={{ color: '#C2477A' }} className="text-xs font-bold">
+              {filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products Available'}
             </Text>
           </View>
         )}

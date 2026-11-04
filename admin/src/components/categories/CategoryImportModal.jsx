@@ -68,11 +68,10 @@ export default function CategoryImportModal({
     imageCol: ''
   });
 
-  // Level Toggles: independently selectable
+  // Level Toggles: independently selectable (2-Level Hierarchy)
   const [toggles, setToggles] = useState({
     importMain: true,
-    importSub: false,
-    importSelect: false
+    importSub: false
   });
 
   // Parent configuration for subcategories & select categories
@@ -153,11 +152,11 @@ export default function CategoryImportModal({
 
         if (hasSub && !hasMain && !hasSelect) {
           // Subcategory only file
-          setToggles({ importMain: false, importSub: true, importSelect: false });
+          setToggles({ importMain: false, importSub: true,  });
           setParentConfig(prev => ({ ...prev, subParentMode: 'fixed' }));
         } else if (hasSelect && !hasMain && !hasSub) {
           // Select category only file
-          setToggles({ importMain: false, importSub: false, importSelect: true });
+          setToggles({ importMain: false, importSub: false,  });
           setParentConfig(prev => ({ ...prev, selectParentCatMode: 'fixed', selectParentSubMode: 'fixed' }));
         } else {
           // General / Multi-level
@@ -297,7 +296,7 @@ export default function CategoryImportModal({
                 </div>
                 <div className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-100 text-center">
                   <span className="block text-2xl font-black text-purple-700">
-                    {(importPlan?.summary?.categoriesCount || 0) + (importPlan?.summary?.subcategoriesCount || 0) + (importPlan?.summary?.productTypesCount || 0)}
+                    {(importPlan?.summary?.categoriesCount || 0) + (importPlan?.summary?.subcategoriesCount || 0) }
                   </span>
                   <span className="text-[11px] font-bold text-gray-600">Total Synced</span>
                 </div>
@@ -643,164 +642,6 @@ export default function CategoryImportModal({
                                 </p>
                               </div>
                             )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* LEVEL 3: SELECT CATEGORIES (PRODUCT TYPES) */}
-                    <div className={`p-4 rounded-2xl border transition-all ${
-                      toggles.importSelect
-                        ? 'bg-[#FFFDFC] border-purple-400/50 ring-1 ring-purple-500/20 shadow-2xs'
-                        : 'bg-white border-gray-200 opacity-70 hover:opacity-100'
-                    }`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <label className="flex items-start gap-3 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={toggles.importSelect}
-                            onChange={(e) => setToggles(prev => ({ ...prev, importSelect: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded text-purple-600 focus:ring-purple-600 border-gray-300 cursor-pointer"
-                          />
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-extrabold text-xs text-gray-900">
-                                Import Select Categories (Level 3 / Product Types)
-                              </span>
-                              {mapping.selectCategoryCol ? (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
-                                  ✓ Detected: "{mapping.selectCategoryCol}"
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-500">
-                                  No direct column
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-gray-500 mt-0.5">
-                              Extracts granular product types (e.g. Matte Lipstick, Liquid Eyeliner, Face Wash).
-                            </p>
-                          </div>
-                        </label>
-                      </div>
-
-                      {toggles.importSelect && (
-                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                                Excel Column for Select Category:
-                              </label>
-                              <select
-                                value={mapping.selectCategoryCol}
-                                onChange={(e) => setMapping(prev => ({ ...prev, selectCategoryCol: e.target.value }))}
-                                className="w-full px-3 py-2 rounded-xl border border-purple-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-purple-600"
-                              >
-                                <option value="">— Select Column from Excel —</option>
-                                {inspectionData.headers.map((h, i) => (
-                                  <option key={i} value={h}>{h}</option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                                Parent Main Category:
-                              </label>
-                              {mapping.mainCategoryCol ? (
-                                <select
-                                  value={parentConfig.selectParentCatMode === 'from_excel' ? '__from_excel__' : parentConfig.selectFixedParentCatId}
-                                  onChange={(e) => {
-                                    if (e.target.value === '__from_excel__') {
-                                      setParentConfig(prev => ({ ...prev, selectParentCatMode: 'from_excel' }));
-                                    } else {
-                                      const cat = categories.find(c => c.id === e.target.value);
-                                      setParentConfig(prev => ({
-                                        ...prev,
-                                        selectParentCatMode: 'fixed',
-                                        selectFixedParentCatId: e.target.value,
-                                        selectFixedParentCatName: cat?.name || ''
-                                      }));
-                                    }
-                                  }}
-                                  className="w-full px-3 py-2 rounded-xl border border-purple-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-purple-600"
-                                >
-                                  <option value="__from_excel__">Use Excel column ({mapping.mainCategoryCol})</option>
-                                  {categories.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <select
-                                  value={parentConfig.selectFixedParentCatId}
-                                  onChange={(e) => {
-                                    const cat = categories.find(c => c.id === e.target.value);
-                                    setParentConfig(prev => ({
-                                      ...prev,
-                                      selectParentCatMode: 'fixed',
-                                      selectFixedParentCatId: e.target.value,
-                                      selectFixedParentCatName: cat?.name || '',
-                                      selectFixedParentSubId: '',
-                                      selectFixedParentSubName: ''
-                                    }));
-                                  }}
-                                  className="w-full px-3 py-2 rounded-xl border border-purple-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-purple-600"
-                                >
-                                  {categories.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                  ))}
-                                </select>
-                              )}
-                            </div>
-
-                            <div>
-                              <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                                Parent Subcategory:
-                              </label>
-                              {mapping.subcategoryCol ? (
-                                <select
-                                  value={parentConfig.selectParentSubMode === 'from_excel' ? '__from_excel__' : parentConfig.selectFixedParentSubId}
-                                  onChange={(e) => {
-                                    if (e.target.value === '__from_excel__') {
-                                      setParentConfig(prev => ({ ...prev, selectParentSubMode: 'from_excel' }));
-                                    } else {
-                                      const sub = subcategories.find(s => s.id === e.target.value);
-                                      setParentConfig(prev => ({
-                                        ...prev,
-                                        selectParentSubMode: 'fixed',
-                                        selectFixedParentSubId: e.target.value,
-                                        selectFixedParentSubName: sub?.name || ''
-                                      }));
-                                    }
-                                  }}
-                                  className="w-full px-3 py-2 rounded-xl border border-purple-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-purple-600"
-                                >
-                                  <option value="__from_excel__">Use Excel column ({mapping.subcategoryCol})</option>
-                                  {filteredSubcategoriesForSelect.map(s => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <select
-                                  value={parentConfig.selectFixedParentSubId}
-                                  onChange={(e) => {
-                                    const sub = subcategories.find(s => s.id === e.target.value);
-                                    setParentConfig(prev => ({
-                                      ...prev,
-                                      selectParentSubMode: 'fixed',
-                                      selectFixedParentSubId: e.target.value,
-                                      selectFixedParentSubName: sub?.name || ''
-                                    }));
-                                  }}
-                                  className="w-full px-3 py-2 rounded-xl border border-purple-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-purple-600"
-                                >
-                                  <option value="">— Select Parent Subcategory —</option>
-                                  {filteredSubcategoriesForSelect.map(s => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                  ))}
-                                </select>
-                              )}
-                            </div>
                           </div>
                         </div>
                       )}

@@ -17,8 +17,9 @@ export const CategoryPage = ({
   title = 'Category',
   bannerTitle,
   bannerSubtitle = 'Discover our curated collection.',
+  image = null,
   subcategories = [],
-  sectionTitle = 'SELECT CATEGORY',
+  sectionTitle = 'SUBCATEGORIES',
   sectionCtaText,
   onBack,
   onShopAll,
@@ -69,11 +70,7 @@ export const CategoryPage = ({
         contentContainerStyle={{ paddingBottom: 110 }}
         className="bg-white flex-1"
       >
-        <CategoryHeroBanner
-          title={bannerTitle || title}
-          subtitle={bannerSubtitle}
-          onExplore={onExploreProducts || onShopAll}
-        />
+        <CategoryHeroBanner title={bannerTitle || title} subtitle={bannerSubtitle} image={image} onExplore={onExploreProducts || onShopAll} />
         <SubcategorySectionHeader
           title={sectionTitle}
           ctaText={sectionCtaText || `All ${title}`}
