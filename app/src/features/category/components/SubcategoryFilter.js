@@ -3,7 +3,7 @@ import { ScrollView, TouchableOpacity, Text, View } from 'react-native';
 
 /**
  * Reusable SubcategoryFilter Component
- * Horizontal filter chips: 'All' + dynamic subcategory pills
+ * Clean horizontal filter chips without images or product counts.
  */
 export const SubcategoryFilter = ({
   options = [],
@@ -13,27 +13,39 @@ export const SubcategoryFilter = ({
   if (!options || options.length === 0) return null;
 
   return (
-    <View className="mb-3.5">
+    <View style={{ marginBottom: 12 }}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'center' }}
       >
         {/* 'All' Filter Chip */}
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => onSelectOption('all')}
           style={{
-            backgroundColor: selectedOption === 'all' ? '#B64F7D' : '#FFFFFF',
-            borderColor: selectedOption === 'all' ? '#B64F7D' : '#F0E3EA',
+            backgroundColor: selectedOption === 'all' ? '#C2477A' : '#FFFFFF',
+            borderColor: selectedOption === 'all' ? '#C2477A' : '#F0E3EA',
             borderWidth: 1,
+            borderRadius: 20,
+            paddingVertical: 7,
+            paddingHorizontal: 15,
+            marginRight: 8,
+            shadowColor: '#C2477A',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: selectedOption === 'all' ? 0.2 : 0.04,
+            shadowRadius: 3,
+            elevation: selectedOption === 'all' ? 2 : 1,
           }}
-          className="px-4 py-1.5 rounded-full mr-2 shadow-2xs"
         >
           <Text
-            style={{ color: selectedOption === 'all' ? '#FFFFFF' : '#33252F' }}
-            className="text-xs font-bold"
+            style={{
+              color: selectedOption === 'all' ? '#FFFFFF' : '#2B1A24',
+              fontSize: 12,
+              fontWeight: selectedOption === 'all' ? '800' : '600',
+              letterSpacing: 0.1,
+            }}
           >
             All
           </Text>
@@ -49,17 +61,30 @@ export const SubcategoryFilter = ({
               activeOpacity={0.8}
               onPress={() => onSelectOption(optId)}
               style={{
-                backgroundColor: isSelected ? '#B64F7D' : '#FFFFFF',
-                borderColor: isSelected ? '#B64F7D' : '#F0E3EA',
+                backgroundColor: isSelected ? '#C2477A' : '#FFFFFF',
+                borderColor: isSelected ? '#C2477A' : '#F0E3EA',
                 borderWidth: 1,
+                borderRadius: 20,
+                paddingVertical: 7,
+                paddingHorizontal: 14,
+                marginRight: 8,
+                shadowColor: '#C2477A',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isSelected ? 0.2 : 0.04,
+                shadowRadius: 3,
+                elevation: isSelected ? 2 : 1,
               }}
-              className="px-3.5 py-1.5 rounded-full mr-2 shadow-2xs"
             >
               <Text
-                style={{ color: isSelected ? '#FFFFFF' : '#33252F' }}
-                className="text-xs font-semibold"
+                style={{
+                  color: isSelected ? '#FFFFFF' : '#2B1A24',
+                  fontSize: 12,
+                  fontWeight: isSelected ? '800' : '600',
+                  letterSpacing: 0.1,
+                }}
+                numberOfLines={1}
               >
-                {opt.name}
+                {opt.name || opt.title || optId}
               </Text>
             </TouchableOpacity>
           );
@@ -69,3 +94,4 @@ export const SubcategoryFilter = ({
   );
 };
 
+export default SubcategoryFilter;

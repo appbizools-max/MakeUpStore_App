@@ -1,26 +1,16 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import { getSubcategoryFA5Icon } from '../../../utils/categoryIcons';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 /**
- * SubcategoryCard - Premium 3D cosmetic icon & details card.
- * Left: 3D circular cosmetic icon with golden/pink border.
- * Center: title + description + count.
- * Right: Chevron forward button.
+ * SubcategoryCard - Clean text-only subcategory card.
+ * All Subcategory icons, thumbnail images, and product counts have been completely removed.
  */
 export const SubcategoryCard = ({
   title = 'Subcategory',
-  description = 'Explore collection',
-  productCount = 0,
-  parentCategoryName,
-  image = null,
-  imageUrl = null,
+  description = null,
   onPress,
 }) => {
-  const { icon, color } = getSubcategoryFA5Icon(title, parentCategoryName);
-  const iconSource = image || imageUrl || null;
-
   return (
     <TouchableOpacity
       activeOpacity={0.82}
@@ -29,88 +19,41 @@ export const SubcategoryCard = ({
         backgroundColor: '#FFFFFF',
         borderColor: '#F0E3EA',
         borderWidth: 1,
-        borderRadius: 18,
+        borderRadius: 14,
         paddingVertical: 12,
-        paddingHorizontal: 14,
+        paddingHorizontal: 16,
         marginHorizontal: 16,
-        marginBottom: 10,
+        marginBottom: 8,
         shadowColor: '#C2477A',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 5,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+        elevation: 1,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
       }}
     >
-      {/* Premium 3D Cosmetic Avatar Icon */}
-      <View
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: 26,
-          backgroundColor: '#FFFFFF',
-          borderColor: '#F8B4D9',
-          borderWidth: 1.5,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: 14,
-          flexShrink: 0,
-          overflow: 'hidden',
-          shadowColor: '#C2477A',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.12,
-          shadowRadius: 3,
-          elevation: 2,
-        }}
-      >
-        {iconSource ? (
-          <Image
-            source={{ uri: iconSource }}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="contain"
-          />
-        ) : (
-          <FontAwesome5 name={icon || 'sparkles'} size={20} color={color || '#C2477A'} solid />
-        )}
-      </View>
-
-      {/* Title & Product Count */}
       <View style={{ flex: 1, paddingRight: 8, justifyContent: 'center' }}>
         <Text
           style={{
             color: '#2B1A24',
-            fontSize: 14.5,
+            fontSize: 14,
             fontWeight: '800',
-            lineHeight: 19,
+            lineHeight: 18,
           }}
-          numberOfLines={2}
+          numberOfLines={1}
         >
           {title}
         </Text>
-        {productCount > 0 ? (
-          <Text style={{ color: '#C2477A', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
-            {productCount} Products
+        {description ? (
+          <Text style={{ color: '#8C7078', fontSize: 11, fontWeight: '500', marginTop: 2 }} numberOfLines={1}>
+            {description}
           </Text>
         ) : null}
       </View>
 
-      {/* Right chevron pill */}
-      <View
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 16,
-          backgroundColor: '#FFFFFF',
-          borderColor: '#F8B4D9',
-          borderWidth: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <Ionicons name="chevron-forward" size={15} color="#C2477A" />
-      </View>
+      <Ionicons name="chevron-forward" size={16} color="#C2477A" />
     </TouchableOpacity>
   );
 };
