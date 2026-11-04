@@ -1,25 +1,49 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Platform, RefreshControl, Dimensions, StatusBar } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useFonts } from 'expo-font';
-import { GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Platform,
+  RefreshControl,
+  Dimensions,
+  StatusBar
+} from 'react-native';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useApp, DEFAULT_HOME_BANNERS } from '../../context/AppContext';
-import { getSafeImageSource, DEFAULT_CATEGORY_FALLBACKS } from '../../utils/imageUtils';
+import { getSafeImageSource } from '../../utils/imageUtils';
 import { storage } from '../../utils/storage';
+import { getCartQuantityMap, getCartKey, getSafeProductShadesList } from '../../utils/cartKeyUtils';
+import { getCategoryFA5Icon } from '../../utils/categoryIcons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 600);
-const BANNER_HEIGHT = Math.round(BANNER_WIDTH / 2.56);
-
+const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.44);
 
 // Reusable Section Header Component
-const SectionHeader = ({ title, subtitle, ctaText = 'View All', onCtaPress, showCta = true, iconName }) => {
+const SectionHeader = ({
+  title,
+  subtitle,
+  ctaText = 'View All',
+  onCtaPress,
+  showCta = true,
+  iconBadgeText,
+  iconName
+}) => {
   const cleanCta = (ctaText || 'View All').replace('→', '').replace('->', '').trim();
   return (
     <View className="px-4 mb-3">
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-1.5 flex-1 pr-2">
-          {iconName && <Ionicons name={iconName} size={15} color="#C2477A" />}
+          {iconBadgeText && (
+            <View className="bg-[#C2477A] w-5 h-5 rounded-full items-center justify-center shadow-2xs mr-0.5">
+              <Text className="text-white text-[7.5px] font-black uppercase tracking-tighter">
+                {iconBadgeText}
+              </Text>
+            </View>
+          )}
+          {iconName && <Ionicons name={iconName} size={16} color="#C2477A" />}
           <Text className="text-base font-extrabold text-[#3A2430]" numberOfLines={1}>
             {title}
           </Text>
@@ -43,30 +67,90 @@ const SectionHeader = ({ title, subtitle, ctaText = 'View All', onCtaPress, show
   );
 };
 
-// Skeleton Loading Placeholders for seamless Zero-Flicker Cold Starts
+// Skeleton Loading Placeholders for zero-flicker cold starts
 const SkeletonCategoryCard = () => (
-  <View style={{ width: 88, borderColor: '#FCE4EC', borderWidth: 1 }} className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs">
-    <View style={{ width: 64, height: 64 }} className="rounded-xl mb-1.5 bg-[#FFF0F5] opacity-60" />
-    <View style={{ width: 50, height: 10 }} className="rounded bg-[#FCE4EC] mb-1 opacity-60" />
-    <View style={{ width: 34, height: 8 }} className="rounded bg-[#FCE4EC]/60 opacity-60" />
+  <View
+    style={{ width: 84, borderColor: '#FCE4EC', borderWidth: 1 }}
+    className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs"
+  >
+    <View style={{ width: 62, height: 62 }} className="rounded-xl mb-1.5 bg-[#FFF0F5] opacity-60" />
+    <View style={{ width: 52, height: 10 }} className="rounded bg-[#FCE4EC] opacity-60" />
   </View>
 );
 
 const SkeletonProductCard = () => (
-  <View style={{ width: 144, borderColor: '#FCE4EC', borderWidth: 1 }} className="mr-3 bg-white rounded-2xl p-2.5 shadow-xs flex-col">
-    <View style={{ width: '100%', height: 110 }} className="rounded-xl mb-2 bg-[#FFF0F5] opacity-60" />
+  <View
+    style={{ width: 172, borderColor: '#FCE4EC', borderWidth: 1 }}
+    className="mr-3 bg-white rounded-2xl p-2.5 shadow-xs flex-col"
+  >
+    <View style={{ width: '100%', height: 126 }} className="rounded-xl mb-2 bg-[#F3F4F6] opacity-60" />
     <View style={{ width: 60, height: 8 }} className="rounded bg-[#FCE4EC] mb-1.5 opacity-60" />
-    <View style={{ width: 100, height: 12 }} className="rounded bg-[#FCE4EC] mb-2 opacity-60" />
-    <View style={{ width: 70, height: 14 }} className="rounded bg-[#FCE4EC]/70 opacity-60" />
+    <View style={{ width: 110, height: 12 }} className="rounded bg-[#FCE4EC] mb-2 opacity-60" />
+    <View style={{ width: 80, height: 14 }} className="rounded bg-[#FCE4EC]/70 opacity-60 mb-2" />
+    <View style={{ width: '100%', height: 28 }} className="rounded-full bg-[#FFF0F5] opacity-60 mt-auto" />
   </View>
 );
 
-const SkeletonBrandCircle = () => (
-  <View style={{ width: 72, height: 72, borderColor: '#FCE4EC', borderWidth: 1 }} className="rounded-full bg-[#FFF0F5] mr-3 shadow-xs opacity-60" />
+// Brand Card: Rounded rectangular container with brand name only (no logos, no numbers per specification)
+const BrandCard = ({ brand, onSelectBrand, screenWidth = 375 }) => {
+  const isTablet = screenWidth >= 600;
+  const brandName = (brand.name || '').trim();
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => onSelectBrand(brand)}
+      style={{
+        minWidth: isTablet ? 136 : 112,
+        height: isTablet ? 50 : 44,
+        paddingHorizontal: 16,
+        marginRight: 10,
+        backgroundColor: '#FFFFFF',
+        borderColor: '#F0E3EA',
+        borderWidth: 1.5,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#B64F7D',
+        shadowOffset: { width: 0, height: 1.5 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 1,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: isTablet ? 13.5 : 12,
+          fontWeight: '700',
+          color: '#3A2430',
+          textAlign: 'center',
+          letterSpacing: 0.2,
+        }}
+        numberOfLines={1}
+      >
+        {brandName}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
+const SkeletonBrandCard = () => (
+  <View
+    style={{
+      width: 112,
+      height: 44,
+      borderRadius: 14,
+      borderColor: '#F0E3EA',
+      borderWidth: 1.5,
+      backgroundColor: '#FFF0F5',
+      marginRight: 10,
+    }}
+    className="opacity-60"
+  />
 );
 
-// Reusable Universal Product Card Component
-const ProductCard = React.memo(({
+// Salbeau Universal Product Card matching premium design
+const HomeProductCard = React.memo(({
   product,
   badgeText = 'NEW',
   userRole,
@@ -74,45 +158,94 @@ const ProductCard = React.memo(({
   isLiked = false,
   onToggleFavorite,
   onSelectProduct,
-  cartQty = 0,
+  cartQuantityMap,
   onAddToCart,
   onUpdateCartQty,
+  onOpenShadeSheet,
 }) => {
-  const rolePrice = getRolePrice(product, userRole);
-  const mrp = product.mrp && product.mrp > rolePrice ? Number(product.mrp) : Math.round(rolePrice * 1.25);
-  const discountPercent = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 14;
+  const shades = useMemo(() => {
+    return getSafeProductShadesList(product);
+  }, [product]);
+  const hasShades = shades.length > 0;
 
-  const rating = product.rating ? Number(product.rating).toFixed(1) : '4.5';
-  const reviews = product.reviewCount || 120;
+  const [selectedShade, setSelectedShade] = useState(() => hasShades ? shades[0] : null);
+
+  useEffect(() => {
+    if (hasShades) {
+      if (!selectedShade || !shades.some(s => (s.id || s.name) === (selectedShade.id || selectedShade.name))) {
+        setSelectedShade(shades[0]);
+      }
+    } else {
+      setSelectedShade(null);
+    }
+  }, [product?.id, hasShades, shades]);
+
+  const currentCartKey = useMemo(() => {
+    return getCartKey(product?.id, hasShades ? selectedShade : null);
+  }, [product?.id, hasShades, selectedShade]);
+
+  const cartQty = (cartQuantityMap && currentCartKey) ? (cartQuantityMap.get(currentCartKey) || 0) : 0;
+
+  const rolePrice = useMemo(() => {
+    if (typeof getRolePrice === 'function') {
+      return getRolePrice(product, userRole, selectedShade, 1);
+    }
+    return product?.generalPrice || product?.mrp || 0;
+  }, [product, userRole, selectedShade, getRolePrice]);
+
+  const mrp = useMemo(() => {
+    if (selectedShade?.priceOverride && Number(selectedShade.priceOverride) > rolePrice) {
+      return Number(selectedShade.priceOverride);
+    }
+    if (product?.mrp && Number(product.mrp) > rolePrice) {
+      return Number(product.mrp);
+    }
+    return Math.round(rolePrice * 1.25);
+  }, [product?.mrp, selectedShade?.priceOverride, rolePrice]);
+
+  const discountPercent = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 15;
+
+  const displayImage = selectedShade?.image || selectedShade?.imageUrl || product?.image;
+  const rating = product?.rating ? Number(product.rating).toFixed(1) : '4.5';
+  const reviews = product?.reviewCount || 120;
 
   return (
     <TouchableOpacity
       activeOpacity={0.88}
-      onPress={() => onSelectProduct(product)}
-      style={{ width: 144, borderColor: '#FCE4EC', borderWidth: 1 }}
-      className="mr-3 bg-white rounded-2xl p-2.5 shadow-xs flex-col"
+      onPress={() => onSelectProduct(product, hasShades ? selectedShade : null)}
+      style={{
+        width: 172,
+        borderColor: '#FCE4EC',
+        borderWidth: 1,
+        shadowColor: '#C2477A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 2,
+      }}
+      className="mr-3 bg-white rounded-2xl p-2.5 flex-col"
     >
-      {/* Product Image Box with Badge & Wishlist Heart */}
+      {/* 1. Product Image Box with Badge & Wishlist Heart */}
       <View
-        style={{ width: '100%', height: 110, borderColor: '#FCE4EC', borderWidth: 1 }}
-        className="relative rounded-xl overflow-hidden mb-2 bg-[#FFF5F8] items-center justify-center"
+        style={{ width: '100%', height: 126, borderColor: '#FCE4EC', borderWidth: 1 }}
+        className="relative rounded-xl overflow-hidden mb-2 bg-white items-center justify-center"
       >
         <Image
-          source={getSafeImageSource(product.image, '')}
-          style={{ width: '100%', height: '100%' }}
-          resizeMode="cover"
+          source={getSafeImageSource(displayImage, '')}
+          style={{ width: '88%', height: '88%' }}
+          resizeMode="contain"
         />
 
-        {/* Badge (NEW or BESTSELLER) */}
+        {/* Badge (NEW, BESTSELLER, STAPLE) */}
         {badgeText ? (
-          <View className="absolute top-1.5 left-1.5 bg-[#C2477A] px-1.5 py-0.5 rounded-md shadow-xs">
-            <Text className="text-white text-[7.5px] font-black uppercase tracking-wider">
+          <View className="absolute top-2 left-2 bg-[#C2477A] px-1.5 py-0.5 rounded-md shadow-xs">
+            <Text className="text-white text-[8px] font-black uppercase tracking-wider">
               {badgeText}
             </Text>
           </View>
         ) : null}
 
-        {/* Wishlist Heart Button - Transparent with pink heart, no white circle */}
+        {/* Wishlist Heart Button */}
         <TouchableOpacity
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -120,45 +253,126 @@ const ProductCard = React.memo(({
             e.stopPropagation?.();
             onToggleFavorite(product);
           }}
-          className="absolute top-1.5 right-1.5 p-1 items-center justify-center bg-transparent z-10"
+          className="absolute top-2 right-2 p-1 items-center justify-center bg-transparent z-10"
         >
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
-            size={18}
+            size={19}
             color="#C2477A"
           />
         </TouchableOpacity>
       </View>
 
-      {/* Brand & Name */}
-      <Text className="text-[8.5px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5" numberOfLines={1}>
-        {product.brandName || 'SALBEAU'}
+      {/* 2. Brand Name in Pink */}
+      <Text className="text-[9px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5" numberOfLines={1}>
+        {product.brandName || product.brand || 'SALBEAU'}
       </Text>
-      <Text className="text-[11px] font-bold text-[#3A2430] leading-tight mb-1" numberOfLines={1}>
+
+      {/* 3. Product Name - Full 2-line Visibility */}
+      <Text className="text-[11.5px] font-black text-[#1F2937] leading-tight mb-1 min-h-[30px]" numberOfLines={2}>
         {product.name}
       </Text>
 
-      {/* Rating Row: ★ 4.5 (124) */}
-      <View className="flex-row items-center gap-1 mb-1.5">
-        <Ionicons name="star" size={10} color="#F59E0B" />
-        <Text className="text-[9.5px] font-bold text-[#3A2430]">{rating}</Text>
-        <Text className="text-[9px] text-[#8C7078]">({reviews})</Text>
+      {/* 4. Shade Selection / Swatches */}
+      {hasShades ? (
+        <View className="mb-1">
+          <Text className="text-[9.5px] font-medium text-[#6B7280] mb-1" numberOfLines={1}>
+            Choose Shade: {selectedShade?.name || selectedShade?.title || 'Rose Pink'}
+          </Text>
+          <View className="flex-row items-center gap-1.5">
+            {shades.slice(0, 4).map((shade, idx) => {
+              const isSelected = selectedShade && (
+                (selectedShade.id && shade.id && selectedShade.id === shade.id) ||
+                (selectedShade.name && shade.name && selectedShade.name === shade.name)
+              );
+              const colorHex = shade.hexColor || shade.hex_color || '#C2477A';
+
+              return (
+                <TouchableOpacity
+                  key={shade.id || shade.name || idx}
+                  onPress={(e) => {
+                    e?.stopPropagation?.();
+                    setSelectedShade(shade);
+                  }}
+                  activeOpacity={0.8}
+                  hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
+                >
+                  <View
+                    style={{
+                      backgroundColor: colorHex,
+                      borderColor: isSelected ? '#1F2937' : '#E5E7EB',
+                      borderWidth: isSelected ? 2 : 1,
+                      width: 17,
+                      height: 17,
+                      borderRadius: 8.5,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+            {shades.length > 4 && (
+              <Text className="text-[9.5px] font-bold text-[#8C7078] ml-0.5">
+                +{shades.length - 4}
+              </Text>
+            )}
+          </View>
+        </View>
+      ) : (
+        <View style={{ height: 28 }} className="justify-center">
+          <Text className="text-[9.5px] font-medium text-[#9CA3AF]">
+            Standard formulation
+          </Text>
+        </View>
+      )}
+
+      {/* 5. Rating Row */}
+      <View className="flex-row items-center gap-1 mb-1 mt-0.5">
+        <Ionicons name="star" size={11} color="#F59E0B" />
+        <Text className="text-[10px] font-bold text-[#1F2937]">{rating}</Text>
+        <Text className="text-[9.5px] text-[#8C7078]">({reviews})</Text>
       </View>
 
-      {/* Pricing Row: ₹599 ₹699 14% OFF */}
-      <View className="flex-row items-baseline gap-1 mb-2 flex-wrap">
-        <Text className="text-xs font-black text-[#3A2430]">₹{rolePrice}</Text>
+      {/* 6. Pricing Row */}
+      <View className="flex-row items-baseline gap-1.5 mb-2.5 flex-wrap">
+        <Text className="text-xs font-black text-[#1F2937]">₹{rolePrice}</Text>
         {mrp > rolePrice && (
-          <Text className="text-[9px] font-semibold text-[#8C7078] line-through">₹{mrp}</Text>
+          <Text className="text-[9.5px] font-semibold text-[#9CA3AF] line-through">₹{mrp}</Text>
         )}
         {discountPercent > 0 && (
-          <Text className="text-[9px] font-black text-[#E11D48]">{discountPercent}% OFF</Text>
+          <Text className="text-[9.5px] font-black text-[#E11D48]">{discountPercent}% OFF</Text>
         )}
       </View>
 
-      {/* Cart Control */}
-      <View className="mt-auto pt-0.5">
-        {cartQty > 0 ? (
+      {/* 7. Action Button: Choose Shade ⌵ / Add / Quantity Stepper */}
+      <View className="mt-auto">
+        {hasShades ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              if (onOpenShadeSheet) {
+                onOpenShadeSheet(product, selectedShade);
+              }
+            }}
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderColor: '#C2477A',
+              borderWidth: 1.2,
+            }}
+            className="w-full py-1.5 rounded-full flex-row items-center justify-center gap-1 shadow-2xs"
+          >
+            <Text className="text-[10.5px] font-bold text-[#C2477A]">
+              Choose Shade
+            </Text>
+            <Ionicons name="chevron-down" size={11} color="#C2477A" />
+          </TouchableOpacity>
+        ) : cartQty > 0 ? (
           <View
             style={{
               backgroundColor: '#C2477A',
@@ -168,14 +382,14 @@ const ProductCard = React.memo(({
               shadowRadius: 3,
               elevation: 2,
             }}
-            className="rounded-full flex-row items-center justify-between px-1.5 py-0.5 w-full"
+            className="rounded-full flex-row items-center justify-between px-2 py-1 w-full"
           >
             <TouchableOpacity
               activeOpacity={0.7}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               onPress={(e) => {
                 e.stopPropagation?.();
-                onUpdateCartQty(product.id, cartQty - 1);
+                onUpdateCartQty(currentCartKey, cartQty - 1);
               }}
               className="w-5 h-5 rounded-full bg-white/20 items-center justify-center"
             >
@@ -191,7 +405,7 @@ const ProductCard = React.memo(({
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               onPress={(e) => {
                 e.stopPropagation?.();
-                onUpdateCartQty(product.id, cartQty + 1);
+                onUpdateCartQty(currentCartKey, cartQty + 1);
               }}
               className="w-5 h-5 rounded-full bg-white/20 items-center justify-center"
             >
@@ -200,20 +414,20 @@ const ProductCard = React.memo(({
           </View>
         ) : (
           <TouchableOpacity
-            activeOpacity={0.8}
+            activeOpacity={0.85}
             onPress={(e) => {
               e.stopPropagation?.();
-              onAddToCart(product);
+              onAddToCart(product, 1, null);
             }}
             style={{
               backgroundColor: '#FFFFFF',
               borderColor: '#C2477A',
-              borderWidth: 1.5,
+              borderWidth: 1.2,
             }}
-            className="w-full py-1 rounded-full flex-row items-center justify-center gap-1 shadow-xs"
+            className="w-full py-1.5 rounded-full flex-row items-center justify-center gap-1 shadow-2xs"
           >
-            <Ionicons name="add" size={12} color="#C2477A" />
-            <Text className="text-[11px] font-black text-[#C2477A]">Add</Text>
+            <Ionicons name="add" size={13} color="#C2477A" />
+            <Text className="text-[11px] font-bold text-[#C2477A]">Add</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -222,15 +436,11 @@ const ProductCard = React.memo(({
 });
 
 export const HomeScreen = () => {
-  const [fontsLoaded] = useFonts({
-    GreatVibes_400Regular,
-  });
-
   const {
     userRole,
     getRolePrice,
     setSelectedProduct,
-    selectedCategory,
+    setSelectedShade,
     setSelectedCategory,
     setCurrentScreen,
     cart = [],
@@ -240,7 +450,6 @@ export const HomeScreen = () => {
     setSearchQuery,
     activeProducts = [],
     categories = [],
-    subcategories = [],
     brands = [],
     activeBrands = [],
     favorites = [],
@@ -252,8 +461,9 @@ export const HomeScreen = () => {
     productSalesCounts = {},
     homeBanners = [],
     activeBanners = [],
-    setSelectedBrand,
     unreadNotificationsCount = 0,
+    openShadeSheet,
+    homeSectionVisibility = {}
   } = useApp();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -268,13 +478,8 @@ export const HomeScreen = () => {
     }
   }, [refreshCatalog]);
 
-  // Cart quantity lookup map for instant O(1) checks
   const cartQuantityMap = useMemo(() => {
-    const map = new Map();
-    for (const item of (cart || [])) {
-      if (item.product?.id) map.set(item.product.id, item.quantity || 0);
-    }
-    return map;
+    return getCartQuantityMap(cart);
   }, [cart]);
 
   const totalCartQuantity = useMemo(() => {
@@ -283,16 +488,12 @@ export const HomeScreen = () => {
 
   const totalCartPrice = useMemo(() => {
     return (cart || []).reduce((sum, item) => {
-      const price = getRolePrice(item.product, userRole);
+      const price = getRolePrice(item.product, userRole, item.shade);
       return sum + (price * (item.quantity || 0));
     }, 0);
   }, [cart, userRole, getRolePrice]);
 
-  const getProductCartQuantity = useCallback((productId) => {
-    return cartQuantityMap.get(productId) || 0;
-  }, [cartQuantityMap]);
-
-  // Customer-Specific Recently Viewed tracking in persistent storage (NO mock fallbacks!)
+  // Customer-Specific Recently Viewed tracking with persistent storage
   const [recentlyViewedIds, setRecentlyViewedIds] = useState([]);
 
   useEffect(() => {
@@ -310,7 +511,7 @@ export const HomeScreen = () => {
     return () => { isMounted = false; };
   }, []);
 
-  const handleProductSelect = useCallback((product) => {
+  const handleProductSelect = useCallback((product, shade = null) => {
     if (product?.id) {
       setRecentlyViewedIds(prev => {
         const updated = [product.id, ...prev.filter(id => id !== product.id)].slice(0, 10);
@@ -318,54 +519,22 @@ export const HomeScreen = () => {
         return updated;
       });
     }
+    if (setSelectedShade && shade) {
+      setSelectedShade(shade);
+    }
     setSelectedProduct(product);
     setCurrentScreen('product');
-  }, [setSelectedProduct, setCurrentScreen]);
+  }, [setSelectedProduct, setSelectedShade, setCurrentScreen]);
 
+  // Promotional Banners Carousel with Auto-sliding
   const [activeSlide, setActiveSlide] = useState(0);
   const bannerScrollRef = useRef(null);
 
   const displayBanners = useMemo(() => {
     if (activeBanners && activeBanners.length > 0) return activeBanners;
-    if (homeBanners && homeBanners.length > 0) return homeBanners.filter(b => b.isActive !== false);
+    if (Array.isArray(homeBanners)) return homeBanners.filter(b => b.isActive !== false);
     return DEFAULT_HOME_BANNERS;
   }, [activeBanners, homeBanners]);
-
-  const handleBannerClick = useCallback((banner) => {
-    if (!banner) {
-      setCurrentScreen('category');
-      return;
-    }
-    const destType = (banner.destinationType || '').toUpperCase();
-    const destId = banner.destinationId || banner.category || '';
-
-    // Ultra thinking: Match target category from destinationId, destinationType, category property or banner title
-    let matchedCategory = null;
-    if (destId) {
-      matchedCategory = (categories || []).find(c =>
-        c.id?.toLowerCase() === destId.toLowerCase() ||
-        c.name?.toLowerCase() === destId.toLowerCase()
-      );
-    }
-    if (!matchedCategory && banner.title) {
-      matchedCategory = (categories || []).find(c =>
-        c.name?.toLowerCase().includes(banner.title.toLowerCase()) ||
-        banner.title.toLowerCase().includes(c.name?.toLowerCase())
-      );
-    }
-
-    if (matchedCategory) {
-      setSelectedCategory(matchedCategory.name);
-    } else if (destId && (destType === 'CATEGORY' || destType === 'SUBCATEGORY')) {
-      setSelectedCategory(destId);
-    } else if (categories && categories.length > 0 && !selectedCategory) {
-      // Default to first active category if none selected
-      setSelectedCategory(categories[0].name);
-    }
-
-    // Always navigate directly to categories page
-    setCurrentScreen('category');
-  }, [categories, selectedCategory, setSelectedCategory, setCurrentScreen]);
 
   useEffect(() => {
     if (displayBanners.length <= 1) return;
@@ -375,85 +544,82 @@ export const HomeScreen = () => {
         bannerScrollRef.current?.scrollTo({ x: next * (BANNER_WIDTH + 12), animated: true });
         return next;
       });
-    }, 4000);
+    }, 4500);
     return () => clearInterval(timer);
   }, [displayBanners.length]);
 
-  // 1. Shop by Category — Pure database categories
+  const handleBannerClick = useCallback((banner) => {
+    if (!banner) {
+      setCurrentScreen('search');
+      return;
+    }
+    if (banner.destinationType === 'CATEGORY' && banner.destinationId) {
+      if (setSelectedCategory) setSelectedCategory(banner.destinationId);
+      setCurrentScreen('category');
+    } else {
+      if (setGlobalSearchQuery) setGlobalSearchQuery(banner.destinationId || banner.title || '');
+      setCurrentScreen('search');
+    }
+  }, [setSelectedCategory, setGlobalSearchQuery, setCurrentScreen]);
+
+  // 1. Shop by Category — precompute FA5 icons once here, never inside render
   const displayCategories = useMemo(() => {
     if (!categories || categories.length === 0) return [];
     return categories
-      .filter(c => c.enabled !== false && !c.id.startsWith('app_') && !c.id.startsWith('salbeau_'))
+      .filter(c => c.enabled !== false && !c.id?.startsWith('app_') && !c.id?.startsWith('salbeau_'))
       .sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
       .map(cat => {
-        const productCount = (activeProducts || []).filter(p => p.category?.toLowerCase() === cat.name?.toLowerCase()).length;
-        return {
-          id: cat.id,
-          name: cat.name,
-          image: cat.image || DEFAULT_CATEGORY_FALLBACKS.default,
-          countText: productCount > 0 ? `${productCount} Products` : 'Explore'
-        };
+        const { icon, color, bg } = getCategoryFA5Icon(cat.name);
+        return { id: cat.id, name: cat.name, icon, color, bg };
       });
-  }, [categories, activeProducts]);
+  }, [categories]);
 
-  // 2. Trending Now — Customer Engagement / Orders + Admin Curated Override
+  // 2. Trending Now Products
   const trendingProducts = useMemo(() => {
     if (!activeProducts || activeProducts.length === 0) return [];
     return [...activeProducts].sort((a, b) => {
-      // 1. Admin curated trending flag & priority
       if (a.isTrending && !b.isTrending) return -1;
       if (!a.isTrending && b.isTrending) return 1;
       if (a.isTrending && b.isTrending) {
         return (b.trendingPriority || 0) - (a.trendingPriority || 0);
       }
-      // 2. Real sales data ranking
       const salesA = productSalesCounts[a.id] || 0;
       const salesB = productSalesCounts[b.id] || 0;
       if (salesB !== salesA) return salesB - salesA;
-      // 3. Ratings / review count
       return (b.rating || 0) - (a.rating || 0);
     }).slice(0, 10);
   }, [activeProducts, productSalesCounts]);
 
-  // 3. Top Brands — Dynamic from Database
-  const topBrandsList = useMemo(() => {
+  // 3. All Brands for continuous auto-scrolling
+  const allBrandsList = useMemo(() => {
     const list = activeBrands && activeBrands.length > 0 ? activeBrands : brands.filter(b => b.enabled !== false);
-    return list.filter(b => b.name && !b.id.startsWith('app_') && !b.id.startsWith('salbeau_')).slice(0, 12);
+    return list.filter(b => b.name && !b.id?.startsWith('app_') && !b.id?.startsWith('salbeau_'));
   }, [activeBrands, brands]);
+  const topBrandsList = allBrandsList;
 
-  // Infinite brands looped array for seamless continuous scrolling
-  const infiniteBrands = useMemo(() => {
-    if (!topBrandsList || topBrandsList.length === 0) return [];
-    let base = [...topBrandsList];
-    while (base.length < 8) {
-      base = [...base, ...topBrandsList];
-    }
-    return [...base, ...base, ...base];
-  }, [topBrandsList]);
-
+  // Continuous auto-scroller for Shop by Brand
   const brandScrollRef = useRef(null);
   const brandScrollPos = useRef(0);
-  const isBrandTouching = useRef(false);
+  const isBrandInteracting = useRef(false);
 
   useEffect(() => {
-    if (!topBrandsList || topBrandsList.length === 0) return;
-    const singleSetWidth = (infiniteBrands.length / 3) * 84; // 72 item width + 12 margin
+    if (!allBrandsList || allBrandsList.length <= 1) return;
+    const itemWidth = 86; // approximate per brand width + gap
+    const totalLoopWidth = allBrandsList.length * itemWidth;
 
     const interval = setInterval(() => {
-      if (isBrandTouching.current) return;
-      brandScrollPos.current += 1;
-      if (brandScrollPos.current >= singleSetWidth) {
+      if (isBrandInteracting.current || !brandScrollRef.current) return;
+      brandScrollPos.current += 1.2;
+      if (brandScrollPos.current >= totalLoopWidth) {
         brandScrollPos.current = 0;
-        brandScrollRef.current?.scrollTo({ x: 0, animated: false });
-      } else {
-        brandScrollRef.current?.scrollTo({ x: brandScrollPos.current, animated: false });
       }
-    }, 30);
+      brandScrollRef.current.scrollTo({ x: brandScrollPos.current, animated: false });
+    }, 28);
 
     return () => clearInterval(interval);
-  }, [topBrandsList, infiniteBrands]);
+  }, [allBrandsList]);
 
-  // 4. New Arrivals — Automatic by publishedAt / created_at DESC
+  // 4. New Arrivals (Sorted by newest date)
   const newArrivals = useMemo(() => {
     if (!activeProducts || activeProducts.length === 0) return [];
     return [...activeProducts]
@@ -466,170 +632,44 @@ export const HomeScreen = () => {
       .slice(0, 10);
   }, [activeProducts]);
 
-  // 5. Best Sellers — Real Units Sold from Completed Store Orders
+  // 5. Best Sellers (Dynamically based on real sales and order counts)
   const bestSellers = useMemo(() => {
     if (!activeProducts || activeProducts.length === 0) return [];
     return [...activeProducts].sort((a, b) => {
+      if (a.isBestSeller && !b.isBestSeller) return -1;
+      if (!a.isBestSeller && b.isBestSeller) return 1;
       const salesA = productSalesCounts[a.id] || 0;
       const salesB = productSalesCounts[b.id] || 0;
       if (salesB !== salesA) return salesB - salesA;
-      return (b.reviewCount || 0) - (a.reviewCount || 0);
+      return (b.rating || 0) - (a.rating || 0);
     }).slice(0, 10);
   }, [activeProducts, productSalesCounts]);
 
-  // 6. Recently Viewed — Customer's Personalized History (ZERO mock fallbacks!)
+  // 6. Recently Viewed Products (User-specific tracking with persistence)
   const recentlyViewedProducts = useMemo(() => {
-    if (recentlyViewedIds.length === 0 || !activeProducts || activeProducts.length === 0) {
-      return [];
-    }
-    const map = new Map(activeProducts.map(p => [p.id, p]));
-    return recentlyViewedIds.map(id => map.get(id)).filter(Boolean);
+    if (!recentlyViewedIds.length || !activeProducts.length) return [];
+    return recentlyViewedIds
+      .map(id => activeProducts.find(p => p.id === id))
+      .filter(Boolean);
   }, [recentlyViewedIds, activeProducts]);
 
-  // 7. Complete Your Look — Real Catalog Product Bundle
-  const duoBundle = useMemo(() => {
-    if (!activeProducts || activeProducts.length === 0) return null;
-    const lipProduct = activeProducts.find(p => (p.category || '').toLowerCase().includes('lip') || (p.name || '').toLowerCase().includes('lip'));
-    const faceProduct = activeProducts.find(p => p.id !== lipProduct?.id && ((p.category || '').toLowerCase().includes('face') || (p.category || '').toLowerCase().includes('cream') || (p.name || '').toLowerCase().includes('blush') || (p.name || '').toLowerCase().includes('serum')));
-    const p1 = lipProduct || activeProducts[0];
-    const p2 = faceProduct || activeProducts[1] || activeProducts[0];
-    if (!p1 || !p2) return null;
-
-    const price1 = getRolePrice(p1, userRole);
-    const price2 = getRolePrice(p2, userRole);
-    const rawTotal = price1 + (p1.id !== p2.id ? price2 : 0);
-    const bundlePrice = Math.round(rawTotal * 0.80);
-
-    return {
-      title: p1.id !== p2.id ? `${p1.name} + ${p2.name}` : p1.name,
-      subtitle: 'Save 20% extra when buying this salon-ready radiance pair.',
-      bundlePrice,
-      rawTotal,
-      p1,
-      p2,
-      image: p1.image || p2.image
-    };
-  }, [activeProducts, userRole, getRolePrice]);
-
-  const handleAddBundleToCart = useCallback(() => {
-    if (!duoBundle) return;
-    addToCart(duoBundle.p1, 1);
-    if (duoBundle.p2 && duoBundle.p2.id !== duoBundle.p1.id) {
-      addToCart(duoBundle.p2, 1);
-    }
-  }, [duoBundle, addToCart]);
-
-  // State for Autumn Gloss trending products slideshow
-  const [autumnSlideIndex, setAutumnSlideIndex] = useState(0);
-
-  const autumnTrendingSlides = useMemo(() => {
-    const list = trendingProducts && trendingProducts.length > 0
-      ? trendingProducts.filter(p => p.image)
-      : (activeProducts || []).filter(p => p.image);
-    return list.slice(0, 8);
-  }, [trendingProducts, activeProducts]);
-
-  useEffect(() => {
-    if (!autumnTrendingSlides || autumnTrendingSlides.length <= 1) return;
-    const timer = setInterval(() => {
-      setAutumnSlideIndex(prev => (prev + 1) % autumnTrendingSlides.length);
-    }, 2800);
-    return () => clearInterval(timer);
-  }, [autumnTrendingSlides]);
-
-  // Essential Beauty Staples Data with Dynamic Live Database Resolution (No hardcoded images in code)
-  const beautyEssentials = useMemo(() => {
-    const findLiveImage = (queryKeywords) => {
-      // 1. Check live database subcategories managed by Admin/Employees
-      if (Array.isArray(subcategories) && subcategories.length > 0) {
-        const match = subcategories.find(s =>
-          Boolean(s.image) && queryKeywords.some(k => (s.name || '').toLowerCase().includes(k))
-        );
-        if (match?.image) return match.image;
-      }
-      // 2. Check live database categories managed by Admin/Employees
-      if (Array.isArray(categories) && categories.length > 0) {
-        const match = categories.find(c =>
-          Boolean(c.image) && queryKeywords.some(k => (c.name || '').toLowerCase().includes(k))
-        );
-        if (match?.image) return match.image;
-      }
-      // 3. Check live products managed by Admin/Employees
-      if (Array.isArray(activeProducts) && activeProducts.length > 0) {
-        const match = activeProducts.find(p =>
-          Boolean(p.image) && queryKeywords.some(k => (p.subcategory || p.name || p.category || '').toLowerCase().includes(k))
-        );
-        if (match?.image) return match.image;
-      }
-      return '';
-    };
-
-    return [
-      {
-        id: 'be1',
-        title: 'Face Serums',
-        subtitle: 'Radiance & Hydration',
-        iconName: 'sparkles',
-        query: 'Serum',
-        image: findLiveImage(['serum', 'skin'])
-      },
-      {
-        id: 'be2',
-        title: 'Hair Care Oils',
-        subtitle: 'Nourishment & Spa',
-        iconName: 'cut',
-        query: 'Hair',
-        image: findLiveImage(['hair', 'oil'])
-      },
-      {
-        id: 'be3',
-        title: 'Lipsticks & Oils',
-        subtitle: 'Velvet & Gloss Shades',
-        iconName: 'color-palette',
-        query: 'Lipstick',
-        image: findLiveImage(['lipstick', 'lip'])
-      },
-      {
-        id: 'be4',
-        title: 'Aloevera & Green Care',
-        subtitle: 'Pure Organic Care',
-        iconName: 'leaf',
-        query: 'Aloe',
-        image: findLiveImage(['aloe', 'green', 'skincare'])
-      },
-      {
-        id: 'be5',
-        title: 'Waxing & Kits',
-        subtitle: 'Salon Smooth Finish',
-        iconName: 'gift',
-        query: 'Wax',
-        image: findLiveImage(['wax', 'salon', 'kit'])
-      },
-      {
-        id: 'be6',
-        title: 'Sunscreen Shades',
-        subtitle: 'Broad Spectrum UV',
-        iconName: 'sunny',
-        query: 'Sunscreen',
-        image: findLiveImage(['sunscreen', 'sun', 'spf'])
-      }
-    ];
-  }, [subcategories, categories, activeProducts]);
-
-  // Curated Face Serums product list
-  const serumProducts = useMemo(() => {
+  // 7. Essential Beauty Staples (Relevant everyday essentials from catalog)
+  const beautyStaples = useMemo(() => {
     if (!activeProducts || activeProducts.length === 0) return [];
-    return activeProducts.filter(p =>
-      ((p.subcategory || '').toLowerCase().includes('serum')) ||
-      ((p.name || '').toLowerCase().includes('serum')) ||
-      ((p.category || '').toLowerCase().includes('skincare'))
-    );
+    const stapleKeywords = ['serum', 'lipstick', 'cleanser', 'facewash', 'sunscreen', 'primer', 'moisturizer', 'compact', 'kajal', 'cream'];
+    const matches = activeProducts.filter(p => {
+      const text = `${p.name} ${p.subcategory || ''} ${p.category || ''}`.toLowerCase();
+      return stapleKeywords.some(k => text.includes(k));
+    });
+    return (matches.length > 0 ? matches : activeProducts).slice(0, 10);
   }, [activeProducts]);
 
   return (
     <View className="flex-1 bg-white relative">
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
       {/* ========================================================================= */}
-      {/* 1. FIXED TOP HEADER (SALBEAU SCRIPT LOGO + NOTIFICATIONS + WISHLIST) */}
+      {/* 1. TOP HEADER (ACTUAL LOGO IMMEDIATELY + NOTIFICATIONS + WISHLIST + CART) */}
       {/* ========================================================================= */}
       <View
         style={{
@@ -638,21 +678,27 @@ export const HomeScreen = () => {
         }}
         className="px-4 py-1.5 bg-white z-30 flex-row justify-between items-center shadow-xs"
       >
-        <Text
-          style={{
-            fontFamily: fontsLoaded ? 'GreatVibes_400Regular' : (Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif'),
-          }}
-          className="text-[36px] text-[#C2477A] tracking-wide ml-0.5 mt-0.5"
+        {/* Actual Salbeau Brand Logo rendered immediately on frame 0 with 0ms delay and zero font flicker */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => setCurrentScreen('home')}
+          className="items-center justify-center ml-0.5"
         >
-          Salbeau
-        </Text>
+          <Image
+            source={require('../../../Assets/Logo_transparent.png')}
+            style={{ width: 118, height: 38 }}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+
+        {/* Top-Right Action Icons */}
         <View className="flex-row items-center gap-3">
-          {/* Notification Bell Button - Background removed, icon in vivid pink */}
+          {/* Notification Bell */}
           <TouchableOpacity
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => setCurrentScreen('notifications')}
-            className="p-1.5 items-center justify-center relative bg-transparent"
+            className="p-1 items-center justify-center relative bg-transparent"
           >
             <Ionicons name="notifications-outline" size={24} color="#C2477A" />
             {unreadNotificationsCount > 0 && (
@@ -664,12 +710,12 @@ export const HomeScreen = () => {
             )}
           </TouchableOpacity>
 
-          {/* Wishlist Heart Button - Background removed, icon in vivid pink */}
+          {/* Wishlist Heart */}
           <TouchableOpacity
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => setCurrentScreen('wishlist')}
-            className="p-1.5 items-center justify-center relative bg-transparent"
+            className="p-1 items-center justify-center relative bg-transparent"
           >
             <Ionicons name={favorites.length > 0 ? "heart" : "heart-outline"} size={24} color="#C2477A" />
             {favorites.length > 0 && (
@@ -678,11 +724,28 @@ export const HomeScreen = () => {
               </View>
             )}
           </TouchableOpacity>
+
+          {/* Cart Bag with Badge */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => setCurrentScreen('cart')}
+            className="p-1 items-center justify-center relative bg-transparent"
+          >
+            <Ionicons name="cart-outline" size={25} color="#C2477A" />
+            {totalCartQuantity > 0 && (
+              <View className="absolute -top-1 -right-1 bg-[#C2477A] min-w-[16px] h-[16px] px-1 rounded-full items-center justify-center shadow-xs">
+                <Text className="text-white text-[8px] font-black">
+                  {totalCartQuantity > 9 ? '9+' : totalCartQuantity}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingTop: 10, paddingBottom: totalCartQuantity > 0 ? 160 : 100 }}
+        contentContainerStyle={{ paddingTop: 10, paddingBottom: totalCartQuantity > 0 ? 150 : 90 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         className="bg-white"
@@ -696,24 +759,24 @@ export const HomeScreen = () => {
         }
       >
         {/* ========================================================================= */}
-        {/* 2. SEARCH BAR (WITH SCANNER ICON ON RIGHT) */}
+        {/* 2. SEARCH BAR (SEARCH INPUT + BARCODE SCANNER ICON)                       */}
         {/* ========================================================================= */}
-        <View className="px-4 mb-4">
+        <View className="px-4 mb-3.5">
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => {
               if (setGlobalSearchQuery && searchQuery) setGlobalSearchQuery(searchQuery);
               setCurrentScreen('search');
             }}
-            style={{ borderColor: '#F5A8C0', borderWidth: 1 }}
-            className="w-full flex-row items-center bg-white px-3.5 py-2 rounded-full shadow-xs"
+            style={{ borderColor: '#E5E7EB', borderWidth: 1 }}
+            className="w-full flex-row items-center bg-white px-3.5 py-2.5 rounded-full shadow-xs"
           >
-            <Ionicons name="search-outline" size={16} color="#C2477A" />
+            <Ionicons name="search-outline" size={17} color="#9CA3AF" />
             <Text
-              className="flex-1 text-[11px] font-semibold text-[#8C7078] px-2.5"
+              className="flex-1 text-xs font-medium text-[#9CA3AF] px-2.5"
               numberOfLines={1}
             >
-              {searchQuery || 'Search products, brands, lipsticks...'}
+              {searchQuery || 'Search for skincare, makeup, hair care...'}
             </Text>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -723,18 +786,16 @@ export const HomeScreen = () => {
                 setCurrentScreen('search');
               }}
             >
-              <Ionicons name="scan-outline" size={16} color="#C2477A" />
+              <Ionicons name="scan-outline" size={19} color="#C2477A" />
             </TouchableOpacity>
           </TouchableOpacity>
         </View>
 
         {/* ========================================================================= */}
-        {/* 3. HERO BANNER (EDITORIAL BEAUTY CARD + CTA + CAROUSEL DOTS) */}
+        {/* 3. PROMOTIONAL BANNER CAROUSEL (COMPLETE IMAGE DISPLAY WITHOUT CROPPING)   */}
         {/* ========================================================================= */}
-        {/* ========================================================================= */}
-        {/* 3. HERO BANNER (EDITORIAL BEAUTY CARD + CTA + CAROUSEL DOTS) */}
-        {/* ========================================================================= */}
-        <View className="mb-6">
+        {displayBanners.length > 0 && (
+        <View className="mb-5">
           <ScrollView
             ref={bannerScrollRef}
             horizontal
@@ -751,12 +812,11 @@ export const HomeScreen = () => {
             snapToAlignment="start"
           >
             {displayBanners.map((banner, idx) => {
-              // Real banner image from database with canonical banner fallback
-              const defaultBanner = DEFAULT_HOME_BANNERS[idx % DEFAULT_HOME_BANNERS.length];
               const rawUrl = (banner.imageUrl && typeof banner.imageUrl === 'string' && banner.imageUrl.trim().length > 0)
                 ? banner.imageUrl.trim()
-                : (defaultBanner?.imageUrl || null);
+                : '';
               const imageSource = rawUrl ? getSafeImageSource(rawUrl) : null;
+
               return (
                 <View
                   key={banner.id || idx}
@@ -764,15 +824,15 @@ export const HomeScreen = () => {
                     width: BANNER_WIDTH,
                     height: BANNER_HEIGHT,
                     marginRight: idx < displayBanners.length - 1 ? 12 : 0,
-                    borderRadius: 20,
+                    borderRadius: 22,
                     overflow: 'hidden',
-                    backgroundColor: '#FDE8EF',
-                    borderColor: '#FCE4EC',
+                    backgroundColor: '#FFF0F5',
+                    borderColor: '#F0E3EA',
                     borderWidth: 1,
                     elevation: 3,
-                    shadowColor: '#C2477A',
+                    shadowColor: '#B64F7D',
                     shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.1,
+                    shadowOpacity: 0.08,
                     shadowRadius: 6,
                   }}
                 >
@@ -782,26 +842,36 @@ export const HomeScreen = () => {
                     style={{ width: '100%', height: '100%' }}
                   >
                     {imageSource ? (
-                      <Image
-                        source={imageSource}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
-                      />
+                      /* Display complete banner image across container with crisp proportion and zero distortion */
+                      <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                        <Image
+                          source={imageSource}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
+                      </View>
                     ) : (
-                      <View className="w-full h-full justify-center px-5 bg-[#FFF0F5]">
-                        {banner.badge ? (
-                          <Text className="text-[10px] font-black uppercase tracking-widest text-[#C2477A] mb-1">
-                            {banner.badge}
+                      /* Styled editorial fallback card */
+                      <View className="flex-1 flex-row items-center justify-between p-4 relative bg-[#FFF0F5]">
+                        <View className="flex-1 pr-3 justify-center z-10">
+                          <Text
+                            className="text-lg font-black text-[#3A2430] leading-tight mb-1"
+                            numberOfLines={2}
+                          >
+                            {banner.title || 'Healthy Hair Starts Here'}
                           </Text>
-                        ) : null}
-                        <Text className="text-base font-black text-[#3A2430] leading-tight" numberOfLines={1}>
-                          {banner.title}
-                        </Text>
-                        {banner.subtitle ? (
-                          <Text className="text-xs text-[#8C7078] font-medium mt-1" numberOfLines={1}>
-                            {banner.subtitle}
+                          <Text
+                            className="text-xs font-semibold text-[#8C7078] mb-3"
+                            numberOfLines={1}
+                          >
+                            {banner.subtitle || 'Nourish • Repair • Shine'}
                           </Text>
-                        ) : null}
+                          <View className="bg-[#C2477A] px-3.5 py-1.5 rounded-full self-start flex-row items-center gap-1 shadow-xs">
+                            <Text className="text-white text-[11px] font-bold">
+                              {banner.ctaLabel || 'Shop Hair Care →'}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -822,19 +892,20 @@ export const HomeScreen = () => {
                     bannerScrollRef.current?.scrollTo({ x: idx * (BANNER_WIDTH + 12), animated: true });
                   }}
                   className={`h-1.5 rounded-full ${
-                    activeSlide === idx ? 'w-5 bg-[#C2477A]' : 'w-1.5 bg-[#C2477A]/30'
+                    activeSlide === idx ? 'w-5 bg-[#B64F7D]' : 'w-1.5 bg-[#B64F7D]/30'
                   }`}
                 />
               ))}
             </View>
           )}
         </View>
+        )}
 
         {/* ========================================================================= */}
-        {/* 4. SHOP BY CATEGORY (HORIZONTAL CAROUSEL) */}
+        {/* 4. SHOP BY CATEGORY (PREMIUM RESPONSIVE CATEGORY SECTION)                 */}
         {/* ========================================================================= */}
-        {(displayCategories.length > 0 || isCatalogLoading) && (
-          <>
+        {(homeSectionVisibility?.shopCategories !== false) && (displayCategories.length > 0 || isCatalogLoading) && (
+          <View className="mb-6">
             <SectionHeader
               title="Shop by Category"
               ctaText="View All →"
@@ -845,542 +916,197 @@ export const HomeScreen = () => {
               showsHorizontalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-              className="mb-6"
             >
               {displayCategories.length > 0
                 ? displayCategories.map((cat) => (
                     <TouchableOpacity
-                      key={cat.id}
+                      key={cat.id || cat.name}
                       activeOpacity={0.85}
                       onPress={() => {
-                        setSelectedCategory(cat);
+                        if (setSelectedCategory) setSelectedCategory(cat.name);
                         setCurrentScreen('category');
                       }}
-                      style={{ width: 88, borderColor: '#FCE4EC', borderWidth: 1 }}
+                      style={{ width: 84, borderColor: '#FCE4EC', borderWidth: 1 }}
                       className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs"
                     >
                       <View
-                        style={{ width: 64, height: 64, borderColor: '#FCE4EC', borderWidth: 1 }}
-                        className="rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] items-center justify-center"
+                        style={{
+                          width: 62, height: 62,
+                          borderRadius: 14, borderWidth: 1, borderColor: '#F0E3EA',
+                          backgroundColor: '#FFFFFF', marginBottom: 6,
+                          alignItems: 'center', justifyContent: 'center',
+                        }}
                       >
-                        <Image
-                          source={getSafeImageSource(cat.image, cat.fallbackImage || '')}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="cover"
-                        />
+                        <FontAwesome5 name={cat.icon} size={26} color={cat.color} solid />
                       </View>
-                      <Text className="text-[11px] font-bold text-[#3A2430] text-center" numberOfLines={1}>
+                      <Text
+                        className="text-[11px] font-bold text-[#3A2430] text-center min-h-[28px] leading-tight"
+                        numberOfLines={2}
+                      >
                         {cat.name}
-                      </Text>
-                      <Text className="text-[9px] font-medium text-[#8C7078] text-center mt-0.5">
-                        {cat.countText}
                       </Text>
                     </TouchableOpacity>
                   ))
                 : [1, 2, 3, 4, 5].map((k) => <SkeletonCategoryCard key={`sk_cat_${k}`} />)}
             </ScrollView>
-          </>
+          </View>
         )}
 
         {/* ========================================================================= */}
-        {/* 5. TRENDING NOW (HORIZONTAL PRODUCT CAROUSEL) */}
+        {/* 5. TRENDING NOW PRODUCT CAROUSEL                                          */}
         {/* ========================================================================= */}
-        {(trendingProducts.length > 0 || isCatalogLoading) && (
-          <>
+        {(homeSectionVisibility?.heroPromoBanner !== false) && (trendingProducts.length > 0 || isCatalogLoading) && (
+          <View className="mb-6">
             <SectionHeader
               title="🔥 Trending Now"
               ctaText="View All →"
               onCtaPress={() => setCurrentScreen('search')}
             />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-              className="mb-6"
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
               {trendingProducts.length > 0
                 ? trendingProducts.map((item) => (
-                    <ProductCard
-                      key={item.id}
-                      product={item}
-                      badgeText="NEW"
-                      userRole={userRole}
-                      getRolePrice={getRolePrice}
-                      isLiked={isFavorite(item.id)}
-                      onToggleFavorite={toggleFavorite}
-                      onSelectProduct={handleProductSelect}
-                      cartQty={getProductCartQuantity(item.id)}
-                      onAddToCart={(prod) => addToCart(prod, 1)}
-                      onUpdateCartQty={updateCartQuantity}
-                    />
+                    <HomeProductCard key={`trend_${item.id}`} product={item} badgeText="NEW" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
                   ))
-                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_trend_${k}`} />)}
+                : [1,2,3].map((k) => <SkeletonProductCard key={`sk_trend_${k}`} />)}
             </ScrollView>
-          </>
+          </View>
         )}
 
         {/* ========================================================================= */}
-        {/* 6. TOP BRANDS (CONTINUOUS INFINITE CAROUSEL) */}
+        {/* 6. SHOP BY BRAND (UNIFORM CIRCULAR LOGOS WITH LABELS UNDERNEATH)          */}
         {/* ========================================================================= */}
-        {(topBrandsList.length > 0 || isCatalogLoading) && (
-          <>
+        {(homeSectionVisibility?.featuredBrands !== false) && (topBrandsList.length > 0 || isCatalogLoading) && (
+          <View className="mb-6">
             <SectionHeader
-              title="Top Brands"
+              title="Shop by Brand"
               ctaText="View All →"
               onCtaPress={() => setCurrentScreen('search')}
             />
-            {topBrandsList.length > 0 ? (
-              <ScrollView
-                ref={brandScrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-                className="mb-6"
-                onTouchStart={() => { isBrandTouching.current = true; }}
-                onTouchEnd={() => { isBrandTouching.current = false; }}
-                onScrollBeginDrag={() => { isBrandTouching.current = true; }}
-                onScrollEndDrag={() => { isBrandTouching.current = false; }}
-                onMomentumScrollEnd={(e) => {
-                  isBrandTouching.current = false;
-                  brandScrollPos.current = e.nativeEvent.contentOffset.x;
-                }}
-                scrollEventThrottle={16}
-              >
-                {infiniteBrands.map((brand, idx) => (
-                  <TouchableOpacity
-                    key={`${brand.id}-${idx}`}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      const brandQuery = (brand.name || '').replace('\n', ' ');
-                      if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
-                      setSearchQuery(brandQuery);
-                      setCurrentScreen('search');
-                    }}
-                    style={{ width: 72, height: 72, borderColor: '#FCE4EC', borderWidth: 1 }}
-                    className="rounded-full bg-white mr-3 shadow-xs items-center justify-center p-1.5 overflow-hidden"
-                  >
-                    {Boolean(brand.logo && typeof brand.logo === 'string' && (brand.logo.startsWith('http') || brand.logo.startsWith('data:image/'))) ? (
-                      <Image
-                        source={getSafeImageSource(brand.logo)}
-                        style={{ width: '80%', height: '80%' }}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <Text
-                        className="text-[9.5px] font-black text-center tracking-tight text-[#1F2937]"
-                        numberOfLines={2}
-                      >
-                        {brand.name}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-                className="mb-6"
-              >
-                {[1, 2, 3, 4, 5].map((k) => <SkeletonBrandCircle key={`sk_brand_${k}`} />)}
-              </ScrollView>
-            )}
-          </>
+            <ScrollView
+              ref={brandScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={() => { isBrandInteracting.current = true; }}
+              onScrollEndDrag={() => { setTimeout(() => { isBrandInteracting.current = false; }, 2000); }}
+              onMomentumScrollBegin={() => { isBrandInteracting.current = true; }}
+              onMomentumScrollEnd={() => { setTimeout(() => { isBrandInteracting.current = false; }, 2000); }}
+              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+            >
+              {allBrandsList.length > 0
+                ? (allBrandsList.length > 3 ? [...allBrandsList, ...allBrandsList] : allBrandsList).map((brand, idx) => (
+                    <BrandCard
+                      key={`${brand.id || brand.name}_${idx}`}
+                      brand={brand}
+                      screenWidth={SCREEN_WIDTH}
+                      onSelectBrand={(b) => {
+                        const brandQuery = (b.name || '').replace('\n', ' ');
+                        if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
+                        setSearchQuery(brandQuery);
+                        setCurrentScreen('search');
+                      }}
+                    />
+                  ))
+                : [1, 2, 3, 4, 5].map((k) => (
+                    <SkeletonBrandCard key={`sk_brand_${k}`} />
+                  ))}
+            </ScrollView>
+          </View>
         )}
 
         {/* ========================================================================= */}
-        {/* 7. NEW ARRIVALS (HORIZONTAL PRODUCT CAROUSEL) */}
+        {/* 7. NEW ARRIVALS CAROUSEL                                                  */}
         {/* ========================================================================= */}
         {(newArrivals.length > 0 || isCatalogLoading) && (
-          <>
+          <View className="mb-6">
             <SectionHeader
               title="New Arrivals"
+              iconBadgeText="NEW"
               ctaText="View All →"
               onCtaPress={() => setCurrentScreen('search')}
             />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-              className="mb-6"
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
               {newArrivals.length > 0
                 ? newArrivals.map((item) => (
-                    <ProductCard
-                      key={`na_${item.id}`}
-                      product={item}
-                      badgeText="NEW"
-                      userRole={userRole}
-                      getRolePrice={getRolePrice}
-                      isLiked={isFavorite(item.id)}
-                      onToggleFavorite={toggleFavorite}
-                      onSelectProduct={handleProductSelect}
-                      cartQty={getProductCartQuantity(item.id)}
-                      onAddToCart={(prod) => addToCart(prod, 1)}
-                      onUpdateCartQty={updateCartQuantity}
-                    />
+                    <HomeProductCard key={`na_${item.id}`} product={item} badgeText="NEW" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
                   ))
-                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_na_${k}`} />)}
+                : [1,2,3].map((k) => <SkeletonProductCard key={`sk_na_${k}`} />)}
             </ScrollView>
-          </>
+          </View>
         )}
 
         {/* ========================================================================= */}
-        {/* 8. BEST SELLERS (HORIZONTAL PRODUCT CAROUSEL) */}
+        {/* 8A. BEST SELLERS (DYNAMICALLY RANKED BY REAL SALES AND ORDERS)            */}
         {/* ========================================================================= */}
-        {(bestSellers.length > 0 || isCatalogLoading) && (
-          <>
+        {(homeSectionVisibility?.bestSellers !== false) && (bestSellers.length > 0 || isCatalogLoading) && (
+          <View className="mb-6">
             <SectionHeader
               title="Best Sellers"
+              iconName="flame"
               ctaText="View All →"
               onCtaPress={() => setCurrentScreen('search')}
             />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-              className="mb-6"
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
               {bestSellers.length > 0
                 ? bestSellers.map((item) => (
-                    <ProductCard
-                      key={`bs_${item.id}`}
-                      product={item}
-                      badgeText="NEW"
-                      userRole={userRole}
-                      getRolePrice={getRolePrice}
-                      isLiked={isFavorite(item.id)}
-                      onToggleFavorite={toggleFavorite}
-                      onSelectProduct={handleProductSelect}
-                      cartQty={getProductCartQuantity(item.id)}
-                      onAddToCart={(prod) => addToCart(prod, 1)}
-                      onUpdateCartQty={updateCartQuantity}
-                    />
+                    <HomeProductCard key={`bs_${item.id}`} product={item} badgeText="BESTSELLER" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
                   ))
-                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_bs_${k}`} />)}
+                : [1,2,3].map((k) => <SkeletonProductCard key={`sk_bs_${k}`} />)}
             </ScrollView>
-          </>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 9. BEAUTY EDIT (EDITORIAL BANNER CARD) */}
-        {/* ========================================================================= */}
-        <SectionHeader
-          title="Beauty Edit"
-          ctaText="View All →"
-          onCtaPress={() => setCurrentScreen('search')}
-        />
-        <View className="px-4 mb-6">
-          <View
-            style={{ height: 170, backgroundColor: '#FFF0F5', borderColor: '#FCE4EC', borderWidth: 1 }}
-            className="rounded-3xl overflow-hidden shadow-xs flex-row items-center"
-          >
-            {/* Left Editorial Text Column */}
-            <View className="flex-1 p-4 pr-1 z-10 justify-center">
-              <View className="bg-[#C2477A] px-2 py-0.5 rounded-full self-start mb-2">
-                <Text className="text-white text-[8px] font-black uppercase tracking-wider">
-                  THE SALBEAU EDIT
-                </Text>
-              </View>
-              <Text className="text-[15px] font-black text-[#3A2430] leading-snug mb-1">
-                Autumn Gloss & Radiance Rituals
-              </Text>
-              <Text className="text-[9.5px] text-[#8C7078] font-medium leading-relaxed mb-3">
-                Discover curated autumn beauty masterclasses, pro artist tricks, and hydration secrets for glass skin.
-              </Text>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => setCurrentScreen('search')}
-                className="bg-[#C2477A] px-3.5 py-1.5 rounded-full self-start shadow-xs"
-              >
-                <Text className="text-white text-[10px] font-black">
-                  Read Beauty Journal →
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Right Side Slideshow of Trending Products */}
-            <View style={{ width: '45%', height: '100%' }} className="relative overflow-hidden justify-center items-center bg-transparent rounded-r-3xl">
-              {autumnTrendingSlides.length > 0 ? (
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  style={{ width: '100%', height: '100%' }}
-                  onPress={() => {
-                    const activeItem = autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length];
-                    if (activeItem) handleProductSelect(activeItem);
-                  }}
-                  className="items-center justify-center p-2 relative"
-                >
-                  {/* Trending Product Image - Clean with no background circle */}
-                  <Image
-                    source={{ uri: autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length]?.image }}
-                    style={{ width: '88%', height: '70%' }}
-                    resizeMode="contain"
-                  />
-
-                  {/* Top Badge: TRENDING */}
-                  <View className="absolute top-2 right-2 bg-[#C2477A] px-2 py-0.5 rounded-full shadow-xs">
-                    <Text className="text-[7.5px] font-black text-white uppercase tracking-wider">
-                      ★ TRENDING
-                    </Text>
-                  </View>
-
-                  {/* Pink Arrow Navigation Buttons */}
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    onPress={(e) => {
-                      e.stopPropagation?.();
-                      setAutumnSlideIndex((prev) => (prev > 0 ? prev - 1 : autumnTrendingSlides.length - 1));
-                    }}
-                    className="absolute left-1 top-1/2 -mt-3 p-1 items-center justify-center bg-transparent z-10"
-                  >
-                    <Ionicons name="chevron-back" size={18} color="#C2477A" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    onPress={(e) => {
-                      e.stopPropagation?.();
-                      setAutumnSlideIndex((prev) => (prev + 1) % autumnTrendingSlides.length);
-                    }}
-                    className="absolute right-1 top-1/2 -mt-3 p-1 items-center justify-center bg-transparent z-10"
-                  >
-                    <Ionicons name="chevron-forward" size={18} color="#C2477A" />
-                  </TouchableOpacity>
-
-                  {/* Bottom Price & Name Tag Capsule */}
-                  <View className="absolute bottom-1.5 left-1.5 right-1.5 bg-white/95 px-2 py-1 rounded-xl border border-[#FCE4EC] shadow-xs flex-row items-center justify-between">
-                    <Text className="text-[8px] font-bold text-[#3A2430] flex-1 mr-1" numberOfLines={1}>
-                      {autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length]?.name}
-                    </Text>
-                    <Text className="text-[8.5px] font-black text-[#C2477A]">
-                      ₹{Math.round(getRolePrice(autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length], userRole) || autumnTrendingSlides[autumnSlideIndex % autumnTrendingSlides.length]?.price || 0)}
-                    </Text>
-                  </View>
-
-                  {/* Pagination Slide Dots */}
-                  <View className="absolute bottom-8 flex-row gap-1 items-center">
-                    {autumnTrendingSlides.slice(0, 5).map((_, dotIdx) => {
-                      const isActive = dotIdx === (autumnSlideIndex % Math.min(autumnTrendingSlides.length, 5));
-                      return (
-                        <View
-                          key={`autumn_dot_${dotIdx}`}
-                          style={{
-                            width: isActive ? 12 : 4,
-                            height: 3.5,
-                            borderRadius: 2,
-                            backgroundColor: isActive ? '#C2477A' : '#E8B4C8'
-                          }}
-                        />
-                      );
-                    })}
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <View className="items-center justify-center">
-                  <Ionicons name="sparkles" size={28} color="#C2477A" />
-                </View>
-              )}
-            </View>
           </View>
-        </View>
-
-        {/* ========================================================================= */}
-        {/* 10. ESSENTIAL BEAUTY STAPLES (2-COLUMN GRID WITH IMAGES) */}
-        {/* ========================================================================= */}
-        <SectionHeader
-          title="Essential Beauty Staples"
-          subtitle="Handpicked pro catalog favorites"
-          ctaText="Explore All →"
-          onCtaPress={() => setCurrentScreen('search')}
-        />
-        <View className="px-4 flex-row flex-wrap justify-between gap-y-3 mb-6">
-          {beautyEssentials.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              activeOpacity={0.85}
-              onPress={() => {
-                if (setGlobalSearchQuery) setGlobalSearchQuery(item.query);
-                setSearchQuery(item.query);
-                setCurrentScreen('search');
-              }}
-              style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
-              className="w-[48%] bg-white rounded-2xl p-2.5 flex-row items-center gap-2.5 shadow-xs"
-            >
-              <View
-                style={{ borderColor: '#FCE4EC', borderWidth: 1 }}
-                className="w-11 h-11 rounded-xl items-center justify-center bg-[#FFF5F8] overflow-hidden"
-              >
-                {item.image ? (
-                  <Image
-                    source={{ uri: item.image }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <Ionicons name={item.iconName} size={16} color="#C2477A" />
-                )}
-              </View>
-              <View className="flex-1">
-                <Text className="text-[11px] font-extrabold text-[#3A2430]" numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text className="text-[8.5px] font-medium text-[#8C7078]" numberOfLines={1}>
-                  {item.subtitle}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* ========================================================================= */}
-        {/* 10B. CURATED FACE SERUMS & GLOW RITUALS (HORIZONTAL PRODUCT LIST) */}
-        {/* ========================================================================= */}
-        {(serumProducts.length > 0 || isCatalogLoading) && (
-          <>
-            <SectionHeader
-              title="✨ Face Serums & Glow Rituals"
-              subtitle="Concentrated actives & clinical hydration elixirs"
-              ctaText="Explore All Serums →"
-              onCtaPress={() => {
-                if (setGlobalSearchQuery) setGlobalSearchQuery('Serum');
-                setSearchQuery('Serum');
-                setCurrentScreen('search');
-              }}
-            />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-              className="mb-6"
-            >
-              {serumProducts.length > 0
-                ? serumProducts.map((item) => (
-                    <ProductCard
-                      key={`serum_${item.id}`}
-                      product={item}
-                      badgeText="SERUM"
-                      userRole={userRole}
-                      getRolePrice={getRolePrice}
-                      isLiked={isFavorite(item.id)}
-                      onToggleFavorite={toggleFavorite}
-                      onSelectProduct={handleProductSelect}
-                      cartQty={getProductCartQuantity(item.id)}
-                      onAddToCart={(prod) => addToCart(prod, 1)}
-                      onUpdateCartQty={updateCartQuantity}
-                    />
-                  ))
-                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_serum_${k}`} />)}
-            </ScrollView>
-          </>
         )}
 
         {/* ========================================================================= */}
-        {/* 11. RECENTLY VIEWED (HORIZONTAL CAROUSEL — PERSONALIZED PER CUSTOMER) */}
+        {/* 8B. RECENTLY VIEWED (CUSTOMER-SPECIFIC TRACKING & PERSISTENCE)            */}
         {/* ========================================================================= */}
         {recentlyViewedProducts.length > 0 && (
-          <>
+          <View className="mb-6">
             <SectionHeader
               title="Recently Viewed"
+              iconName="time-outline"
               ctaText="View All →"
               onCtaPress={() => setCurrentScreen('search')}
             />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-              className="mb-6"
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
               {recentlyViewedProducts.map((item) => (
-                <ProductCard
-                  key={`rv_${item.id}`}
-                  product={item}
-                  badgeText=""
-                  userRole={userRole}
-                  getRolePrice={getRolePrice}
-                  isLiked={isFavorite(item.id)}
-                  onToggleFavorite={toggleFavorite}
-                  onSelectProduct={handleProductSelect}
-                  cartQty={getProductCartQuantity(item.id)}
-                  onAddToCart={(prod) => addToCart(prod, 1)}
-                  onUpdateCartQty={updateCartQuantity}
-                />
+                <HomeProductCard key={`rv_${item.id}`} product={item} badgeText="" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
               ))}
             </ScrollView>
-          </>
+          </View>
         )}
 
         {/* ========================================================================= */}
-        {/* 12. COMPLETE YOUR LOOK (DYNAMIC DUO BUNDLE PROMO CARD) */}
+        {/* 8C. ESSENTIAL BEAUTY STAPLES (EVERYDAY CATALOG BEAUTY FORMULATIONS)       */}
         {/* ========================================================================= */}
-        {duoBundle && (
-          <>
+        {(beautyStaples.length > 0 || isCatalogLoading) && (
+          <View className="mb-6">
             <SectionHeader
-              title="Complete Your Look"
-              showCta={false}
+              title="Essential Beauty Staples"
+              iconName="sparkles"
+              ctaText="View All →"
+              onCtaPress={() => setCurrentScreen('search')}
             />
-            <View className="px-4 mb-6">
-              <View
-                style={{ backgroundColor: '#FFF5F8', borderColor: '#FCE4EC', borderWidth: 1 }}
-                className="rounded-3xl p-4 shadow-xs flex-row items-center justify-between"
-              >
-                <View className="flex-1 pr-3">
-                  <Text className="text-[8.5px] font-black text-[#C2477A] uppercase tracking-wider mb-1">
-                    DUO BEAUTY BUNDLE
-                  </Text>
-                  <Text className="text-xs font-black text-[#3A2430] mb-1 leading-snug" numberOfLines={2}>
-                    {duoBundle.title}
-                  </Text>
-                  <Text className="text-[9.5px] text-[#8C7078] font-medium mb-2.5 leading-relaxed">
-                    {duoBundle.subtitle}
-                  </Text>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={handleAddBundleToCart}
-                    className="bg-[#C2477A] px-3.5 py-1.5 rounded-full self-start shadow-xs"
-                  >
-                    <Text className="text-white text-[10px] font-black">
-                      Add Bundle ₹{duoBundle.bundlePrice} →
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <View
-                  style={{ width: 80, height: 80, borderColor: '#F5A8C0', borderWidth: 1 }}
-                  className="rounded-2xl overflow-hidden bg-white items-center justify-center"
-                >
-                  <Image
-                    source={getSafeImageSource(duoBundle.image, '')}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="cover"
-                  />
-                </View>
-              </View>
-            </View>
-          </>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
+              {beautyStaples.length > 0
+                ? beautyStaples.map((item) => (
+                    <HomeProductCard key={`staple_${item.id}`} product={item} badgeText="STAPLE" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
+                  ))
+                : [1,2,3].map((k) => <SkeletonProductCard key={`sk_staple_${k}`} />)}
+            </ScrollView>
+          </View>
         )}
-
       </ScrollView>
 
       {/* ========================================================================= */}
-      {/* 14. STICKY VIEW CART BAR (WHEN ITEMS IN CART) */}
+      {/* 9. STICKY CART SUMMARY BAR (FLOATING ABOVE BOTTOM NAVIGATION)             */}
       {/* ========================================================================= */}
       {totalCartQuantity > 0 && (
         <View
           style={{
             position: 'absolute',
-            bottom: 58,
-            left: 12,
-            right: 12,
+            bottom: 8,
+            left: 14,
+            right: 14,
             zIndex: 50,
             backgroundColor: '#C2477A',
             shadowColor: '#C2477A',
@@ -1391,13 +1117,16 @@ export const HomeScreen = () => {
           }}
           className="rounded-2xl px-4 py-2.5 flex-row items-center justify-between"
         >
-          <View className="flex-row items-center gap-2.5">
+          <View className="flex-row items-center gap-3">
             <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
               <Ionicons name="bag-handle" size={17} color="#FFFFFF" />
             </View>
             <View>
               <Text className="text-xs font-black text-white tracking-wide">
-                {totalCartQuantity} {totalCartQuantity === 1 ? 'Item' : 'Items'} • ₹{totalCartPrice}
+                {totalCartQuantity} {totalCartQuantity === 1 ? 'Item' : 'Items'} • ₹{totalCartPrice.toFixed(2).replace(/\.00$/, '')}
+              </Text>
+              <Text className="text-[10px] font-medium text-pink-100">
+                Free delivery on orders above ₹499
               </Text>
             </View>
           </View>
@@ -1405,7 +1134,7 @@ export const HomeScreen = () => {
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={() => setCurrentScreen('cart')}
-            className="bg-white px-3.5 py-1.5 rounded-xl flex-row items-center gap-1 shadow-xs"
+            className="bg-white px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-xs"
           >
             <Text className="text-[11px] font-black text-[#C2477A] uppercase tracking-wider">
               View Cart

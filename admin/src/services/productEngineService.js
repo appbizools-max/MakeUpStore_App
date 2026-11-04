@@ -16,6 +16,7 @@ import { matchBeautyShade } from './aiColorService.js';
 import { DEFAULT_GST_SLAB } from './excelHeaderValidator.js';
 import { resolveCategoryAttributes } from '../utils/attributeMasterData.js';
 import { generateProductSku, generateVariantInternalSku } from './skuService.js';
+import { findOrCreateBrand } from '../utils/brandUtils.js';
 
 // ==============================================================================
 // 1. CANONICAL PRODUCT SCHEMA DEFINITION
@@ -933,20 +934,20 @@ export const toSupabaseProductPayload = (p) => {
   return {
     id: p.id || p._id || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     name: p.name,
-    brand_id: p.brandId || null,
-    brand_name: p.brand || 'General',
+    brand_id: p.brandId || p.brand_id || null,
+    brand_name: p.brand || p.brand_name || p.brandName || 'General',
     sku: mainSku,
-    category: p.category || 'General',
+    category: p.category || p.category_name || 'General',
     subcategory: p.subcategory || p.sub_category || null,
     variant_type: p.variantType || (shadeApplies ? 'Shade' : 'Standard'),
     barcode: p.barcode ? String(p.barcode).trim() : null,
     mrp: Number(p.mrp || 0),
-    general_price: Number(p.generalPrice || p.mrp || 0),
-    salon_price: Number(p.salonPrice || p.mrp || 0),
-    artist_price: Number(p.artistPrice || p.mrp || 0),
-    beautician_price: Number(p.beauticianPrice || p.mrp || 0),
-    image: p.image || (Array.isArray(p.images) && p.images[0] ? p.images[0] : ''),
-    images: Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.image ? [p.image] : []),
+    general_price: Number(p.generalPrice !== undefined ? p.generalPrice : (p.general_price !== undefined ? p.general_price : (p.mrp || 0))),
+    salon_price: Number(p.salonPrice !== undefined ? p.salonPrice : (p.salon_price !== undefined ? p.salon_price : (p.mrp || 0))),
+    artist_price: Number(p.artistPrice !== undefined ? p.artistPrice : (p.artist_price !== undefined ? p.artist_price : (p.mrp || 0))),
+    beautician_price: Number(p.beauticianPrice !== undefined ? p.beauticianPrice : (p.beautician_price !== undefined ? p.beautician_price : (p.mrp || 0))),
+    image: p.image || (Array.isArray(p.images) && p.images[0] ? p.images[0] : (p.productImageUrl || '')),
+    images: Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.image ? [p.image] : (p.productImageUrl ? [p.productImageUrl] : [])),
     shades: shadesJson,
     quantity_tiers: {
       ...(typeof p.quantityTiers === 'object' ? p.quantityTiers : {}),
@@ -1063,6 +1064,121 @@ export const mergeNonBlankRecord = (newPayload, existingRecord, allowBlankOverwr
 };
 
 /**
+ * Universal Schema-Resilient Product Writer for Supabase
+ * Handles missing schema columns dynamically, moves unmapped attributes into additional_info,
+ * and retries automatically until database write succeeds without PGRST204 errors.
+ */
+export const safeProductDbWrite = async (operation, payload, onConflict = 'id') => {
+  let currentObj = { ...payload };
+  const knownExtraCols = [
+    'general_price', 'status', 'enabled', 'parent_id', 'highlights', 'specifications',
+    'how_to_use', 'description', 'product_type', 'product_family', 'images', 'subcategory',
+    'variant_type', 'quantity_tiers', 'search_keywords', 'search_aliases', 'key_points',
+    'benefits', 'ingredients', 'seo_title', 'meta_description', 'url_slug'
+  ];
+
+  // Guarantee all extra fields are backed up in additional_info JSONB
+  if (!currentObj.additional_info || typeof currentObj.additional_info !== 'object') {
+    currentObj.additional_info = {};
+  }
+  for (const col of knownExtraCols) {
+    if (currentObj[col] !== undefined && currentObj.additional_info[col] === undefined) {
+      currentObj.additional_info[col] = currentObj[col];
+    }
+  }
+
+  // Attempt up to 5 self-healing retries stripping unmapped columns reported by Postgres / PostgREST
+  for (let attempt = 0; attempt < 5; attempt++) {
+    let res = null;
+    try {
+      if (operation === 'upsert') {
+        res = await supabase.from('products').upsert(currentObj, { onConflict });
+      } else if (operation === 'update') {
+        res = await supabase.from('products').update(currentObj).eq('id', currentObj.id);
+      } else {
+        res = await supabase.from('products').insert([currentObj]);
+      }
+    } catch (netEx) {
+      return { success: false, error: netEx };
+    }
+
+    if (!res.error) {
+      return { success: true, data: res.data, error: null };
+    }
+
+    const errMsg = res.error.message || '';
+    const errCode = res.error.code || '';
+
+    // Duplicate key/barcode constraint
+    if (errCode === '23505' || errMsg.includes('duplicate key') || errMsg.includes('unique constraint')) {
+      return { success: false, duplicate: true, error: res.error };
+    }
+
+    // Extract exact missing column name from PostgREST PGRST204 error message
+    const match = errMsg.match(/Could not find the '([^']+)' column of 'products'/i) ||
+                  errMsg.match(/column "([^"]+)" of relation "products" does not exist/i);
+
+    if (match && match[1]) {
+      const missingCol = match[1];
+      if (currentObj[missingCol] !== undefined) {
+        if (currentObj.additional_info[missingCol] === undefined) {
+          currentObj.additional_info[missingCol] = currentObj[missingCol];
+        }
+        delete currentObj[missingCol];
+      }
+      continue;
+    }
+
+    // If PGRST204 without specific column name, strip all non-core columns at once
+    if (errCode === 'PGRST204' || errMsg.includes('schema cache')) {
+      for (const col of knownExtraCols) {
+        if (currentObj[col] !== undefined) {
+          if (currentObj.additional_info[col] === undefined) {
+            currentObj.additional_info[col] = currentObj[col];
+          }
+          delete currentObj[col];
+        }
+      }
+      continue;
+    }
+
+    // Unrecoverable non-schema error
+    return { success: false, error: res.error };
+  }
+
+  // Canonical fallback with absolute minimum guaranteed columns:
+  // id, name, brand_name, category, mrp, salon_price, artist_price, beautician_price, image, shades, barcode, additional_info
+  const minimalObj = {
+    id: currentObj.id,
+    name: currentObj.name,
+    brand_name: currentObj.brand_name || 'General',
+    category: currentObj.category || 'General',
+    mrp: Number(currentObj.mrp || 0),
+    salon_price: Number(currentObj.salon_price || currentObj.mrp || 0),
+    artist_price: Number(currentObj.artist_price || currentObj.mrp || 0),
+    beautician_price: Number(currentObj.beautician_price || currentObj.mrp || 0),
+    image: currentObj.image || '',
+    shades: currentObj.shades || [],
+    barcode: currentObj.barcode ? String(currentObj.barcode).trim() : null,
+    additional_info: currentObj.additional_info || {}
+  };
+
+  try {
+    let finalRes = null;
+    if (operation === 'upsert') {
+      finalRes = await supabase.from('products').upsert(minimalObj, { onConflict });
+    } else if (operation === 'update') {
+      finalRes = await supabase.from('products').update(minimalObj).eq('id', minimalObj.id);
+    } else {
+      finalRes = await supabase.from('products').insert([minimalObj]);
+    }
+    return { success: !finalRes.error, error: finalRes.error, data: finalRes.data };
+  } catch (finalEx) {
+    return { success: false, error: finalEx };
+  }
+};
+
+/**
  * Submits validated products to Supabase in robust chunks
  * @param {NormalizedProduct[]} products - List of normalized products
  * @param {Object} options
@@ -1080,7 +1196,7 @@ export const chunkedBulkSave = async (products, options = {}) => {
   } = options;
 
   if (!Array.isArray(products) || products.length === 0) {
-    return { success: true, total: 0, inserted: 0, updated: 0, skipped: 0, failed: 0, failedRows: [], errors: [] };
+    return { success: true, total: 0, inserted: 0, updated: 0, skipped: 0, failed: 0, failedRows: [], errors: [], savedProducts: [] };
   }
 
   const total = products.length;
@@ -1090,6 +1206,7 @@ export const chunkedBulkSave = async (products, options = {}) => {
   let failed = 0;
   const failedRows = [];
   const errors = [];
+  const savedProducts = [];
 
   for (let i = 0; i < total; i += chunkSize) {
     const chunk = products.slice(i, i + chunkSize);
@@ -1109,6 +1226,25 @@ export const chunkedBulkSave = async (products, options = {}) => {
 
     const payloads = chunk.map(toSupabaseProductPayload);
 
+    // Canonical Find-or-Create Brand normalization for all products in batch
+    const brandCache = new Map();
+    for (const item of payloads) {
+      const bName = (item.brand_name || '').trim();
+      if (bName && !brandCache.has(bName.toLowerCase())) {
+        try {
+          const bRes = await findOrCreateBrand(bName, [], supabase);
+          if (bRes && bRes.brand) {
+            brandCache.set(bName.toLowerCase(), bRes.brand);
+          }
+        } catch (_) {}
+      }
+      if (bName && brandCache.has(bName.toLowerCase())) {
+        const b = brandCache.get(bName.toLowerCase());
+        item.brand_name = b.name;
+        item.brand_id = b.id;
+      }
+    }
+
     try {
       if (updateExisting) {
         const withBarcode = payloads.filter(p => p.barcode);
@@ -1116,13 +1252,17 @@ export const chunkedBulkSave = async (products, options = {}) => {
 
         if (withBarcode.length > 0) {
           const barcodesInChunk = withBarcode.map(p => p.barcode).filter(Boolean);
-          const { data: existingData } = await supabase
-            .from('products')
-            .select('id, barcode, name, brand_name, category, mrp, general_price, salon_price, artist_price, beautician_price, image, shades, additional_info')
-            .in('barcode', barcodesInChunk);
+          let existingData = [];
+          try {
+            const { data } = await supabase
+              .from('products')
+              .select('id, barcode, name, brand_name, category, mrp, salon_price, artist_price, beautician_price, image, shades, additional_info')
+              .in('barcode', barcodesInChunk);
+            if (Array.isArray(data)) existingData = data;
+          } catch (_) { }
 
           const existingByBarcode = new Map();
-          (existingData || []).forEach(e => existingByBarcode.set(e.barcode, e));
+          existingData.forEach(e => existingByBarcode.set(e.barcode, e));
 
           for (const item of withBarcode) {
             const existingRecord = existingByBarcode.get(item.barcode);
@@ -1130,32 +1270,30 @@ export const chunkedBulkSave = async (products, options = {}) => {
               const finalPayload = allowBlankOverwrite ? item : mergeNonBlankRecord(item, existingRecord, false);
               finalPayload.id = existingRecord.id;
 
-              const { error: updErr } = await supabase
-                .from('products')
-                .upsert(finalPayload, { onConflict: 'id' });
+              const writeRes = await safeProductDbWrite('upsert', finalPayload, 'id');
 
-              if (updErr) {
+              if (!writeRes.success) {
                 failed++;
-                failedRows.push({ ...item, _error: updErr.message });
-                errors.push(`Row "${item.name}": ${updErr.message}`);
+                failedRows.push({ ...item, _error: writeRes.error?.message || 'Update failed' });
+                errors.push(`Row "${item.name}": ${writeRes.error?.message || 'Update failed'}`);
               } else {
                 updated++;
+                savedProducts.push(finalPayload);
               }
             } else {
               // New product with barcode
               if (!item.id) {
                 item.id = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
               }
-              const { error: insErr } = await supabase
-                .from('products')
-                .insert([item]);
+              const writeRes = await safeProductDbWrite('insert', item);
 
-              if (insErr) {
+              if (!writeRes.success) {
                 failed++;
-                failedRows.push({ ...item, _error: insErr.message });
-                errors.push(`Row "${item.name}": ${insErr.message}`);
+                failedRows.push({ ...item, _error: writeRes.error?.message || 'Insert failed' });
+                errors.push(`Row "${item.name}": ${writeRes.error?.message || 'Insert failed'}`);
               } else {
                 inserted++;
+                savedProducts.push(item);
               }
             }
           }
@@ -1166,42 +1304,36 @@ export const chunkedBulkSave = async (products, options = {}) => {
             if (!item.id) {
               item.id = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
             }
-            const { error: singleErr } = await supabase
-              .from('products')
-              .insert([item]);
+            const writeRes = await safeProductDbWrite('insert', item);
 
-            if (singleErr) {
+            if (!writeRes.success) {
               failed++;
-              failedRows.push({ ...item, _error: singleErr.message });
-              errors.push(`Row "${item.name}": ${singleErr.message}`);
+              failedRows.push({ ...item, _error: writeRes.error?.message || 'Insert failed' });
+              errors.push(`Row "${item.name}": ${writeRes.error?.message || 'Insert failed'}`);
             } else {
               inserted++;
+              savedProducts.push(item);
             }
           }
         }
       } else {
-        // Skip existing duplicates / insert only
+        // Insert only
         for (const item of payloads) {
           if (!item.id) {
             item.id = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
           }
-          try {
-            const { error: singleErr } = await supabase.from('products').insert([item]);
-            if (singleErr) {
-              if (singleErr.code === '23505' || singleErr.message?.includes('duplicate key') || singleErr.message?.includes('unique constraint')) {
-                skipped++;
-              } else {
-                failed++;
-                failedRows.push({ ...item, _error: singleErr.message });
-                errors.push(`Row "${item.name}": ${singleErr.message}`);
-              }
+          const writeRes = await safeProductDbWrite('insert', item);
+          if (!writeRes.success) {
+            if (writeRes.duplicate) {
+              skipped++;
             } else {
-              inserted++;
+              failed++;
+              failedRows.push({ ...item, _error: writeRes.error?.message || 'Insert failed' });
+              errors.push(`Row "${item.name}": ${writeRes.error?.message || 'Insert failed'}`);
             }
-          } catch (singleEx) {
-            failed++;
-            failedRows.push({ ...item, _error: singleEx.message });
-            errors.push(`Row "${item.name}": ${singleEx.message}`);
+          } else {
+            inserted++;
+            savedProducts.push(item);
           }
         }
       }
@@ -1228,7 +1360,8 @@ export const chunkedBulkSave = async (products, options = {}) => {
     skipped,
     failed,
     failedRows,
-    errors
+    errors,
+    savedProducts
   };
 };
 

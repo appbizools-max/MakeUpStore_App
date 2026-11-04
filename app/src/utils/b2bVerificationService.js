@@ -462,13 +462,27 @@ export const uploadVerificationDocument = async (supabase, file, userId, customN
   }
 
   try {
-    const cleanUserId = (userId || 'anon').replace(/[^a-zA-Z0-9_-]/g, '_');
+    // Resolve authenticated user ID to satisfy Migration 012 RLS policy:
+    // (storage.foldername(name))[1] = (SELECT auth.uid())::text
+    let authUid = null;
+    try {
+      if (supabase?.auth?.getUser) {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user?.id) {
+          authUid = authData.user.id;
+        }
+      }
+    } catch (authErr) {
+      console.warn('Supabase auth session lookup notice:', authErr?.message || authErr);
+    }
+
+    const effectiveFolder = authUid || (userId ? String(userId).replace(/[^a-zA-Z0-9_-]/g, '_') : 'anon');
     const isWebP = uploadFile.type === 'image/webp';
     const ext = isWebP ? 'webp' : (uploadFile.name ? uploadFile.name.split('.').pop() : 'jpg');
     const fileName = customName 
       ? `${customName.replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}.${ext}` 
       : `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-    const filePath = `${cleanUserId}/${fileName}`;
+    const filePath = `${effectiveFolder}/${fileName}`;
 
     const { data, error } = await supabase.storage
       .from('verification-docs')
@@ -525,5 +539,52 @@ export const uploadVerificationDocument = async (supabase, file, userId, customN
       compression: compressionStats
     };
   }
+};
+
+/**
+ * Generates or refreshes a secure short-lived signed URL for a verification document
+ * stored in the private 'verification-docs' bucket.
+ */
+export const getVerificationDocumentSignedUrl = async (supabase, doc, expiresIn = 3600) => {
+  if (!doc) return '';
+  if (typeof doc === 'string' && (doc.startsWith('data:image/') || doc.startsWith('blob:'))) {
+    return doc;
+  }
+
+  let rawPath = '';
+  if (typeof doc === 'string') {
+    rawPath = doc;
+  } else if (typeof doc === 'object') {
+    rawPath = doc.path || doc.file_path || doc.filePath || doc.file_url || doc.url || '';
+  }
+
+  if (!rawPath) return '';
+
+  if (rawPath.includes('token=') && rawPath.startsWith('http')) {
+    return rawPath;
+  }
+
+  let cleanPath = rawPath;
+  const bucketMarker = '/verification-docs/';
+  if (cleanPath.includes(bucketMarker)) {
+    cleanPath = cleanPath.substring(cleanPath.indexOf(bucketMarker) + bucketMarker.length).split('?')[0];
+  } else if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+    return cleanPath;
+  }
+
+  try {
+    if (supabase?.storage) {
+      const { data, error } = await supabase.storage
+        .from('verification-docs')
+        .createSignedUrl(cleanPath, expiresIn);
+      if (!error && data?.signedUrl) {
+        return data.signedUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to generate signed document URL:', err);
+  }
+
+  return rawPath;
 };
 

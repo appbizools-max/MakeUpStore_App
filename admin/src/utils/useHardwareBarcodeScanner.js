@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { playBarcodeBeep, validateBarcodeFormat } from './barcodeUtils';
+import { playBarcodeBeep, validateBarcodeFormat } from './barcodeUtils.js';
 
 /**
  * useHardwareBarcodeScanner

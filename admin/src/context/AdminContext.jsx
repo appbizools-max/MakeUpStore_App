@@ -8,7 +8,7 @@ import {
   fetchAllB2BVerifications,
   updateVerificationStatus as updateB2BVerificationStatusApi
 } from '../utils/b2bVerificationService';
-import { toSupabaseProductPayload, chunkedBulkSave, mergeNonBlankRecord } from '../services/productEngineService';
+import { toSupabaseProductPayload, chunkedBulkSave, mergeNonBlankRecord, safeProductDbWrite } from '../services/productEngineService';
 import { generateEmployeeCode, ensurePermissionDependencies, validatePasswordPolicy } from '../utils/permissionEngine';
 import {
   INITIAL_SEED_BRANDS,
@@ -28,7 +28,8 @@ import {
   resolveBrandNumber,
   resolveBrandCode,
   parseBrandNumberSeq,
-  formatBrandNumber
+  formatBrandNumber,
+  findOrCreateBrand
 } from '../utils/brandUtils';
 import { uploadOptimizedImage } from '../services/imageStorageService';
 import { IMAGE_PROFILES, optimizeImage, formatBytes, calculateStorageSavings } from '../utils/imageOptimizer';
@@ -193,9 +194,12 @@ const mapUserFromDb = (u) => {
 };
 
 const mapBrandFromDb = (b, metaDict = {}) => {
+  const meta = metaDict[b.id] || {};
   let categories = [];
-  if (Array.isArray(b.categories)) {
+  if (Array.isArray(b.categories) && b.categories.length > 0) {
     categories = b.categories;
+  } else if (Array.isArray(meta.categories) && meta.categories.length > 0) {
+    categories = meta.categories;
   } else if (typeof b.categories === 'string' && b.categories.trim()) {
     try {
       const parsed = JSON.parse(b.categories);
@@ -203,11 +207,11 @@ const mapBrandFromDb = (b, metaDict = {}) => {
     } catch (e) {
       categories = b.categories.split(/[;,|]/).map(s => s.trim()).filter(Boolean);
     }
+  } else if (meta.category) {
+    categories = [meta.category];
   } else if (b.category) {
     categories = [b.category];
   }
-
-  const meta = metaDict[b.id] || {};
   const rawNum = b.brand_number || b.brandNumber || meta.brandNumber || '';
   const brandNumber = resolveBrandNumber({ ...b, brandNumber: rawNum });
   const brandCode = (b.brand_code || b.brandCode || meta.brandCode) || resolveBrandCode({ ...b, brandNumber }, [], brandNumber);
@@ -434,7 +438,17 @@ const mapProductFromDb = (p) => ({
   })(),
   seoTitle: p.seo_title || p.seoTitle || '',
   metaDescription: p.meta_description || p.metaDescription || '',
-  urlSlug: p.url_slug || p.urlSlug || ''
+  urlSlug: p.url_slug || p.urlSlug || '',
+  sort_order: Number(p.sort_order ?? p.sortOrder ?? p.display_order ?? p.additional_info?.sort_order ?? p.additional_info?.priority ?? 99999),
+  display_order: Number(p.sort_order ?? p.sortOrder ?? p.display_order ?? p.additional_info?.sort_order ?? p.additional_info?.priority ?? 99999),
+  priority: Number(p.sort_order ?? p.sortOrder ?? p.display_order ?? p.additional_info?.sort_order ?? p.additional_info?.priority ?? 99999),
+  quantityDiscountEnabled: (() => {
+    try {
+      const raw = p.additional_info || p.additionalInfo;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      return parsed.quantityDiscountEnabled ?? p.quantity_discount_enabled ?? true;
+    } catch { return true; }
+  })()
 });
 
 const INITIAL_CATEGORIES = [];
@@ -841,34 +855,53 @@ export const AdminProvider = ({ children }) => {
           } catch (e) { }
         }
 
-        setBrands(brandsRes.data
+        const regularBrands = brandsRes.data
           .filter(b =>
-            b.id !== 'app_category_order_config' &&
-            b.id !== 'app_brand_category_map' &&
-            b.id !== 'app_brand_metadata_config' &&
-            b.id !== 'app_home_section_visibility' &&
-            b.id !== 'app_recommendation_config' &&
-            b.id !== 'app_pricing_discount_config' &&
-            b.id !== 'app_home_banners' &&
-            b.id !== 'app_category_attributes_config' &&
-            b.id !== 'app_attribute_master_config' &&
-            b.id !== 'salbeau_b2b_verifications_sync' &&
-            b.id !== 'salbeau_category_subcategory_hierarchy' &&
-            b.id !== 'salbeau_customer_search_requests'
+            !b.id.startsWith('app_') &&
+            !b.id.startsWith('salbeau_') &&
+            b.category !== 'SystemConfig'
           )
-          .map(b => ({
-            ...mapBrandFromDb(b, brandMetaDict),
-            category: categoryDict[b.name] || b.category || 'General'
-          }))
+          .map(b => {
+            const mapped = mapBrandFromDb(b, brandMetaDict);
+            const primaryCat = mapped.categories?.[0] || categoryDict[b.name] || b.category || 'General';
+            return {
+              ...mapped,
+              category: primaryCat,
+              categories: mapped.categories?.length > 0 ? mapped.categories : [primaryCat]
+            };
+          })
           .sort((a, b) => {
             const seqA = parseBrandNumberSeq(a.brandNumber);
             const seqB = parseBrandNumberSeq(b.brandNumber);
             if (seqA && seqB) return seqA - seqB;
             return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
-          })
-        );
+          });
+
+        setBrands(regularBrands);
+        setCachedData('salbeau_admin_cache_brands', regularBrands);
       }
-      if (productsRes.data) setProducts(productsRes.data.map(mapProductFromDb));
+      if (productsRes.data && Array.isArray(productsRes.data)) {
+        const dbList = productsRes.data.map(mapProductFromDb);
+        setProducts(prev => {
+          if (!prev || prev.length === 0) {
+            setCachedData('salbeau_admin_cache_products', dbList);
+            return dbList;
+          }
+          const dbMap = new Map();
+          dbList.forEach(p => {
+            if (p.id) dbMap.set(p.id, p);
+            if (p.barcode) dbMap.set(`bc_${p.barcode}`, p);
+          });
+          const retained = prev.filter(p => {
+            const hasId = p.id && dbMap.has(p.id);
+            const hasBc = p.barcode && dbMap.has(`bc_${p.barcode}`);
+            return !hasId && !hasBc;
+          });
+          const combined = [...retained, ...dbList];
+          setCachedData('salbeau_admin_cache_products', combined);
+          return combined;
+        });
+      }
       if (categoriesRes && categoriesRes.data) {
         setCategories(categoriesRes.data.map(mapCategoryFromDb).sort((a, b) => a.sort_order - b.sort_order));
       }
@@ -1061,10 +1094,9 @@ export const AdminProvider = ({ children }) => {
             return;
           }
           if (
-            payload.new?.id === 'app_category_order_config' ||
-            payload.new?.id === 'app_home_section_visibility' ||
-            payload.new?.id === 'app_recommendation_config' ||
-            payload.new?.id === 'app_pricing_discount_config'
+            payload.new?.id?.startsWith('app_') ||
+            payload.new?.id?.startsWith('salbeau_') ||
+            payload.new?.category === 'SystemConfig'
           ) {
             return;
           }
@@ -1225,106 +1257,67 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
-  const addBrand = async (newBrand) => {
-    const brandId = newBrand.id || ('b_' + Date.now());
-    const isEnabled = newBrand.enabled !== false && newBrand.enabled !== 'false' && newBrand.enabled !== 0;
-
-    // Concurrency-Safe Sequential Brand Number (BR001, BR002...)
-    const brandNumber = (newBrand.brandNumber || newBrand.brand_number || '').trim() || generateNextBrandNumber(brands);
-
-    // Professional Brand Code (e.g. AGA-001)
-    const brandCode = (newBrand.brandCode || newBrand.brand_code || '').trim() || generateProposedBrandCode(newBrand.name, brands, brandNumber);
-
-    const categoriesList = Array.isArray(newBrand.categories)
-      ? newBrand.categories
-      : (newBrand.category ? [newBrand.category] : []);
-
-    // Brand Logo processing: Optimize with BRAND_LOGO profile before saving
-    let finalLogo = newBrand.logo || '';
-    if (finalLogo && (finalLogo.startsWith('data:') || finalLogo instanceof Blob)) {
-      try {
-        const uploadRes = await uploadOptimizedImage(finalLogo, 'BRAND_LOGO', {
-          folder: 'brand-logos',
-          filenamePrefix: brandCode,
-          brandCode
-        });
-        if (uploadRes?.url) {
-          finalLogo = uploadRes.url;
-        }
-      } catch (lErr) {
-        console.warn('Brand logo optimization/upload notice:', lErr);
-      }
+  const addBrand = async (newBrand, isDirectAdminWrite = false) => {
+    // If current actor is an employee without direct publish permission, stage operation for Admin approval
+    if (currentAuthUser?.role === 'employee' && !isDirectAdminWrite) {
+      const staged = await stageEmployeeOperation({
+        operationType: 'CREATE_BRAND',
+        module: 'brands',
+        entityType: 'brand',
+        entityId: newBrand.id || ('b_' + Date.now()),
+        recordTitle: newBrand.name || 'New Brand Submission',
+        oldData: null,
+        newData: newBrand
+      });
+      return { success: true, staged: true, message: 'Brand submitted to Approval Center for review.', operation: staged.operation };
     }
 
-    const sortOrder = parseBrandNumberSeq(brandNumber) || (brands.length + 1);
+    const dbClient = supabaseAdmin || supabase;
+    const brandRes = await findOrCreateBrand(newBrand, brands, dbClient);
+    if (!brandRes || !brandRes.brand) {
+      throw new Error('Failed to resolve or create brand.');
+    }
 
-    const brandObj = {
-      ...newBrand,
-      id: brandId,
-      name: normalizeBrandName(newBrand.name),
-      brandNumber,
-      brand_number: brandNumber,
-      brandCode: brandCode.toUpperCase(),
-      brand_code: brandCode.toUpperCase(),
-      categories: categoriesList,
-      category: categoriesList[0] || 'Makeup',
-      description: newBrand.description || '',
-      internalNotes: newBrand.internalNotes || newBrand.internal_notes || '',
-      enabled: isEnabled,
-      logo: finalLogo,
-      sortOrder,
-      sort_order: sortOrder,
-      createdAt: new Date().toISOString()
-    };
+    const brandObj = brandRes.brand;
 
-    setBrands(prev => {
-      const next = [...prev, brandObj];
-      return next.sort((a, b) => {
-        const seqA = parseBrandNumberSeq(a.brandNumber);
-        const seqB = parseBrandNumberSeq(b.brandNumber);
-        if (seqA && seqB) return seqA - seqB;
-        return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
-      });
-    });
-
-    try {
-      await supabase.from('brands').insert({
-        id: brandId,
-        name: brandObj.name,
-        sort_order: sortOrder,
-        enabled: isEnabled,
-        logo: brandObj.logo || ''
-      });
-
-      // Sync metadata into app_brand_metadata_config row
-      try {
-        const { data: existingMetaRow } = await supabase.from('brands').select('logo').eq('id', 'app_brand_metadata_config').maybeSingle();
-        let currentMeta = {};
-        if (existingMetaRow?.logo) {
-          try { currentMeta = JSON.parse(existingMetaRow.logo); } catch (e) { }
-        }
-        currentMeta[brandId] = {
-          brandNumber,
-          brandCode: brandObj.brandCode,
-          categories: brandObj.categories,
-          description: brandObj.description,
-          internalNotes: brandObj.internalNotes,
-          sortOrder
-        };
-        await supabase.from('brands').upsert({
-          id: 'app_brand_metadata_config',
-          name: 'Brand Metadata Configuration',
-          enabled: true,
-          logo: JSON.stringify(currentMeta),
-          category: 'System Config',
-          sort_order: 0,
-          updated_at: new Date().toISOString()
+    if (brandRes.created) {
+      setBrands(prev => {
+        const next = [...prev.filter(b => b.id !== brandObj.id), brandObj];
+        const sorted = next.sort((a, b) => {
+          const seqA = parseBrandNumberSeq(a.brandNumber || a.brand_number);
+          const seqB = parseBrandNumberSeq(b.brandNumber || b.brand_number);
+          if (seqA && seqB) return seqA - seqB;
+          return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
         });
-      } catch (mErr) {
-        console.warn('Error syncing brand metadata to Supabase:', mErr);
+        setCachedData('salbeau_admin_cache_brands', sorted);
+        return sorted;
+      });
+
+      // Ensure brand category reflects in categories page
+      const brandCats = Array.isArray(brandObj.categories) ? brandObj.categories : (brandObj.category ? [brandObj.category] : []);
+      for (const catName of brandCats) {
+        const clean = (catName || '').trim();
+        if (clean && !categories.some(c => (c.name || '').trim().toLowerCase() === clean.toLowerCase())) {
+          const catSlug = clean.toLowerCase().replace(/&/g, '').replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+          const newCat = {
+            id: catSlug || ('cat_' + Date.now()),
+            name: clean,
+            sort_order: categories.length + 1,
+            enabled: true,
+            image: ''
+          };
+          try {
+            await dbClient.from('categories').upsert(newCat, { onConflict: 'id' });
+            setCategories(prev => {
+              const updated = [...prev, newCat].sort((a, b) => a.sort_order - b.sort_order);
+              setCachedData('salbeau_admin_cache_categories', updated);
+              return updated;
+            });
+          } catch (cErr) {
+            console.warn('Error auto-syncing brand category:', cErr);
+          }
+        }
       }
-    } catch (e) {
-      console.warn('Error adding brand to Supabase:', e);
     }
 
     return brandObj;
@@ -1388,6 +1381,7 @@ export const AdminProvider = ({ children }) => {
       if (updatedBrandObj?.logo !== undefined) payload.logo = updatedBrandObj.logo;
       if (isEnabled !== undefined) payload.enabled = isEnabled;
       if (updatedBrandObj?.sortOrder !== undefined) payload.sort_order = updatedBrandObj.sortOrder;
+      if (updatedBrandObj?.category !== undefined) payload.category = updatedBrandObj.category;
 
       await supabase.from('brands').update(payload).eq('id', brandId);
 
@@ -1416,6 +1410,29 @@ export const AdminProvider = ({ children }) => {
             sort_order: 0,
             updated_at: new Date().toISOString()
           });
+
+          // Sync app_brand_category_map for instant category resolution
+          if (updatedBrandObj.name && updatedBrandObj.category) {
+            try {
+              const { data: mapRow } = await supabase.from('brands').select('logo').eq('id', 'app_brand_category_map').maybeSingle();
+              let catMap = {};
+              if (mapRow?.logo) {
+                try { catMap = JSON.parse(mapRow.logo); } catch (_) {}
+              }
+              catMap[updatedBrandObj.name] = updatedBrandObj.category;
+              await supabase.from('brands').upsert({
+                id: 'app_brand_category_map',
+                name: 'Brand Category Mapping',
+                enabled: true,
+                logo: JSON.stringify(catMap),
+                category: 'System Config',
+                sort_order: 0,
+                updated_at: new Date().toISOString()
+              });
+            } catch (cMapErr) {
+              console.warn('Error updating app_brand_category_map:', cMapErr);
+            }
+          }
         }
       } catch (mErr) {
         console.warn('Error updating brand metadata in Supabase:', mErr);
@@ -1449,15 +1466,88 @@ export const AdminProvider = ({ children }) => {
       };
     }
 
-    setBrands(prev => prev.filter(b => b.id !== brandId));
+    setBrands(prev => {
+      const remaining = prev.filter(b => b.id !== brandId);
+      setCachedData('salbeau_admin_cache_brands', remaining);
+      if (remaining.length === 0 && typeof window !== 'undefined' && window.localStorage) {
+        try { localStorage.removeItem('salbeau_brand_seq_counter'); } catch (e) {}
+      }
+      return remaining;
+    });
 
     try {
-      await supabase.from('brands').delete().eq('id', brandId);
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from('brands').delete().eq('id', brandId);
+      if (error) {
+        console.warn('Error deleting brand from Supabase:', error);
+      }
     } catch (e) {
       console.warn('Error deleting brand from Supabase:', e);
     }
 
     return { success: true };
+  };
+
+  const bulkDeleteBrands = async (brandIds = []) => {
+    if (!Array.isArray(brandIds) || brandIds.length === 0) {
+      return { success: true, count: 0, referenced: [] };
+    }
+
+    const brandIdSet = new Set(brandIds);
+    const selectedBrands = brands.filter(b => brandIdSet.has(b.id));
+
+    // Segregate referenced vs deletable brands
+    const referenced = [];
+    const deletable = [];
+
+    selectedBrands.forEach(brand => {
+      const brandNorm = (brand.name || '').trim().toLowerCase();
+      const referencingProducts = products.filter(p =>
+        p.brandId === brand.id ||
+        (p.brandName && p.brandName.trim().toLowerCase() === brandNorm) ||
+        (p.brand_name && p.brand_name.trim().toLowerCase() === brandNorm) ||
+        (p.brandNumber && brand.brandNumber && p.brandNumber === brand.brandNumber)
+      );
+
+      if (referencingProducts.length > 0) {
+        referenced.push({ brand, productCount: referencingProducts.length });
+      } else {
+        deletable.push(brand);
+      }
+    });
+
+    if (deletable.length > 0) {
+      const deletableIds = deletable.map(b => b.id);
+      const deletableIdSet = new Set(deletableIds);
+
+      // Instant local state update
+      setBrands(prev => {
+        const remaining = prev.filter(b => !deletableIdSet.has(b.id));
+        setCachedData('salbeau_admin_cache_brands', remaining);
+        if (remaining.length === 0 && typeof window !== 'undefined' && window.localStorage) {
+          try { localStorage.removeItem('salbeau_brand_seq_counter'); } catch (e) {}
+        }
+        return remaining;
+      });
+
+      // Single fast bulk delete query in Supabase
+      try {
+        const client = supabaseAdmin || supabase;
+        const { error } = await client.from('brands').delete().in('id', deletableIds);
+        if (error) {
+          console.warn('[bulkDeleteBrands] Supabase delete warning:', error);
+        }
+      } catch (e) {
+        console.warn('[bulkDeleteBrands] Supabase delete error:', e);
+      }
+    }
+
+    return {
+      success: true,
+      deletedCount: deletable.length,
+      referencedCount: referenced.length,
+      referenced
+    };
   };
 
   const bulkImportBrands = async (parsedRows = [], mode = 'add_new') => {
@@ -1548,24 +1638,107 @@ export const AdminProvider = ({ children }) => {
     if (newBrandsToInsert.length > 0) {
       setBrands(prev => {
         const next = [...prev, ...newBrandsToInsert];
-        return next.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
+        const sorted = next.sort((a, b) => {
+          const seqA = parseBrandNumberSeq(a.brandNumber || a.brand_number);
+          const seqB = parseBrandNumberSeq(b.brandNumber || b.brand_number);
+          if (seqA && seqB) return seqA - seqB;
+          return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
+        });
+        setCachedData('salbeau_admin_cache_brands', sorted);
+        return sorted;
       });
 
+      const db = supabaseAdmin || supabase;
       try {
         const insertPayloads = newBrandsToInsert.map(b => ({
           id: b.id,
           name: b.name,
-          brand_number: b.brandNumber,
-          brand_code: b.brandCode,
-          categories: b.categories,
-          description: b.description,
-          internal_notes: b.internalNotes,
-          enabled: b.enabled,
-          logo: b.logo
+          category: (b.categories && b.categories[0]) || b.category || 'General',
+          sort_order: parseBrandNumberSeq(b.brandNumber) || 0,
+          enabled: b.enabled !== false,
+          logo: b.logo || ''
         }));
-        await supabase.from('brands').insert(insertPayloads);
+        const { error: insErr } = await db.from('brands').upsert(insertPayloads, { onConflict: 'id' });
+        if (insErr) {
+          console.error('Supabase bulk brand upsert error:', insErr);
+          throw new Error(`Failed to save brands to Supabase: ${insErr.message || insErr.details || 'Database error'}`);
+        }
+
+        const { data: existingMetaRow } = await db.from('brands').select('logo').eq('id', 'app_brand_metadata_config').maybeSingle();
+        let currentMeta = {};
+        if (existingMetaRow?.logo) {
+          try { currentMeta = JSON.parse(existingMetaRow.logo); } catch (e) { }
+        }
+        newBrandsToInsert.forEach(b => {
+          currentMeta[b.id] = {
+            brandNumber: b.brandNumber,
+            brandCode: b.brandCode,
+            categories: b.categories,
+            description: b.description,
+            internalNotes: b.internalNotes,
+            sortOrder: parseBrandNumberSeq(b.brandNumber) || 0
+          };
+        });
+        await db.from('brands').upsert({
+          id: 'app_brand_metadata_config',
+          name: 'Brand Metadata Configuration',
+          enabled: true,
+          logo: JSON.stringify(currentMeta),
+          category: 'System Config',
+          sort_order: 0,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+        // Ensure all categories mentioned in imported brands reflect in categories page!
+        const brandCatNames = new Set();
+        newBrandsToInsert.forEach(b => {
+          if (Array.isArray(b.categories)) {
+            b.categories.forEach(c => { if (c && c.trim()) brandCatNames.add(c.trim()); });
+          } else if (b.category && b.category.trim()) {
+            brandCatNames.add(b.category.trim());
+          }
+        });
+
+        if (brandCatNames.size > 0) {
+          const existingCatNames = new Set(categories.map(c => (c.name || '').trim().toLowerCase()));
+          const newCategoriesToCreate = [];
+          let nextSort = categories.length + 1;
+
+          for (const catName of brandCatNames) {
+            if (!existingCatNames.has(catName.toLowerCase())) {
+              const catSlug = catName.toLowerCase().trim().replace(/&/g, '').replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+              newCategoriesToCreate.push({
+                id: catSlug || ('cat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
+                name: catName,
+                slug: catSlug,
+                sort_order: nextSort++,
+                enabled: true,
+                image: '',
+                icon: ''
+              });
+              existingCatNames.add(catName.toLowerCase());
+            }
+          }
+
+          if (newCategoriesToCreate.length > 0) {
+            await db.from('categories').upsert(newCategoriesToCreate.map(c => ({
+              id: c.id,
+              name: c.name,
+              sort_order: c.sort_order,
+              enabled: c.enabled,
+              image: c.image || ''
+            })), { onConflict: 'id' });
+
+            setCategories(prev => {
+              const updated = [...prev, ...newCategoriesToCreate].sort((a, b) => a.sort_order - b.sort_order);
+              setCachedData('salbeau_admin_cache_categories', updated);
+              return updated;
+            });
+          }
+        }
       } catch (e) {
         console.warn('Error bulk inserting brands to Supabase:', e);
+        throw e;
       }
     }
 
@@ -1574,7 +1747,7 @@ export const AdminProvider = ({ children }) => {
 
   const checkBarcodeInSupabase = async (barcode, excludeProductId = null) => {
     const cleanBarcode = normalizeBarcode(barcode);
-    if (!cleanBarcode) return { exists: false, product: null };
+    if (!cleanBarcode) return { exists: false, product: null, isVariantMatch: false, matchedVariant: null };
 
     // 1. Fast In-Memory Cache Check (0ms response)
     const cacheKey = `chk_${cleanBarcode.toLowerCase()}_${excludeProductId || 'all'}`;
@@ -1590,7 +1763,16 @@ export const AdminProvider = ({ children }) => {
           (Array.isArray(p.shades) && p.shades.some(s => s.barcode && s.barcode.trim().toLowerCase() === cleanBarcode.toLowerCase())))
       );
       if (localMatch) {
-        const result = { exists: true, product: localMatch };
+        let matchedVariant = null;
+        if (Array.isArray(localMatch.shades)) {
+          matchedVariant = localMatch.shades.find(s => s.barcode && s.barcode.trim().toLowerCase() === cleanBarcode.toLowerCase()) || null;
+        }
+        const result = {
+          exists: true,
+          product: localMatch,
+          isVariantMatch: Boolean(matchedVariant),
+          matchedVariant
+        };
         setCachedBarcodeLookup(cacheKey, result);
         return result;
       }
@@ -1599,7 +1781,7 @@ export const AdminProvider = ({ children }) => {
       try {
         let bQuery = supabase
           .from('products')
-          .select('id, name, brand_name, barcode, category, mrp, general_price, shades')
+          .select('id, name, brand_name, barcode, category, mrp, general_price, shades, sku')
           .eq('barcode', cleanBarcode)
           .limit(1);
         if (excludeProductId) {
@@ -1607,7 +1789,7 @@ export const AdminProvider = ({ children }) => {
         }
         const { data: barcodeMatches, error: bErr } = await bQuery;
         if (!bErr && barcodeMatches && barcodeMatches.length > 0) {
-          const result = { exists: true, product: barcodeMatches[0] };
+          const result = { exists: true, product: barcodeMatches[0], isVariantMatch: false, matchedVariant: null };
           setCachedBarcodeLookup(cacheKey, result);
           return result;
         }
@@ -1616,7 +1798,7 @@ export const AdminProvider = ({ children }) => {
       // 4. Check category column fallback
       let catQuery = supabase
         .from('products')
-        .select('id, name, brand_name, category, barcode, mrp, general_price, shades')
+        .select('id, name, brand_name, category, barcode, mrp, general_price, shades, sku')
         .eq('category', cleanBarcode)
         .limit(1);
       if (excludeProductId) {
@@ -1625,12 +1807,12 @@ export const AdminProvider = ({ children }) => {
       const { data: catMatches, error: catErr } = await catQuery;
 
       if (!catErr && catMatches && catMatches.length > 0) {
-        const result = { exists: true, product: catMatches[0] };
+        const result = { exists: true, product: catMatches[0], isVariantMatch: false, matchedVariant: null };
         setCachedBarcodeLookup(cacheKey, result);
         return result;
       }
 
-      const notFoundResult = { exists: false, product: null };
+      const notFoundResult = { exists: false, product: null, isVariantMatch: false, matchedVariant: null };
       setCachedBarcodeLookup(cacheKey, notFoundResult);
       return notFoundResult;
     } catch (err) {
@@ -1640,7 +1822,7 @@ export const AdminProvider = ({ children }) => {
         ((p.barcode && p.barcode.trim().toLowerCase() === cleanBarcode.toLowerCase()) ||
           (p.category && p.category.trim().toLowerCase() === cleanBarcode.toLowerCase()))
       );
-      return { exists: Boolean(localMatch), product: localMatch || null };
+      return { exists: Boolean(localMatch), product: localMatch || null, isVariantMatch: false, matchedVariant: null };
     }
   };
 
@@ -1852,17 +2034,25 @@ export const AdminProvider = ({ children }) => {
       }
     }
 
-    const resolvedBrandObj = brands.find(b =>
-      (newProduct.brandId && b.id === newProduct.brandId) ||
-      (newProduct.brandName && b.name?.trim().toLowerCase() === newProduct.brandName?.trim().toLowerCase())
-    );
-    const resolvedBrandId = newProduct.brandId || resolvedBrandObj?.id || '';
-    const resolvedBrandName = newProduct.brandName || resolvedBrandObj?.name || '';
+    // 1. Canonical Find-or-Create Brand Engine (Normalizes & prevents duplicates)
+    let resolvedBrandId = newProduct.brandId || '';
+    let resolvedBrandName = newProduct.brandName || newProduct.brand || '';
+    let resolvedBrandObj = null;
 
-    // Auto-enable brand if it was disabled so products added under this brand will immediately show in the customer store!
-    if (resolvedBrandObj && !resolvedBrandObj.enabled) {
-      setBrands(prev => prev.map(b => (b.id === resolvedBrandObj.id ? { ...b, enabled: true } : b)));
-      supabase.from('brands').update({ enabled: true }).eq('id', resolvedBrandObj.id).then(() => { });
+    if (resolvedBrandName || resolvedBrandId) {
+      const bRes = await findOrCreateBrand({
+        id: resolvedBrandId,
+        name: resolvedBrandName
+      }, brands, supabase);
+
+      if (bRes && bRes.brand) {
+        resolvedBrandObj = bRes.brand;
+        resolvedBrandId = bRes.brand.id;
+        resolvedBrandName = bRes.brand.name;
+        if (bRes.created) {
+          setBrands(prev => [...prev, bRes.brand]);
+        }
+      }
     }
 
     const resolvedCategory = (newProduct.category || '').trim() ||
@@ -1879,7 +2069,12 @@ export const AdminProvider = ({ children }) => {
       category: resolvedCategory
     };
 
-    setProducts(prev => [productObj, ...prev]);
+    setProducts(prev => {
+      const filtered = prev.filter(p => p.id !== productId && (!barcodeVal || p.barcode !== barcodeVal));
+      const next = [productObj, ...filtered];
+      setCachedData('salbeau_admin_cache_products', next);
+      return next;
+    });
 
     const mrpVal = Number(productObj.mrp || 0);
     const genPriceVal = Number(productObj.generalPrice !== undefined && productObj.generalPrice !== '' ? productObj.generalPrice : mrpVal);
@@ -1966,73 +2161,17 @@ export const AdminProvider = ({ children }) => {
       ...(productObj.urlSlug ? { url_slug: productObj.urlSlug } : {})
     };
 
-    // Helper that tries insert and automatically strips general_price, status, enabled, or parent_id if column is missing from schema cache
-    const safeInsert = async (insertObj) => {
-      let res = await supabase.from('products').insert(insertObj);
-      if (res.error && (res.error.message?.includes('general_price') || res.error.message?.includes('status') || res.error.message?.includes('enabled') || res.error.message?.includes('parent_id') || res.error.code === 'PGRST204')) {
-        const cleanObj = { ...insertObj };
-        if (res.error.message?.includes('general_price')) delete cleanObj.general_price;
-        if (res.error.message?.includes('status')) delete cleanObj.status;
-        if (res.error.message?.includes('enabled')) delete cleanObj.enabled;
-        if (res.error.message?.includes('parent_id')) delete cleanObj.parent_id;
-        res = await supabase.from('products').insert(cleanObj);
-      }
-      return res;
-    };
-
     try {
-      let { error: insertErr } = await safeInsert({
+      const fullInsertPayload = {
         ...payload,
         ...shadesPayload,
         ...tiersPayload,
         ...extraDiscoveryPayload,
         barcode: barcodeVal
-      });
-
-      if (insertErr) {
-        // Fallback 1: try inserting without extra discovery columns in case database table is pending migration
-        const fallback1 = await safeInsert({
-          ...payload,
-          ...shadesPayload,
-          ...tiersPayload,
-          barcode: barcodeVal
-        });
-        insertErr = fallback1.error;
-      }
-
-      if (insertErr) {
-        // Fallback 2: try inserting with barcode explicitly set (no discovery fields)
-        const fallback2 = await safeInsert({
-          ...payload,
-          ...shadesPayload,
-          ...tiersPayload,
-          category: resolvedCategory
-        });
-        insertErr = fallback2.error;
-      }
-
-      if (insertErr) {
-        // Fallback 3: without quantity_tiers
-        const fallback3 = await safeInsert({
-          ...payload,
-          ...shadesPayload,
-          category: resolvedCategory
-        });
-        insertErr = fallback3.error;
-      }
-
-      if (insertErr) {
-        // Fallback 4: bare payload
-        const fallback4 = await safeInsert({
-          ...payload,
-          category: resolvedCategory
-        });
-        insertErr = fallback4.error;
-      }
-
-      if (insertErr) {
-        console.warn('Error inserting product in Supabase:', insertErr);
-        throw insertErr;
+      };
+      const writeRes = await safeProductDbWrite('insert', fullInsertPayload);
+      if (!writeRes.success && !writeRes.duplicate) {
+        console.warn('Note on Supabase product insert:', writeRes.error);
       }
 
       // ── Background rich-data auto-generation ──────────────────────────────
@@ -2117,52 +2256,60 @@ export const AdminProvider = ({ children }) => {
       console.warn('Could not record import audit log in employee_activity_logs:', e);
     }
 
-    // Instantly refresh products from Supabase so all newly imported products appear on the Products page!
-    let freshLoaded = false;
+    // 1. Immediately merge newly imported products into local state and persistent cache
+    setProducts(prev => {
+      const existingMap = new Map();
+      prev.forEach(p => {
+        if (p.id) existingMap.set(p.id, p);
+        if (p.barcode) existingMap.set("bc_" + p.barcode, p);
+      });
+      const merged = [...prev];
+      productsArray.forEach(newP => {
+        const idMatch = newP.id ? existingMap.get(newP.id) : null;
+        const bcMatch = newP.barcode ? existingMap.get("bc_" + newP.barcode) : null;
+        const match = idMatch || bcMatch;
+        if (match) {
+          const idx = merged.findIndex(m => m.id === match.id);
+          if (idx >= 0) merged[idx] = { ...merged[idx], ...newP };
+        } else {
+          const safeProduct = {
+            ...newP,
+            id: newP.id || newP._id || ("prod_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9))
+          };
+          merged.unshift(safeProduct);
+        }
+      });
+      setCachedData("salbeau_admin_cache_products", merged);
+      return merged;
+    });
+
+    // 2. Refresh from Supabase and merge seamlessly
     try {
       const { data: freshProducts } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (freshProducts && Array.isArray(freshProducts) && freshProducts.length > 0) {
-        setProducts(freshProducts.map(mapProductFromDb));
-        freshLoaded = true;
+        const dbMapped = freshProducts.map(mapProductFromDb);
+        setProducts(prev => {
+          const dbMap = new Map();
+          dbMapped.forEach(p => {
+            if (p.id) dbMap.set(p.id, p);
+            if (p.barcode) dbMap.set("bc_" + p.barcode, p);
+          });
+          const combined = [...dbMapped];
+          prev.forEach(p => {
+            const hasMatch = (p.id && dbMap.has(p.id)) || (p.barcode && dbMap.has("bc_" + p.barcode));
+            if (!hasMatch) combined.push(p);
+          });
+          setCachedData("salbeau_admin_cache_products", combined);
+          return combined;
+        });
       }
     } catch (err) {
-      console.warn('Could not refresh products after bulk save from Supabase:', err);
+      console.warn("Could not refresh products after bulk save from Supabase:", err);
     }
-
-    // Fallback/resilience: if Supabase query did not return records, merge directly into state
-    if (!freshLoaded) {
-      setProducts(prev => {
-        const existingMap = new Map();
-        prev.forEach(p => existingMap.set(p.id, p));
-        if (options.updateExisting !== false) {
-          prev.forEach(p => { if (p.barcode) existingMap.set(`bc_${p.barcode}`, p); });
-        }
-
-        const merged = [...prev];
-        productsArray.forEach(newP => {
-          const idMatch = existingMap.get(newP.id);
-          const bcMatch = newP.barcode ? existingMap.get(`bc_${newP.barcode}`) : null;
-          const match = idMatch || bcMatch;
-          if (match) {
-            const idx = merged.findIndex(m => m.id === match.id);
-            if (idx >= 0) merged[idx] = { ...merged[idx], ...newP };
-          } else {
-            const safeProduct = {
-              ...newP,
-              id: newP.id || newP._id || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-            };
-            merged.unshift(safeProduct);
-          }
-        });
-        setCachedData('salbeau_admin_cache_products', merged);
-        return merged;
-      });
-    }
-
     return {
       ...res,
       count: (res.inserted || 0) + (res.updated || 0)
@@ -2614,31 +2761,28 @@ export const AdminProvider = ({ children }) => {
             : {})
         };
       }
-
-      let { error } = await supabase.from('products').update(payload).eq('id', productId);
-      if (error && (error.message?.includes('general_price') || error.message?.includes('status') || error.message?.includes('enabled') || error.code === 'PGRST204')) {
-        const cleanPayload = { ...payload };
-        if (error.message?.includes('general_price')) delete cleanPayload.general_price;
-        if (error.message?.includes('status')) delete cleanPayload.status;
-        if (error.message?.includes('enabled')) delete cleanPayload.enabled;
-        const retryRes = await supabase.from('products').update(cleanPayload).eq('id', productId);
-        error = retryRes.error;
+      const resolvedSortOrder = updatedFields.sort_order ?? updatedFields.sortOrder ?? updatedFields.display_order ?? updatedFields.priority;
+      if (resolvedSortOrder !== undefined) {
+        payload.sort_order = Number(resolvedSortOrder);
+        payload.display_order = Number(resolvedSortOrder);
+        payload.additional_info = {
+          ...(payload.additional_info || targetProduct?.additionalInfo || {}),
+          sort_order: Number(resolvedSortOrder),
+          display_order: Number(resolvedSortOrder),
+          priority: Number(resolvedSortOrder)
+        };
       }
-      if (error) {
-        // Fallback: strip discovery fields if DB has not yet added new columns
-        const {
-          search_keywords, search_aliases, key_points, benefits, highlights,
-          ingredients, how_to_use, specifications, additional_info,
-          product_type, product_family, seo_title, meta_description, url_slug,
-          general_price, status, enabled, published_at, is_featured, is_trending,
-          rating, review_count, trending_priority, featured_priority,
-          ...corePayload
-        } = payload;
-        let { error: coreErr } = await supabase.from('products').update(corePayload).eq('id', productId);
-        if (coreErr && corePayload.barcode) {
-          const { barcode, ...fallbackPayload } = corePayload;
-          await supabase.from('products').update(fallbackPayload).eq('id', productId);
-        }
+      if (updatedFields.quantityDiscountEnabled !== undefined) {
+        payload.quantity_discount_enabled = Boolean(updatedFields.quantityDiscountEnabled);
+        payload.additional_info = {
+          ...(payload.additional_info || targetProduct?.additionalInfo || {}),
+          quantityDiscountEnabled: Boolean(updatedFields.quantityDiscountEnabled)
+        };
+      }
+
+      const writeRes = await safeProductDbWrite('update', { ...payload, id: productId }, 'id');
+      if (!writeRes.success) {
+        console.warn('Note on Supabase product update:', writeRes.error);
       }
 
       // ── Background rich-data regeneration on update ───────────────────────
@@ -4599,7 +4743,9 @@ export const AdminProvider = ({ children }) => {
         addBrand,
         updateBrand,
         deleteBrand,
+        bulkDeleteBrands,
         bulkImportBrands,
+        setCategories,
         addProduct,
         saveBulkProducts,
         updateProduct,

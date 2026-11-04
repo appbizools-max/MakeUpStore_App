@@ -36,9 +36,50 @@ export default function SearchableSelect({
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
+  // Placement calculation state: downward by default, upward if space below is constrained
+  const [placement, setPlacement] = useState({
+    opensUpward: false,
+    alignRight: false,
+    maxHeight: 240
+  });
+
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
   const listRef = useRef(null);
+
+  // Smart placement calculation: default downward, upward only when necessary
+  const updatePlacement = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // Default to downward; flip upward only if space below is < 270px and space above is greater
+    const opensUpward = spaceBelow < 270 && spaceAbove > spaceBelow;
+    // Align right if it would overflow right viewport boundary
+    const alignRight = rect.left + 240 > window.innerWidth && rect.right > 240;
+
+    const availableVertical = opensUpward ? spaceAbove - 24 : spaceBelow - 24;
+    const computedMaxHeight = Math.min(280, Math.max(140, availableVertical - 80));
+
+    setPlacement({
+      opensUpward,
+      alignRight,
+      maxHeight: computedMaxHeight
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePlacement();
+      window.addEventListener('resize', updatePlacement);
+      window.addEventListener('scroll', updatePlacement, true);
+      return () => {
+        window.removeEventListener('resize', updatePlacement);
+        window.removeEventListener('scroll', updatePlacement, true);
+      };
+    }
+  }, [isOpen, updatePlacement]);
 
   // Helper to extract option display label
   const getOptionLabel = useCallback((opt) => {
@@ -228,7 +269,11 @@ export default function SearchableSelect({
 
       {/* Floating Searchable Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 z-50 bg-white rounded-2xl border border-pink-100 shadow-xl overflow-hidden animate-fade-in min-w-[220px] w-full">
+        <div
+          className={`absolute ${placement.alignRight ? 'right-0' : 'left-0'} ${
+            placement.opensUpward ? 'bottom-full mb-1.5 origin-bottom' : 'top-full mt-1.5 origin-top'
+          } z-[100] bg-white rounded-2xl border border-pink-100 shadow-2xl overflow-hidden animate-fade-in min-w-[220px] w-full`}
+        >
           {/* Search Input Box */}
           <div className="p-2.5 border-b border-pink-100/80 bg-gray-50/60 flex items-center gap-2">
             <Search size={14} className="text-[#CE4270] shrink-0" />
@@ -259,10 +304,11 @@ export default function SearchableSelect({
             )}
           </div>
 
-          {/* Scrollable Brands List */}
+          {/* Scrollable Options List with Dynamic Max Height */}
           <div
             ref={listRef}
-            className="max-h-60 overflow-y-auto custom-scrollbar p-1.5 space-y-0.5"
+            style={{ maxHeight: `${placement.maxHeight}px` }}
+            className="overflow-y-auto custom-scrollbar p-1.5 space-y-0.5"
           >
             {filteredOptions.length === 0 ? (
               <div className="py-6 text-center text-xs text-gray-400 font-medium">
@@ -308,7 +354,7 @@ export default function SearchableSelect({
           {/* Quick Footer Count */}
           <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-100 text-[10.5px] text-gray-400 font-medium flex items-center justify-between">
             <span>
-              {filteredOptions.length} {filteredOptions.length === 1 ? 'brand' : 'brands'} available
+              {filteredOptions.length} option{filteredOptions.length === 1 ? '' : 's'} available
             </span>
             <span className="text-[10px] text-gray-400">
               Use ↑↓ to navigate · Enter to select

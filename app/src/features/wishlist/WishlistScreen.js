@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import { getSafeImageSource } from '../../utils/imageUtils';
+import { getCartQuantityMap, getCartKey, getSafeProductShadesList } from '../../utils/cartKeyUtils';
 
 export const WishlistScreen = () => {
   const {
@@ -28,15 +29,7 @@ export const WishlistScreen = () => {
   } = useApp();
 
   const cartQuantityMap = useMemo(() => {
-    const map = new Map();
-    if (Array.isArray(cart)) {
-      for (const item of cart) {
-        if (item?.product?.id) {
-          map.set(item.product.id, item.quantity || 0);
-        }
-      }
-    }
-    return map;
+    return getCartQuantityMap(cart);
   }, [cart]);
 
   const { totalCartQuantity, totalCartPrice } = useMemo(() => {
@@ -69,7 +62,34 @@ export const WishlistScreen = () => {
   };
 
   const renderCartControl = (item) => {
-    const qty = getProductCartQuantity(item.id);
+    const shades = getSafeProductShadesList(item);
+    const hasShades = shades.length > 0;
+    const currentCartKey = getCartKey(item.id, hasShades ? shades[0] : null);
+    const qty = cartQuantityMap.get(currentCartKey) || 0;
+
+    if (hasShades) {
+      return (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            setSelectedProduct(item);
+            setCurrentScreen('product');
+          }}
+          style={{
+            backgroundColor: '#FFF0F5',
+            borderColor: '#C2477A',
+            borderWidth: 1.2,
+          }}
+          className="px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
+        >
+          <Ionicons name={qty > 0 ? "color-palette" : "color-palette-outline"} size={12} color="#C2477A" />
+          <Text className="text-[10px] font-black text-[#C2477A]">
+            {qty > 0 ? `${qty} in Bag` : 'Select Shade'}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
 
     if (qty > 0) {
       return (
@@ -89,7 +109,7 @@ export const WishlistScreen = () => {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={(e) => {
               e.stopPropagation?.();
-              updateCartQuantity(item.id, qty - 1);
+              updateCartQuantity(currentCartKey, qty - 1);
             }}
             className="w-6 h-6 rounded-full bg-white/20 items-center justify-center"
           >
@@ -105,7 +125,7 @@ export const WishlistScreen = () => {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={(e) => {
               e.stopPropagation?.();
-              updateCartQuantity(item.id, qty + 1);
+              updateCartQuantity(currentCartKey, qty + 1);
             }}
             className="w-6 h-6 rounded-full bg-white/20 items-center justify-center"
           >
@@ -249,10 +269,11 @@ export const WishlistScreen = () => {
                 >
                   <View>
                     {/* Product Image Box with Heart Button */}
-                    <View className="relative w-full h-32 rounded-xl overflow-hidden mb-2 bg-[#F9FAFB] border border-[#F0E6EC]">
+                    <View className="relative w-full h-32 rounded-xl overflow-hidden mb-2 bg-[#FFF8FB] border border-[#F0E3EA] items-center justify-center p-2">
                       <Image
                         source={getSafeImageSource(item.image, '')}
-                        className="w-full h-full object-cover"
+                        style={{ width: '90%', height: '90%' }}
+                        resizeMode="contain"
                       />
 
                       {/* Discount Badge */}

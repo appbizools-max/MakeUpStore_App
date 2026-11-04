@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Package,
   PlusCircle,
@@ -36,17 +36,15 @@ import {
   FileText,
   Boxes,
   Maximize2,
-  DollarSign
+  DollarSign,
+  Building2
 } from 'lucide-react';
 import SearchableSelect from '../common/SearchableSelect';
 import RoleQuantityTiersManager from './RoleQuantityTiersManager';
 import { getBeautyShadeName } from '../common/HexColorPicker';
 import { getDefaultQuantityTiers } from '../../utils/quantityTiersUtils';
 import { getSafeActiveVariants } from '../../utils/productSearchEngine';
-import { generateAndDownloadTemplate } from '../../utils/excelTemplateGenerator';
 import { useAdmin } from '../../context/AdminContext';
-import { ExcelImportModal } from './ExcelImportModal';
-import * as XLSX from 'xlsx';
 
 /**
  * ProductsCatalogMatrix - Premium Beauty-Commerce Admin Catalog Table
@@ -125,7 +123,6 @@ export default function ProductsCatalogMatrix({
   const [copiedKey, setCopiedKey] = useState(null);
   const [activeImagePreview, setActiveImagePreview] = useState(null);
   const adminCtx = useAdmin();
-  const [isExcelImportModalOpen, setIsExcelImportModalOpen] = useState(false);
 
   const toggleProductDetails = (productId) => {
     setExpandedDetailsProductIds((prev) => {
@@ -154,6 +151,17 @@ export default function ProductsCatalogMatrix({
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
+  const totalFamiliesCount = useMemo(() => {
+    return (products || []).filter(p => !p?.isVariantChild).length;
+  }, [products]);
+
+  const totalVariantsCount = useMemo(() => {
+    return (products || []).reduce((acc, p) => {
+      const variants = getSafeActiveVariants(p);
+      return acc + (variants && variants.length > 0 ? variants.length : 1);
+    }, 0);
+  }, [products]);
+
   const calculateDiscount = (mrp, price) => {
     const m = Number(mrp || 0);
     const p = Number(price || 0);
@@ -161,57 +169,6 @@ export default function ProductsCatalogMatrix({
       return Math.round(((m - p) / m) * 100);
     }
     return 0;
-  };
-
-  const handleExportCatalogExcel = () => {
-    try {
-      const sourceList = filteredProducts && filteredProducts.length > 0 ? filteredProducts : products;
-      if (!sourceList || sourceList.length === 0) {
-        alert('No saved products in the database to export.');
-        return;
-      }
-
-      const exportRows = sourceList.map((p, index) => {
-        const brandObj = brands?.find(b => b.id === p.brandId);
-        const brandName = p.brandName || brandObj?.name || p.brand || '';
-        const shadesCount = Array.isArray(p.shades) ? p.shades.length : 0;
-        const shadesNames = Array.isArray(p.shades) ? p.shades.map(s => s.name || s.shade).filter(Boolean).join(', ') : '';
-        const attrStr = p.attributes && typeof p.attributes === 'object' ? Object.entries(p.attributes).map(([k, v]) => `${k}: ${v}`).join('; ') : '';
-
-        return {
-          '#': index + 1,
-          'Product ID': p.id,
-          'Barcode': p.barcode || '',
-          'Product Name': p.name || '',
-          'Brand': brandName,
-          'Category': p.category || '',
-          'Subcategory': p.subcategory || p.additionalInfo?.subcategory || '',
-          'Variant Type': p.variantType || p.productType || 'Shade',
-          'Variants / Shades': shadesNames || (shadesCount > 0 ? `${shadesCount} Variants` : '—'),
-          'MRP (₹)': Number(p.mrp || 0),
-          'General Price (₹)': Number(p.generalPrice !== undefined ? p.generalPrice : p.mrp || 0),
-          'Salon Price (₹)': Number(p.salonPrice || 0),
-          'Artist Price (₹)': Number(p.artistPrice || 0),
-          'Beautician Price (₹)': Number(p.beauticianPrice || 0),
-          'Active Status': p.enabled !== false ? 'Active' : 'Inactive',
-          'Size': p.size || p.additionalInfo?.size || '',
-          'Net Quantity': p.netQty || p.net_qty || p.additionalInfo?.net_qty || '',
-          'GST %': Number(p.gstPercent ?? p.gst ?? p.additionalInfo?.gst_percent ?? 18),
-          'Description': p.description || p.howToUse || '',
-          'Attributes': attrStr,
-          'Image URL': p.image || (Array.isArray(p.images) && p.images[0] ? p.images[0] : ''),
-          'Status': (p.status || 'published').toUpperCase(),
-          'Created At': p.createdAt || p.created_at || ''
-        };
-      });
-
-      const worksheet = XLSX.utils.json_to_sheet(exportRows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Catalog Products');
-      XLSX.writeFile(workbook, `salbeau_products_catalog_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    } catch (err) {
-      alert('Failed to export Excel: ' + (err.message || 'Unknown error'));
-    }
   };
 
   return (
@@ -227,7 +184,9 @@ export default function ProductsCatalogMatrix({
               Products Catalog Matrix
             </h3>
             <span className="text-[10px] font-extrabold text-[#C2477A] bg-pink-50 border border-pink-200 px-2.5 py-0.5 rounded-full shadow-2xs">
-              {filteredProducts.length} {catalogViewMode === 'variants' ? 'Items & Variants' : 'Product Families'}
+              {isFiltered
+                ? `${filteredProducts.length} of ${catalogViewMode === 'variants' ? totalVariantsCount : totalFamiliesCount} ${catalogViewMode === 'variants' ? 'Variants' : 'Families'}`
+                : `${filteredProducts.length} ${catalogViewMode === 'variants' ? 'Sellable Variants' : 'Product Families'}`}
             </span>
           </div>
           <p className="text-[11px] text-gray-500 font-medium mt-1">
@@ -271,27 +230,22 @@ export default function ProductsCatalogMatrix({
             </button>
           </div>
 
-          {/* Action Buttons: Add Product, Bulk Add, Import Excel, Download Template */}
+          {/* Action Buttons: Add Product (Primary), Bulk Add (Secondary), Expand All Details (Tertiary) */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Primary Action: + Add Product */}
             <button
               type="button"
-              onClick={expandAllDetails}
-              className="bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[#C2477A] font-extrabold text-xs px-3 py-2.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              title="Expand/collapse full details for all products on current page"
-            >
-              <Eye size={14} />
-              <span>{expandedDetailsProductIds.size === paginatedProducts.length && paginatedProducts.length > 0 ? 'Collapse Details' : 'Expand All Details'}</span>
-            </button>
-
-            <button
               onClick={handleOpenAddProduct}
               className="bg-gradient-to-r from-[#C2477A] to-[#9E2D5B] hover:from-[#9E2D5B] hover:to-[#cc0052] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              title="Add a new product with complete variants and details"
             >
               <PlusCircle size={15} />
               <span>+ Add Product</span>
             </button>
 
+            {/* Secondary Action: Bulk Add */}
             <button
+              type="button"
               onClick={() => {
                 if (handleOpenBulkAdd) handleOpenBulkAdd();
                 else if (typeof window !== 'undefined') window.location.assign('/admin/products/bulk');
@@ -303,33 +257,15 @@ export default function ProductsCatalogMatrix({
               <span>Bulk Add</span>
             </button>
 
+            {/* Tertiary Action: Expand All Details */}
             <button
               type="button"
-              onClick={() => setIsExcelImportModalOpen(true)}
-              className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-extrabold text-xs px-3.5 py-2.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              title="Import products from Excel/CSV file with Parent-Child variant grouping"
+              onClick={expandAllDetails}
+              className="bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[#C2477A] font-extrabold text-xs px-3 py-2.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              title="Expand/collapse full details for all products on current page"
             >
-              <FileSpreadsheet size={14} className="text-emerald-600" />
-              <span>Import Excel</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleExportCatalogExcel}
-              className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-extrabold text-xs px-3.5 py-2.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              title="Export actual database products to Excel (.xlsx)"
-            >
-              <Download size={14} className="text-indigo-600" />
-              <span>Export Excel</span>
-            </button>
-
-            <button
-              onClick={() => generateAndDownloadTemplate()}
-              className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-extrabold text-xs px-3.5 py-2.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              title="Download official Excel import template with 22 canonical columns + Instructions sheet"
-            >
-              <FileText size={14} className="text-gray-500" />
-              <span>Download Template</span>
+              <Eye size={14} />
+              <span>{expandedDetailsProductIds.size === paginatedProducts.length && paginatedProducts.length > 0 ? 'Collapse Details' : 'Expand All Details'}</span>
             </button>
           </div>
         </div>
@@ -437,8 +373,28 @@ export default function ProductsCatalogMatrix({
           paginatedProducts.map((p, pIdx) => {
             const pImage = p.imageUrl || p.image;
             const variantsList = getSafeActiveVariants(p);
+            const currentBrand = (p.brandName || brands?.find(b => b.id === p.brandId)?.name || p.brand || '').trim();
+            const prevBrand = pIdx > 0
+              ? (paginatedProducts[pIdx - 1].brandName || brands?.find(b => b.id === paginatedProducts[pIdx - 1].brandId)?.name || paginatedProducts[pIdx - 1].brand || '').trim()
+              : null;
+            const showBrandHeader = pIdx === 0 || currentBrand.toLowerCase() !== (prevBrand || '').toLowerCase();
+
             return (
-              <div key={`m_${p.id || p._id || p.barcode || pIdx}`} className="bg-white rounded-2xl border border-pink-100 p-4 shadow-sm space-y-3">
+              <React.Fragment key={`m_frag_${p.id || p._id || p.barcode || pIdx}`}>
+                {showBrandHeader && (
+                  <div className="bg-gradient-to-r from-pink-50 via-white to-pink-50/20 p-2.5 rounded-xl border border-pink-200 flex items-center justify-between shadow-2xs mt-1">
+                    <div className="flex items-center gap-2">
+                      <Building2 size={14} className="text-[#C2477A]" />
+                      <span className="font-black text-xs uppercase tracking-wider text-gray-900">
+                        {currentBrand || 'Unbranded Products'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-extrabold text-[#C2477A] bg-white px-2 py-0.5 rounded-md border border-pink-100 shadow-2xs">
+                      Brand Group
+                    </span>
+                  </div>
+                )}
+                <div key={`m_${p.id || p._id || p.barcode || pIdx}`} className="bg-white rounded-2xl border border-pink-100 p-4 shadow-sm space-y-3">
                 <div className="flex gap-3">
                   <div
                     onClick={() => pImage && setActiveImagePreview(pImage)}
@@ -533,8 +489,9 @@ export default function ProductsCatalogMatrix({
                   </button>
                 </div>
               </div>
-            );
-          })
+            </React.Fragment>
+          );
+        })
         )}
       </div>
 
@@ -622,6 +579,13 @@ export default function ProductsCatalogMatrix({
                 const pImage = p.imageUrl || p.image;
                 const allImages = Array.isArray(p.images) && p.images.length > 0 ? p.images : (pImage ? [pImage] : []);
 
+                // Canonical Brand Grouping Header logic
+                const currentBrand = (p.brandName || brands?.find(b => b.id === p.brandId)?.name || p.brand || '').trim();
+                const prevBrand = index > 0
+                  ? (paginatedProducts[index - 1].brandName || brands?.find(b => b.id === paginatedProducts[index - 1].brandId)?.name || paginatedProducts[index - 1].brand || '').trim()
+                  : null;
+                const showBrandHeader = index === 0 || currentBrand.toLowerCase() !== (prevBrand || '').toLowerCase();
+
                 // Calculate discount percentages
                 const genDisc = calculateDiscount(p.mrp, p.generalPrice);
                 const salonDisc = calculateDiscount(p.mrp, p.salonPrice);
@@ -635,6 +599,23 @@ export default function ProductsCatalogMatrix({
 
                 return (
                   <React.Fragment key={p.id || p._id || p.barcode || index}>
+                    {showBrandHeader && (
+                      <tr className="bg-gradient-to-r from-pink-50/90 via-pink-50/30 to-white border-y border-pink-200/90">
+                        <td colSpan={10} className="py-2 px-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Building2 size={13} className="text-[#C2477A]" />
+                              <span className="font-black text-xs uppercase tracking-wider text-gray-900">
+                                {currentBrand || 'Unbranded Products'}
+                              </span>
+                              <span className="bg-[#C2477A]/10 text-[#C2477A] font-extrabold text-[9.5px] px-2 py-0.5 rounded-full border border-pink-200 shadow-2xs">
+                                Brand Group
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     <tr
                       className={`transition-colors border-b border-pink-100/50 ${
                         isExpandedDetails
@@ -1154,7 +1135,7 @@ export default function ProductsCatalogMatrix({
                     {/* INLINE EXPANDABLE FULL PRODUCT DETAILS PANEL */}
                     {isExpandedDetails && (
                       <tr key={p.id + '_full_details_panel'} className="bg-pink-50/20 border-y-2 border-pink-200/80">
-                        <td colSpan={11} className="p-4 sm:p-6">
+                        <td colSpan={10} className="p-4 sm:p-6">
                           <div className="bg-white rounded-3xl border border-pink-200 shadow-sm p-5 sm:p-6 space-y-6">
                             {/* Card Header with Key Identifiers */}
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-pink-100">
@@ -1209,171 +1190,119 @@ export default function ProductsCatalogMatrix({
                               </div>
                             </div>
 
-                            {/* Section Grid: 4-Role Pricing & Discounts, Specifications, Description, Media */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Section Grid: 4-Role Pricing Matrix, Catalog Specs & Details, Category Attributes */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
                               {/* 1. Multi-Role Pricing Matrix */}
-                              <div className="bg-[#FFF9FB] p-4 rounded-2xl border border-pink-100/90 space-y-3">
-                                <div className="flex items-center gap-2 text-xs font-black text-gray-900 uppercase">
-                                  <Tag size={14} className="text-[#C2477A]" />
-                                  <span>4-Role Pricing Matrix</span>
-                                </div>
-                                <div className="space-y-2 text-xs">
-                                  <div className="flex justify-between items-center py-1 border-b border-pink-100">
-                                    <span className="text-gray-500 font-medium">Original MRP:</span>
-                                    <span className="font-bold text-gray-900">₹{p.mrp ?? 0}</span>
+                              <div className="bg-[#FFF9FB] p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
+                                <div>
+                                  <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-pink-100 text-xs font-black text-gray-900 uppercase tracking-wider">
+                                    <Tag size={14} className="text-[#C2477A]" />
+                                    <span>4-Role Pricing Matrix</span>
                                   </div>
-                                  <div className="flex justify-between items-center py-1 border-b border-pink-100">
-                                    <span className="text-gray-700 font-semibold">General User:</span>
-                                    <span className="font-extrabold text-gray-900">₹{p.generalPrice ?? p.mrp ?? 0} {genDisc > 0 && <span className="text-emerald-600 text-[10px]">({genDisc}% off)</span>}</span>
-                                  </div>
-                                  <div className="flex justify-between items-center py-1 border-b border-pink-100 bg-pink-50/60 px-2 rounded-lg">
-                                    <span className="text-[#C2477A] font-bold">Salon Owner:</span>
-                                    <span className="font-black text-[#C2477A]">₹{p.salonPrice ?? p.mrp ?? 0} {salonDisc > 0 && <span className="text-[#C2477A] text-[10px]">({salonDisc}% off)</span>}</span>
-                                  </div>
-                                  <div className="flex justify-between items-center py-1 border-b border-purple-100 bg-purple-50/60 px-2 rounded-lg">
-                                    <span className="text-purple-800 font-bold">Makeup Artist:</span>
-                                    <span className="font-black text-purple-800">₹{p.artistPrice ?? p.mrp ?? 0} {artistDisc > 0 && <span className="text-purple-700 text-[10px]">({artistDisc}% off)</span>}</span>
-                                  </div>
-                                  <div className="flex justify-between items-center py-1 bg-indigo-50/60 px-2 rounded-lg">
-                                    <span className="text-indigo-800 font-bold">Beautician:</span>
-                                    <span className="font-black text-indigo-800">₹{p.beauticianPrice ?? p.mrp ?? 0} {beauticianDisc > 0 && <span className="text-indigo-700 text-[10px]">({beauticianDisc}% off)</span>}</span>
+                                  <div className="space-y-2 text-xs">
+                                    <div className="flex justify-between items-center py-1 border-b border-pink-50">
+                                      <span className="text-gray-500 font-medium">Original MRP:</span>
+                                      <span className="font-bold text-gray-900">₹{p.mrp ?? 0}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-pink-50">
+                                      <span className="text-gray-700 font-semibold">General User:</span>
+                                      <span className="font-extrabold text-gray-900">
+                                        ₹{p.generalPrice ?? p.mrp ?? 0}{' '}
+                                        {genDisc > 0 && <span className="text-emerald-600 text-[10px]">({genDisc}% off)</span>}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-pink-100 bg-pink-50/60 px-2 rounded-lg">
+                                      <span className="text-[#C2477A] font-bold">Salon Owner:</span>
+                                      <span className="font-black text-[#C2477A]">
+                                        ₹{p.salonPrice ?? p.mrp ?? 0}{' '}
+                                        {salonDisc > 0 && <span className="text-[#C2477A] text-[10px]">({salonDisc}% off)</span>}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-purple-100 bg-purple-50/60 px-2 rounded-lg">
+                                      <span className="text-purple-800 font-bold">Makeup Artist:</span>
+                                      <span className="font-black text-purple-800">
+                                        ₹{p.artistPrice ?? p.mrp ?? 0}{' '}
+                                        {artistDisc > 0 && <span className="text-purple-700 text-[10px]">({artistDisc}% off)</span>}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 bg-indigo-50/60 px-2 rounded-lg">
+                                      <span className="text-indigo-800 font-bold">Beautician:</span>
+                                      <span className="font-black text-indigo-800">
+                                        ₹{p.beauticianPrice ?? p.mrp ?? 0}{' '}
+                                        {beauticianDisc > 0 && <span className="text-indigo-700 text-[10px]">({beauticianDisc}% off)</span>}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
 
                               {/* 2. Core Specifications */}
-                              <div className="bg-[#FFF9FB] p-4 rounded-2xl border border-pink-100/90 space-y-3">
-                                <div className="flex items-center gap-2 text-xs font-black text-gray-900 uppercase">
-                                  <Sliders size={14} className="text-blue-600" />
-                                  <span>Catalog Specs & Details</span>
-                                </div>
-                                <div className="space-y-2 text-xs">
-                                  <div className="flex justify-between items-center py-1 border-b border-pink-100">
-                                    <span className="text-gray-500 font-medium">Barcode:</span>
-                                    <span className="font-mono font-bold text-gray-900 flex items-center gap-1">
-                                      {p.barcode || '—'}
-                                      {p.barcode && (
-                                        <button
-                                          type="button"
-                                          onClick={() => copyToClipboard(p.barcode, `det_bc_${p.id}`)}
-                                          className="text-gray-400 hover:text-gray-700"
-                                        >
-                                          {copiedKey === `det_bc_${p.id}` ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
-                                        </button>
-                                      )}
-                                    </span>
+                              <div className="bg-[#FFF9FB] p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
+                                <div>
+                                  <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-pink-100 text-xs font-black text-gray-900 uppercase tracking-wider">
+                                    <Sliders size={14} className="text-blue-600" />
+                                    <span>Catalog Specs & Details</span>
                                   </div>
-                                  <div className="flex justify-between items-center py-1 border-b border-pink-100">
-                                    <span className="text-gray-500 font-medium">Catalog Status:</span>
-                                    <span className={`font-bold ${p.enabled !== false ? 'text-emerald-700' : 'text-gray-500'}`}>{p.enabled !== false ? 'Active' : 'Inactive'}</span>
-                                  </div>
-                                  <div className="flex justify-between items-center py-1 border-b border-pink-100">
-                                    <span className="text-gray-500 font-medium">Size / Net Qty:</span>
-                                    <span className="font-bold text-blue-700">{p.size || p.netQty || '—'}</span>
-                                  </div>
-                                  <div className="flex justify-between items-center py-1 border-b border-pink-100">
-                                    <span className="text-gray-500 font-medium">GST Applicable:</span>
-                                    <span className="font-bold text-amber-800">{p.gstPercent ?? 18}%</span>
-                                  </div>
-                                  <div className="flex justify-between items-center py-1">
-                                    <span className="text-gray-500 font-medium">Shades Count:</span>
-                                    <span className="font-bold text-pink-700">{p.shades && Array.isArray(p.shades) ? p.shades.length : 0} shades</span>
+                                  <div className="space-y-2 text-xs">
+                                    <div className="flex justify-between items-center py-1 border-b border-pink-50">
+                                      <span className="text-gray-500 font-medium">Barcode:</span>
+                                      <span className="font-mono font-bold text-gray-900 flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-2xs">
+                                        <Barcode size={11} className="text-[#C2477A]" />
+                                        <span>{p.barcode || '—'}</span>
+                                        {p.barcode && (
+                                          <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(p.barcode, `det_bc_${p.id}`)}
+                                            className="text-gray-400 hover:text-gray-700 ml-0.5 cursor-pointer"
+                                            title="Copy Barcode"
+                                          >
+                                            {copiedKey === `det_bc_${p.id}` ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                                          </button>
+                                        )}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-pink-50">
+                                      <span className="text-gray-500 font-medium">Catalog Status:</span>
+                                      <span className={`font-bold px-2 py-0.5 rounded-md text-[11px] ${p.enabled !== false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
+                                        {p.enabled !== false ? 'Active' : 'Inactive'}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-pink-50">
+                                      <span className="text-gray-500 font-medium">Size / Net Qty:</span>
+                                      <span className="font-bold text-blue-700">{p.size || p.netQty || '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-pink-50">
+                                      <span className="text-gray-500 font-medium">GST Applicable:</span>
+                                      <span className="font-bold text-amber-800">{p.gstPercent ?? 18}%</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1">
+                                      <span className="text-gray-500 font-medium">Shades Count:</span>
+                                      <span className="font-bold text-pink-700">{p.shades && Array.isArray(p.shades) ? p.shades.length : 0} shades</span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
 
                               {/* 3. Category Attributes */}
-                              <div className="bg-[#FFF9FB] p-4 rounded-2xl border border-pink-100/90 space-y-3">
-                                <div className="flex items-center gap-2 text-xs font-black text-gray-900 uppercase">
-                                  <Layers size={14} className="text-purple-600" />
-                                  <span>Category Attributes</span>
-                                </div>
-                                {attrEntries.length === 0 ? (
-                                  <p className="text-xs text-gray-400 italic py-2">No custom category attributes specified.</p>
-                                ) : (
-                                  <div className="space-y-1.5 text-xs max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                                    {attrEntries.map(([k, val]) => (
-                                      <div key={k} className="flex justify-between items-center py-1 border-b border-pink-100">
-                                        <span className="text-gray-500 font-medium capitalize">{k.replace(/_/g, ' ')}:</span>
-                                        <span className="font-bold text-gray-900 text-right">{String(val)}</span>
-                                      </div>
-                                    ))}
+                              <div className="bg-[#FFF9FB] p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
+                                <div>
+                                  <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-pink-100 text-xs font-black text-gray-900 uppercase tracking-wider">
+                                    <Layers size={14} className="text-purple-600" />
+                                    <span>Category Attributes</span>
                                   </div>
-                                )}
-                              </div>
-
-                              {/* 4. Multi-Image Gallery */}
-                              <div className="bg-[#FFF9FB] p-4 rounded-2xl border border-pink-100/90 space-y-3">
-                                <div className="flex items-center gap-2 text-xs font-black text-gray-900 uppercase">
-                                  <ImageIcon size={14} className="text-emerald-600" />
-                                  <span>Media Gallery ({allImages.length})</span>
-                                </div>
-                                {allImages.length === 0 ? (
-                                  <p className="text-xs text-gray-400 italic py-2">No product images uploaded.</p>
-                                ) : (
-                                  <div className="grid grid-cols-3 gap-2">
-                                    {allImages.map((imgUrl, iIdx) => (
-                                      <div
-                                        key={iIdx}
-                                        onClick={() => setActiveImagePreview(imgUrl)}
-                                        className="h-16 rounded-xl overflow-hidden border border-pink-200 bg-white hover:border-[#C2477A] transition-all cursor-pointer group shadow-2xs"
-                                        title="Click to zoom image"
-                                      >
-                                        <img src={imgUrl} alt={`${p.name} ${iIdx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Section: Description, Highlights, How to Use, Ingredients */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
-                              {/* Description & How To Use */}
-                              <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-200 space-y-3">
-                                <div className="flex items-center gap-2 text-xs font-black text-gray-900 uppercase">
-                                  <FileText size={14} className="text-[#C2477A]" />
-                                  <span>Description & How To Use</span>
-                                </div>
-                                <div className="space-y-2 text-xs text-gray-700 leading-relaxed max-h-36 overflow-y-auto pr-1 custom-scrollbar">
-                                  {p.description ? (
-                                    <p className="whitespace-pre-line">{p.description}</p>
-                                  ) : (
-                                    <p className="text-gray-400 italic">No description provided.</p>
-                                  )}
-
-                                  {p.howToUse && (
-                                    <div className="pt-2 border-t border-gray-200">
-                                      <strong className="text-gray-900 block mb-1">How To Use:</strong>
-                                      <p className="whitespace-pre-line text-gray-600">{p.howToUse}</p>
+                                  {attrEntries.length === 0 ? (
+                                    <div className="py-6 text-center text-gray-400">
+                                      <Layers size={20} className="text-pink-200 mx-auto mb-1.5 opacity-60" />
+                                      <p className="text-xs italic">No custom category attributes specified.</p>
                                     </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Highlights & Ingredients */}
-                              <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-200 space-y-3">
-                                <div className="flex items-center gap-2 text-xs font-black text-gray-900 uppercase">
-                                  <Sparkles size={14} className="text-purple-600" />
-                                  <span>Highlights & Ingredients</span>
-                                </div>
-                                <div className="space-y-2 text-xs text-gray-700 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
-                                  {p.highlights && Array.isArray(p.highlights) && p.highlights.length > 0 ? (
-                                    <ul className="list-disc list-inside space-y-1">
-                                      {p.highlights.map((hl, hIdx) => (
-                                        <li key={hIdx} className="text-gray-700 font-medium">{hl}</li>
-                                      ))}
-                                    </ul>
-                                  ) : p.highlights && typeof p.highlights === 'string' ? (
-                                    <p className="whitespace-pre-line">{p.highlights}</p>
                                   ) : (
-                                    <p className="text-gray-400 italic">No highlights recorded.</p>
-                                  )}
-
-                                  {p.ingredients && (
-                                    <div className="pt-2 border-t border-gray-200">
-                                      <strong className="text-gray-900 block mb-1">Ingredients:</strong>
-                                      <p className="text-gray-600 text-[11px]">{typeof p.ingredients === 'object' ? (p.ingredients.fullList || JSON.stringify(p.ingredients)) : String(p.ingredients)}</p>
+                                    <div className="space-y-1.5 text-xs max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                                      {attrEntries.map(([k, val]) => (
+                                        <div key={k} className="flex justify-between items-center py-1.5 px-2 bg-white rounded-lg border border-pink-100/80 shadow-2xs">
+                                          <span className="text-gray-500 font-medium capitalize text-[11px]">{k.replace(/_/g, ' ')}:</span>
+                                          <span className="font-bold text-gray-900 text-right text-[11px] ml-2">{String(val)}</span>
+                                        </div>
+                                      ))}
                                     </div>
                                   )}
                                 </div>
@@ -1419,139 +1348,159 @@ export default function ProductsCatalogMatrix({
 
                         const attrEntries = v.attributes ? Object.entries(v.attributes) : [];
 
+                        // Shade, SKU, Size extraction for neat display without barcode
+                        const shadeName = v.shadeName || v.name || v.shade || v.title || '';
+                        const shadeNumber = v.shadeNumber || v.shadeNo || v.code || '';
+                        const variantSku = v.sku || v.internal_sku || v.skuCode || '';
+                        const variantSize = v.size || v.netQty || v.volume || v.packSize || (v.attributes && (v.attributes.size || v.attributes.Size || v.attributes.netQty || v.attributes.volume)) || '';
+
                         return (
                           <tr
                             key={v.id || `${p.id}_var_${vIdx}`}
                             className="bg-[#FFF9FB]/70 hover:bg-[#FFF2F5] border-b border-pink-100/60 transition-colors"
                           >
                             {/* 1. Child Variant Thumbnail */}
-                            <td className="py-2.5 px-3 text-center">
+                            <td className="py-2.5 px-3 text-center align-middle w-14">
                               <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-pink-200 flex items-center justify-center mx-auto shadow-2xs">
                                 {vImg ? (
-                                  <img src={vImg} alt={vName} className="w-full h-full object-cover" />
+                                  <img src={vImg} alt={shadeName || vName} className="w-full h-full object-cover" />
                                 ) : (
                                   <Package size={14} className="text-pink-300" />
                                 )}
                               </div>
                             </td>
 
-                            {/* 2. Child Variant Name, Swatches, Attributes */}
-                            <td className="py-2.5 px-4">
-                              <div className="pl-3 flex flex-col gap-0.5 border-l-2 border-pink-300/80 ml-1">
+                            {/* 2. Child Variant Name, SKU, Shade, Size (NO duplicate barcode) */}
+                            <td className="py-2.5 px-4 align-middle">
+                              <div className="pl-3 flex flex-col gap-1 border-l-2 border-pink-300/80 ml-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="text-[#C2477A] font-bold text-xs">↳</span>
                                   {v.hexColor && (
                                     <span
-                                      className="w-3 h-3 rounded-full border border-gray-300 shrink-0 shadow-2xs"
+                                      className="w-3.5 h-3.5 rounded-full border border-gray-300 shrink-0 shadow-2xs inline-block"
                                       style={{ backgroundColor: v.hexColor }}
                                       title={v.hexColor}
                                     />
                                   )}
-                                  <span className="font-extrabold text-xs text-gray-900">{vName}</span>
-                                  {v.code && (
-                                    <span className="text-[10px] text-gray-500 font-semibold bg-gray-100 px-1.5 py-0.2 rounded border border-gray-200">
-                                      {v.code}
+                                  <span className="font-extrabold text-xs text-gray-900">
+                                    {shadeName || vName}
+                                  </span>
+                                  {shadeNumber && (
+                                    <span className="text-[10px] text-gray-600 font-bold bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 shadow-2xs">
+                                      #{shadeNumber}
                                     </span>
                                   )}
-                                  {attrEntries.map(([k, valStr]) => (
-                                    <span
-                                      key={k}
-                                      className="text-[9.5px] font-bold text-gray-700 bg-white px-1.5 py-0.2 rounded border border-pink-100 shadow-2xs"
-                                    >
-                                      {k}: <span className="text-[#C2477A]">{valStr}</span>
-                                    </span>
-                                  ))}
-                                  <span className="text-[9px] font-bold text-[#C2477A] bg-pink-50 px-1.5 py-0.2 rounded border border-pink-200">
+                                  <span className="text-[9px] font-bold text-[#C2477A] bg-pink-50 px-1.5 py-0.5 rounded border border-pink-200">
                                     Variant
                                   </span>
                                 </div>
 
                                 <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500 flex-wrap">
-                                  {v.sku && (
-                                    <span className="font-mono bg-white px-1.5 py-0.5 rounded text-gray-600 border border-gray-200">
-                                      SKU: <span className="font-bold text-gray-800">{v.sku}</span>
+                                  {variantSku && (
+                                    <span className="font-mono bg-white px-2 py-0.5 rounded text-gray-700 border border-gray-200 shadow-2xs">
+                                      SKU: <span className="font-bold text-gray-900">{variantSku}</span>
                                     </span>
                                   )}
-                                  {v.barcode && (
-                                    <span className="font-mono bg-white px-1.5 py-0.5 rounded text-gray-600 border border-gray-200 flex items-center gap-1">
-                                      <Barcode size={10} className="text-[#C2477A]" />
-                                      <span className="font-bold text-gray-800">{v.barcode}</span>
+                                  {variantSize && (
+                                    <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded border border-blue-200 shadow-2xs">
+                                      Size: {variantSize}
                                     </span>
                                   )}
+                                  {attrEntries
+                                    .filter(([k]) => !['size', 'shade', 'shadename', 'shadenumber', 'code'].includes(k.toLowerCase()))
+                                    .map(([k, valStr]) => (
+                                      <span
+                                        key={k}
+                                        className="text-[9.5px] font-medium text-gray-600 bg-white px-1.5 py-0.5 rounded border border-pink-100 shadow-2xs"
+                                      >
+                                        {k}: <span className="text-[#C2477A] font-bold">{valStr}</span>
+                                      </span>
+                                    ))}
                                 </div>
                               </div>
                             </td>
 
-                            {/* 3. Barcode */}
-                            <td className="py-2.5 px-3 whitespace-nowrap">
+                            {/* 3. Barcode (Dedicated Barcode Column - single source of truth) */}
+                            <td className="py-2.5 px-3 whitespace-nowrap align-middle">
                               {v.barcode ? (
-                                <span className="font-mono bg-white px-2 py-0.5 rounded text-gray-700 border border-gray-200 text-[10.5px] font-bold inline-flex items-center gap-1 shadow-2xs">
-                                  <Barcode size={10} className="text-[#C2477A]" />
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 text-gray-800 font-mono text-[11px] font-bold border border-gray-200 shadow-2xs group">
+                                  <Barcode size={13} className="text-[#C2477A]" />
                                   <span>{v.barcode}</span>
-                                </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(v.barcode, `barcode_${p.id}_${v.id || vIdx}`)}
+                                    className="text-gray-400 hover:text-gray-700 ml-0.5 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Copy Barcode"
+                                  >
+                                    {copiedKey === `barcode_${p.id}_${v.id || vIdx}` ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                                  </button>
+                                </div>
                               ) : (
-                                <span className="text-gray-400 text-[10.5px] italic">—</span>
+                                <span className="text-gray-400 text-xs italic">—</span>
                               )}
                             </td>
 
                             {/* 4. Brand */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-xs font-semibold text-gray-500">
-                              {p.brandName || brands?.find(b => b.id === p.brandId)?.name || '—'}
+                            <td className="py-2.5 px-3 whitespace-nowrap align-middle">
+                              <span className="font-bold text-xs text-gray-800 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
+                                {p.brandName || brands?.find(b => b.id === p.brandId)?.name || '—'}
+                              </span>
                             </td>
 
-                            {/* 6. Original MRP */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right">
-                              <span className="font-semibold text-gray-400 line-through bg-white px-2 py-0.5 rounded border border-gray-200 text-xs inline-block min-w-[60px] text-right shadow-2xs">
+                            {/* 5. Original MRP */}
+                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
+                              <span className="font-semibold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200 inline-block min-w-[65px] text-right shadow-2xs">
                                 ₹{vOriginalMrp}
                               </span>
                             </td>
 
-                            {/* 7. General MRP */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right">
-                              <span className="font-bold text-gray-800 bg-white px-2 py-0.5 rounded border border-gray-200 text-xs inline-block min-w-[60px] text-right shadow-2xs">
+                            {/* 6. General MRP */}
+                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
+                              <span className="font-bold text-gray-900 bg-white px-2 py-1 rounded-lg border border-gray-200 inline-block min-w-[65px] text-right shadow-2xs">
                                 ₹{vGen}
                               </span>
                             </td>
 
-                            {/* 8. Salon Price */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right">
-                              <span className="font-extrabold text-[#C2477A] bg-[#FFF5F8] px-2 py-0.5 rounded border border-pink-200 text-xs inline-block min-w-[60px] text-right shadow-2xs">
+                            {/* 7. Salon Price */}
+                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
+                              <span className="font-extrabold text-[#C2477A] bg-[#FFF5F8] px-2 py-1 rounded-lg border border-pink-200/80 inline-block min-w-[65px] text-right shadow-2xs">
                                 ₹{vSalon}
                               </span>
                             </td>
 
-                            {/* 9. Artist Price */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right">
-                              <span className="font-extrabold text-purple-700 bg-purple-50/70 px-2 py-0.5 rounded border border-purple-200 text-xs inline-block min-w-[60px] text-right shadow-2xs">
+                            {/* 8. Artist Price */}
+                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
+                              <span className="font-extrabold text-purple-700 bg-purple-50/70 px-2 py-1 rounded-lg border border-purple-200 inline-block min-w-[65px] text-right shadow-2xs">
                                 ₹{vArtist}
                               </span>
                             </td>
 
-                            {/* 10. Beautician Price */}
-                            <td className="py-2.5 px-3 whitespace-nowrap text-right">
-                              <span className="font-extrabold text-indigo-700 bg-indigo-50/70 px-2 py-0.5 rounded border border-indigo-200 text-xs inline-block min-w-[60px] text-right shadow-2xs">
+                            {/* 9. Beautician Price */}
+                            <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
+                              <span className="font-extrabold text-indigo-700 bg-indigo-50/70 px-2 py-1 rounded-lg border border-indigo-200 inline-block min-w-[65px] text-right shadow-2xs">
                                 ₹{vBeautician}
                               </span>
                             </td>
 
-                            {/* 11. Actions */}
-                            <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                            {/* 10. Actions */}
+                            <td className="py-2.5 px-4 text-right whitespace-nowrap align-middle">
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   type="button"
                                   onClick={() => handleToggleProductShadesPanel(p)}
-                                  className="text-[10.5px] font-bold text-[#C2477A] hover:text-[#b83760] bg-pink-50 hover:bg-pink-100 px-2.5 py-1 rounded-xl border border-pink-200 transition-all cursor-pointer shadow-2xs"
+                                  className="bg-pink-50 hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-pink-200 transition-all text-[11px] cursor-pointer shadow-2xs"
+                                  title="Edit variant details"
                                 >
-                                  Edit Variant
+                                  <span>Edit Variant</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleOpenDeleteProduct(p, v)}
-                                  className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2 py-1 rounded-xl font-bold flex items-center gap-1 border border-rose-200 transition-all text-[10.5px] cursor-pointer shadow-2xs"
+                                  className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-rose-200 transition-all text-[11px] cursor-pointer shadow-2xs"
                                   title="Delete this variant"
-                                  aria-label={`Delete variant ${v?.name || ''}`}
+                                  aria-label={`Delete variant ${shadeName || vName}`}
                                 >
-                                  <Trash2 size={11} />
+                                  <Trash2 size={12} />
                                 </button>
                               </div>
                             </td>
@@ -1562,7 +1511,7 @@ export default function ProductsCatalogMatrix({
                     {/* EXPANDABLE QUANTITY DISCOUNT TIERS PANEL */}
                     {editingTiersProductId === p.id && (
                       <tr key={p.id + '_tiers_panel'} className="bg-amber-50/40 border-y-2 border-pink-200">
-                        <td colSpan={11} className="p-4 sm:p-5">
+                        <td colSpan={10} className="p-4 sm:p-5">
                           <RoleQuantityTiersManager
                             tiers={productTiersLocal}
                             onChange={setProductTiersLocal}
@@ -1583,7 +1532,7 @@ export default function ProductsCatalogMatrix({
                     {/* EXPANDABLE SHADE / COLOR VARIANT MANAGER PANEL */}
                     {editingShadeProductId === p.id && (
                       <tr key={p.id + '_shades_panel'} className="bg-[#FFF5F8]/40 border-y-2 border-[#FCE4EC]">
-                        <td colSpan={11} className="p-4 sm:p-5">
+                        <td colSpan={10} className="p-4 sm:p-5">
                           <div className="bg-white rounded-3xl border border-[#FCE4EC] shadow-sm p-5 space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#FCE4EC]">
                               <div>
@@ -2261,22 +2210,6 @@ export default function ProductsCatalogMatrix({
           </div>
         </div>
       )}
-
-      {/* 7. EXCEL BULK PRODUCT IMPORT MODAL */}
-      <ExcelImportModal
-        isOpen={isExcelImportModalOpen}
-        onClose={() => setIsExcelImportModalOpen(false)}
-        categories={adminCtx.categories || []}
-        brands={adminCtx.brands || brands || []}
-        existingProducts={adminCtx.products || products || []}
-        onImportProducts={async (validGroups, onProgress, options) => {
-          if (adminCtx.saveBulkProducts) {
-            return await adminCtx.saveBulkProducts(validGroups, onProgress, options);
-          }
-          return { success: true };
-        }}
-        onExportCatalog={handleExportCatalogExcel}
-      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { supabase } from '../config/supabase';
-import { MAKEUP_SWATCH_PRESETS } from '../components/common/HexColorPicker';
+import { supabase } from '../config/supabase.js';
+import { MAKEUP_SWATCH_PRESETS } from './colorPresets.js';
 
 export const ATTRIBUTE_GROUPS = [
   'Appearance',
@@ -1393,7 +1393,8 @@ export function generateCartesianVariants(selectedAttributesWithOptions, basePro
       artistPrice: parentArtist,
       beauticianPrice: parentBeautician,
       priceOverride: parentMrp,
-      image: '',
+      image: parentImage || '',
+      images: parentImage ? [parentImage] : [],
       active: true,
       hexColor: dominantHex,
       attributes: attributesMap,

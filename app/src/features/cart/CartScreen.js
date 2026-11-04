@@ -20,9 +20,6 @@ export const CartScreen = () => {
     setSelectedProduct
   } = useApp();
 
-  const [couponCode, setCouponCode] = useState('');
-  const [couponApplied, setCouponApplied] = useState(false);
-  const [discountAmount, setDiscountAmount] = useState(350);
 
   const [quickShadeModalItem, setQuickShadeModalItem] = useState(null);
   const [selectedQuickShade, setSelectedQuickShade] = useState(null);
@@ -85,16 +82,8 @@ export const CartScreen = () => {
   }, [cart, userRole, getRolePrice]);
 
   const productSavings = Math.max(0, mrpTotal - bagTotal);
-  const couponDiscount = couponApplied ? discountAmount : 0;
-  const totalSavings = productSavings + couponDiscount;
-  const totalPayable = Math.max(0, bagTotal - couponDiscount);
-
-  const handleApplyCoupon = () => {
-    if (couponCode.trim().length > 0) {
-      setCouponApplied(true);
-      setDiscountAmount(350);
-    }
-  };
+  const totalSavings = productSavings;
+  const totalPayable = bagTotal;
 
   if (cart.length === 0) {
     return (
@@ -162,10 +151,11 @@ export const CartScreen = () => {
               className="bg-white rounded-3xl border border-[#FCE4EC] p-3 mb-3.5 flex-row items-center gap-3 shadow-2xs"
             >
               {/* Product Image Stage */}
-              <View className="w-20 h-20 rounded-2xl overflow-hidden bg-[#FCE4EC] justify-center items-center">
+              <View className="w-20 h-20 rounded-2xl overflow-hidden bg-[#FFF5F8] border border-[#F0E3EA] justify-center items-center p-1.5">
                 <Image
                   source={getSafeImageSource(item.shade?.image || product.image, '')}
-                  className="w-full h-full object-cover"
+                  style={{ width: '90%', height: '90%' }}
+                  resizeMode="contain"
                 />
               </View>
 
@@ -176,8 +166,8 @@ export const CartScreen = () => {
                   {product.brandName || 'SALBEAU LUXE'}
                 </Text>
 
-                {/* Title */}
-                <Text className="text-xs font-bold text-[#3A2430] mb-0.5" numberOfLines={1}>
+                {/* Title - Full Visibility */}
+                <Text className="text-xs font-bold text-[#3A2430] mb-0.5" numberOfLines={2}>
                   {product.name}
                 </Text>
 
@@ -277,14 +267,14 @@ export const CartScreen = () => {
                       activeOpacity={0.85}
                       onPress={() => {
                         setSelectedProduct(p);
-                        setCurrentScreen('product_detail');
+                        setCurrentScreen('product');
                       }}
-                      className="relative w-full h-24 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#FCE4EC]/60 items-center justify-center"
+                      className="relative w-full h-24 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#F0E3EA] items-center justify-center p-1.5"
                     >
                       <Image
                         source={getSafeImageSource(subItems[0]?.image || p.image, '')}
-                        className="w-full h-full object-cover"
-                        resizeMode="cover"
+                        style={{ width: '90%', height: '90%' }}
+                        resizeMode="contain"
                       />
                       {subItems.length > 1 && (
                         <View className="absolute bottom-1 right-1 bg-black/60 px-1.5 py-0.5 rounded-md flex-row items-center gap-1">
@@ -358,12 +348,6 @@ export const CartScreen = () => {
               <Text className="text-xs font-extrabold text-[#2E7D32]">-₹{productSavings}</Text>
             </View>
 
-            {couponApplied && (
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-xs font-medium text-[#8C7078]">Coupon Discount</Text>
-                <Text className="text-xs font-extrabold text-[#2E7D32]">-₹{couponDiscount}</Text>
-              </View>
-            )}
 
             <View className="flex-row justify-between items-center mb-2">
               <Text className="text-xs font-medium text-[#8C7078]">Delivery Charges</Text>
@@ -454,11 +438,14 @@ export const CartScreen = () => {
 
               {/* Selected Shade Preview */}
               {selectedQuickShade && (
-                <View className="flex-row items-center gap-3 bg-[#FFF5F8] p-3 rounded-2xl border border-[#FCE4EC] my-3">
-                  <Image
-                    source={getSafeImageSource(selectedQuickShade.image || quickShadeModalItem.image, '')}
-                    className="w-12 h-12 rounded-xl object-cover border border-[#FCE4EC]"
-                  />
+                <View className="flex-row items-center gap-3 bg-[#FFF5F8] p-3 rounded-2xl border border-[#F0E3EA] my-3">
+                  <View className="w-12 h-12 rounded-xl bg-white border border-[#F0E3EA] overflow-hidden items-center justify-center p-1">
+                    <Image
+                      source={getSafeImageSource(selectedQuickShade.image || quickShadeModalItem.image, '')}
+                      style={{ width: '90%', height: '90%' }}
+                      resizeMode="contain"
+                    />
+                  </View>
                   <View className="flex-1">
                     <View className="flex-row items-center gap-1.5">
                       {selectedQuickShade.hexColor && (
@@ -495,10 +482,11 @@ export const CartScreen = () => {
                         isSel ? 'bg-[#FFF0F5] border-[#C2477A]' : 'bg-white border-[#FCE4EC]'
                       }`}
                     >
-                      <View className="relative w-16 h-16 rounded-xl overflow-hidden mb-1 bg-[#FFF5F8] items-center justify-center">
+                      <View className="relative w-16 h-16 rounded-xl overflow-hidden mb-1 bg-[#FFF5F8] border border-[#F0E3EA] items-center justify-center p-1">
                         <Image
                           source={getSafeImageSource(shade.image || quickShadeModalItem.image, '')}
-                          className="w-full h-full object-cover"
+                          style={{ width: '90%', height: '90%' }}
+                          resizeMode="contain"
                         />
                         {shade.hexColor && (
                           <View

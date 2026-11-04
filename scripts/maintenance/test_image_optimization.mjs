@@ -47,10 +47,10 @@ assert(subProfile.quality === 0.85, 'Subcategory profile: Quality 85/100');
 assert(subProfile.maxProcessedSizeKB === 150, 'Subcategory profile: Max processed size 150 KB');
 
 const prodProfile = IMAGE_PROFILES.PRODUCT;
-assert(prodProfile && prodProfile.maxWidth === 1200 && prodProfile.maxHeight === 1200, 'Product profile: Max dimensions 1200×1200 px');
+assert(prodProfile && prodProfile.maxWidth === 1600 && prodProfile.maxHeight === 1600, 'Product profile: Max dimensions 1600×1600 px');
 assert(prodProfile.quality === 0.88, 'Product profile: Quality 88/100 (conservative for cosmetic shades)');
 assert(prodProfile.colorAccuracy === true, 'Product profile: Color accuracy preservation active');
-assert(prodProfile.maxProcessedSizeKB === 350, 'Product profile: Max processed size 350 KB');
+assert(prodProfile.maxProcessedSizeKB === 400, 'Product profile: Max processed size 400 KB');
 
 
 // 2. Responsive Variant Specifications

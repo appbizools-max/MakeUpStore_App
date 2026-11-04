@@ -1,28 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, ScrollView, StatusBar, Image } from 'react-native';
 import { useApp } from '../../context/AppContext';
 
 export const SplashScreen = () => {
-  const { setCurrentScreen, userProfile } = useApp();
+  const { setCurrentScreen, userProfile, isRestoringSession } = useApp();
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+
+  // Performance Optimization: Eliminate 1.8s startup freeze.
+  // Minimal 300ms transition for zero-flicker cold starts, immediately navigable as soon as session is ready.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinTimeElapsed(true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (minTimeElapsed && !isRestoringSession) {
+      if (userProfile?.isProfileComplete) {
+        setCurrentScreen('home');
+      } else {
+        setCurrentScreen('onboarding');
+      }
+    }
+  }, [minTimeElapsed, isRestoringSession, userProfile?.isProfileComplete, setCurrentScreen]);
 
   const handleProceed = () => {
-    if (userProfile?.isProfileComplete) {
-      setCurrentScreen('home');
-    } else {
-      setCurrentScreen('onboarding');
+    if (!isRestoringSession) {
+      if (userProfile?.isProfileComplete) {
+        setCurrentScreen('home');
+      } else {
+        setCurrentScreen('onboarding');
+      }
     }
   };
-
-  React.useEffect(() => {
-    if (userProfile?.isProfileComplete) {
-      setCurrentScreen('home');
-      return;
-    }
-    const timer = setTimeout(() => {
-      handleProceed();
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [userProfile?.isProfileComplete]);
 
   return (
     <ScrollView

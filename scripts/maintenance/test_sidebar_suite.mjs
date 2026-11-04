@@ -81,7 +81,9 @@ async function runSidebarTestSuite() {
 
   // TEST 1: Inspect AdminSidebar.jsx file structure
   console.log('--- TEST 1: AdminSidebar Component Architecture ---');
-  const sidebarFile = path.resolve('../../admin/src/components/common/AdminSidebar.jsx');
+  const sidebarFile = fs.existsSync(path.resolve('MakeUpStore_App/admin/src/components/common/AdminSidebar.jsx'))
+    ? path.resolve('MakeUpStore_App/admin/src/components/common/AdminSidebar.jsx')
+    : path.resolve('../../admin/src/components/common/AdminSidebar.jsx');
   assert('AdminSidebar.jsx component exists in components/common', fs.existsSync(sidebarFile));
 
   const sidebarContent = fs.readFileSync(sidebarFile, 'utf8');
@@ -151,7 +153,9 @@ async function runSidebarTestSuite() {
 
   // TEST 10: App.jsx Integration
   console.log('\n--- TEST 10: App.jsx Integration ---');
-  const appFile = path.resolve('../../admin/src/App.jsx');
+  const appFile = fs.existsSync(path.resolve('MakeUpStore_App/admin/src/App.jsx'))
+    ? path.resolve('MakeUpStore_App/admin/src/App.jsx')
+    : path.resolve('../../admin/src/App.jsx');
   const appContent = fs.readFileSync(appFile, 'utf8');
   assert('App.jsx imports AdminSidebar component', appContent.includes("import AdminSidebar from './components/common/AdminSidebar'"));
   assert('App.jsx renders <AdminSidebar', appContent.includes('<AdminSidebar'));

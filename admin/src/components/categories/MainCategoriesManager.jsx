@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   FolderPlus,
   Layers,
@@ -23,9 +23,14 @@ import {
   ChevronRight,
   Filter,
   Tag,
-  GripVertical
+  GripVertical,
+  Upload,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 import InlineImageSection from '../media/InlineImageSection';
+import CategoryImportModal from './CategoryImportModal';
+import { exportCategoriesToExcel } from '../../utils/categoryExcelService';
 import { supabase, supabaseAdmin } from '../../config/supabase';
 import { useAdmin } from '../../context/AdminContext';
 
@@ -95,6 +100,17 @@ export default function MainCategoriesManager({
   // Modal States: null | 'add_category' | 'edit_category' | 'add_subcategory' | 'edit_subcategory' | 'add_product_type' | 'edit_product_type'
   const [modalMode, setModalMode] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
+  const drawerScrollRef = useRef(null);
+
+  // Always reset drawer scroll to initial starting top when any modal opens
+  useEffect(() => {
+    if (modalMode) {
+      if (drawerScrollRef.current) {
+        drawerScrollRef.current.scrollTop = 0;
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [modalMode]);
 
   // Category Form State
   const [categoryFormData, setCategoryFormData] = useState({
@@ -149,9 +165,259 @@ export default function MainCategoriesManager({
   const [isWipeModalOpen, setIsWipeModalOpen] = useState(false);
   const [isWipingImages, setIsWipingImages] = useState(false);
 
+  // Category Excel Import / Export State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importScope, setImportScope] = useState('all'); // 'categories' | 'subcategories' | 'product_types' | 'all'
+
   const showNotice = (message, type = 'success') => {
     setNotice({ message, type });
     setTimeout(() => setNotice(null), 4000);
+  };
+
+  // ── EXCEL EXPORT HANDLER ─────────────────────────────────────────────
+  const handleExportScope = (scope) => {
+    try {
+      exportCategoriesToExcel({
+        categories,
+        subcategories,
+        productTypes,
+        scope,
+        selectedCategory,
+        selectedSubcategory
+      });
+      showNotice(`Exported ${scope.replace('_', ' ')} Excel successfully!`, 'success');
+    } catch (err) {
+      console.error('Export error:', err);
+      showNotice('Failed to export Excel: ' + err.message, 'error');
+    }
+  };
+
+  // ── EXCEL IMPORT CONFIRMATION HANDLER ────────────────────────────────
+  const handleConfirmCategoryImport = async (rows, mode, scope) => {
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    try {
+      let mergedCats = [...categories];
+      let mergedSubs = [...subcategories];
+      let mergedPTs = [...productTypes];
+
+      const validRows = rows.filter(r => r.isValid && r.name);
+      const invalidRows = rows.filter(r => !r.isValid);
+      failed = invalidRows.length;
+
+      const catMap = new Map();
+      mergedCats.forEach(c => catMap.set(c.name.trim().toLowerCase(), c));
+
+      const subMap = new Map();
+      mergedSubs.forEach(s => {
+        const cat = mergedCats.find(c => c.id === (s.category_id || s.categoryId));
+        const catName = (cat?.name || '').trim().toLowerCase();
+        subMap.set(`${catName}:::${(s.name || '').trim().toLowerCase()}`, s);
+      });
+
+      const ptMap = new Map();
+      mergedPTs.forEach(pt => {
+        const cat = mergedCats.find(c => c.id === (pt.category_id || pt.categoryId));
+        const sub = mergedSubs.find(s => s.id === (pt.subcategory_id || pt.subcategoryId));
+        const catName = (cat?.name || '').trim().toLowerCase();
+        const subName = (sub?.name || '').trim().toLowerCase();
+        ptMap.set(`${catName}:::${subName}:::${(pt.name || '').trim().toLowerCase()}`, pt);
+      });
+
+      const ensureCategory = (catName) => {
+        const cleanName = (catName || 'General').trim();
+        const norm = cleanName.toLowerCase();
+        let cat = catMap.get(norm);
+        if (!cat) {
+          cat = {
+            id: `cat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            name: cleanName,
+            slug: generateSlug(cleanName),
+            icon: 'Sparkles',
+            color: '#FCE4EC',
+            image: '',
+            sort_order: mergedCats.length + 1,
+            enabled: true,
+            is_active: true
+          };
+          mergedCats.push(cat);
+          catMap.set(norm, cat);
+        }
+        return cat;
+      };
+
+      const ensureSubcategory = (catId, catName, subName) => {
+        const cleanSub = (subName || 'General').trim();
+        const normSub = cleanSub.toLowerCase();
+        const normCat = (catName || 'General').trim().toLowerCase();
+        const key = `${normCat}:::${normSub}`;
+        let sub = subMap.get(key);
+        if (!sub) {
+          sub = {
+            id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            category_id: catId,
+            categoryId: catId,
+            name: cleanSub,
+            slug: generateSlug(cleanSub),
+            image: '',
+            tagline: '',
+            sort_order: mergedSubs.filter(s => (s.category_id || s.categoryId) === catId).length + 1,
+            enabled: true,
+            is_active: true
+          };
+          mergedSubs.push(sub);
+          subMap.set(key, sub);
+        }
+        return sub;
+      };
+
+      const catRows = validRows.filter(r => r.levelType === 'category');
+      const subRows = validRows.filter(r => r.levelType === 'subcategory');
+      const ptRows = validRows.filter(r => r.levelType === 'product_type');
+
+      // 1. Process Main Categories
+      for (const row of catRows) {
+        const norm = row.name.trim().toLowerCase();
+        const existing = catMap.get(norm);
+        if (existing) {
+          if (mode === 'update_existing') {
+            if (row.imageUrl) existing.image = row.imageUrl;
+            if (row.displayOrder) existing.sort_order = row.displayOrder;
+            if (row.isEnabled !== undefined) {
+              existing.enabled = row.isEnabled;
+              existing.is_active = row.isEnabled;
+            }
+            updated++;
+          } else {
+            skipped++;
+          }
+        } else {
+          const newCat = {
+            id: row.matchedId || `cat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            name: row.name.trim(),
+            slug: generateSlug(row.name),
+            icon: 'Sparkles',
+            color: '#FCE4EC',
+            image: row.imageUrl || '',
+            sort_order: row.displayOrder || (mergedCats.length + 1),
+            enabled: row.isEnabled !== false,
+            is_active: row.isEnabled !== false
+          };
+          mergedCats.push(newCat);
+          catMap.set(norm, newCat);
+          created++;
+        }
+      }
+
+      // 2. Process Subcategories
+      for (const row of subRows) {
+        const parentCat = ensureCategory(row.parentCategory || selectedCategory?.name || 'General');
+        const normSub = row.name.trim().toLowerCase();
+        const key = `${parentCat.name.trim().toLowerCase()}:::${normSub}`;
+        const existing = subMap.get(key);
+
+        if (existing) {
+          if (mode === 'update_existing') {
+            if (row.imageUrl) existing.image = row.imageUrl;
+            if (row.description) existing.tagline = row.description;
+            if (row.displayOrder) existing.sort_order = row.displayOrder;
+            if (row.isEnabled !== undefined) {
+              existing.enabled = row.isEnabled;
+              existing.is_active = row.isEnabled;
+            }
+            updated++;
+          } else {
+            skipped++;
+          }
+        } else {
+          const newSub = {
+            id: row.matchedId || `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            category_id: parentCat.id,
+            categoryId: parentCat.id,
+            name: row.name.trim(),
+            slug: generateSlug(row.name),
+            image: row.imageUrl || '',
+            tagline: row.description || '',
+            sort_order: row.displayOrder || (mergedSubs.filter(s => (s.category_id || s.categoryId) === parentCat.id).length + 1),
+            enabled: row.isEnabled !== false,
+            is_active: row.isEnabled !== false
+          };
+          mergedSubs.push(newSub);
+          subMap.set(key, newSub);
+          created++;
+        }
+      }
+
+      // 3. Process Select Categories / Product Types
+      for (const row of ptRows) {
+        const parentCat = ensureCategory(row.parentCategory || selectedCategory?.name || 'General');
+        const parentSub = ensureSubcategory(parentCat.id, parentCat.name, row.parentSubcategory || selectedSubcategory?.name || 'General');
+        const normPT = row.name.trim().toLowerCase();
+        const key = `${parentCat.name.trim().toLowerCase()}:::${parentSub.name.trim().toLowerCase()}:::${normPT}`;
+        const existing = ptMap.get(key);
+
+        if (existing) {
+          if (mode === 'update_existing') {
+            if (row.imageUrl) existing.image = row.imageUrl;
+            if (row.description) existing.description = row.description;
+            if (row.displayOrder) existing.sort_order = row.displayOrder;
+            if (row.isEnabled !== undefined) {
+              existing.enabled = row.isEnabled;
+              existing.is_active = row.isEnabled;
+            }
+            updated++;
+          } else {
+            skipped++;
+          }
+        } else {
+          const newPT = {
+            id: row.matchedId || `pt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            category_id: parentCat.id,
+            categoryId: parentCat.id,
+            subcategory_id: parentSub.id,
+            subcategoryId: parentSub.id,
+            name: row.name.trim(),
+            slug: generateSlug(row.name),
+            image: row.imageUrl || '',
+            description: row.description || '',
+            sort_order: row.displayOrder || (mergedPTs.filter(p => (p.subcategory_id || p.subcategoryId) === parentSub.id).length + 1),
+            enabled: row.isEnabled !== false,
+            is_active: row.isEnabled !== false,
+            show_in_mobile_app: row.showInMobile !== false
+          };
+          mergedPTs.push(newPT);
+          ptMap.set(key, newPT);
+          created++;
+        }
+      }
+
+      // Persist to Supabase Database
+      const success = await persistHierarchy(mergedCats, mergedSubs, mergedPTs);
+      if (!success) {
+        throw new Error('Supabase database persistence failed.');
+      }
+
+      // Instant synchronization across app and product forms
+      if (adminCtx?.setCategories) {
+        adminCtx.setCategories(mergedCats);
+      }
+      if (typeof onRefreshMaster === 'function') {
+        onRefreshMaster();
+      }
+
+      return {
+        created,
+        updated,
+        skipped,
+        failed
+      };
+    } catch (err) {
+      console.error('Import error:', err);
+      throw err;
+    }
   };
 
   // ── WIPE ALL IMAGES COMPLETELY FROM DATABASE & ADMIN PANEL ───────────
@@ -239,28 +505,19 @@ export default function MainCategoriesManager({
     setIsLoading(true);
     setFetchError(null);
     try {
-      // 1. Fetch categories table
-      const { data: catData, error: catErr } = await supabase
-        .from('categories')
-        .select('*')
-        .order('sort_order', { ascending: true });
+      // Parallel fetch categories, subcategories, and hierarchy snapshot
+      const [catRes, subRes, hierRes] = await Promise.all([
+        supabase.from('categories').select('*').order('sort_order', { ascending: true }),
+        supabase.from('subcategories').select('*').order('sort_order', { ascending: true }),
+        supabase.from('brands').select('logo').eq('id', 'salbeau_category_subcategory_hierarchy').maybeSingle()
+      ]);
 
-      if (catErr) throw catErr;
+      if (catRes.error) throw catRes.error;
+      if (subRes.error) throw subRes.error;
 
-      // 2. Fetch subcategories table
-      const { data: subData, error: subErr } = await supabase
-        .from('subcategories')
-        .select('*')
-        .order('sort_order', { ascending: true });
-
-      if (subErr) throw subErr;
-
-      // 3. Fetch hierarchy configuration record from brands table
-      const { data: hierData } = await supabase
-        .from('brands')
-        .select('logo')
-        .eq('id', 'salbeau_category_subcategory_hierarchy')
-        .maybeSingle();
+      const catData = catRes.data || [];
+      const subData = subRes.data || [];
+      const hierData = hierRes.data || null;
 
       let hierCategoriesMap = new Map();
       let hierSubsMap = new Map();
@@ -315,6 +572,36 @@ export default function MainCategoriesManager({
           updated_at: c.updated_at || extra.updated_at || null
         };
       }).sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0));
+
+      // Also ensure any categories mentioned in brands are included in the categories page
+      const knownCatNames = new Set(normalizedCategories.map(c => (c.name || '').trim().toLowerCase()));
+      (adminCtx?.brands || []).forEach(b => {
+        const cats = Array.isArray(b.categories) ? b.categories : (b.category ? [b.category] : []);
+        cats.forEach(catName => {
+          const cleanName = (catName || '').trim();
+          if (cleanName && !knownCatNames.has(cleanName.toLowerCase())) {
+            knownCatNames.add(cleanName.toLowerCase());
+            const catSlug = generateSlug(cleanName) || ('cat_' + cleanName.toLowerCase().replace(/\s+/g, '_'));
+            normalizedCategories.push({
+              id: catSlug,
+              name: cleanName,
+              slug: catSlug,
+              description: `Brand category for ${b.name || 'catalog'}`,
+              image: '',
+              image_url: '',
+              color: '#FCE4EC',
+              icon: 'Sparkles',
+              sort_order: normalizedCategories.length + 1,
+              display_order: normalizedCategories.length + 1,
+              enabled: true,
+              is_active: true,
+              show_in_mobile_app: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          }
+        });
+      });
 
       // 5. Normalize Subcategories
       const normalizedSubcategories = (subData || []).map((s, index) => {
@@ -397,25 +684,8 @@ export default function MainCategoriesManager({
     loadHierarchyData();
   }, [loadHierarchyData]);
 
-  // ── 2. REALTIME SUBSCRIPTION ─────────────────────────────────────────
-  useEffect(() => {
-    const channel = supabase
-      .channel('category_redesign_realtime_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
-        loadHierarchyData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'subcategories' }, () => {
-        loadHierarchyData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'brands', filter: 'id=eq.salbeau_category_subcategory_hierarchy' }, () => {
-        loadHierarchyData();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadHierarchyData]);
+  // ── 2. REALTIME SUBSCRIPTION (DISABLED: Admin stays calm without unexpected auto-refresh) ──
+  // Data refreshes smoothly on demand when admin clicks the "Refresh" button.
 
   // ── Keyboard Escape Dismissal & Background Scroll Lock ───────────────
   useEffect(() => {
@@ -452,6 +722,138 @@ export default function MainCategoriesManager({
   }, [modalMode, deleteModal.isOpen]);
 
   // ── 3. PERSISTENCE HELPER ───────────────────────────────────────────
+  // ── 3. PERSISTENCE HELPERS ──────────────────────────────────────────
+  const backgroundHierarchySyncTimerRef = useRef(null);
+
+  const scheduleBackgroundHierarchySync = useCallback((cats, subs, pts) => {
+    if (backgroundHierarchySyncTimerRef.current) {
+      clearTimeout(backgroundHierarchySyncTimerRef.current);
+    }
+    backgroundHierarchySyncTimerRef.current = setTimeout(async () => {
+      try {
+        const client = supabaseAdmin || supabase;
+        const hierarchyPayload = {
+          id: 'salbeau_category_subcategory_hierarchy',
+          name: 'Salbeau Category & Subcategory Master Hierarchy',
+          logo: JSON.stringify({
+            categories: cats,
+            subcategories: subs,
+            leafCategories: pts,
+            product_types: pts,
+            updatedAt: new Date().toISOString()
+          }),
+          enabled: true
+        };
+        await client.from('brands').upsert(hierarchyPayload);
+        await client.from('brands').upsert({
+          id: 'app_category_order_config',
+          name: 'Category Order Config',
+          logo: JSON.stringify(cats),
+          enabled: true
+        });
+      } catch (err) {
+        console.warn('Background hierarchy snapshot sync warning:', err);
+      }
+    }, 600);
+  }, []);
+
+  // Fast single category upsert (< 100ms)
+  const persistSingleCategory = async (cat, nextCategories) => {
+    const client = supabaseAdmin || supabase;
+    setIsSaving(true);
+    try {
+      const payload = {
+        id: cat.id,
+        name: (cat.name || '').trim(),
+        image: cat.image || '',
+        icon: cat.icon || 'Sparkles',
+        color: cat.color || '#FCE4EC',
+        sort_order: Number(cat.sort_order || cat.display_order || 1),
+        enabled: cat.is_active !== false && cat.enabled !== false
+      };
+      const { error } = await client.from('categories').upsert(payload);
+      if (error) throw error;
+
+      setCategories(nextCategories);
+      if (typeof onRefreshMaster === 'function') onRefreshMaster();
+      scheduleBackgroundHierarchySync(nextCategories, subcategories, productTypes);
+      return true;
+    } catch (err) {
+      console.error('Failed to save category:', err);
+      showNotice('Failed to save category. Please try again.', 'error');
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Fast single subcategory upsert (< 100ms)
+  const persistSingleSubcategory = async (sub, nextSubcategories) => {
+    const client = supabaseAdmin || supabase;
+    setIsSaving(true);
+    try {
+      const payload = {
+        id: sub.id,
+        category_id: sub.category_id || sub.categoryId,
+        name: (sub.name || '').trim(),
+        image: sub.image || '',
+        tagline: sub.description || sub.tagline || '',
+        sort_order: Number(sub.sort_order || sub.display_order || 1),
+        enabled: sub.is_active !== false && sub.enabled !== false
+      };
+      const { error } = await client.from('subcategories').upsert(payload);
+      if (error) throw error;
+
+      setSubcategories(nextSubcategories);
+      if (typeof onRefreshMaster === 'function') onRefreshMaster();
+      scheduleBackgroundHierarchySync(categories, nextSubcategories, productTypes);
+      return true;
+    } catch (err) {
+      console.error('Failed to save subcategory:', err);
+      showNotice('Failed to save subcategory. Please try again.', 'error');
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Fast single select category / product type upsert (< 100ms)
+  const persistSingleProductType = async (pt, nextProductTypes) => {
+    const client = supabaseAdmin || supabase;
+    setIsSaving(true);
+    try {
+      const payload = {
+        id: pt.id,
+        category_id: pt.category_id || pt.categoryId,
+        subcategory_id: pt.subcategory_id || pt.subcategoryId,
+        name: (pt.name || '').trim(),
+        slug: pt.slug || generateSlug(pt.name),
+        description: pt.description || '',
+        image: pt.image || '',
+        sort_order: Number(pt.sort_order || pt.display_order || 1),
+        display_order: Number(pt.sort_order || pt.display_order || 1),
+        enabled: pt.is_active !== false && pt.enabled !== false,
+        is_active: pt.is_active !== false && pt.enabled !== false,
+        show_in_mobile_app: pt.show_in_mobile_app !== false
+      };
+      try {
+        await client.from('product_types').upsert(payload);
+      } catch (_) {}
+
+      setProductTypes(nextProductTypes);
+      if (typeof onRefreshMaster === 'function') onRefreshMaster();
+      scheduleBackgroundHierarchySync(categories, subcategories, nextProductTypes);
+      return true;
+    } catch (err) {
+      console.error('Failed to save select category:', err);
+      showNotice('Failed to save select category. Please try again.', 'error');
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Parallel bulk persist for reordering / imports
   const persistHierarchy = async (newCategories, newSubcategories, newProductTypes) => {
     const client = supabaseAdmin || supabase;
     setIsSaving(true);
@@ -460,7 +862,7 @@ export default function MainCategoriesManager({
       const subsToSave = newSubcategories || subcategories;
       const ptsToSave = newProductTypes || productTypes;
 
-      // 1. Upsert categories table
+      // 1. Prepare categories table records
       const categoryUpserts = catsToSave.map(c => ({
         id: c.id,
         name: (c.name || '').trim(),
@@ -471,10 +873,7 @@ export default function MainCategoriesManager({
         enabled: c.is_active !== false && c.enabled !== false
       }));
 
-      const { error: catErr } = await client.from('categories').upsert(categoryUpserts);
-      if (catErr) console.warn('Categories table upsert warning:', catErr);
-
-      // 2. Upsert subcategories table
+      // 2. Prepare subcategories table records
       const subcategoryUpserts = subsToSave.map(s => ({
         id: s.id,
         category_id: s.category_id || s.categoryId,
@@ -485,10 +884,23 @@ export default function MainCategoriesManager({
         enabled: s.is_active !== false && s.enabled !== false
       }));
 
-      const { error: subErr } = await client.from('subcategories').upsert(subcategoryUpserts);
-      if (subErr) console.warn('Subcategories table upsert warning:', subErr);
+      // 3. Prepare product types records
+      const ptUpserts = ptsToSave.map(pt => ({
+        id: pt.id,
+        category_id: pt.category_id || pt.categoryId,
+        subcategory_id: pt.subcategory_id || pt.subcategoryId,
+        name: (pt.name || '').trim(),
+        slug: pt.slug || generateSlug(pt.name),
+        description: pt.description || '',
+        image: pt.image || '',
+        sort_order: Number(pt.sort_order || pt.display_order || 1),
+        display_order: Number(pt.sort_order || pt.display_order || 1),
+        enabled: pt.is_active !== false && pt.enabled !== false,
+        is_active: pt.is_active !== false && pt.enabled !== false,
+        show_in_mobile_app: pt.show_in_mobile_app !== false
+      }));
 
-      // 3. Sync rich 3-level hierarchy to brands table (salbeau_category_subcategory_hierarchy)
+      // 4. Prepare hierarchy snapshot payload
       const hierarchyPayload = {
         id: 'salbeau_category_subcategory_hierarchy',
         name: 'Salbeau Category & Subcategory Master Hierarchy',
@@ -502,36 +914,19 @@ export default function MainCategoriesManager({
         enabled: true
       };
 
-      await client.from('brands').upsert(hierarchyPayload);
-
-      // 4. Sync category order config for mobile app
-      await client.from('brands').upsert({
+      // Execute all upserts in parallel
+      const catPromise = client.from('categories').upsert(categoryUpserts);
+      const subPromise = client.from('subcategories').upsert(subcategoryUpserts);
+      const ptPromise = client.from('product_types').upsert(ptUpserts).catch(() => ({}));
+      const brandPromise = client.from('brands').upsert(hierarchyPayload);
+      const configPromise = client.from('brands').upsert({
         id: 'app_category_order_config',
         name: 'Category Order Config',
         logo: JSON.stringify(catsToSave),
         enabled: true
       });
 
-      // 5. Try upserting to product_types table if present in Postgres
-      try {
-        const ptUpserts = ptsToSave.map(pt => ({
-          id: pt.id,
-          category_id: pt.category_id || pt.categoryId,
-          subcategory_id: pt.subcategory_id || pt.subcategoryId,
-          name: (pt.name || '').trim(),
-          slug: pt.slug || generateSlug(pt.name),
-          description: pt.description || '',
-          image: pt.image || '',
-          sort_order: Number(pt.sort_order || pt.display_order || 1),
-          display_order: Number(pt.sort_order || pt.display_order || 1),
-          enabled: pt.is_active !== false && pt.enabled !== false,
-          is_active: pt.is_active !== false && pt.enabled !== false,
-          show_in_mobile_app: pt.show_in_mobile_app !== false
-        }));
-        await client.from('product_types').upsert(ptUpserts);
-      } catch (_) {
-        // Safe fallback if table schema cache is pending SQL execution
-      }
+      await Promise.all([catPromise, subPromise, ptPromise, brandPromise, configPromise]);
 
       // Update local state optimistically
       setCategories(catsToSave);
@@ -709,6 +1104,88 @@ export default function MainCategoriesManager({
     showNotice(`Order updated successfully.`);
   };
 
+  // ── Editable Sequence / Priority Handlers ────────────────────────────
+  const handleCategorySequenceChange = async (catId, newSeq) => {
+    if (isNaN(newSeq) || newSeq < 1) return;
+    const items = [...filteredAndSortedCategories];
+    const currentIndex = items.findIndex(c => c.id === catId);
+    if (currentIndex === -1) return;
+    const targetIndex = Math.max(0, Math.min(newSeq - 1, items.length - 1));
+    if (currentIndex === targetIndex) return;
+
+    const [movedItem] = items.splice(currentIndex, 1);
+    items.splice(targetIndex, 0, movedItem);
+
+    const updatedCats = items.map((c, i) => ({
+      ...c,
+      display_order: i + 1,
+      sort_order: i + 1
+    }));
+
+    await persistHierarchy(updatedCats, subcategories, productTypes);
+    showNotice(`Priority updated: "${movedItem.name}" is now #${targetIndex + 1}`);
+  };
+
+  const handleSubcategorySequenceChange = async (subId, newSeq) => {
+    if (isNaN(newSeq) || newSeq < 1) return;
+    const parentId = selectedCategory?.id;
+    const parentSubs = subcategories
+      .filter(s => s.category_id === parentId)
+      .sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0));
+
+    const currentIndex = parentSubs.findIndex(s => s.id === subId);
+    if (currentIndex === -1) return;
+    const targetIndex = Math.max(0, Math.min(newSeq - 1, parentSubs.length - 1));
+    if (currentIndex === targetIndex) return;
+
+    const [movedItem] = parentSubs.splice(currentIndex, 1);
+    parentSubs.splice(targetIndex, 0, movedItem);
+
+    const reindexedParentSubs = parentSubs.map((s, i) => ({
+      ...s,
+      display_order: i + 1,
+      sort_order: i + 1
+    }));
+
+    const updatedAllSubs = subcategories.map(s => {
+      const found = reindexedParentSubs.find(ps => ps.id === s.id);
+      return found || s;
+    });
+
+    await persistHierarchy(categories, updatedAllSubs, productTypes);
+    showNotice(`Priority updated: "${movedItem.name}" is now #${targetIndex + 1}`);
+  };
+
+  const handleProductTypeSequenceChange = async (ptId, newSeq) => {
+    if (isNaN(newSeq) || newSeq < 1) return;
+    const parentSubId = selectedSubcategory?.id;
+    const siblingPTs = productTypes
+      .filter(p => (p.subcategory_id || p.subcategoryId) === parentSubId)
+      .sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0));
+
+    const currentIndex = siblingPTs.findIndex(p => p.id === ptId);
+    if (currentIndex === -1) return;
+    const targetIndex = Math.max(0, Math.min(newSeq - 1, siblingPTs.length - 1));
+    if (currentIndex === targetIndex) return;
+
+    const [movedItem] = siblingPTs.splice(currentIndex, 1);
+    siblingPTs.splice(targetIndex, 0, movedItem);
+
+    const reindexedSiblings = siblingPTs.map((p, i) => ({
+      ...p,
+      display_order: i + 1,
+      sort_order: i + 1
+    }));
+
+    const updatedAllPTs = productTypes.map(p => {
+      const found = reindexedSiblings.find(sp => sp.id === p.id);
+      return found || p;
+    });
+
+    await persistHierarchy(categories, subcategories, updatedAllPTs);
+    showNotice(`Priority updated: "${movedItem.name}" is now #${targetIndex + 1}`);
+  };
+
   // ── 6. MODAL OPENERS ────────────────────────────────────────────────
   // Main Category Modal
   const openAddCategoryModal = () => {
@@ -876,15 +1353,16 @@ export default function MainCategoriesManager({
       };
 
       const updatedCats = [...categories, newCat];
-      const success = await persistHierarchy(updatedCats, subcategories, productTypes);
+      const success = await persistSingleCategory(newCat, updatedCats);
       if (success) {
         showNotice(`Main Category "${cleanName}" created successfully!`);
         closeModal();
       }
     } else if (modalMode === 'edit_category' && editingItem) {
+      let targetCat = null;
       const updatedCats = categories.map(c => {
         if (c.id === editingItem.id) {
-          return {
+          targetCat = {
             ...c,
             name: cleanName,
             slug: cleanSlug,
@@ -896,11 +1374,12 @@ export default function MainCategoriesManager({
             show_in_mobile_app: categoryFormData.show_in_mobile_app,
             updated_at: new Date().toISOString()
           };
+          return targetCat;
         }
         return c;
       });
 
-      const success = await persistHierarchy(updatedCats, subcategories, productTypes);
+      const success = await persistSingleCategory(targetCat || editingItem, updatedCats);
       if (success) {
         showNotice(`Main Category "${cleanName}" updated successfully!`);
         closeModal();
@@ -970,15 +1449,16 @@ export default function MainCategoriesManager({
       };
 
       const updatedSubs = [...subcategories, newSub];
-      const success = await persistHierarchy(categories, updatedSubs, productTypes);
+      const success = await persistSingleSubcategory(newSub, updatedSubs);
       if (success) {
         showNotice(`Subcategory "${cleanName}" created successfully!`);
         closeModal();
       }
     } else if (modalMode === 'edit_subcategory' && editingItem) {
+      let targetSub = null;
       const updatedSubs = subcategories.map(s => {
         if (s.id === editingItem.id) {
-          return {
+          targetSub = {
             ...s,
             category_id: parentId,
             categoryId: parentId,
@@ -993,11 +1473,12 @@ export default function MainCategoriesManager({
             show_in_mobile_app: subFormData.show_in_mobile_app,
             updated_at: new Date().toISOString()
           };
+          return targetSub;
         }
         return s;
       });
 
-      const success = await persistHierarchy(categories, updatedSubs, productTypes);
+      const success = await persistSingleSubcategory(targetSub || editingItem, updatedSubs);
       if (success) {
         showNotice(`Subcategory "${cleanName}" updated successfully!`);
         closeModal();
@@ -1072,15 +1553,16 @@ export default function MainCategoriesManager({
       };
 
       const updatedPTs = [...productTypes, newPT];
-      const success = await persistHierarchy(categories, subcategories, updatedPTs);
+      const success = await persistSingleProductType(newPT, updatedPTs);
       if (success) {
         showNotice(`Select Category "${cleanName}" created successfully!`);
         closeModal();
       }
     } else if (modalMode === 'edit_product_type' && editingItem) {
+      let targetPT = null;
       const updatedPTs = productTypes.map(pt => {
         if (pt.id === editingItem.id) {
-          return {
+          targetPT = {
             ...pt,
             category_id: parentCatId,
             categoryId: parentCatId,
@@ -1097,11 +1579,12 @@ export default function MainCategoriesManager({
             show_in_mobile_app: ptFormData.show_in_mobile_app,
             updated_at: new Date().toISOString()
           };
+          return targetPT;
         }
         return pt;
       });
 
-      const success = await persistHierarchy(categories, subcategories, updatedPTs);
+      const success = await persistSingleProductType(targetPT || editingItem, updatedPTs);
       if (success) {
         showNotice(`Select Category "${cleanName}" updated successfully!`);
         closeModal();
@@ -1109,17 +1592,19 @@ export default function MainCategoriesManager({
     }
   };
 
-  // ── 8. TOGGLE CONTROLS ──────────────────────────────────────────────
+  // ── 8. FAST TOGGLE CONTROLS ──────────────────────────────────────────
   const handleToggleCategoryStatus = async (cat) => {
     const nextStatus = !cat.is_active;
+    let targetCat = null;
     const updated = categories.map(c => {
       if (c.id === cat.id) {
-        return { ...c, is_active: nextStatus, enabled: nextStatus, updated_at: new Date().toISOString() };
+        targetCat = { ...c, is_active: nextStatus, enabled: nextStatus, updated_at: new Date().toISOString() };
+        return targetCat;
       }
       return c;
     });
 
-    const success = await persistHierarchy(updated, subcategories, productTypes);
+    const success = await persistSingleCategory(targetCat || cat, updated);
     if (success) {
       showNotice(`Category "${cat.name}" is now ${nextStatus ? 'Active' : 'Inactive'}.`);
     }
@@ -1127,14 +1612,16 @@ export default function MainCategoriesManager({
 
   const handleToggleCategoryMobile = async (cat) => {
     const nextVal = !cat.show_in_mobile_app;
+    let targetCat = null;
     const updated = categories.map(c => {
       if (c.id === cat.id) {
-        return { ...c, show_in_mobile_app: nextVal, updated_at: new Date().toISOString() };
+        targetCat = { ...c, show_in_mobile_app: nextVal, updated_at: new Date().toISOString() };
+        return targetCat;
       }
       return c;
     });
 
-    const success = await persistHierarchy(updated, subcategories, productTypes);
+    const success = await persistSingleCategory(targetCat || cat, updated);
     if (success) {
       showNotice(`Mobile visibility for "${cat.name}" set to ${nextVal ? 'Yes' : 'No'}.`);
     }
@@ -1142,14 +1629,16 @@ export default function MainCategoriesManager({
 
   const handleToggleSubcategoryStatus = async (sub) => {
     const nextStatus = !sub.is_active;
+    let targetSub = null;
     const updated = subcategories.map(s => {
       if (s.id === sub.id) {
-        return { ...s, is_active: nextStatus, enabled: nextStatus, updated_at: new Date().toISOString() };
+        targetSub = { ...s, is_active: nextStatus, enabled: nextStatus, updated_at: new Date().toISOString() };
+        return targetSub;
       }
       return s;
     });
 
-    const success = await persistHierarchy(categories, updated, productTypes);
+    const success = await persistSingleSubcategory(targetSub || sub, updated);
     if (success) {
       showNotice(`Subcategory "${sub.name}" is now ${nextStatus ? 'Active' : 'Inactive'}.`);
     }
@@ -1157,14 +1646,16 @@ export default function MainCategoriesManager({
 
   const handleToggleSubcategoryMobile = async (sub) => {
     const nextVal = !sub.show_in_mobile_app;
+    let targetSub = null;
     const updated = subcategories.map(s => {
       if (s.id === sub.id) {
-        return { ...s, show_in_mobile_app: nextVal, updated_at: new Date().toISOString() };
+        targetSub = { ...s, show_in_mobile_app: nextVal, updated_at: new Date().toISOString() };
+        return targetSub;
       }
       return s;
     });
 
-    const success = await persistHierarchy(categories, updated, productTypes);
+    const success = await persistSingleSubcategory(targetSub || sub, updated);
     if (success) {
       showNotice(`Mobile visibility for "${sub.name}" set to ${nextVal ? 'Yes' : 'No'}.`);
     }
@@ -1172,14 +1663,16 @@ export default function MainCategoriesManager({
 
   const handleToggleProductTypeStatus = async (pt) => {
     const nextStatus = !pt.is_active;
+    let targetPT = null;
     const updated = productTypes.map(p => {
       if (p.id === pt.id) {
-        return { ...p, is_active: nextStatus, enabled: nextStatus, updated_at: new Date().toISOString() };
+        targetPT = { ...p, is_active: nextStatus, enabled: nextStatus, updated_at: new Date().toISOString() };
+        return targetPT;
       }
       return p;
     });
 
-    const success = await persistHierarchy(categories, subcategories, updated);
+    const success = await persistSingleProductType(targetPT || pt, updated);
     if (success) {
       showNotice(`Select Category "${pt.name}" is now ${nextStatus ? 'Active' : 'Inactive'}.`);
     }
@@ -1187,14 +1680,16 @@ export default function MainCategoriesManager({
 
   const handleToggleProductTypeMobile = async (pt) => {
     const nextVal = !pt.show_in_mobile_app;
+    let targetPT = null;
     const updated = productTypes.map(p => {
       if (p.id === pt.id) {
-        return { ...p, show_in_mobile_app: nextVal, updated_at: new Date().toISOString() };
+        targetPT = { ...p, show_in_mobile_app: nextVal, updated_at: new Date().toISOString() };
+        return targetPT;
       }
       return p;
     });
 
-    const success = await persistHierarchy(categories, subcategories, updated);
+    const success = await persistSingleProductType(targetPT || pt, updated);
     if (success) {
       showNotice(`Mobile visibility for "${pt.name}" set to ${nextVal ? 'Yes' : 'No'}.`);
     }
@@ -1487,7 +1982,7 @@ export default function MainCategoriesManager({
   }, [categories, subcategories, productTypes]);
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20 max-w-[1600px] mx-auto">
+    <div className={`space-y-6 animate-fade-in pb-20 max-w-[1600px] mx-auto transition-transform duration-300 ease-out origin-left ${modalMode ? 'scale-[0.985] -translate-x-3 sm:-translate-x-8' : ''}`}>
       {/* Toast Notice */}
       {notice && (
         <div
@@ -1564,7 +2059,7 @@ export default function MainCategoriesManager({
       {currentView === 'categories' && (
         <div className="space-y-6">
           {/* Header Banner */}
-          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-pink-100/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-pink-100/80 shadow-xs flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5">
             <div>
               <div className="flex items-center gap-2 text-xs font-extrabold text-[#C2477A] uppercase tracking-wider mb-1">
                 <FolderPlus size={16} />
@@ -1576,8 +2071,8 @@ export default function MainCategoriesManager({
               </p>
             </div>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="hidden lg:flex items-center gap-2 bg-[#FFF5F8] px-4 py-2.5 rounded-xl border border-pink-100">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full xl:w-auto">
+              <div className="hidden lg:flex items-center gap-2 bg-[#FFF5F8] px-3.5 h-10 rounded-xl border border-pink-100/90 shadow-2xs">
                 <span className="text-xs font-extrabold text-[#C2477A]">{hierarchyStats.totalCategories} Main Categories</span>
                 <span className="text-pink-300">•</span>
                 <span className="text-xs font-bold text-gray-700">{hierarchyStats.totalSubcategories} Subcategories</span>
@@ -1587,20 +2082,44 @@ export default function MainCategoriesManager({
 
               <button
                 type="button"
-                onClick={() => setIsWipeModalOpen(true)}
-                title="Completely remove all images from the database and reset to clean state"
-                className="bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 hover:border-rose-300 font-extrabold text-xs sm:text-sm px-4 py-3 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full sm:w-auto shrink-0"
+                onClick={() => loadHierarchyData()}
+                disabled={isLoading}
+                title="Refresh category hierarchy from database"
+                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               >
-                <Trash2 size={16} className="text-rose-600" />
-                <span>Remove All Images</span>
+                <RefreshCw size={15} className={`text-[#C2477A] ${isLoading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExportScope('all')}
+                title="Export complete 3-level category hierarchy to Excel"
+                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              >
+                <Download size={15} className="text-[#C2477A]" />
+                <span>Export Hierarchy</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImportScope('all');
+                  setIsImportModalOpen(true);
+                }}
+                title="Import category hierarchy from Excel (.xlsx)"
+                className="bg-white hover:bg-pink-50 text-[#C2477A] border border-pink-300 hover:border-[#C2477A] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              >
+                <Upload size={15} className="text-[#C2477A]" />
+                <span>Import Excel</span>
               </button>
 
               <button
                 type="button"
                 onClick={openAddCategoryModal}
-                className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full sm:w-auto shrink-0"
+                className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               >
-                <PlusCircle size={17} />
+                <PlusCircle size={16} />
                 <span>+ Add Main Category</span>
               </button>
             </div>
@@ -1710,11 +2229,23 @@ export default function MainCategoriesManager({
                             isDragged ? 'opacity-40 bg-pink-50' : isDragOver ? 'bg-pink-100/50' : 'hover:bg-[#FFF9FB]'
                           }`}
                         >
-                          {/* # and Drag Handle */}
-                          <td className="py-3.5 px-4 text-center font-bold text-gray-400">
-                            <div className="flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A]">
-                              <GripVertical size={15} className="shrink-0" title="Drag to reorder" />
-                              <span className="text-xs">{idx + 1}</span>
+                          {/* # Priority & Editable Sequence */}
+                          <td className="py-3.5 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A]" title="Drag to reorder">
+                                <GripVertical size={14} />
+                              </span>
+                              <input
+                                type="number"
+                                min="1"
+                                max={filteredAndSortedCategories.length}
+                                defaultValue={idx + 1}
+                                key={`cat_seq_${cat.id}_${idx + 1}`}
+                                onBlur={(e) => handleCategorySequenceChange(cat.id, parseInt(e.target.value, 10))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-[#FFF5F8]/70 text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
+                                title="Edit priority sequence number directly"
+                              />
                             </div>
                           </td>
 
@@ -1879,14 +2410,48 @@ export default function MainCategoriesManager({
               </div>
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => loadHierarchyData()}
+                disabled={isLoading}
+                title="Refresh subcategories from database"
+                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              >
+                <RefreshCw size={15} className={`text-[#C2477A] ${isLoading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExportScope('subcategories')}
+                title={`Export subcategories under ${selectedCategory?.name} to Excel`}
+                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              >
+                <Download size={15} className="text-[#C2477A]" />
+                <span>Export Subcategories</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImportScope('subcategories');
+                  setIsImportModalOpen(true);
+                }}
+                title={`Import subcategories under ${selectedCategory?.name} from Excel`}
+                className="bg-white hover:bg-pink-50 text-[#C2477A] border border-pink-300 hover:border-[#C2477A] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              >
+                <Upload size={15} className="text-[#C2477A]" />
+                <span>Import Excel</span>
+              </button>
+
               {isAdmin ? (
                 <button
                   type="button"
                   onClick={() => openAddSubcategoryModal(selectedCategory)}
-                  className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full md:w-auto shrink-0"
+                  className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
                 >
-                  <PlusCircle size={17} />
+                  <PlusCircle size={16} />
                   <span>+ Add Sub Category</span>
                 </button>
               ) : (
@@ -2009,42 +2574,37 @@ export default function MainCategoriesManager({
                             isDragged ? 'opacity-40 bg-pink-50' : isDragOver ? 'bg-pink-100/50' : 'hover:bg-[#FFF9FB]'
                           }`}
                         >
-                          {/* # and Drag Handle */}
-                          <td className="py-3.5 px-4 text-center font-bold text-gray-400">
-                            <div className="flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A]">
-                              <GripVertical size={15} className="shrink-0" title="Drag to reorder" />
-                              <span className="text-xs">{idx + 1}</span>
+                          {/* # Priority & Editable Sequence */}
+                          <td className="py-3.5 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A]" title="Drag to reorder">
+                                <GripVertical size={14} />
+                              </span>
+                              <input
+                                type="number"
+                                min="1"
+                                max={filteredAndSortedSubcategories.length}
+                                defaultValue={idx + 1}
+                                key={`sub_seq_${sub.id}_${idx + 1}`}
+                                onBlur={(e) => handleSubcategorySequenceChange(sub.id, parseInt(e.target.value, 10))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-[#FFF5F8]/70 text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
+                                title="Edit priority sequence number directly"
+                              />
                             </div>
                           </td>
 
-                          {/* Sub Category Name */}
+                          {/* Sub Category Name (No image folder box) */}
                           <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-[#FFF5F8] border border-pink-100 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs group-hover:border-pink-300 transition-colors">
-                                {sub.image ? (
-                                  <img
-                                    src={sub.image}
-                                    alt={sub.name}
-                                    className="w-full h-full object-cover rounded-lg"
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.style.display = 'none';
-                                    }}
-                                  />
-                                ) : (
-                                  <Layers size={16} className="text-[#C2477A]" />
-                                )}
-                              </div>
-                              <div>
-                                <span className="font-extrabold text-sm text-gray-900 block leading-tight">
-                                  {sub.name}
+                            <div>
+                              <span className="font-extrabold text-sm text-gray-900 block leading-tight">
+                                {sub.name}
+                              </span>
+                              {sub.description && (
+                                <span className="text-[11px] text-gray-500 font-medium line-clamp-1 mt-0.5">
+                                  {sub.description}
                                 </span>
-                                {sub.description && (
-                                  <span className="text-[11px] text-gray-500 font-medium line-clamp-1 mt-0.5">
-                                    {sub.description}
-                                  </span>
-                                )}
-                              </div>
+                              )}
                             </div>
                           </td>
 
@@ -2189,14 +2749,48 @@ export default function MainCategoriesManager({
               </div>
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => loadHierarchyData()}
+                disabled={isLoading}
+                title="Refresh select categories from database"
+                className="bg-white hover:bg-purple-50 text-gray-700 hover:text-purple-700 border border-purple-200 hover:border-purple-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              >
+                <RefreshCw size={15} className={`text-purple-600 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExportScope('product_types')}
+                title={`Export select categories under ${selectedSubcategory?.name} to Excel`}
+                className="bg-white hover:bg-purple-50 text-gray-700 hover:text-purple-700 border border-purple-200 hover:border-purple-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              >
+                <Download size={15} className="text-purple-600" />
+                <span>Export Select Categories</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImportScope('product_types');
+                  setIsImportModalOpen(true);
+                }}
+                title={`Import select categories under ${selectedSubcategory?.name} from Excel`}
+                className="bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 hover:border-purple-500 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              >
+                <Upload size={15} className="text-purple-600" />
+                <span>Import Excel</span>
+              </button>
+
               {isAdmin ? (
                 <button
                   type="button"
                   onClick={() => openAddProductTypeModal(selectedCategory, selectedSubcategory)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] w-full md:w-auto shrink-0"
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
                 >
-                  <PlusCircle size={17} />
+                  <PlusCircle size={16} />
                   <span>+ Add Select Category</span>
                 </button>
               ) : (
@@ -2318,42 +2912,37 @@ export default function MainCategoriesManager({
                             isDragged ? 'opacity-40 bg-purple-50' : isDragOver ? 'bg-purple-100/50' : 'hover:bg-purple-50/30'
                           }`}
                         >
-                          {/* # and Drag Handle */}
-                          <td className="py-3.5 px-4 text-center font-bold text-gray-400">
-                            <div className="flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing text-gray-400 hover:text-purple-600">
-                              <GripVertical size={15} className="shrink-0" title="Drag to reorder" />
-                              <span className="text-xs">{idx + 1}</span>
+                          {/* # Priority & Editable Sequence */}
+                          <td className="py-3.5 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-purple-600" title="Drag to reorder">
+                                <GripVertical size={14} />
+                              </span>
+                              <input
+                                type="number"
+                                min="1"
+                                max={filteredAndSortedProductTypes.length}
+                                defaultValue={idx + 1}
+                                key={`pt_seq_${pt.id}_${idx + 1}`}
+                                onBlur={(e) => handleProductTypeSequenceChange(pt.id, parseInt(e.target.value, 10))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                className="w-10 h-7 text-center rounded-lg border border-purple-200 bg-purple-50/70 text-xs font-black text-gray-800 focus:border-purple-600 focus:bg-white outline-none shadow-2xs"
+                                title="Edit priority sequence number directly"
+                              />
                             </div>
                           </td>
 
-                          {/* Product Type Name */}
+                          {/* Product Type Name (No image folder box) */}
                           <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs group-hover:border-purple-300 transition-colors">
-                                {pt.image ? (
-                                  <img
-                                    src={pt.image}
-                                    alt={pt.name}
-                                    className="w-full h-full object-cover rounded-lg"
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.style.display = 'none';
-                                    }}
-                                  />
-                                ) : (
-                                  <Tag size={16} className="text-purple-600" />
-                                )}
-                              </div>
-                              <div>
-                                <span className="font-extrabold text-sm text-gray-900 block leading-tight">
-                                  {pt.name}
+                            <div>
+                              <span className="font-extrabold text-sm text-gray-900 block leading-tight">
+                                {pt.name}
+                              </span>
+                              {pt.description && (
+                                <span className="text-[11px] text-gray-500 font-medium line-clamp-1 mt-0.5">
+                                  {pt.description}
                                 </span>
-                                {pt.description && (
-                                  <span className="text-[11px] text-gray-500 font-medium line-clamp-1 mt-0.5">
-                                    {pt.description}
-                                  </span>
-                                )}
-                              </div>
+                              )}
                             </div>
                           </td>
 
@@ -2449,7 +3038,7 @@ export default function MainCategoriesManager({
       {/* ════════════════════════════════════════════════════════════════ */}
       {(modalMode === 'add_category' || modalMode === 'edit_category') && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-[1px] transition-all" focus-trap="true"
           onClick={(e) => {
             if (e.target === e.currentTarget && !isSaving) {
               closeModal();
@@ -2457,7 +3046,7 @@ export default function MainCategoriesManager({
           }}
         >
           <div 
-            className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-scale-up relative"
+            className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-pink-200 animate-slide-left relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header - Sticky with prominent Close (✕) button */}
@@ -2487,9 +3076,9 @@ export default function MainCategoriesManager({
               </button>
             </div>
 
-            {/* Scrollable Form Body with Sticky Footer */}
-            <form onSubmit={handleCategoryFormSubmit} className="flex-1 overflow-y-auto overscroll-contain flex flex-col min-h-0">
-              <div className="p-5 sm:p-7 space-y-5 flex-1">
+            {/* Scrollable Form Body with Clean Non-Overlapping Action Footer */}
+            <form onSubmit={handleCategoryFormSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div ref={drawerScrollRef} className="flex-1 overflow-y-auto overscroll-y-auto touch-pan-y p-4 sm:p-5 space-y-3 pb-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
                     <span>Category Name <span className="text-rose-500">*</span></span>
@@ -2558,7 +3147,7 @@ export default function MainCategoriesManager({
                   </div>
                 </div>
 
-                {/* Integrated Image Management: Preview + Google Search + Drag & Drop Upload */}
+                {/* Main Category Image Option: Google Search Images or Local File Upload */}
                 <InlineImageSection
                   imageUrl={categoryFormData.image}
                   onChange={(newUrl) => setCategoryFormData(prev => ({ ...prev, image: newUrl }))}
@@ -2567,26 +3156,26 @@ export default function MainCategoriesManager({
                   folder="categories"
                   filenamePrefix="cat"
                 />
-              </div>
 
-              {/* Sticky Footer */}
-              <div className="p-4 sm:p-5 bg-gray-50/95 backdrop-blur-xs border-t border-pink-100 flex items-center justify-end gap-3 shrink-0 sticky bottom-0 z-10">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={isSaving}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-white font-bold text-xs cursor-pointer transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2.5 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
-                >
-                  {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                  <span>{modalMode === 'add_category' ? 'Create Main Category' : 'Save Changes'}</span>
-                </button>
+                {/* Action Bar Directly Below Image */}
+                <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-pink-100">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    disabled={isSaving}
+                    className="px-5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-xs cursor-pointer transition-colors shadow-2xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-6 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                    <span>{modalMode === 'add_category' ? 'Create Main Category' : 'Save Changes'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -2598,7 +3187,7 @@ export default function MainCategoriesManager({
       {/* ════════════════════════════════════════════════════════════════ */}
       {(modalMode === 'add_subcategory' || modalMode === 'edit_subcategory') && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-[1px] transition-all" focus-trap="true"
           onClick={(e) => {
             if (e.target === e.currentTarget && !isSaving) {
               closeModal();
@@ -2606,7 +3195,7 @@ export default function MainCategoriesManager({
           }}
         >
           <div 
-            className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-scale-up relative"
+            className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-pink-200 animate-slide-left relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header - Sticky with prominent Close (✕) button */}
@@ -2636,9 +3225,9 @@ export default function MainCategoriesManager({
               </button>
             </div>
 
-            {/* Scrollable Form Body with Sticky Footer */}
-            <form onSubmit={handleSubcategoryFormSubmit} className="flex-1 overflow-y-auto overscroll-contain flex flex-col min-h-0">
-              <div className="p-5 sm:p-7 space-y-5 flex-1">
+            {/* Scrollable Form Body with Clean Non-Overlapping Action Footer */}
+            <form onSubmit={handleSubcategoryFormSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div ref={drawerScrollRef} className="flex-1 overflow-y-auto overscroll-y-auto touch-pan-y p-4 sm:p-5 space-y-3 pb-4">
                 {/* Parent Main Category Selection (Required) */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
@@ -2734,35 +3323,25 @@ export default function MainCategoriesManager({
                   </div>
                 </div>
 
-                {/* Integrated Image Management: Preview + Google Search + Drag & Drop Upload */}
-                <InlineImageSection
-                  imageUrl={subFormData.image}
-                  onChange={(newUrl) => setSubFormData(prev => ({ ...prev, image: newUrl }))}
-                  entityName={subFormData.name || 'Subcategory'}
-                  entityType="Sub Category"
-                  folder="subcategories"
-                  filenamePrefix="sub"
-                />
-              </div>
-
-              {/* Sticky Footer */}
-              <div className="p-4 sm:p-5 bg-gray-50/95 backdrop-blur-xs border-t border-pink-100 flex items-center justify-end gap-3 shrink-0 sticky bottom-0 z-10">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={isSaving}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-white font-bold text-xs cursor-pointer transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2.5 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
-                >
-                  {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                  <span>{modalMode === 'add_subcategory' ? 'Create Sub Category' : 'Save Changes'}</span>
-                </button>
+                {/* Action Bar Directly Below Inputs */}
+                <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-pink-100">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    disabled={isSaving}
+                    className="px-5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-xs cursor-pointer transition-colors shadow-2xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-6 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                    <span>{modalMode === 'add_subcategory' ? 'Create Sub Category' : 'Save Changes'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -2774,7 +3353,7 @@ export default function MainCategoriesManager({
       {/* ════════════════════════════════════════════════════════════════ */}
       {(modalMode === 'add_product_type' || modalMode === 'edit_product_type') && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-[1px] transition-all" focus-trap="true"
           onClick={(e) => {
             if (e.target === e.currentTarget && !isSaving) {
               closeModal();
@@ -2782,7 +3361,7 @@ export default function MainCategoriesManager({
           }}
         >
           <div 
-            className="bg-white rounded-3xl border border-purple-100 shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-scale-up relative"
+            className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-purple-200 animate-slide-left relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header - Sticky with prominent Close (✕) button */}
@@ -2812,9 +3391,9 @@ export default function MainCategoriesManager({
               </button>
             </div>
 
-            {/* Scrollable Form Body with Sticky Footer */}
-            <form onSubmit={handleProductTypeFormSubmit} className="flex-1 overflow-y-auto overscroll-contain flex flex-col min-h-0">
-              <div className="p-5 sm:p-7 space-y-5 flex-1">
+            {/* Scrollable Form Body with Clean Non-Overlapping Action Footer */}
+            <form onSubmit={handleProductTypeFormSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div ref={drawerScrollRef} className="flex-1 overflow-y-auto overscroll-y-auto touch-pan-y p-4 sm:p-5 space-y-3 pb-4">
                 {/* Hierarchical Dependent Dropdowns */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* 1. Parent Main Category Dropdown */}
@@ -2948,35 +3527,27 @@ export default function MainCategoriesManager({
                   </div>
                 </div>
 
-                {/* Integrated Image Management: Preview + Google Search + Drag & Drop Upload */}
-                <InlineImageSection
-                  imageUrl={ptFormData.image}
-                  onChange={(newUrl) => setPtFormData(prev => ({ ...prev, image: newUrl }))}
-                  entityName={ptFormData.name || 'Product Type'}
-                  entityType="Select Category"
-                  folder="products"
-                  filenamePrefix="pt"
-                />
-              </div>
-
-              {/* Sticky Footer */}
-              <div className="p-4 sm:p-5 bg-gray-50/95 backdrop-blur-xs border-t border-purple-100 flex items-center justify-end gap-3 shrink-0 sticky bottom-0 z-10">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={isSaving}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-white font-bold text-xs cursor-pointer transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
-                >
-                  {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                  <span>{modalMode === 'add_product_type' ? 'Create Select Category' : 'Save Changes'}</span>
-                </button>
+                {/* Select Category is Name-only per specification */}
+                
+                {/* Action Bar Directly Below Inputs (Zero Empty Space) */}
+                <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-purple-100">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    disabled={isSaving}
+                    className="px-5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-xs cursor-pointer transition-colors shadow-2xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-6 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                    <span>{modalMode === 'add_product_type' ? 'Create Select Category' : 'Save Changes'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -2988,7 +3559,7 @@ export default function MainCategoriesManager({
       {/* ════════════════════════════════════════════════════════════════ */}
       {deleteModal.isOpen && deleteModal.item && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px] transition-all"
           onClick={(e) => {
             if (e.target === e.currentTarget && !deleteModal.isDeleting && !deleteModal.isChecking) {
               setDeleteModal({ isOpen: false, type: 'category', item: null, isChecking: false, hasRelations: false, childCount: 0, productsCount: 0, isDeleting: false });
@@ -2996,7 +3567,7 @@ export default function MainCategoriesManager({
           }}
         >
           <div 
-            className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-scale-up relative"
+            className="bg-white w-full max-w-md sm:max-w-lg h-auto max-h-[92vh] my-auto rounded-3xl shadow-2xl flex flex-col border border-pink-200 animate-scale-up relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with prominent Close (✕) button */}
@@ -3098,7 +3669,7 @@ export default function MainCategoriesManager({
               )}
             </div>
 
-            <div className="p-5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
+            <div className="p-5 bg-white border-t border-gray-100 flex items-center justify-end gap-3 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               <button
                 type="button"
                 onClick={() => setDeleteModal({ isOpen: false, type: 'category', item: null, isChecking: false, hasRelations: false, childCount: 0, productsCount: 0, isDeleting: false })}
@@ -3136,8 +3707,16 @@ export default function MainCategoriesManager({
 
       {/* ── 5. WIPE ALL IMAGES CONFIRMATION MODAL ───────────────────────────── */}
       {isWipeModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl border border-rose-200 shadow-2xl w-full max-w-lg p-6 sm:p-7 relative animate-scale-up">
+        <div 
+          className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px] transition-all"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isWipingImages) setIsWipeModalOpen(false);
+          }}
+        >
+          <div 
+            className="bg-white w-full max-w-lg h-full shadow-2xl flex flex-col border-l border-rose-100 animate-slide-left relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between pb-4 border-b border-rose-100">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold shadow-2xs">
@@ -3161,7 +3740,7 @@ export default function MainCategoriesManager({
               </button>
             </div>
 
-            <div className="py-5 space-y-3 text-xs sm:text-sm text-gray-600 leading-relaxed">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-7 space-y-3 text-xs sm:text-sm text-gray-600 leading-relaxed">
               <p>
                 This action will permanently clear all saved image URLs and icons across:
               </p>
@@ -3178,7 +3757,7 @@ export default function MainCategoriesManager({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+            <div className="p-4 sm:p-5 bg-white border-t border-gray-100 flex items-center justify-end gap-3 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               <button
                 type="button"
                 onClick={() => setIsWipeModalOpen(false)}
@@ -3208,6 +3787,20 @@ export default function MainCategoriesManager({
             </div>
           </div>
         </div>
+      )}
+      {/* Category Excel Import Modal */}
+      {isImportModalOpen && (
+        <CategoryImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          initialScope={importScope}
+          categories={categories}
+          subcategories={subcategories}
+          productTypes={productTypes}
+          selectedCategory={selectedCategory}
+          selectedSubcategory={selectedSubcategory}
+          onConfirmImport={handleConfirmCategoryImport}
+        />
       )}
     </div>
   );

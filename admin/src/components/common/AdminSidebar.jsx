@@ -181,7 +181,7 @@ export const AdminSidebar = ({
       items: [
         {
           id: 'home_banners',
-          label: 'Home Banners',
+          label: 'Banner Management',
           icon: ImageIcon,
           badge: activeBannersCount > 0 ? `${activeBannersCount} Active` : null,
           badgeVariant: 'brand'
@@ -349,7 +349,8 @@ export const AdminSidebar = ({
           subItems: [
             { id: 'employees', label: 'All Employees', icon: Users },
             { id: 'employees/new', label: 'Add Employee', icon: UserPlus },
-                      ]
+            { id: 'employees/activity', label: 'Activity Logs', icon: Clock }
+          ]
         }
       ]
     },

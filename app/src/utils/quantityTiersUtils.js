@@ -130,33 +130,61 @@ export const normalizeQuantityTiers = (raw) => {
 export const getProductBasePriceForRole = (product, role, shade = null) => {
   if (!product && !shade) return 0;
 
+  // Resolve product-level fallbacks
+  const productMrp = Number(product?.mrp || 0);
+  const productGeneralPrice = Number(product?.generalPrice !== undefined && product?.generalPrice !== '' && Number(product?.generalPrice) > 0 ? product.generalPrice : productMrp);
+  const productSalonPrice = Number(product?.salonPrice !== undefined && product?.salonPrice !== '' && Number(product?.salonPrice) > 0 ? product.salonPrice : productGeneralPrice);
+  const productArtistPrice = Number(product?.artistPrice !== undefined && product?.artistPrice !== '' && Number(product?.artistPrice) > 0 ? product.artistPrice : productSalonPrice);
+  const productBeauticianPrice = Number(product?.beauticianPrice !== undefined && product?.beauticianPrice !== '' && Number(product?.beauticianPrice) > 0 ? product.beauticianPrice : productSalonPrice);
+
   // If shade is provided, prioritize shade's own pricing configuration
   if (shade) {
-    const shadeMrp = Number(shade.mrp !== undefined && shade.mrp !== '' ? shade.mrp : (shade.priceOverride !== undefined && shade.priceOverride !== '' ? shade.priceOverride : (product?.mrp || 0)));
+    const rawShadeMrp = shade.mrp ?? shade.priceOverride ?? shade.price_override ?? shade.price ?? productMrp;
+    const shadeMrp = Number(rawShadeMrp) > 0 ? Number(rawShadeMrp) : productMrp;
+
+    const rawGeneral = shade.generalPrice ?? shade.general_price ?? shade.price ?? shade.priceOverride ?? shade.price_override;
+    const shadeGeneralPrice = (rawGeneral !== undefined && rawGeneral !== '' && Number(rawGeneral) > 0)
+      ? Number(rawGeneral)
+      : productGeneralPrice;
+
+    const rawSalon = shade.salonPrice ?? shade.salon_price;
+    const shadeSalonPrice = (rawSalon !== undefined && rawSalon !== '' && Number(rawSalon) > 0)
+      ? Number(rawSalon)
+      : (productSalonPrice < productMrp ? productSalonPrice : shadeGeneralPrice);
+
+    const rawArtist = shade.artistPrice ?? shade.artist_price;
+    const shadeArtistPrice = (rawArtist !== undefined && rawArtist !== '' && Number(rawArtist) > 0)
+      ? Number(rawArtist)
+      : (productArtistPrice < productMrp ? productArtistPrice : shadeSalonPrice);
+
+    const rawBeautician = shade.beauticianPrice ?? shade.beautician_price;
+    const shadeBeauticianPrice = (rawBeautician !== undefined && rawBeautician !== '' && Number(rawBeautician) > 0)
+      ? Number(rawBeautician)
+      : (productBeauticianPrice < productMrp ? productBeauticianPrice : shadeSalonPrice);
+
     switch (role) {
       case 'salon':
-        return Number(shade.salonPrice !== undefined && shade.salonPrice !== '' && Number(shade.salonPrice) > 0 ? shade.salonPrice : (product?.salonPrice !== undefined && product?.salonPrice !== '' && Number(product.salonPrice) > 0 ? product.salonPrice : shadeMrp));
+        return shadeSalonPrice;
       case 'artist':
-        return Number(shade.artistPrice !== undefined && shade.artistPrice !== '' && Number(shade.artistPrice) > 0 ? shade.artistPrice : (product?.artistPrice !== undefined && product?.artistPrice !== '' && Number(product.artistPrice) > 0 ? product.artistPrice : shadeMrp));
+        return shadeArtistPrice;
       case 'beautician':
-        return Number(shade.beauticianPrice !== undefined && shade.beauticianPrice !== '' && Number(shade.beauticianPrice) > 0 ? shade.beauticianPrice : (product?.beauticianPrice !== undefined && product?.beauticianPrice !== '' && Number(product.beauticianPrice) > 0 ? product.beauticianPrice : shadeMrp));
+        return shadeBeauticianPrice;
       case 'general':
       default:
-        return Number(shade.generalPrice !== undefined && shade.generalPrice !== '' && Number(shade.generalPrice) > 0 ? shade.generalPrice : shadeMrp);
+        return shadeGeneralPrice;
     }
   }
 
-  const mrp = Number(product?.mrp || 0);
   switch (role) {
     case 'salon':
-      return Number(product.salonPrice !== undefined && product.salonPrice !== '' && Number(product.salonPrice) > 0 ? product.salonPrice : mrp);
+      return productSalonPrice;
     case 'artist':
-      return Number(product.artistPrice !== undefined && product.artistPrice !== '' && Number(product.artistPrice) > 0 ? product.artistPrice : mrp);
+      return productArtistPrice;
     case 'beautician':
-      return Number(product.beauticianPrice !== undefined && product.beauticianPrice !== '' && Number(product.beauticianPrice) > 0 ? product.beauticianPrice : mrp);
+      return productBeauticianPrice;
     case 'general':
     default:
-      return Number(product.generalPrice !== undefined && product.generalPrice !== '' && Number(product.generalPrice) > 0 ? product.generalPrice : mrp);
+      return productGeneralPrice;
   }
 };
 

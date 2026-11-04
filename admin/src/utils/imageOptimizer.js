@@ -28,6 +28,30 @@ export const IMAGE_PROFILES = {
     preserveTransparency: true,
     upscaling: false
   },
+  HOME_BANNER: {
+    name: 'Home Page Banner',
+    format: 'image/webp',
+    maxWidth: 1920,
+    maxHeight: 816,
+    quality: 0.88,
+    targetSizeKB: [100, 350],
+    maxProcessedSizeKB: 500,
+    fitMode: 'contain',
+    preserveTransparency: true,
+    upscaling: false
+  },
+  PROMOTIONAL_BANNER: {
+    name: 'Promotional Banner',
+    format: 'image/webp',
+    maxWidth: 1600,
+    maxHeight: 900,
+    quality: 0.88,
+    targetSizeKB: [80, 300],
+    maxProcessedSizeKB: 450,
+    fitMode: 'contain',
+    preserveTransparency: true,
+    upscaling: false
+  },
   CATEGORY: {
     name: 'Category Image',
     format: 'image/webp',
@@ -55,11 +79,11 @@ export const IMAGE_PROFILES = {
   PRODUCT: {
     name: 'Product Image',
     format: 'image/webp',
-    maxWidth: 1200,
-    maxHeight: 1200,
+    maxWidth: 1600,
+    maxHeight: 1600,
     quality: 0.88,
     targetSizeKB: [80, 250],
-    maxProcessedSizeKB: 350,
+    maxProcessedSizeKB: 400,
     fitMode: 'contain',
     preserveTransparency: true,
     colorAccuracy: true,
@@ -78,6 +102,114 @@ export const IMAGE_PROFILES = {
     upscaling: false
   }
 };
+
+/**
+ * Standardized Aspect Ratios & Container Specifications across Salbeau
+ */
+export const STANDARD_IMAGE_SPECS = {
+  home_banner: {
+    key: 'home_banner',
+    label: 'Home Page Banner',
+    aspectRatio: '16:9 / 2.35:1',
+    aspectRatioValue: 1200 / 510,
+    recommendedDimensions: '1200 × 510 px',
+    minDimensions: '960 × 408 px',
+    maxDimensions: '1920 × 816 px',
+    supportedFormats: 'WebP, JPG, PNG',
+    maxFileSize: '10 MB',
+    fitMode: 'contain',
+    containerClass: 'aspect-[1200/510]'
+  },
+  promo_banner: {
+    key: 'promo_banner',
+    label: 'Promotional Banner',
+    aspectRatio: '16:9',
+    aspectRatioValue: 16 / 9,
+    recommendedDimensions: '1200 × 675 px',
+    minDimensions: '800 × 450 px',
+    maxDimensions: '1600 × 900 px',
+    supportedFormats: 'WebP, JPG, PNG',
+    maxFileSize: '10 MB',
+    fitMode: 'contain',
+    containerClass: 'aspect-video'
+  },
+  product: {
+    key: 'product',
+    label: 'Product Packshot',
+    aspectRatio: '1:1 (Square)',
+    aspectRatioValue: 1,
+    recommendedDimensions: '1000 × 1000 px',
+    minDimensions: '800 × 800 px',
+    maxDimensions: '1600 × 1600 px',
+    supportedFormats: 'WebP, PNG (Transparent), JPG',
+    maxFileSize: '10 MB',
+    fitMode: 'contain',
+    containerClass: 'aspect-square'
+  },
+  brand_logo: {
+    key: 'brand_logo',
+    label: 'Brand Logo',
+    aspectRatio: '1:1 (Circular / Square)',
+    aspectRatioValue: 1,
+    recommendedDimensions: '512 × 512 px',
+    minDimensions: '256 × 256 px',
+    maxDimensions: '1024 × 1024 px',
+    supportedFormats: 'PNG (Transparent), WebP, SVG',
+    maxFileSize: '5 MB',
+    fitMode: 'contain',
+    containerClass: 'aspect-square'
+  },
+  category: {
+    key: 'category',
+    label: 'Category Image',
+    aspectRatio: '1:1 (Square)',
+    aspectRatioValue: 1,
+    recommendedDimensions: '600 × 600 px',
+    minDimensions: '400 × 400 px',
+    maxDimensions: '800 × 800 px',
+    supportedFormats: 'WebP, JPG, PNG',
+    maxFileSize: '5 MB',
+    fitMode: 'contain',
+    containerClass: 'aspect-square'
+  },
+  subcategory: {
+    key: 'subcategory',
+    label: 'Subcategory Card',
+    aspectRatio: '1:1 (Square)',
+    aspectRatioValue: 1,
+    recommendedDimensions: '400 × 400 px',
+    minDimensions: '200 × 200 px',
+    maxDimensions: '600 × 600 px',
+    supportedFormats: 'WebP, JPG, PNG',
+    maxFileSize: '5 MB',
+    fitMode: 'contain',
+    containerClass: 'aspect-square'
+  },
+  thumbnail: {
+    key: 'thumbnail',
+    label: 'Thumbnail',
+    aspectRatio: '1:1 (Square)',
+    aspectRatioValue: 1,
+    recommendedDimensions: '160 × 160 px',
+    minDimensions: '80 × 80 px',
+    maxDimensions: '320 × 320 px',
+    supportedFormats: 'WebP, PNG, JPG',
+    maxFileSize: '2 MB',
+    fitMode: 'contain',
+    containerClass: 'aspect-square'
+  }
+};
+
+export function resolveImageSpec(aspectRatioOrPreset = 'square') {
+  const norm = String(aspectRatioOrPreset || '').toLowerCase().trim();
+  if (norm.includes('home_banner') || norm.includes('hero')) return STANDARD_IMAGE_SPECS.home_banner;
+  if (norm.includes('promo') || norm.includes('banner')) return STANDARD_IMAGE_SPECS.promo_banner;
+  if (norm.includes('brand') || norm.includes('logo') || norm.includes('circle')) return STANDARD_IMAGE_SPECS.brand_logo;
+  if (norm.includes('subcat')) return STANDARD_IMAGE_SPECS.subcategory;
+  if (norm.includes('cat')) return STANDARD_IMAGE_SPECS.category;
+  if (norm.includes('thumb')) return STANDARD_IMAGE_SPECS.thumbnail;
+  return STANDARD_IMAGE_SPECS.product;
+}
 
 export const RESPONSIVE_VARIANTS = {
   thumbnail: { maxWidth: 160, maxHeight: 160, quality: 0.80, suffix: '_thumb' },
@@ -251,14 +383,14 @@ export async function optimizeImage(source, profile = 'PRODUCT', overrideOptions
   };
 
   const {
-    maxWidth = 1200,
-    maxHeight = 1200,
+    maxWidth = 1600,
+    maxHeight = 1600,
     quality = 0.88,
     preserveTransparency = true,
     upscaling = false,
     preferredFormat = 'image/webp',
     filename = 'optimized-asset.webp',
-    maxProcessedSizeKB = 350
+    maxProcessedSizeKB = 400
   } = options;
 
   let originalSize = 0;
@@ -439,7 +571,10 @@ export async function fetchImageUrlAsBlob(url) {
   }
 
   try {
-    const response = await fetch(url, { mode: 'cors' });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const response = await fetch(url, { mode: 'cors', signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.blob();
   } catch (err) {

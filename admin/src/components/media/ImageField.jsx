@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Image as ImageIcon, Upload, RefreshCw, Trash2, Plus, Sparkles, ExternalLink } from 'lucide-react';
+import { Image as ImageIcon, Upload, RefreshCw, Trash2, Plus, Sparkles, ExternalLink, Info } from 'lucide-react';
 import ImageManagerModal from './ImageManagerModal';
+import { resolveImageSpec } from '../../utils/imageOptimizer';
 
 export default function ImageField({
   label = 'Image',
@@ -10,12 +11,13 @@ export default function ImageField({
   folder = 'products',
   filenamePrefix = 'asset',
   entityName = '',
-  aspectRatio = 'square', // 'square' | 'banner' | 'circle'
+  aspectRatio = 'square', // 'square' | 'banner' | 'circle' | 'home_banner' | 'promo_banner'
   compact = false,
   disabled = false,
   className = '',
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const spec = resolveImageSpec(aspectRatio);
 
   const handleSave = (newUrl) => {
     if (onChange) {
@@ -86,6 +88,7 @@ export default function ImageField({
           folder={folder}
           filenamePrefix={filenamePrefix}
           defaultSearchQuery={entityName}
+          aspectRatioSpec={spec}
         />
       </div>
     );
@@ -96,9 +99,14 @@ export default function ImageField({
     <div className={`space-y-1.5 ${className}`}>
       {label && (
         <div className="flex items-center justify-between">
-          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-            {label}
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+              {label}
+            </label>
+            <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200/60 rounded text-[10px] font-bold">
+              {spec.aspectRatio} • {spec.recommendedDimensions}
+            </span>
+          </div>
           {sublabel && <span className="text-[11px] text-gray-400">{sublabel}</span>}
         </div>
       )}
@@ -109,9 +117,9 @@ export default function ImageField({
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div
               className={`bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden p-1 shadow-inner ${
-                aspectRatio === 'circle'
+                aspectRatio === 'circle' || spec.key === 'brand_logo'
                   ? 'w-16 h-16 rounded-full'
-                  : aspectRatio === 'banner'
+                  : aspectRatio === 'banner' || spec.key === 'home_banner' || spec.key === 'promo_banner'
                   ? 'w-28 h-16 rounded-lg'
                   : 'w-16 h-16 rounded-xl'
               }`}
@@ -134,9 +142,11 @@ export default function ImageField({
               <div className="text-[11px] text-gray-500 truncate max-w-[200px] sm:max-w-xs font-mono">
                 {value}
               </div>
-              <div className="text-[10px] text-green-600 font-medium flex items-center gap-1 mt-0.5">
+              <div className="text-[10px] text-green-600 font-medium flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                 <span>Active in User App</span>
+                <span className="text-gray-300">•</span>
+                <span className="text-gray-500 font-normal">{spec.recommendedDimensions} container</span>
               </div>
             </div>
           </div>
@@ -164,7 +174,7 @@ export default function ImageField({
           )}
         </div>
       ) : (
-        /* No Image: Show Add Image CTA */
+        /* No Image: Show Add Image CTA with specification guidance */
         <div
           onClick={() => !disabled && setIsModalOpen(true)}
           className={`border-2 border-dashed border-gray-300 hover:border-pink-500 bg-gray-50/60 hover:bg-pink-50/30 rounded-xl p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
@@ -178,14 +188,21 @@ export default function ImageField({
             <span className="text-xs font-bold text-gray-800 hover:text-pink-700">
               + Add {label}
             </span>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              Upload, Drag & Drop, Paste (Ctrl+V), Browse Google, or enter URL
+            <div className="flex items-center justify-center gap-2 mt-1 text-[11px] text-gray-500">
+              <span className="font-semibold text-pink-600">{spec.recommendedDimensions}</span>
+              <span>•</span>
+              <span>Aspect Ratio: {spec.aspectRatio}</span>
+              <span>•</span>
+              <span>Max: {spec.maxFileSize}</span>
+            </div>
+            <p className="text-[10.5px] text-gray-400 mt-1">
+              Supports {spec.supportedFormats}. Auto-compressed & fitted to container.
             </p>
           </div>
         </div>
       )}
 
-      {/* Centralized Modal */}
+      {/* Centralized Modal with Aspect Ratio Specification */}
       <ImageManagerModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -197,6 +214,7 @@ export default function ImageField({
         folder={folder}
         filenamePrefix={filenamePrefix}
         defaultSearchQuery={entityName}
+        aspectRatioSpec={spec}
       />
     </div>
   );

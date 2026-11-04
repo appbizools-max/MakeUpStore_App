@@ -16,7 +16,14 @@ import {
   Trash2
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
-import { optimizeImage, fetchImageUrlAsBlob, formatBytes, isImageUrl } from '../../utils/imageOptimizer';
+import {
+  optimizeImage,
+  fetchImageUrlAsBlob,
+  formatBytes,
+  isImageUrl,
+  resolveImageSpec,
+  STANDARD_IMAGE_SPECS
+} from '../../utils/imageOptimizer';
 
 export default function ImageManagerModal({
   isOpen,
@@ -29,8 +36,11 @@ export default function ImageManagerModal({
   folder = 'products',
   filenamePrefix = 'img',
   defaultSearchQuery = '',
+  aspectRatioSpec = null,
 }) {
   const { uploadImage } = useAdmin();
+  const spec = aspectRatioSpec || resolveImageSpec(folder);
+  const [fitMode, setFitMode] = useState('contain'); // 'contain' | 'cover'
 
   // Active Tab: 'upload' | 'paste' | 'google' | 'url'
   const [activeTab, setActiveTab] = useState('upload');
@@ -208,11 +218,11 @@ export default function ImageManagerModal({
     };
   }, [isOpen, handleClipboardPaste]);
 
-  // Browse Google search handler
+  // Browse Google search handler (reuses dedicated search tab/view without opening new tabs every time)
   const handleOpenGoogleSearch = () => {
     const q = searchQuery.trim() || entityName || 'cosmetics beauty product';
     const googleImagesUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`;
-    window.open(googleImagesUrl, '_blank', 'noopener,noreferrer');
+    window.open(googleImagesUrl, 'salbeau_google_images', 'noopener,noreferrer');
   };
 
   // URL submit handler
@@ -328,7 +338,32 @@ export default function ImageManagerModal({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* Standardized Aspect Ratio & Dimensions Banner */}
+          {spec && (
+            <div className="p-3.5 bg-gradient-to-r from-pink-50/80 via-white to-pink-50/50 border border-pink-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-pink-600 text-white flex items-center justify-center font-bold text-[11px] shadow-xs">
+                  {spec.aspectRatio.includes('16:9') ? '16:9' : '1:1'}
+                </div>
+                <div>
+                  <span className="font-extrabold text-gray-900">{spec.label} Container Specification</span>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Target: <span className="font-semibold text-pink-700">{spec.recommendedDimensions}</span> • Aspect Ratio: <span className="font-semibold text-gray-800">{spec.aspectRatio}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="px-2 py-0.5 bg-white border border-gray-200 rounded-md text-gray-600 font-medium">
+                  Formats: {spec.supportedFormats}
+                </span>
+                <span className="px-2 py-0.5 bg-white border border-gray-200 rounded-md text-gray-600 font-medium">
+                  Max: {spec.maxFileSize}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Alerts */}
           {errorMessage && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700 text-sm animate-shake">
@@ -372,16 +407,48 @@ export default function ImageManagerModal({
                   )}
 
                   {/* New Staged & Optimized Image */}
-                  <div className={`flex flex-col items-center p-3 bg-white rounded-lg border-2 border-pink-500 shadow-md ${!currentImageUrl ? 'md:col-span-2' : ''}`}>
-                    <div className="flex items-center gap-1 text-xs font-bold text-pink-700 mb-2">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>OPTIMIZED NEW IMAGE</span>
+                  <div className={`flex flex-col items-center p-3.5 bg-white rounded-xl border-2 border-pink-500 shadow-md ${!currentImageUrl ? 'md:col-span-2' : ''}`}>
+                    <div className="w-full flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-pink-700">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>OPTIMIZED PREVIEW ({spec?.label || 'Asset'})</span>
+                      </div>
+                      {/* Fit Mode Toggle */}
+                      <div className="flex items-center bg-gray-100 p-0.5 rounded-lg text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setFitMode('contain')}
+                          className={`px-2 py-0.5 rounded-md transition-colors ${
+                            fitMode === 'contain' ? 'bg-white text-pink-700 shadow-xs' : 'text-gray-500 hover:text-gray-900'
+                          }`}
+                        >
+                          Fit (Contain)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFitMode('cover')}
+                          className={`px-2 py-0.5 rounded-md transition-colors ${
+                            fitMode === 'cover' ? 'bg-white text-pink-700 shadow-xs' : 'text-gray-500 hover:text-gray-900'
+                          }`}
+                        >
+                          Fill (Crop)
+                        </button>
+                      </div>
                     </div>
-                    <div className="w-44 h-44 bg-neutral-100 rounded-lg flex items-center justify-center overflow-hidden border border-gray-200 p-2">
+
+                    <div
+                      className={`bg-neutral-100 flex items-center justify-center overflow-hidden border border-gray-200 p-2 transition-all ${
+                        spec?.key === 'home_banner' || spec?.key === 'promo_banner'
+                          ? 'w-full max-w-sm h-36 rounded-xl'
+                          : spec?.key === 'brand_logo'
+                          ? 'w-44 h-44 rounded-full'
+                          : 'w-44 h-44 rounded-xl'
+                      }`}
+                    >
                       <img
                         src={stagedImage.dataUrl}
                         alt="Optimized Preview"
-                        className="max-w-full max-h-full object-contain"
+                        className={`w-full h-full ${fitMode === 'contain' ? 'object-contain' : 'object-cover'}`}
                       />
                     </div>
                     <div className="flex flex-wrap items-center justify-center gap-2 mt-3 text-xs">

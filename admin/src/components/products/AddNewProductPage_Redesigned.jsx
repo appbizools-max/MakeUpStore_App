@@ -54,8 +54,10 @@ import {
   Store,
   CheckCheck,
   Clock,
-  HelpCircle
+  HelpCircle,
+  Globe
 } from 'lucide-react';
+import InPanelImageBrowserDrawer from './InPanelImageBrowserDrawer';
 import { useAdmin, DEFAULT_PRICING_RULES } from '../../context/AdminContext';
 import { validateBarcodeFormat, normalizeBarcode, detectBarcodeType } from '../../utils/barcodeUtils';
 import {
@@ -314,6 +316,7 @@ export default function AddNewProductPage({
   const [imageError, setImageError] = useState(null);
   const fileInputRef = useRef(null);
   const [selectedPreviewImageIndex, setSelectedPreviewImageIndex] = useState(0);
+  const [isInPanelBrowserOpen, setIsInPanelBrowserOpen] = useState(false);
 
   // Field-level error validation mapping
   const [fieldErrors, setFieldErrors] = useState({});
@@ -609,6 +612,7 @@ export default function AddNewProductPage({
           exists,
           checkedBarcode: cleanBarcode,
           matchedProduct: check?.product || null,
+          matchedVariant: check?.matchedVariant || null,
           formatError: null
         });
 
@@ -921,10 +925,31 @@ export default function AddNewProductPage({
   };
 
   const handleOpenImageSearch = () => {
-    const parts = [formData.brandName, formData.name, formData.category].filter(Boolean);
-    const query = parts.length > 0 ? parts.join(' ') : 'cosmetics makeup product';
-    const searchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
-    window.open(searchUrl, '_blank', 'noopener,noreferrer');
+    setIsInPanelBrowserOpen(true);
+  };
+
+  const currentProductRowAdapter = useMemo(() => ({
+    _id: editingProduct?.id || 'new_product',
+    brand: formData.brandName || '',
+    name: formData.name || '',
+    shade: formData.shade || '',
+    sku: formData.sku || '',
+    images: formData.images || []
+  }), [editingProduct?.id, formData.brandName, formData.name, formData.shade, formData.sku, formData.images]);
+
+  const handleAddImageFromBrowser = (rowId, imgUrl) => {
+    if (!imgUrl) return;
+    setFormData(prev => ({
+      ...prev,
+      images: [...(prev.images || []), imgUrl]
+    }));
+  };
+
+  const handleRemoveImageFromBrowser = (rowId, imgIdx) => {
+    setFormData(prev => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== imgIdx)
+    }));
   };
 
   const handleImageDrop = (e) => {
@@ -1247,18 +1272,42 @@ export default function AddNewProductPage({
         errors.barcode = `Invalid Barcode: ${formatCheck.error}`;
       }
       if (barcodeStatus.exists && (!editingProduct || editingProduct.barcode !== barcodeVal)) {
-        errors.barcode = 'Duplicate Barcode: Already assigned to another product in the catalog.';
+        errors.barcode = `Barcode Already Exists: Already assigned to "${barcodeStatus.matchedProduct?.name || 'existing catalog product'}"`;
       }
     }
 
-    // Mandatory Color Name for variants
+    // Mandatory Color Name & Barcode Uniqueness for variants
     if (hasVariants && formData.shades && formData.shades.length > 0) {
+      const seenVariantBarcodes = new Set();
+      if (barcodeVal) seenVariantBarcodes.add(barcodeVal.toLowerCase());
+
       for (let i = 0; i < formData.shades.length; i++) {
         const s = formData.shades[i];
         const colorName = (s.color_name || s.name || '').trim();
         if (!colorName) {
           errors.variants = `Color Name is required for Variant #${i + 1}.`;
           break;
+        }
+
+        const vBarcode = (s.barcode || '').trim();
+        if (vBarcode) {
+          const vLower = vBarcode.toLowerCase();
+          if (seenVariantBarcodes.has(vLower)) {
+            errors.variants = `Barcode Already Exists: Duplicate barcode "${vBarcode}" used multiple times on this product.`;
+            break;
+          }
+          seenVariantBarcodes.add(vLower);
+
+          // Check against existing catalog products & variants
+          const catalogDup = (products || []).find(p =>
+            (editingProduct ? p.id !== editingProduct.id : true) &&
+            ((p.barcode && p.barcode.trim().toLowerCase() === vLower) ||
+              (Array.isArray(p.shades) && p.shades.some(sh => sh.barcode && sh.barcode.trim().toLowerCase() === vLower)))
+          );
+          if (catalogDup) {
+            errors.variants = `Barcode Already Exists: Variant barcode "${vBarcode}" is already assigned to "${catalogDup.name}".`;
+            break;
+          }
         }
       }
     }
@@ -1312,7 +1361,7 @@ export default function AddNewProductPage({
       name: (shade.color_name || shade.name || `Variant ${idx + 1}`).trim(),
       color_name: (shade.color_name || shade.name || `Variant ${idx + 1}`).trim(),
       code: shade.code ? shade.code.trim() : undefined,
-      sku: generateVariantInternalSku(autoSku, idx),
+      sku: (shade.sku && shade.sku.trim()) || generateVariantInternalSku(autoSku, idx + 1, shade.color_name || shade.name),
       barcode: shade.barcode ? shade.barcode.trim() : undefined,
       hexColor: shade.hexColor || '#CE4270',
       image: shade.image || primaryImage,
@@ -2169,7 +2218,7 @@ export default function AddNewProductPage({
                   <div className="p-3.5 rounded-2xl bg-rose-50/90 border border-rose-200 text-xs text-rose-900 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-black flex items-center gap-1.5 text-rose-800 text-xs">
-                        <AlertCircle size={14} className="text-rose-600" /> Product Already Exists With This Barcode
+                        <AlertCircle size={14} className="text-rose-600" /> Barcode Already Exists
                       </span>
                       <span className="text-[10px] font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
                         Duplicate Found
@@ -2196,6 +2245,12 @@ export default function AddNewProductPage({
                           Brand: {barcodeStatus.matchedProduct?.brand_name || barcodeStatus.matchedProduct?.brandName || 'Brand'}
                           {barcodeStatus.matchedProduct?.sku ? ` • SKU: ${barcodeStatus.matchedProduct.sku}` : ''}
                         </div>
+                        {barcodeStatus.matchedVariant && (
+                          <div className="text-[11px] font-bold text-purple-700 mt-0.5">
+                            ↳ Variant: {barcodeStatus.matchedVariant.name || barcodeStatus.matchedVariant.color_name || 'Child Variant'}
+                            {barcodeStatus.matchedVariant.sku ? ` • Variant SKU: ${barcodeStatus.matchedVariant.sku}` : ''}
+                          </div>
+                        )}
                         {barcodeStatus.matchedProduct?.mrp && (
                           <div className="text-[11px] font-mono text-gray-700">
                             Base MRP: ₹{Number(barcodeStatus.matchedProduct.mrp).toFixed(2)}
@@ -2206,13 +2261,13 @@ export default function AddNewProductPage({
 
                     <div className="flex items-center justify-between pt-1">
                       <p className="text-[10.5px] text-rose-700">
-                        Products cannot share duplicate barcodes. Please scan or enter a unique code.
+                        Products and variants cannot share duplicate barcodes. Please scan or enter a unique code.
                       </p>
                       <button
                         type="button"
                         onClick={() => {
                           setFormData(prev => ({ ...prev, barcode: '' }));
-                          setBarcodeStatus({ isChecking: false, exists: false, checkedBarcode: '', matchedProduct: null, formatError: null });
+                          setBarcodeStatus({ isChecking: false, exists: false, checkedBarcode: '', matchedProduct: null, matchedVariant: null, formatError: null });
                         }}
                         className="px-3 py-1 rounded-lg bg-white border border-rose-300 text-rose-700 hover:bg-rose-100 font-bold text-[11px] cursor-pointer"
                       >
@@ -2283,10 +2338,10 @@ export default function AddNewProductPage({
                     type="button"
                     onClick={handleOpenImageSearch}
                     className="px-2.5 py-1.5 rounded-xl border border-pink-200 text-[#E11D48] bg-pink-50/60 hover:bg-pink-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                    title="Search product packshots on Google Images in new tab"
+                    title="Open Image Search Browser on the right"
                   >
-                    <span>Search Google</span>
-                    <ExternalLink size={12} />
+                    <Search size={12} />
+                    <span>Image Search</span>
                   </button>
                 </div>
               </div>
@@ -3739,8 +3794,9 @@ export default function AddNewProductPage({
         defaultPricingRules={pricingRules || contextDefaultPricingRules || {}}
         onSubmitBulk={async (validRows, onProgress) => {
           if (saveBulkProducts) {
-            await saveBulkProducts(validRows, onProgress);
+            return await saveBulkProducts(validRows, onProgress);
           }
+          return null;
         }}
       />
 
@@ -3781,6 +3837,24 @@ export default function AddNewProductPage({
               brandId: saved.id
             }));
             setIsInlineAddBrandOpen(false);
+          }}
+        />
+      )}
+
+      {isInPanelBrowserOpen && (
+        <InPanelImageBrowserDrawer
+          isOpen={isInPanelBrowserOpen}
+          onClose={() => setIsInPanelBrowserOpen(false)}
+          row={currentProductRowAdapter}
+          rowIndex={0}
+          totalRows={1}
+          onAddImageToRow={handleAddImageFromBrowser}
+          onRemoveImageFromRow={handleRemoveImageFromBrowser}
+          onUploadProductImage={async (file) => {
+            if (typeof uploadProductImage === 'function') {
+              return await uploadProductImage(file, 'products', 'prod');
+            }
+            return null;
           }}
         />
       )}

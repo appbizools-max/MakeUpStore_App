@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Tag, Layers, Sparkles, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Package, Tag, Layers, Sparkles, Image as ImageIcon, ExternalLink, X, Search } from 'lucide-react';
 
 /**
  * ProductPreviewCard - Right sidebar component showing live product preview
@@ -16,6 +16,7 @@ const ProductPreviewCard = ({
   onImageSelect 
 }) => {
   const [showImageSearch, setShowImageSearch] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   const {
     productName = 'Untitled Product',
@@ -45,7 +46,9 @@ const ProductPreviewCard = ({
           <img
             src={mainImage}
             alt={productName}
-            className="w-full h-full object-cover"
+            onClick={() => setIsLightboxOpen(true)}
+            className="w-full h-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+            title="Click to view full HD image"
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
@@ -54,14 +57,14 @@ const ProductPreviewCard = ({
           </div>
         )}
 
-        {/* Open Image Search in New Tab Button */}
+        {/* Open Image Search Button (re-uses dedicated search view without opening new tabs) */}
         <button
           onClick={() => {
             const query = [productData?.brand, productData?.name, productData?.category].filter(Boolean).join(' ') || 'cosmetics product';
-            window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
+            window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, 'salbeau_google_images', 'noopener,noreferrer');
           }}
           className="absolute top-3 right-3 p-2 rounded-lg shadow-lg bg-white/90 text-gray-700 hover:bg-white hover:text-[#E11D48] transition-all cursor-pointer"
-          title="Open image search in new browser tab"
+          title="Search product packshots on Google Images"
         >
           <ExternalLink className="w-4 h-4" />
         </button>
@@ -138,6 +141,50 @@ const ProductPreviewCard = ({
           </div>
         )}
       </div>
+
+      {/* Embedded HD Image Lightbox Modal */}
+      {isLightboxOpen && mainImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl p-4 max-w-xl w-full shadow-2xl border border-gray-200 overflow-hidden relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+              <div>
+                <h4 className="font-extrabold text-sm text-gray-900">{productName}</h4>
+                <p className="text-xs text-gray-500 font-medium">{brandName} • {category}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-center max-h-[65vh] bg-slate-50 rounded-2xl p-2 overflow-hidden">
+              <img
+                src={mainImage}
+                alt={productName}
+                className="max-h-[60vh] max-w-full object-contain rounded-xl"
+              />
+            </div>
+            <div className="pt-3 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-400">HD Image Preview</span>
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(false)}
+                className="px-4 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

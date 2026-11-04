@@ -28,9 +28,13 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['"Google Sans"', '"Product Sans"', 'Plus Jakarta Sans', 'Poppins', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
-        body: ['"Google Sans"', '"Product Sans"', 'Plus Jakarta Sans', 'Poppins', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
-        display: ['"Google Sans"', '"Product Sans"', 'sans-serif'],
+        sans: ['Manrope-Regular', 'Manrope_400Regular', 'Manrope', '-apple-system', 'sans-serif'],
+        body: ['Manrope-Regular', 'Manrope_400Regular', 'Manrope', '-apple-system', 'sans-serif'],
+        display: ['Manrope-SemiBold', 'Manrope_600SemiBold', 'Manrope-Bold', 'Manrope_700Bold', 'sans-serif'],
+        regular: ['Manrope-Regular', 'Manrope_400Regular', 'sans-serif'],
+        medium: ['Manrope-Medium', 'Manrope_500Medium', 'sans-serif'],
+        semibold: ['Manrope-SemiBold', 'Manrope_600SemiBold', 'sans-serif'],
+        bold: ['Manrope-Bold', 'Manrope_700Bold', 'sans-serif'],
       }
     },
   },

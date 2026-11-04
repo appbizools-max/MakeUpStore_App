@@ -54,7 +54,7 @@ export const B2BVerificationScreen = () => {
     userVerificationRecord?.email || userProfile?.email || ''
   );
   const [experience, setExperience] = useState(
-    userVerificationRecord?.experience || ''
+    userVerificationRecord?.experience || userProfile?.experience || ''
   );
   const [websiteLink, setWebsiteLink] = useState(
     userVerificationRecord?.website_or_social_link || ''
@@ -108,7 +108,7 @@ export const B2BVerificationScreen = () => {
   );
   const [isLocatingBiz, setIsLocatingBiz] = useState(false);
   const [gstin, setGstin] = useState(
-    userVerificationRecord?.gstin || ''
+    userVerificationRecord?.gstin || userProfile?.gstNumber || ''
   );
 
   // 4. Verification Documents (Optional)
@@ -131,6 +131,9 @@ export const B2BVerificationScreen = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [isEditingBusinessInfo, setIsEditingBusinessInfo] = useState(
+    !userProfile?.businessName && !userVerificationRecord?.business_name
+  );
 
   // Sync profile details if available
   useEffect(() => {
@@ -141,6 +144,9 @@ export const B2BVerificationScreen = () => {
     if (userProfile?.state && !state) setState(userProfile.state);
     if (userProfile?.pincode && !pincode) setPincode(userProfile.pincode);
     if (userProfile?.businessName && !businessName) setBusinessName(userProfile.businessName);
+    if (userProfile?.address && !address) setAddress(userProfile.address);
+    if (userProfile?.experience && !experience) setExperience(userProfile.experience);
+    if (userProfile?.gstNumber && !gstin) setGstin(userProfile.gstNumber);
   }, [userProfile]);
 
   // Admin requested documents list
@@ -423,6 +429,70 @@ export const B2BVerificationScreen = () => {
           </View>
         )}
 
+        {/* ======================================================== */}
+        {/* REGISTERED BUSINESS DETAILS SUMMARY */}
+        {/* ======================================================== */}
+        {!isEditingBusinessInfo && (businessName || userProfile?.businessName) ? (
+          <View className="mb-6 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
+            <View className="flex-row items-center justify-between mb-3 border-b border-stone-100 pb-2.5">
+              <View className="flex-row items-center gap-2">
+                <View className="w-6 h-6 rounded-full bg-[#FFF0F5] items-center justify-center">
+                  <Ionicons name="checkmark-circle" size={16} color="#C2477A" />
+                </View>
+                <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+                  Registered Business Profile
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsEditingBusinessInfo(true)}
+                className="bg-[#FFF0F5] px-2.5 py-1 rounded-full border border-[#F8BBD0] flex-row items-center gap-1 active:opacity-80"
+              >
+                <Ionicons name="create-outline" size={13} color="#C2477A" />
+                <Text className="text-[11px] font-bold text-[#C2477A]">Edit</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className="gap-y-2">
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-stone-500 font-medium">Business / Salon:</Text>
+                <Text className="text-xs text-[#3A2430] font-bold">{businessName || userProfile?.businessName}</Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-stone-500 font-medium">Authorized Contact:</Text>
+                <Text className="text-xs text-[#3A2430] font-bold">{contactName || userProfile?.name}</Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-stone-500 font-medium">Verified Phone:</Text>
+                <Text className="text-xs text-[#3A2430] font-bold">{mobile || userProfile?.phone}</Text>
+              </View>
+              {(email || userProfile?.email) ? (
+                <View className="flex-row justify-between">
+                  <Text className="text-xs text-stone-500 font-medium">Business Email:</Text>
+                  <Text className="text-xs text-[#3A2430] font-bold">{email || userProfile?.email}</Text>
+                </View>
+              ) : null}
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-stone-500 font-medium">Experience:</Text>
+                <Text className="text-xs text-[#3A2430] font-bold">{experience || userProfile?.experience || '1–3 Years'}</Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-xs text-stone-500 font-medium">Premises Location:</Text>
+                <Text className="text-xs text-[#3A2430] font-bold text-right flex-1 ml-2" numberOfLines={2}>
+                  {[address || userProfile?.address, city || userProfile?.city, state || userProfile?.state, pincode || userProfile?.pincode].filter(Boolean).join(', ')}
+                </Text>
+              </View>
+              {(gstin || userProfile?.gstNumber) ? (
+                <View className="flex-row justify-between">
+                  <Text className="text-xs text-stone-500 font-medium">GSTIN:</Text>
+                  <Text className="text-xs text-[#3A2430] font-bold">{gstin || userProfile?.gstNumber}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        {isEditingBusinessInfo && (
+          <>
         {/* ======================================================== */}
         {/* 1. PROFESSIONAL INFORMATION */}
         {/* ======================================================== */}
@@ -787,6 +857,15 @@ export const B2BVerificationScreen = () => {
             />
           </View>
         </View>
+
+        <TouchableOpacity
+          onPress={() => setIsEditingBusinessInfo(false)}
+          className="mb-6 bg-[#FFF0F5] py-3 rounded-xl items-center border border-[#F8BBD0] active:bg-pink-100"
+        >
+          <Text className="text-xs font-bold text-[#C2477A]">Save & Collapse Information</Text>
+        </TouchableOpacity>
+        </>
+      )}
 
         {/* ======================================================== */}
         {/* 4. VERIFICATION DOCUMENTS — OPTIONAL */}

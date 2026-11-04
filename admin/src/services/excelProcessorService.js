@@ -15,7 +15,7 @@ import { deriveBrandMnemonic } from '../utils/brandUtils.js';
 // Comprehensive Column Mapping Dictionary with Canonical and Legacy Synonyms
 export const COLUMN_SYNONYMS = {
   barcode: ['barcode', 'bar code', 'ean', 'upc', 'ean-13', 'upc-a', 'gtin', 'primary barcode', 'barcode_number'],
-  parentSku: ['parent_sku', 'parent sku', 'parentsku', 'parent code', 'style code', 'product sku', 'master sku', 'style #'],
+  parentSku: ['sku_number', 'sku number', 'sku_no', 'sku no', 'parent_sku', 'parent sku', 'parentsku', 'parent code', 'style code', 'product sku', 'master sku', 'style #'],
   productName: ['product_name', 'product name', 'product', 'title', 'item name', 'item description', 'product title', 'item', 'name'],
   productType: ['product_type', 'product type', 'type', 'select category', 'leaf category', 'item type', 'sub-type'],
   category: ['category', 'main category', 'main_category', 'department', 'dept'],
@@ -28,6 +28,7 @@ export const COLUMN_SYNONYMS = {
   variantName: ['variant_name', 'variant name', 'variant', 'variant title', 'option name'],
   shadeName: ['shade_name', 'shade name', 'shade', 'color', 'color name', 'colour', 'color_name', 'tone'],
   shadeCode: ['shade_code', 'shade code', 'shade no', 'shade number', 'color code', 'code'],
+  hexColor: ['hex_and_swatch', 'hex & swatch', 'hex swatch', 'hex color', 'hex_color', 'color hex', 'swatch', 'shade hex'],
   sizeOrWeight: ['size_or_weight', 'size or weight', 'size', 'volume', 'weight', 'net quantity', 'net qty', 'net weight', 'pack size'],
   variantBarcode: ['variant_barcode', 'variant barcode', 'child barcode', 'shade barcode', 'variant upc', 'variant ean'],
 
@@ -408,9 +409,10 @@ export const normalizeRow = (r, idx, mapping, existingProducts = []) => {
     totalInGroup: 1
   });
 
-  // Auto-infer beauty shade swatches if shade name is given
-  let hexColor = '#CE4270';
-  if (shadeName) {
+  // Auto-infer beauty shade swatches if shade name is given or extract explicit hex
+  const explicitHex = getVal('hexColor');
+  let hexColor = explicitHex || '#CE4270';
+  if (!explicitHex && shadeName) {
     const matched = matchBeautyShade(shadeName);
     if (matched && matched.hex) hexColor = matched.hex;
   }
@@ -458,6 +460,7 @@ export const normalizeRow = (r, idx, mapping, existingProducts = []) => {
     highlights: highlights ? highlights.split(';').map(h => h.trim()).filter(Boolean) : [],
     variantSku: resolvedVariantSku,
     variantName: variantName || shadeName || (sizeOrWeight ? `${sizeOrWeight}` : 'Standard Variant'),
+    shade: shadeName,
     shadeName,
     shadeCode,
     hexColor,

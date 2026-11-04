@@ -18,7 +18,8 @@ import {
   Key,
   ExternalLink,
   Layers,
-  Power
+  Power,
+  X
 } from 'lucide-react';
 import { useAdmin } from '../../../context/AdminContext';
 import { MODULE_DEFINITIONS } from '../../../utils/permissionEngine';

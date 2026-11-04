@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  X
 } from 'lucide-react';
 import { useAdmin } from '../../../context/AdminContext';
 

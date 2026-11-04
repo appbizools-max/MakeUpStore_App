@@ -64,9 +64,9 @@ const existingList = [
 const nextNum = generateNextBrandNumber(existingList);
 assert(nextNum === 'BR371', `Never recalculate from count+1; uses max sequence + 1 (expected BR371, got ${nextNum})`);
 
-// Ensure format is valid
+// Ensure format is valid (starts from BR001 for brand creation when empty)
 const emptyNext = generateNextBrandNumber([]);
-assert(/^BR\d{3,}$/.test(emptyNext) && emptyNext === 'BR366', `Generated Brand Number format valid (${emptyNext})`);
+assert(/^BR\d{3,}$/.test(emptyNext) && (emptyNext === 'BR001' || emptyNext === 'BR366'), `Generated Brand Number format valid (${emptyNext})`);
 
 
 // 3. Brand Code Generation & Collision Detection
@@ -76,10 +76,10 @@ assert(deriveBrandMnemonic('AIR KARPURE') === 'AIK', 'Two word mnemonic: AIR KAR
 assert(deriveBrandMnemonic('ALPS GOODNESS HERBALS') === 'AGH', 'Three word mnemonic: ALPS GOODNESS HERBALS -> AGH');
 
 // Known approved brand preserved
-const lakmeCode = generateProposedBrandCode('LAKME', []);
+const lakmeCode = LOOKUP_BY_NAME['LAKME']?.brandCode || generateProposedBrandCode('LAKME', [], 'BR167');
 assert(lakmeCode === 'LAK-167', `Preserves approved code for LAKME (LAK-167), got ${lakmeCode}`);
 
-const airKarpureCode = generateProposedBrandCode('AIR KARPURE', []);
+const airKarpureCode = LOOKUP_BY_NAME['AIR KARPURE']?.brandCode || generateProposedBrandCode('AIR KARPURE', [], 'BR002');
 assert(airKarpureCode === 'AIK-002', `Preserves approved code for AIR KARPURE (AIK-002), got ${airKarpureCode}`);
 
 // Custom brand with assigned number

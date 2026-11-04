@@ -5,7 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { isB2BRole } from '../../utils/b2bVerificationService';
 
 export const OtpScreen = () => {
-  const { userRole, userProfile, setCurrentScreen, checkUserExistingProfile, prefetchUserProfile, triggerLoginWelcomeNotification } = useApp();
+  const { userRole, userProfile, saveUserProfile, setCurrentScreen, checkUserExistingProfile, prefetchUserProfile, triggerLoginWelcomeNotification } = useApp();
   const [otp, setOtp] = useState(['', '', '', '']);
   const [timerSeconds, setTimerSeconds] = useState(120); // 2:00 minutes countdown limit
   const [isVerifying, setIsVerifying] = useState(false);
@@ -90,6 +90,21 @@ export const OtpScreen = () => {
       const isB2B = isB2BRole(effectiveRole);
 
       if (isB2B) {
+        // Automatically persist the business registration details collected before OTP
+        try {
+          if (saveUserProfile) {
+            await saveUserProfile({
+              fullName: userProfile?.name || 'Professional Partner',
+              email: userProfile?.email || '',
+              pincode: userProfile?.pincode || '',
+              city: userProfile?.city || '',
+              state: userProfile?.state || '',
+              role: effectiveRole,
+              isProfileComplete: true
+            });
+          }
+        } catch (_) {}
+
         // DIRECTLY OPEN B2B PROFESSIONAL VERIFICATION USER ACCOUNT FOR ALL B2B USERS
         if (triggerLoginWelcomeNotification) {
           triggerLoginWelcomeNotification();

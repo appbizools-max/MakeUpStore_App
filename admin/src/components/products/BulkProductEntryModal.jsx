@@ -39,6 +39,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { ColumnManagerModal } from './ColumnManagerModal';
+import InPanelImageBrowserDrawer from './InPanelImageBrowserDrawer';
 import { lookupBarcodeData, detectBarcodeFormat } from '../../services/barcodeLookupService';
 import { extractColorsFromImage, matchBeautyShade, BEAUTY_SHADE_DICTIONARY } from '../../services/aiColorService';
 import { uploadOptimizedImage } from '../../services/imageStorageService';
@@ -68,6 +69,7 @@ import {
   isShadeApplicable,
   getCategoryAttributes
 } from '../../services/productEngineService';
+import { generateProductSku, generateVariantInternalSku } from '../../services/skuService';
 import {
   generateAndDownloadTemplate,
   exportStagedProductsToExcel,
@@ -113,6 +115,50 @@ export const findNormalizedMatch = (items, query, key = null) => {
     const val = key ? item[key] : item;
     return normalizeText(val) === normQuery;
   });
+};
+
+/**
+ * Extracts base SKU prefix by stripping variant suffixes (e.g. LAK-P001-V01 -> LAK-P001)
+ */
+export const extractBaseSku = (sku) => {
+  if (!sku || typeof sku !== 'string') return '';
+  const trimmed = sku.trim().toUpperCase();
+  const base = trimmed.replace(/[-_](?:V|VAR|SH|SHADE|SZ|SIZE)?\d{1,4}$/i, '');
+  return base || trimmed;
+};
+
+/**
+ * Canonical product family grouping key:
+ * Ensures shades/variants sharing Brand + Name + Category belong to the same parent product entity.
+ */
+export const getProductFamilyGroupingKey = (row) => {
+  if (!row) return 'empty_row';
+
+  // 1. Explicit parent reference takes highest priority
+  const explicitParentId = (row.parentId || row.parent_id || row.parent_product_id || '').trim();
+  if (explicitParentId) {
+    return `parent:::${explicitParentId}`;
+  }
+
+  // 2. Canonical Product Identity: Brand + Category + Subcategory + Product Name
+  const brandKey = (row.brand || row.brandName || '').trim().toLowerCase();
+  const nameKey = (row.name || row.product_name || '').trim().toLowerCase();
+  const catKey = (row.category || '').trim().toLowerCase();
+  const subKey = (row.subcategory || row.subCategory || '').trim().toLowerCase();
+
+  if (brandKey && nameKey) {
+    return `family:::${brandKey}:::${catKey}:::${subKey}:::${nameKey}`;
+  }
+
+  // 3. Base SKU / Group Code matching
+  const rawSku = (row.parentSku || row.parent_sku || row.sku || '').trim().toUpperCase();
+  const baseSku = extractBaseSku(rawSku);
+  if (baseSku) {
+    return `sku:::${baseSku}`;
+  }
+
+  // 4. Fallback to row's own unique ID
+  return `row:::${row._id || row.id || Math.random()}`;
 };
 
 // ============================================================================
@@ -1250,6 +1296,8 @@ export const BulkProductEntryModal = ({
 
   // Expanded Row ID for inline details accordion (table-first UX)
   const [expandedRowId, setExpandedRowId] = useState(null);
+  // In-Panel Image Search Browser Right-Side Drawer
+  const [inPanelBrowserRowId, setInPanelBrowserRowId] = useState(null);
   const [activeDetailTab, setActiveDetailTab] = useState('Pricing & Discounts');
   const [activeTierRoleTab, setActiveTierRoleTab] = useState('salon');
   const [isBulkActionsOpen, setIsBulkActionsOpen] = useState(false);
@@ -1595,15 +1643,23 @@ export const BulkProductEntryModal = ({
         // 3. Barcode duplicate & existence validation
         if (barcode) {
           if (barcodeCounts[barcode] > 1) {
-            errors.push(`Duplicate barcode detected in table`);
-            fieldErrors.barcode = 'Duplicate barcode';
+            errors.push(`Duplicate barcode detected in staged table: ${barcode}`);
+            fieldErrors.barcode = 'Duplicate in staged rows';
           } else {
             const existingInDb = existingProducts.find(
               p => (p.barcode && p.barcode.trim() === barcode) ||
                 (Array.isArray(p.shades) && p.shades.some(s => s.barcode && s.barcode.trim() === barcode))
             );
             if (existingInDb && existingInDb.id !== r._id) {
-              warnings.push(`Barcode exists in Supabase catalog (will update)`);
+              const matchedShade = Array.isArray(existingInDb.shades)
+                ? existingInDb.shades.find(s => s.barcode && s.barcode.trim() === barcode)
+                : null;
+              errors.push(`Barcode Already Exists: Assigned to "${existingInDb.name}"${matchedShade ? ` (Variant: ${matchedShade.name || matchedShade.color_name})` : ''}`);
+              fieldErrors.barcode = `Barcode Already Exists on "${existingInDb.name}"`;
+              r._existingCatalogMatch = {
+                product: existingInDb,
+                variant: matchedShade
+              };
             }
           }
         }
@@ -1710,9 +1766,18 @@ export const BulkProductEntryModal = ({
     let error = 0;
     let draft = 0;
 
+    const allGroupKeys = new Set();
+    const readyGroupKeys = new Set();
+
     evaluatedRows.forEach(r => {
+      const gKey = getProductFamilyGroupingKey(r);
+      allGroupKeys.add(gKey);
+
       if (r._isError) error++;
-      else if (r._isReady) ready++;
+      else if (r._isReady) {
+        ready++;
+        readyGroupKeys.add(gKey);
+      }
       else if (r._isReview) review++;
       else draft++;
     });
@@ -1722,7 +1787,9 @@ export const BulkProductEntryModal = ({
       ready,
       review,
       error,
-      draft
+      draft,
+      totalParents: allGroupKeys.size,
+      readyParents: readyGroupKeys.size
     };
   }, [evaluatedRows]);
 
@@ -2290,10 +2357,10 @@ export const BulkProductEntryModal = ({
     setBulkNotice({ type: 'success', text: `Auto-generated description and highlights for "${prodName || 'Product'}"` });
   };
 
-  // Google Images Search
+  // Google Images Search (Product Name + Category + Variant/Shade)
   const handleSearchGoogleImages = (row) => {
-    const query = [row.brand, row.name, row.shade].filter(Boolean).join(' ');
-    const searchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query || 'cosmetics product')}`;
+    const query = [row.brand, row.name, row.category, row.variant || row.shade].filter(Boolean).join(' ');
+    const searchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query || 'cosmetics beauty product')}`;
     window.open(searchUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -2809,23 +2876,33 @@ export const BulkProductEntryModal = ({
           return normalizeStrictImportRow(item, idx);
         });
 
-        // Group child variants to parents sharing the same parentSku
-        const skuGroups = {};
+        // Group child variants to parents sharing canonical getProductFamilyGroupingKey
+        const familyGroups = {};
         imported.forEach(r => {
-          if (r.parentSku) {
-            if (!skuGroups[r.parentSku]) skuGroups[r.parentSku] = [];
-            skuGroups[r.parentSku].push(r);
-          }
+          const groupKey = getProductFamilyGroupingKey(r);
+          if (!familyGroups[groupKey]) familyGroups[groupKey] = [];
+          familyGroups[groupKey].push(r);
         });
 
-        Object.values(skuGroups).forEach(group => {
+        Object.values(familyGroups).forEach(group => {
+          const parent = group[0];
+          const baseSku = extractBaseSku(parent.parentSku || parent.sku || '');
+          if (baseSku) {
+            parent.parentSku = baseSku;
+          }
           if (group.length > 1) {
-            const parent = group[0];
             parent.isParent = true;
             parent.hasMultipleShades = true;
+            parent.parentId = null;
             for (let i = 1; i < group.length; i++) {
-              group[i].parentId = parent._id;
-              group[i].isParent = false;
+              const child = group[i];
+              child.parentId = parent._id;
+              child.isParent = false;
+              child.hasMultipleShades = false;
+              child.parentSku = parent.parentSku;
+              if (!child.variantSku) {
+                child.variantSku = `${parent.parentSku || 'SKU'}-V${String(i + 1).padStart(2, '0')}`;
+              }
             }
           }
         });
@@ -2835,7 +2912,7 @@ export const BulkProductEntryModal = ({
           return [...cleanPrev, ...imported];
         });
 
-        const uniqueParents = Object.keys(skuGroups).length;
+        const uniqueParents = Object.keys(familyGroups).length;
         setBulkNotice({
           type: 'success',
           text: `Successfully staged ${imported.length.toLocaleString()} product row(s) from Excel (${uniqueParents} parent product groups, ${imported.length} total variants).`
@@ -3003,18 +3080,10 @@ export const BulkProductEntryModal = ({
     });
 
     try {
-      // 1. Group rows by parentSku (or parentId, or brand + productName)
+      // 1. Group rows by canonical getProductFamilyGroupingKey
       const groups = new Map();
       readyRows.forEach(row => {
-        let key = '';
-        if (row.parentSku && row.parentSku.trim()) {
-          key = 'sku:::' + row.parentSku.trim().toUpperCase();
-        } else if (row.parentId) {
-          key = 'parent:::' + row.parentId;
-        } else {
-          key = 'item:::' + (row.brand || '').trim().toLowerCase() + ':::' + (row.name || '').trim().toLowerCase();
-        }
-
+        const key = getProductFamilyGroupingKey(row);
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(row);
       });
@@ -3024,8 +3093,9 @@ export const BulkProductEntryModal = ({
       const existingCatalogSkus = (existingProducts || []).map(p => p.sku).filter(Boolean);
       groups.forEach((rowsInGroup) => {
         const primaryRow = rowsInGroup[0];
-        const resolvedSku = (primaryRow.parentSku && primaryRow.parentSku.trim())
-          ? primaryRow.parentSku.trim()
+        const baseSku = extractBaseSku(primaryRow.parentSku || primaryRow.sku || '');
+        const resolvedSku = baseSku
+          ? baseSku
           : generateProductSku({
               brand: primaryRow.brand,
               category: primaryRow.category,
@@ -3042,18 +3112,24 @@ export const BulkProductEntryModal = ({
 
         const childShades = rowsInGroup.map((r, sIdx) => {
           const varPrices = calculateSellingPrices(r.mrp, r.generalDiscount, r.salonDiscount, r.artistDiscount, r.beauticianDiscount);
+          const explicitVariantSku = (r.variantSku || '').trim();
+          const fallbackVariantSku = r.parentSku && r.parentSku.toUpperCase() !== resolvedSku.toUpperCase()
+            ? r.parentSku.trim()
+            : generateVariantInternalSku(resolvedSku, sIdx + 1, r.variantName || r.shade);
+          const shadeCode = r.shadeCode || String(sIdx + 1).padStart(2, '0');
+
           return {
             id: `var_${Date.now()}_${sIdx + 1}_${Math.random().toString(36).substring(2, 5)}`,
             name: r.variantName || r.shade || `Variant ${sIdx + 1}`,
-            code: r.shadeCode || String(sIdx + 1).padStart(2, '0'),
-            sku: generateVariantInternalSku(resolvedSku, sIdx),
+            code: shadeCode,
+            sku: explicitVariantSku || fallbackVariantSku,
             barcode: r.variantBarcode || r.barcode || null,
             hexColor: r.hexColor || '#CE4270',
             hex: r.hexColor || '#CE4270',
             color_name: r.shade || r.variantName || 'Default',
-            image: r.productImageUrl || (r.images && r.images[0]) || null,
-            images: r.images && r.images.length > 0 ? r.images : (r.productImageUrl ? [r.productImageUrl] : []),
-            mrp: Number(r.mrp || 0),
+            image: (r.images && r.images[0]) || r.productImageUrl || primaryRow.productImageUrl || null,
+            images: r.images && r.images.length > 0 ? r.images : (r.productImageUrl ? [r.productImageUrl] : (primaryRow.productImageUrl ? [primaryRow.productImageUrl] : [])),
+            mrp: Number(r.mrp || primaryRow.mrp || 0),
             generalPrice: varPrices.genP,
             salonPrice: varPrices.salonP,
             artistPrice: varPrices.artistP,
@@ -3072,7 +3148,7 @@ export const BulkProductEntryModal = ({
         consolidatedProducts.push({
           ...primaryRow,
           sku: resolvedSku,
-          parentSku: primaryRow.parentSku || null,
+          parentSku: resolvedSku,
           isParent: rowsInGroup.length > 1,
           hasMultipleShades: rowsInGroup.length > 1 || Boolean(primaryRow.shade),
           shades: childShades,
@@ -3110,10 +3186,15 @@ export const BulkProductEntryModal = ({
       setSelectedRowIds(new Set());
       setExpandedRowId(null);
 
-      // Clear draft storage so submitted products do not re-appear
+      // Update draft storage so submitted products are removed while remaining/failed rows are retained for correction
       try {
-        localStorage.removeItem('salbeau_bulk_draft_rows_v9');
-        localStorage.removeItem('salbeau_bulk_draft_saved_at');
+        if (remainingRows.length > 0) {
+          localStorage.setItem('salbeau_bulk_draft_rows_v9', JSON.stringify(remainingRows));
+          localStorage.setItem('salbeau_bulk_draft_saved_at', new Date().toISOString());
+        } else {
+          localStorage.removeItem('salbeau_bulk_draft_rows_v9');
+          localStorage.removeItem('salbeau_bulk_draft_saved_at');
+        }
         localStorage.removeItem('salbeau_bulk_draft_rows_v8');
         localStorage.removeItem('salbeau_bulk_draft_rows_v7');
       } catch (e) { }
@@ -3480,7 +3561,11 @@ export const BulkProductEntryModal = ({
                 ) : (
                   <>
                     <Check className="w-4 h-4 stroke-[3]" />
-                    <span>SUBMIT {summaryCounters.ready} PRODUCTS TO DATABASE</span>
+                    <span>
+                      {summaryCounters.readyParents > 0 && summaryCounters.readyParents !== summaryCounters.ready
+                        ? `SUBMIT ${summaryCounters.readyParents} PRODUCTS (${summaryCounters.ready} VARIANTS) TO DATABASE`
+                        : `SUBMIT ${summaryCounters.ready} PRODUCTS TO DATABASE`}
+                    </span>
                   </>
                 )}
               </button>
@@ -3809,22 +3894,22 @@ export const BulkProductEntryModal = ({
         ) : (
           <div
             ref={tableContainerRef}
-            className="flex-1 min-h-0 min-w-0 overflow-x-auto overflow-y-auto spreadsheet-scrollbar bg-[#F8FAFD] p-2 sm:p-4"
+            className="flex-1 min-h-0 min-w-0 overflow-auto spreadsheet-scrollbar bg-slate-50 relative border-t border-slate-200"
           >
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
-            <table className="w-max min-w-[3400px] divide-y divide-slate-200 border-collapse">
+          <div className="bg-white border-b border-slate-200 min-w-max">
+            <table className="w-max min-w-[3400px] border-separate border-spacing-0">
               {/* Table Header with High-Contrast Color Banded Columns (1:1 WITH DOWNLOAD TEMPLATE) */}
-              <thead className="select-none sticky top-0 z-30 border-b-2 border-slate-300 text-slate-900 text-xs font-black tracking-wide shadow-xs bg-white">
+              <thead className="select-none sticky top-0 z-30 text-slate-900 text-xs font-black tracking-wide shadow-xs bg-white">
                 <tr className="divide-x divide-slate-200 h-14">
                   {/* Column 0A: # */}
                   {isColVisible('index') && (
-                    <th className="sticky left-0 z-40 w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800 font-mono border-r border-slate-300">
+                    <th className="sticky top-0 left-0 z-50 w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800 font-mono border-r border-b border-slate-300 shadow-xs">
                       #
                     </th>
                   )}
                   {/* Column 0B: Checkbox */}
                   {isColVisible('select') && (
-                    <th className="sticky left-[50px] z-40 w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800 border-r border-slate-300">
+                    <th className="sticky top-0 left-[50px] z-50 w-[50px] min-w-[50px] max-w-[50px] px-2 text-center bg-slate-200 text-slate-800 border-r border-b border-slate-300 shadow-xs">
                       <input
                         type="checkbox"
                         checked={selectedRowIds.size > 0 && selectedRowIds.size === displayedRows.length}
@@ -4159,11 +4244,14 @@ export const BulkProductEntryModal = ({
                   const isLastChild = siblings[siblings.length - 1]?._id === row._id;
                   const childCount = rows.filter(r => r.parentId === row._id).length;
                   const hasChildren = childCount > 0;
+                  const isChild = Boolean(row.parentId);
+                  const parentRow = isChild ? rows.find(r => r._id === row.parentId) : null;
+                  const childIndex = isChild && parentRow ? rows.filter(r => r.parentId === row.parentId).findIndex(r => r._id === row._id) + 1 : 0;
 
                   return (
                     <React.Fragment key={row._id}>
                       <tr
-                        className={`group divide-x divide-slate-100 min-h-[64px] transition-colors ${isExpanded
+                        className={`group min-h-[64px] transition-colors ${isExpanded
                             ? 'bg-indigo-50/50 ring-1 ring-indigo-300'
                             : isChecked
                               ? 'bg-purple-50/40'
@@ -4171,19 +4259,35 @@ export const BulkProductEntryModal = ({
                                 ? 'bg-rose-50/30'
                                 : row._isReview
                                   ? 'bg-amber-50/20'
-                                  : 'hover:bg-slate-50/70'
+                                  : isChild
+                                    ? 'bg-slate-50/40 hover:bg-indigo-50/30'
+                                    : 'bg-white hover:bg-slate-50/70'
                           }`}
                       >
                         {/* Column 0A: # */}
                         {isColVisible('index') && (
-                          <td className="sticky left-0 z-20 w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center font-mono font-bold text-slate-700 text-xs bg-slate-100 border-r border-slate-200">
-                            {row._rowIndex}
+                          <td className={`sticky left-0 z-20 w-[50px] min-w-[50px] max-w-[50px] px-1.5 py-3 text-center font-mono font-bold text-xs border-r border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] ${
+                            isChild ? 'bg-pink-50/80 text-[#C2477A]' : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            <div>{row._rowIndex}</div>
+                            {isChild && (
+                              <div className="text-[9px] font-black text-purple-600 leading-none mt-0.5" title={`Variant #${childIndex}`}>
+                                ↳ V{childIndex}
+                              </div>
+                            )}
+                            {hasChildren && (
+                              <div className="text-[8.5px] font-black text-[#C2477A] leading-none mt-0.5" title={`${childCount} child variants`}>
+                                {childCount + 1}sh
+                              </div>
+                            )}
                           </td>
                         )}
 
                         {/* Column 0B: Checkbox */}
                         {isColVisible('select') && (
-                          <td className="sticky left-[50px] z-20 w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center bg-slate-100 border-r border-slate-200">
+                          <td className={`sticky left-[50px] z-20 w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center border-r border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] ${
+                            isChild ? 'bg-pink-50/80' : 'bg-slate-100'
+                          }`}>
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -4273,6 +4377,26 @@ export const BulkProductEntryModal = ({
                                 <span>{row._fieldErrors.barcode}</span>
                               </div>
                             )}
+
+                            {row._existingCatalogMatch && (
+                              <div className="mt-1.5 p-2 bg-rose-50 border border-rose-300 rounded-xl text-[10.5px] shadow-2xs">
+                                <div className="font-extrabold text-rose-900 flex items-center gap-1 leading-tight">
+                                  <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                  <span>Barcode Already Exists</span>
+                                </div>
+                                <div className="text-gray-800 font-bold mt-1 truncate">
+                                  {row._existingCatalogMatch.product.name}
+                                </div>
+                                <div className="text-[10px] text-gray-600 truncate">
+                                  Brand: {row._existingCatalogMatch.product.brandName || row._existingCatalogMatch.product.brand || 'N/A'} • SKU: {row._existingCatalogMatch.product.sku || 'N/A'}
+                                </div>
+                                {row._existingCatalogMatch.variant && (
+                                  <div className="text-[10px] font-bold text-purple-700 mt-0.5 truncate">
+                                    ↳ Variant: {row._existingCatalogMatch.variant.name || row._existingCatalogMatch.variant.color_name} ({row._existingCatalogMatch.variant.sku || 'N/A'})
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             {row.barcodeStatus === 'detected' && !row._fieldErrors?.barcode && !row._matchingOption && (
                               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 mt-1">
                                 <Check className="w-3 h-3" /> Detected
@@ -4345,15 +4469,18 @@ export const BulkProductEntryModal = ({
                               )}
                             </div>
                             <div className="mt-0.5">
-                              <a
-                                href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(`${row.brand || ''} ${row.name || ''} ${row.shade || ''}`.trim() || 'Cosmetics')}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Search Images on Google in new tab"
-                                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-0.5"
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInPanelBrowserRowId(row._id);
+                                }}
+                                className="px-1.5 py-0.5 bg-pink-50 hover:bg-pink-100 text-[#C2477A] hover:text-[#9A3460] border border-pink-200 rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                                title="Open Image Search Browser for this product"
                               >
-                                Google ↗
-                              </a>
+                                <Search className="w-2.5 h-2.5 text-[#C2477A]" />
+                                <span>Image Search</span>
+                              </button>
                             </div>
                           </td>
                         )}
@@ -4370,6 +4497,11 @@ export const BulkProductEntryModal = ({
                               placeholder="e.g. LAK-LIP-MAT001"
                               className="w-full h-9 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
                             />
+                            {row.variantSku && row.variantSku !== row.parentSku && (
+                              <div className="text-[10px] font-mono text-purple-600 font-bold mt-0.5 truncate" title={`Variant SKU: ${row.variantSku}`}>
+                                ↳ {row.variantSku}
+                              </div>
+                            )}
                           </td>
                         )}
 
@@ -4404,6 +4536,20 @@ export const BulkProductEntryModal = ({
                                   existingProducts={existingProducts}
                                 />
                               </div>
+                              {hasChildren && (
+                                <div className="mt-1">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-black bg-pink-100 text-[#C2477A] border border-pink-200 shadow-2xs">
+                                    ★ Parent Product ({childCount + 1} Shades)
+                                  </span>
+                                </div>
+                              )}
+                              {isChild && (
+                                <div className="mt-1 flex items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                    ↳ Variant: {row.shade || row.variantName || `Shade ${childIndex}`}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             {row._fieldErrors?.name && (
                               <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
@@ -4733,7 +4879,7 @@ export const BulkProductEntryModal = ({
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 type="button"
-                                onClick={() => handleToggleExpandRow(row._id)}
+                                onClick={() => setExpandedRowId(expandedRowId === row._id ? null : row._id)}
                                 title="Expand Details"
                                 className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 cursor-pointer transition-colors"
                               >
@@ -4983,12 +5129,12 @@ export const BulkProductEntryModal = ({
 
                                     <button
                                       type="button"
-                                      onClick={() => handleSearchGoogleImages(row)}
-                                      className="w-full py-1.5 px-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                                      onClick={() => setInPanelBrowserRowId(row._id)}
+                                      className="w-full py-1.5 px-2 bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[#C2477A] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                                      title="Open Image Search Browser on the right"
                                     >
-                                      <span className="font-black text-blue-600">G</span>
-                                      <span>Search Google Images</span>
-                                      <ExternalLink className="w-3 h-3 text-slate-400" />
+                                      <Search className="w-3 h-3 text-[#C2477A]" />
+                                      <span>Image Search</span>
                                     </button>
 
                                     <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
@@ -5250,12 +5396,12 @@ export const BulkProductEntryModal = ({
                                     </h3>
                                     <button
                                       type="button"
-                                      onClick={() => handleSearchGoogleImages(row)}
-                                      className="py-1 px-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                      onClick={() => setInPanelBrowserRowId(row._id)}
+                                      className="py-1 px-3 bg-[#C2477A] hover:bg-[#9A3460] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                                      title="Open Image Search Browser on the right"
                                     >
-                                      <span className="font-black text-blue-600">G</span>
-                                      <span>Search Google Images</span>
-                                      <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                                      <Search className="w-3.5 h-3.5" />
+                                      <span>Image Search</span>
                                     </button>
                                   </div>
 
@@ -5788,10 +5934,15 @@ export const BulkProductEntryModal = ({
             5. BOTTOM SUBMISSION FOOTER BAR (Real Metrics & Direct Save Action)
             ===================================================================== */}
         {rows.length > 0 && (
-          <div className="bg-white border-t border-slate-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 shrink-0">
+          <div className="sticky bottom-0 z-30 bg-white border-t border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
             <div className="flex items-center gap-3 text-xs text-slate-600 font-semibold flex-wrap">
               <span>
                 Total Rows: <strong className="text-slate-900 font-black">{rows.length.toLocaleString()}</strong>
+                {summaryCounters.totalParents > 0 && summaryCounters.totalParents !== rows.length && (
+                  <span className="text-indigo-600 font-bold ml-1.5">
+                    ({summaryCounters.totalParents} Products, {rows.length} Variants)
+                  </span>
+                )}
               </span>
               <span>•</span>
               <span className="text-emerald-700">
@@ -5857,7 +6008,11 @@ export const BulkProductEntryModal = ({
                 ) : (
                   <>
                     <Check className="w-4 h-4 stroke-[3]" />
-                    <span>SUBMIT {summaryCounters.ready} PRODUCTS TO DATABASE</span>
+                    <span>
+                      {summaryCounters.readyParents > 0 && summaryCounters.readyParents !== summaryCounters.ready
+                        ? `SUBMIT ${summaryCounters.readyParents} PRODUCTS (${summaryCounters.ready} VARIANTS) TO DATABASE`
+                        : `SUBMIT ${summaryCounters.ready} PRODUCTS TO DATABASE`}
+                    </span>
                   </>
                 )}
               </button>
@@ -6347,6 +6502,48 @@ export const BulkProductEntryModal = ({
           onToggleColumn={handleToggleColumn}
           onResetColumns={handleResetColumns}
         />
+
+        {/* =====================================================================
+            10. IN-PANEL IMAGE SEARCH BROWSER DRAWER (Right-Side Drawer)
+            ===================================================================== */}
+        {inPanelBrowserRowId && (
+          <InPanelImageBrowserDrawer
+            isOpen={Boolean(inPanelBrowserRowId)}
+            onClose={() => setInPanelBrowserRowId(null)}
+            row={rows.find(r => r._id === inPanelBrowserRowId)}
+            rowIndex={rows.findIndex(r => r._id === inPanelBrowserRowId)}
+            totalRows={rows.length}
+            onAddImageToRow={(imgUrl) => {
+              if (!inPanelBrowserRowId || !imgUrl) return;
+              setRows(prev => prev.map(r => {
+                if (r._id === inPanelBrowserRowId) {
+                  const existing = r.images || [];
+                  if (existing.includes(imgUrl)) return r;
+                  return { ...r, images: [...existing, imgUrl] };
+                }
+                return r;
+              }));
+            }}
+            onRemoveImageFromRow={(imgUrl) => {
+              if (!inPanelBrowserRowId || !imgUrl) return;
+              setRows(prev => prev.map(r => {
+                if (r._id === inPanelBrowserRowId) {
+                  return { ...r, images: (r.images || []).filter(u => u !== imgUrl) };
+                }
+                return r;
+              }));
+            }}
+            onSelectPrevRow={() => {
+              const idx = rows.findIndex(r => r._id === inPanelBrowserRowId);
+              if (idx > 0) setInPanelBrowserRowId(rows[idx - 1]._id);
+            }}
+            onSelectNextRow={() => {
+              const idx = rows.findIndex(r => r._id === inPanelBrowserRowId);
+              if (idx >= 0 && idx < rows.length - 1) setInPanelBrowserRowId(rows[idx + 1]._id);
+            }}
+            onUploadProductImage={(fileOrBlob) => uploadOptimizedImage(fileOrBlob, 'PRODUCT', { folder: 'products' })}
+          />
+        )}
 
       </div>
     </div>

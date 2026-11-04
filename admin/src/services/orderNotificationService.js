@@ -6,7 +6,7 @@
  * and dual-channel dispatch (Supabase Realtime In-App + FCM Push Notification).
  */
 
-import { supabase } from '../config/supabase';
+import { supabase } from '../config/supabase.js';
 
 export const NOTIFICATION_EVENT_TEMPLATES = {
   // 1. Order Placed

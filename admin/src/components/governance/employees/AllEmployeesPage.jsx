@@ -25,7 +25,8 @@ import {
   Lock,
   RefreshCw,
   Power,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 import { useAdmin } from '../../../context/AdminContext';
 import { ACCOUNT_STATE_META } from '../../../utils/permissionEngine';

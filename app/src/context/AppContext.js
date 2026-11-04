@@ -11,8 +11,8 @@ import {
   calculateDynamicPrice,
   DEFAULT_PRICING_RULES
 } from '../utils/quantityTiersUtils';
-import { generateSalbeauOrderId, getISTDateParts } from '../utils/orderIdUtils';
-import { flattenProductsToIndividualVariants } from '../utils/productSearchEngine';
+import { generateSalbeauOrderId } from '../utils/orderIdUtils';
+import { getCartKey } from '../utils/cartKeyUtils';
 import {
   isB2BRole,
   isUserB2BVerified,
@@ -53,10 +53,24 @@ export const mapProductFromDb = (p) => {
     : (addInfo.enabled !== false && addInfo.enabled !== 'false' && addInfo.enabled !== 0);
   const publishStatus = (p.status || addInfo.status || (isEnabled ? 'published' : 'draft')).toLowerCase();
 
+  const parentImg = getSafeImageUri(p.image, '');
+  const resolvedShades = rawShades.map((s, sIdx) => {
+    if (!s) return s;
+    const sImg = s.image || (Array.isArray(s.images) && s.images[0] ? s.images[0] : null);
+    const finalImg = sImg || parentImg || '';
+    return {
+      ...s,
+      sku: s.sku || (p.sku ? `${p.sku}-V${String(sIdx + 1).padStart(2, '0')}` : s.sku),
+      image: finalImg,
+      images: Array.isArray(s.images) && s.images.length > 0 ? s.images : (finalImg ? [finalImg] : [])
+    };
+  });
+
   return {
     id: p.id,
     name: p.name || '',
     brandId: p.brand_id || p.brandId || '',
+    brandName: p.brand_name || p.brandName || '',
     category: p.category || '',
     subcategory: p.subcategory || p.sub_category || addInfo.subcategory || '',
     variantType: p.variant_type || p.variantType || p.product_type || addInfo.variant_type || addInfo.variantType || '',
@@ -71,9 +85,9 @@ export const mapProductFromDb = (p) => {
     salonPrice: salonPr,
     artistPrice: artistPr,
     beauticianPrice: beauticianPr,
-    image: getSafeImageUri(p.image, ''),
-    images: Array.isArray(p.images) && p.images.length > 0 ? p.images : (Array.isArray(addInfo.images) && addInfo.images.length > 0 ? addInfo.images : (p.image ? [p.image] : [])),
-    shades: rawShades,
+    image: parentImg,
+    images: Array.isArray(p.images) && p.images.length > 0 ? p.images : (Array.isArray(addInfo.images) && addInfo.images.length > 0 ? addInfo.images : (parentImg ? [parentImg] : [])),
+    shades: resolvedShades,
     quantityTiers: normalizedTiers,
     additionalInfo: addInfo,
     specifications: p.specifications || {},
@@ -88,14 +102,22 @@ export const mapProductFromDb = (p) => {
     productFamily: p.product_family || p.productFamily || '',
     enabled: isEnabled,
     status: publishStatus,
-    rating: Number(p.rating || addInfo.rating || 4.5),
-    reviewCount: Number(p.review_count || p.reviewCount || addInfo.reviewCount || addInfo.review_count || 120),
+    rating: Number(p.rating || addInfo.rating || 0),
+    reviewCount: Number(p.review_count || p.reviewCount || addInfo.reviewCount || addInfo.review_count || 0),
     isTrending: Boolean(p.is_trending ?? p.isTrending ?? addInfo.isTrending ?? addInfo.is_trending ?? false),
     trendingPriority: Number(p.trending_priority ?? p.trendingPriority ?? addInfo.trendingPriority ?? addInfo.trending_priority ?? 0),
     isFeatured: Boolean(p.is_featured ?? p.isFeatured ?? addInfo.isFeatured ?? addInfo.is_featured ?? false),
     featuredPriority: Number(p.featured_priority ?? p.featuredPriority ?? addInfo.featuredPriority ?? addInfo.featured_priority ?? 0),
     publishedAt: p.published_at || p.publishedAt || addInfo.publishedAt || addInfo.published_at || p.created_at || null,
     showInNewArrivals: Boolean(p.show_in_new_arrivals ?? p.showInNewArrivals ?? addInfo.showInNewArrivals ?? true),
+    sort_order: Number(p.sort_order ?? p.sortOrder ?? p.display_order ?? addInfo.sort_order ?? addInfo.priority ?? 99999),
+    display_order: Number(p.sort_order ?? p.sortOrder ?? p.display_order ?? addInfo.sort_order ?? addInfo.priority ?? 99999),
+    priority: Number(p.sort_order ?? p.sortOrder ?? p.display_order ?? addInfo.sort_order ?? addInfo.priority ?? 99999),
+    quantityDiscountEnabled: (() => {
+      try {
+        return Boolean(addInfo.quantityDiscountEnabled ?? p.quantity_discount_enabled ?? true);
+      } catch { return true; }
+    })(),
     created_at: p.created_at || null,
     updated_at: p.updated_at || null
   };
@@ -282,13 +304,14 @@ const getInitialAuthSession = () => {
 export const DEFAULT_HOME_BANNERS = [
   {
     id: 'banner_1',
-    badge: 'BEAUTY ESSENTIALS',
-    title: 'Glow Your Own Way',
-    subtitle: 'Discover authentic beauty, salon & grooming formulations',
-    ctaLabel: 'Shop Best Sellers →',
-    destinationType: 'BEST_SELLERS',
-    destinationId: 'best_sellers',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_1.jpg',
+    badge: 'Up to 30% OFF',
+    discountBadge: 'Up to 30% OFF',
+    title: 'Healthy Hair Starts Here',
+    subtitle: 'Nourish • Repair • Shine',
+    ctaLabel: 'Shop Hair Care →',
+    destinationType: 'CATEGORY',
+    destinationId: 'Hair Care',
+    imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&auto=format&fit=crop&q=80',
     displayOrder: 1,
     isActive: true,
     startDate: null,
@@ -355,9 +378,7 @@ export const DEFAULT_HOME_BANNERS = [
 export const AppProvider = ({ children }) => {
   const initialSession = useMemo(() => getInitialAuthSession(), []);
 
-  const [currentScreen, setCurrentScreen] = useState(() => {
-    return initialSession ? 'home' : 'splash';
-  });
+  const [currentScreen, setCurrentScreen] = useState('splash');
   const [userRole, setUserRole] = useState(() => {
     return initialSession?.role || initialSession?.profile?.role || 'general';
   });
@@ -367,11 +388,50 @@ export const AppProvider = ({ children }) => {
       const saved = storage.getSync('salbeau_home_banners');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
     return DEFAULT_HOME_BANNERS;
   });
+
+  const [allBanners, setAllBanners] = useState(() => {
+    try {
+      const saved = storage.getSync('salbeau_central_banners');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  const getCategoryBanner = useCallback((catIdOrName) => {
+    if (!catIdOrName || !Array.isArray(allBanners)) return null;
+    const norm = String(catIdOrName).trim().toLowerCase();
+    return allBanners.find(b =>
+      b.isActive !== false &&
+      b.bannerType === 'category' &&
+      (
+        (b.categoryId && String(b.categoryId).trim().toLowerCase() === norm) ||
+        (b.categoryName && String(b.categoryName).trim().toLowerCase() === norm) ||
+        (b.destinationId && String(b.destinationId).trim().toLowerCase() === norm)
+      )
+    ) || null;
+  }, [allBanners]);
+
+  const getSubcategoryBanner = useCallback((subIdOrName) => {
+    if (!subIdOrName || !Array.isArray(allBanners)) return null;
+    const norm = String(subIdOrName).trim().toLowerCase();
+    return allBanners.find(b =>
+      b.isActive !== false &&
+      b.bannerType === 'subcategory' &&
+      (
+        (b.subcategoryId && String(b.subcategoryId).trim().toLowerCase() === norm) ||
+        (b.subcategoryName && String(b.subcategoryName).trim().toLowerCase() === norm) ||
+        (b.destinationId && String(b.destinationId).trim().toLowerCase() === norm)
+      )
+    ) || null;
+  }, [allBanners]);
 
   const activeBanners = useMemo(() => {
     return (homeBanners || [])
@@ -463,7 +523,7 @@ export const AppProvider = ({ children }) => {
               if (parsed.profile) setUserProfile(parsed.profile);
               if (parsed.role) setUserRole(parsed.role);
               if (parsed.addresses && Array.isArray(parsed.addresses)) setAddresses(parsed.addresses);
-              setCurrentScreen('home');
+              // Profile and authentication restored cleanly. SplashScreen's 1.8s branded timer handles navigation to 'home'.
               setIsRestoringSession(false);
               return;
             }
@@ -489,9 +549,9 @@ export const AppProvider = ({ children }) => {
         appStateRef.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
-        // Returned to foreground: ensure authenticated user never drops into splash or onboarding
+        // Returned to foreground: ensure authenticated user never drops into onboarding/login/otp
         if (userProfile?.isProfileComplete) {
-          setCurrentScreen(prev => (prev === 'splash' || prev === 'onboarding' || prev === 'login' || prev === 'otp') ? 'home' : prev);
+          setCurrentScreen(prev => (prev === 'onboarding' || prev === 'login' || prev === 'otp') ? 'home' : prev);
         }
       }
       appStateRef.current = nextAppState;
@@ -502,9 +562,10 @@ export const AppProvider = ({ children }) => {
     };
   }, [userProfile?.isProfileComplete]);
 
-  // Continuously persist authenticated session whenever user profile updates
+  // Debounced session persist � 800ms prevents write storm on rapid renders
   useEffect(() => {
-    if (userProfile?.isProfileComplete && userProfile?.phone) {
+    if (!userProfile?.isProfileComplete || !userProfile?.phone) return;
+    const _pt = setTimeout(() => {
       const cleanDigits = userProfile.phone.replace(/\D/g, '');
       const sessionData = {
         userId: userProfile.id || `u_${cleanDigits}`,
@@ -518,7 +579,8 @@ export const AppProvider = ({ children }) => {
       };
       storage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
       storage.setItem('salbeau_user_profile', JSON.stringify(userProfile));
-    }
+    }, 800);
+    return () => clearTimeout(_pt);
   }, [userProfile, userRole, addresses]);
 
   const addAddress = (newAddr) => {
@@ -567,6 +629,11 @@ export const AppProvider = ({ children }) => {
     });
   };
 
+  const userProfileRef = useRef(userProfile);
+  useEffect(() => { userProfileRef.current = userProfile; }, [userProfile]);
+
+  const userRoleRef = useRef(userRole);
+  useEffect(() => { userRoleRef.current = userRole; }, [userRole]);
   const [brands, setBrands] = useState(() => getCachedData('salbeau_cache_brands', []));
   const [rawCategories, setRawCategories] = useState(() => getCachedData('salbeau_cache_categories', []));
   const [subcategories, setSubcategories] = useState(() => getCachedData('salbeau_cache_subcategories', []));
@@ -587,6 +654,11 @@ export const AppProvider = ({ children }) => {
     productsRef.current = products;
   }, [products]);
 
+  // Persist cart to storage � survives app restarts and background kills
+  useEffect(() => {
+    try { setCachedData('salbeau_cache_cart', cart); } catch (_) {}
+  }, [cart]);
+
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedShade, setSelectedShade] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -594,7 +666,13 @@ export const AppProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
 
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = getCachedData('salbeau_cache_cart', null);
+      if (Array.isArray(saved) && saved.length > 0) return saved;
+    } catch (_) {}
+    return [];
+  });
   const [favorites, setFavorites] = useState([]);
   const [orders, setOrders] = useState(() => getCachedData('salbeau_cache_orders', []));
   const [consecutiveCancels, setConsecutiveCancels] = useState(0);
@@ -604,6 +682,41 @@ export const AppProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [selectedOrderIdForDetails, setSelectedOrderIdForDetails] = useState(null);
   const [orderStatusNotification, setOrderStatusNotification] = useState(null);
+
+  // Shade Selection Bottom Sheet Global State (Nykaa style)
+  const [shadeSheetState, setShadeSheetState] = useState({
+    isOpen: false,
+    product: null,
+    initialShade: null
+  });
+
+  const [lastSelectedShades, setLastSelectedShades] = useState({});
+
+  const openShadeSheet = useCallback((product, initialShade = null) => {
+    if (!product) return;
+    const rememberedShade = initialShade || lastSelectedShades[product.id] || null;
+    setShadeSheetState({
+      isOpen: true,
+      product,
+      initialShade: rememberedShade
+    });
+  }, [lastSelectedShades]);
+
+  const closeShadeSheet = useCallback(() => {
+    setShadeSheetState(prev => ({
+      ...prev,
+      isOpen: false
+    }));
+  }, []);
+
+  const rememberSelectedShade = useCallback((productId, shade) => {
+    if (!productId || !shade) return;
+    setLastSelectedShades(prev => ({
+      ...prev,
+      [productId]: shade
+    }));
+  }, []);
+
   const unreadNotificationsCount = useMemo(() => {
     return (notifications || []).filter(n => !n.is_read).length;
   }, [notifications]);
@@ -628,7 +741,7 @@ export const AppProvider = ({ children }) => {
             if (data?.logo) {
               try {
                 const parsed = JSON.parse(data.logo);
-                if (Array.isArray(parsed) && parsed.length > 0) {
+                if (Array.isArray(parsed)) {
                   setHomeBanners(parsed);
                   setCachedData('salbeau_home_banners', parsed);
                 }
@@ -722,11 +835,27 @@ export const AppProvider = ({ children }) => {
           } catch (e) { }
         }
 
+        const centralRow = brandsData.find(b => b.id === 'app_central_banners_master');
+        if (centralRow && centralRow.logo) {
+          try {
+            const parsedCentral = JSON.parse(centralRow.logo);
+            if (Array.isArray(parsedCentral)) {
+              setAllBanners(parsedCentral);
+              setCachedData('salbeau_central_banners', parsedCentral);
+              const homeFromCentral = parsedCentral.filter(b => b.bannerType === 'home' || !b.bannerType);
+              if (homeFromCentral.length > 0) {
+                setHomeBanners(homeFromCentral);
+                setCachedData('salbeau_home_banners', homeFromCentral);
+              }
+            }
+          } catch (e) { }
+        }
+
         const bannersRow = brandsData.find(b => b.id === 'app_home_banners');
         if (bannersRow && bannersRow.logo) {
           try {
             const parsedBanners = JSON.parse(bannersRow.logo);
-            if (Array.isArray(parsedBanners) && parsedBanners.length > 0) {
+            if (Array.isArray(parsedBanners)) {
               setHomeBanners(parsedBanners);
               setCachedData('salbeau_home_banners', parsedBanners);
             }
@@ -734,7 +863,7 @@ export const AppProvider = ({ children }) => {
         }
 
         const mappedBrands = brandsData
-          .filter(b => b.id !== 'app_category_order_config' && b.id !== 'app_brand_category_map' && b.id !== 'app_home_section_visibility' && b.id !== 'app_recommendation_config' && b.id !== 'app_pricing_discount_config' && b.id !== 'app_home_banners' && b.id !== 'salbeau_category_subcategory_hierarchy' && b.id !== 'salbeau_customer_search_requests')
+          .filter(b => !b.id.startsWith('app_') && !b.id.startsWith('salbeau_') && b.category !== 'SystemConfig')
           .map(b => ({
             id: b.id,
             name: b.name,
@@ -849,6 +978,7 @@ export const AppProvider = ({ children }) => {
 
       if (productsRes.data) {
         const mappedProducts = productsRes.data.map(mapProductFromDb).filter(Boolean);
+        mappedProducts.sort((a, b) => (Number(a.sort_order ?? a.display_order ?? a.priority) || 99999) - (Number(b.sort_order ?? b.display_order ?? b.priority) || 99999));
         setProducts(mappedProducts);
         setCachedData('salbeau_cache_products', mappedProducts);
       } else {
@@ -876,7 +1006,7 @@ export const AppProvider = ({ children }) => {
     let reconnectTimer = null;
 
     // Use a unique channel topic per mount to prevent callback collisions after subscribe
-    const channelName = `app-realtime-sync-${Date.now()}`;
+    const channelName = 'app-realtime-sync-v1';
     const channel = supabase
       .channel(channelName)
       // 1. ORDERS
@@ -1080,10 +1210,24 @@ export const AppProvider = ({ children }) => {
             } catch (e) {}
             return;
           }
+          if (payload.new && payload.new.id === 'app_central_banners_master' && payload.new.logo) {
+            try {
+              const parsedCentral = JSON.parse(payload.new.logo);
+              if (Array.isArray(parsedCentral)) {
+                setAllBanners(parsedCentral);
+                storage.setItem('salbeau_central_banners', JSON.stringify(parsedCentral)).catch(() => {});
+                const homeFromCentral = parsedCentral.filter(b => b.bannerType === 'home' || !b.bannerType);
+                setHomeBanners(homeFromCentral);
+                storage.setItem('salbeau_home_banners', JSON.stringify(homeFromCentral)).catch(() => {});
+              }
+            } catch (e) {}
+            return;
+          }
+
           if (payload.new && payload.new.id === 'app_home_banners' && payload.new.logo) {
             try {
               const parsedBanners = JSON.parse(payload.new.logo);
-              if (Array.isArray(parsedBanners) && parsedBanners.length > 0) {
+              if (Array.isArray(parsedBanners)) {
                 setHomeBanners(parsedBanners);
                 storage.setItem('salbeau_home_banners', JSON.stringify(parsedBanners)).catch(() => {});
               }
@@ -1900,6 +2044,7 @@ export const AppProvider = ({ children }) => {
       await storage.removeItem(AUTH_SESSION_KEY);
       await storage.removeItem('salbeau_user_profile');
       await storage.removeItem('salbeau_cart');
+      await storage.removeItem('salbeau_cache_cart');
       await storage.removeItem('salbeau_cache_orders');
       await storage.removeItem('salbeau_cache_favorites');
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -2031,13 +2176,13 @@ export const AppProvider = ({ children }) => {
     });
   }, [products, brands]);
 
-  // Expose every valid, active, sellable variant independently as a catalog product
-  // while preserving its relationship with the parent product family
+  // Standard unified catalog products (1 card per product with interactive shade chips, Purplle style)
+  // Each product has 1 card with shade chips instead of exploding into duplicate cards
   const activeProducts = useMemo(() => {
-    return flattenProductsToIndividualVariants(activeProductFamilies);
+    return activeProductFamilies;
   }, [activeProductFamilies]);
 
-  const addToCart = (product, quantity = 1, shade = null) => {
+  const addToCart = useCallback((product, quantity = 1, shade = null) => {
     const isVarChild = Boolean(product?.isVariantChild);
     const parentProduct = (isVarChild && product.parentProduct) ? product.parentProduct : product;
     const effectiveShade = shade || (isVarChild ? (product.variantData || {
@@ -2055,31 +2200,30 @@ export const AppProvider = ({ children }) => {
       sku: product.sku
     }) : null);
 
-    const variantKey = effectiveShade ? (effectiveShade.id || effectiveShade.sku || effectiveShade.name) : null;
-    const cartItemId = variantKey ? `${parentProduct.id}_${variantKey}` : parentProduct.id;
+    const cartItemId = getCartKey(parentProduct.id, effectiveShade);
 
     setCart(prev => {
-      const existing = prev.find(item => (item.id === cartItemId || item.product?.id === cartItemId));
+      const existing = prev.find(item => item.id === cartItemId);
       if (existing) {
         return prev.map(item =>
-          (item.id === cartItemId || item.product?.id === cartItemId) ? { ...item, quantity: item.quantity + quantity } : item
+          item.id === cartItemId ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
-      return [...prev, { id: cartItemId, product: parentProduct, quantity, shade: effectiveShade, variantId: variantKey }];
+      return [...prev, { id: cartItemId, product: parentProduct, quantity, shade: effectiveShade, variantId: effectiveShade?.name || effectiveShade?.id || null }];
     });
-  };
+  }, []);
 
-  const updateCartQuantity = (cartItemId, quantity) => {
+  const updateCartQuantity = useCallback((cartItemId, quantity) => {
     if (quantity <= 0) {
       removeFromCart(cartItemId);
       return;
     }
-    setCart(prev => prev.map(item => ((item.id || item.product?.id) === cartItemId ? { ...item, quantity } : item)));
-  };
+    setCart(prev => prev.map(item => (item.id === cartItemId ? { ...item, quantity } : item)));
+  }, []);
 
-  const removeFromCart = (cartItemId) => {
-    setCart(prev => prev.filter(item => (item.id || item.product?.id) !== cartItemId));
-  };
+  const removeFromCart = useCallback((cartItemId) => {
+    setCart(prev => prev.filter(item => item.id !== cartItemId));
+  }, []);
 
   const clearCart = async () => {
     setCart([]);
@@ -2137,10 +2281,10 @@ export const AppProvider = ({ children }) => {
     return () => clearTimeout(timer);
   }, [cart, userProfile?.id, userProfile?.phone, userProfile?.name, userRole, cartSubtotal]);
 
-  const isFavorite = (productId) => {
+  const isFavorite = useCallback((productId) => {
     if (!productId) return false;
     return favorites.some(item => item.id === productId);
-  };
+  }, [favorites]);
 
   const toggleFavorite = async (product) => {
     if (!product || !product.id) return false;
@@ -2467,9 +2611,7 @@ export const AppProvider = ({ children }) => {
     setCurrentScreen(targetScreen);
   }, [userProfile?.isProfileComplete, userProfile?.verificationStatus, userRole]);
 
-  return (
-    <AppContext.Provider
-      value={{
+  const contextValue = {
         currentScreen,
         setCurrentScreen: setProtectedScreen,
         userRole,
@@ -2547,6 +2689,9 @@ export const AppProvider = ({ children }) => {
         productSalesCounts,
         homeBanners,
         activeBanners,
+        allBanners,
+        getCategoryBanner,
+        getSubcategoryBanner,
         setHomeBanners,
         notifications,
         unreadNotificationsCount,
@@ -2560,8 +2705,32 @@ export const AppProvider = ({ children }) => {
         refreshNotifications: fetchNotifications,
         selectedOrderIdForDetails,
         setSelectedOrderIdForDetails,
-      }}
-    >
+        shadeSheetState,
+        openShadeSheet,
+        closeShadeSheet,
+        rememberSelectedShade,
+
+  };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  return (
+    <AppContext.Provider value={contextValue}>
       {children}
     </AppContext.Provider>
   );

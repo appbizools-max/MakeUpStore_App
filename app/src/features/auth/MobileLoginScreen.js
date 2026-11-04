@@ -2,11 +2,20 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
+import { isB2BRole } from '../../utils/b2bVerificationService';
+import { B2BRegistrationForm } from './B2BRegistrationForm';
 
 export const MobileLoginScreen = () => {
   const { userRole, userProfile, setUserProfile, setCurrentScreen, prefetchUserProfile } = useApp();
   const [mobileNumber, setMobileNumber] = useState('');
 
+  // Before OTP verification: If user is B2B (Salon, Makeup Artist, Beautician),
+  // render the dedicated professional business registration form.
+  if (isB2BRole(userRole)) {
+    return <B2BRegistrationForm />;
+  }
+
+  // ── UNCHANGED B2C (GENERAL USER) REGISTRATION FLOW ─────────────────────
   const cleanDigits = mobileNumber.replace(/\D/g, '');
   const isValid = cleanDigits.length === 10;
 

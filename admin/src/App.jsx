@@ -93,6 +93,7 @@ const B2BVerificationPage = React.lazy(() => import('./components/b2b/B2BVerific
 const ApprovalCenterPage = React.lazy(() => import('./components/governance/ApprovalCenterPage'));
 const AuditTrailPage = React.lazy(() => import('./components/governance/AuditTrailPage'));
 const BrandManagementPage = React.lazy(() => import('./components/brands/BrandManagementPage'));
+const CentralBannerManagementPage = React.lazy(() => import('./components/banners/BannerManagementPage'));
 
 const PageLoadingFallback = () => (
   <div className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center animate-fade-in">
@@ -170,6 +171,7 @@ const AdminDashboard = () => {
     addBrand,
     updateBrand,
     deleteBrand,
+    bulkDeleteBrands,
     bulkImportBrands,
     addProduct,
     updateProduct,
@@ -2036,7 +2038,7 @@ const AdminDashboard = () => {
     }
     setImageSearchError(null);
     const searchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
-    const win = window.open(searchUrl, '_blank', 'noopener,noreferrer');
+    const win = window.open(searchUrl, 'salbeau_google_images', 'noopener,noreferrer');
     if (!win || win.closed || typeof win.closed === 'undefined') {
       setImageSearchError('Popup blocked! Please allow popups for this browser tab to open Google Image search in a new window.');
     }
@@ -2673,7 +2675,8 @@ const AdminDashboard = () => {
 
     const term = (productSearch || '').trim();
 
-    return rawList.filter((p) => {
+    // 1. Filter matching criteria
+    const matched = rawList.filter((p) => {
       let matchesSearch = true;
       if (term) {
         matchesSearch = matchProductSearch(p, term).isMatch;
@@ -2687,6 +2690,60 @@ const AdminDashboard = () => {
         (p.category || '').toLowerCase() === productCategoryFilter.toLowerCase();
 
       return matchesSearch && matchesBrand && matchesCategory;
+    });
+
+    // 2. Canonical Brand-Wise Alphabetical Sorting (Mandatory Requirement)
+    // Primary: Brand Name A–Z (Unbranded at the very end)
+    // Secondary: Product Name A–Z
+    // Tertiary: Stable product identifier (ID or SKU)
+    const brandsMap = new Map();
+    (brands || []).forEach(b => {
+      if (b && b.id) brandsMap.set(b.id, (b.name || '').trim());
+    });
+
+    const getCanonicalBrand = (p) => {
+      if (p.brandId && brandsMap.has(p.brandId)) {
+        const mapped = brandsMap.get(p.brandId);
+        if (mapped) return mapped;
+      }
+      if (p.brandName && typeof p.brandName === 'string' && p.brandName.trim()) {
+        return p.brandName.trim();
+      }
+      if (p.brand && typeof p.brand === 'string' && p.brand.trim()) {
+        return p.brand.trim();
+      }
+      return '';
+    };
+
+    return matched.sort((a, b) => {
+      // 0. Primary Sort: Display sequence / Priority order assigned by Admin
+      const orderA = Number(a.display_order ?? a.sort_order ?? a.priority) || 99999;
+      const orderB = Number(b.display_order ?? b.sort_order ?? b.priority) || 99999;
+      if (orderA !== orderB) return orderA - orderB;
+
+      const brandA = getCanonicalBrand(a);
+      const brandB = getCanonicalBrand(b);
+
+      // Unbranded products appear at the end
+      if (brandA && !brandB) return -1;
+      if (!brandA && brandB) return 1;
+
+      // Primary: Brand Name A–Z (case-insensitive, locale-aware)
+      if (brandA && brandB) {
+        const brandComp = brandA.localeCompare(brandB, undefined, { sensitivity: 'base', numeric: true });
+        if (brandComp !== 0) return brandComp;
+      }
+
+      // Secondary: Product Name A–Z
+      const nameA = (a.name || '').trim();
+      const nameB = (b.name || '').trim();
+      const nameComp = nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      if (nameComp !== 0) return nameComp;
+
+      // Tertiary: Stable product identifier
+      const idA = String(a.id || a._id || a.sku || a.barcode || '');
+      const idB = String(b.id || b._id || b.sku || b.barcode || '');
+      return idA.localeCompare(idB, undefined, { numeric: true });
     });
   }, [products, catalogViewMode, productSearch, productBrandFilter, productCategoryFilter, brands]);
 
@@ -2853,6 +2910,16 @@ const AdminDashboard = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Manual Refresh Button */}
+          <button
+            type="button"
+            onClick={() => refreshData && refreshData()}
+            title="Refresh Admin Data"
+            className="p-2 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] shadow-2xs transition-all cursor-pointer flex items-center justify-center"
+          >
+            <RefreshCw size={15} />
+          </button>
+
           {/* Notification Bell on Mobile */}
           <AdminNotificationBell
             orders={orders}
@@ -2951,18 +3018,30 @@ const AdminDashboard = () => {
                   {activeTab === 'employees/new' && 'Add New Employee'}{activeTab.startsWith('employees/') && !activeTab.includes('activity') && !activeTab.includes('new') && 'Employee Profile & Management'}
                 </h1>
                 <p className="text-xs text-gray-400 font-medium mt-1">
+                  {activeTab === 'products' && 'Manage product families, variants, catalog details, and pricing.'}
                   {activeTab === 'home_banners' && 'Manage the carousel banners displayed on the customer mobile app home page. Changes sync in real-time.'}
                   {activeTab === 'search_requests' && 'Real-time tracking of all customer searches (found and not-found) performed in the User App'}
                   {activeTab === 'approval_center' && 'Review and approve/reject employee operations before they go live on the customer store'}
                   {activeTab === 'audit_trail' && 'Immutable activity history showing who performed what, when, and approval status'}
                   {activeTab === 'abandoned_carts' && 'Real-time tracking of incomplete orders and potential recoveries'}
                   {activeTab === 'employees' && 'Manage employee accounts, permissions, assigned work, and activity'}
-                  {activeTab === 'employees/new' && 'Create employee account and configure access'}{!activeTab.startsWith('employees') && activeTab !== 'abandoned_carts' && "Overview of today's store performance"}
+                  {activeTab === 'employees/new' && 'Create employee account and configure access'}{!activeTab.startsWith('employees') && activeTab !== 'abandoned_carts' && activeTab !== 'products' && activeTab !== 'home_banners' && activeTab !== 'search_requests' && activeTab !== 'approval_center' && activeTab !== 'audit_trail' && "Overview of today's store performance"}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Manual Refresh Button (Admin Stays Calm) */}
+              <button
+                type="button"
+                onClick={() => refreshData && refreshData()}
+                title="Refresh Admin Data"
+                className="px-3.5 py-2 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw size={15} />
+                <span className="text-xs font-bold">Refresh</span>
+              </button>
+
               {/* Notification Bell with Live Alerts, Category Filters & Sound Chime */}
               <AdminNotificationBell
                 orders={orders}
@@ -3714,186 +3793,11 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* 1c. HOME BANNERS MANAGEMENT PAGE */}
+          {/* CENTRALIZED BANNER MANAGEMENT MODULE */}
           {activeTab === 'home_banners' && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Header / Info Banner */}
-              <div className="bg-gradient-to-r from-pink-50 via-rose-50 to-white p-6 rounded-2xl border border-pink-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-8 h-8 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
-                      <ImageIcon size={18} />
-                    </div>
-                    <h2 className="text-base font-bold text-gray-900">Mobile Home Carousel Banners</h2>
-                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      Live Real-Time Sync
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 max-w-2xl leading-relaxed">
-                    Manage the 5 full-width marketing banners displayed in the customer mobile app carousel. Admin updates, reordering, and status changes are permanently saved in Supabase and instantly reflected on the User App.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={handleOpenAddBanner}
-                    className="bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm hover:shadow transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-95"
-                  >
-                    <Plus size={15} />
-                    <span>Add New Banner</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Notification alert banner */}
-              {bannerNotice && (
-                <div className={`p-4 rounded-xl text-xs font-bold flex items-center gap-2 animate-fade-in ${bannerNotice.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
-                  }`}>
-                  {bannerNotice.type === 'success' ? <CheckCircle2 size={16} className="text-emerald-600" /> : <AlertCircle size={16} className="text-rose-600" />}
-                  <span>{bannerNotice.message}</span>
-                </div>
-              )}
-
-              {/* Banners Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {(homeBanners || []).map((banner, index) => {
-                  const isActive = banner.isActive !== false;
-                  return (
-                    <div
-                      key={banner.id || index}
-                      className={`bg-white rounded-3xl border overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${isActive ? 'border-pink-200/80 hover:border-pink-300' : 'border-gray-200 opacity-70 bg-gray-50/50'
-                        }`}
-                    >
-                      {/* Top Image Preview Banner */}
-                      <div className="relative w-full aspect-[2.56/1] bg-gray-100 overflow-hidden border-b border-pink-100">
-                        {banner.imageUrl ? (
-                          <img
-                            src={banner.imageUrl}
-                            alt={banner.title || 'Banner'}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                            No Image
-                          </div>
-                        )}
-
-                        {/* Display Order Position Badge */}
-                        <div className="absolute top-2.5 left-2.5 bg-black/75 backdrop-blur-xs text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
-                          <span>#{index + 1}</span>
-                        </div>
-
-                        {/* Active Status Badge */}
-                        <div className="absolute top-2.5 right-2.5">
-                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-xs ${isActive ? 'bg-emerald-500 text-white' : 'bg-gray-400 text-white'
-                            }`}>
-                            {isActive ? 'Active' : 'Hidden'}
-                          </span>
-                        </div>
-
-                        {/* Live CTA button simulated on the image */}
-                        <div className="absolute bottom-2 left-2.5 bg-[#C2477A] text-white text-[9.5px] font-extrabold px-2.5 py-0.5 rounded-full shadow-xs">
-                          {banner.ctaText || banner.ctaLabel || 'Shop Now →'}
-                        </div>
-                      </div>
-
-                      {/* Banner Content Body */}
-                      <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black tracking-wider uppercase text-[#C2477A] bg-[#FFF0F5] px-2 py-0.5 rounded-md border border-[#FCE4EC]">
-                              {banner.theme || banner.badge || 'EDITORIAL'}
-                            </span>
-                            <span className="text-[10px] text-gray-400 font-mono">
-                              ID: {banner.id}
-                            </span>
-                          </div>
-
-                          <h3 className="font-extrabold text-sm text-gray-900 leading-snug">
-                            {banner.title}
-                          </h3>
-
-                          <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
-                            {banner.subtitle || 'Discover authentic salon-grade products.'}
-                          </p>
-                        </div>
-
-                        {/* Destination Details */}
-                        <div className="pt-2 border-t border-pink-100/70 text-[11px] space-y-1">
-                          <div className="flex items-center justify-between text-gray-600">
-                            <span className="text-gray-400 font-medium">Destination:</span>
-                            <span className="font-extrabold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">
-                              {banner.destinationType || 'CATEGORY'}
-                              {banner.destinationId ? ` (${banner.destinationId})` : ''}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Controls Toolbar */}
-                        <div className="pt-3 border-t border-pink-100/70 flex items-center justify-between gap-2">
-                          {/* Move Up/Down Order */}
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              disabled={index === 0}
-                              onClick={() => handleMoveBannerOrder(banner.id, 'up')}
-                              className="w-7 h-7 rounded-lg border border-gray-200 text-gray-600 hover:text-[#C2477A] hover:bg-pink-50 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                              title="Move Up"
-                            >
-                              <ArrowUp size={13} />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={index === (homeBanners || []).length - 1}
-                              onClick={() => handleMoveBannerOrder(banner.id, 'down')}
-                              className="w-7 h-7 rounded-lg border border-gray-200 text-gray-600 hover:text-[#C2477A] hover:bg-pink-50 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                              title="Move Down"
-                            >
-                              <ArrowDown size={13} />
-                            </button>
-                          </div>
-
-                          {/* Actions (Toggle, Edit, Delete) */}
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => toggleHomeBannerActive(banner.id)}
-                              className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold border transition-colors cursor-pointer ${isActive
-                                  ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                }`}
-                            >
-                              {isActive ? 'Hide' : 'Show'}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditBanner(banner)}
-                              className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-[#FFF5F8] text-[#C2477A] border border-[#FCE4EC] hover:bg-pink-100 transition-colors flex items-center gap-1 cursor-pointer"
-                            >
-                              <Edit size={11} /> Edit
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setBannerToDelete(banner);
-                                setIsDeleteBannerModalOpen(true);
-                              }}
-                              className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 flex items-center justify-center transition-colors cursor-pointer"
-                              title="Delete Banner"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <React.Suspense fallback={<PageLoadingFallback />}>
+              <CentralBannerManagementPage categories={categories} />
+            </React.Suspense>
           )}
 
           {/* MAIN CATEGORIES MANAGEMENT */}
@@ -4158,6 +4062,7 @@ const AdminDashboard = () => {
                 onAddBrand={addBrand}
                 onUpdateBrand={updateBrand}
                 onDeleteBrand={deleteBrand}
+                onBulkDeleteBrands={bulkDeleteBrands}
                 onToggleBrandStatus={toggleBrandStatus}
                 onBulkImportBrands={bulkImportBrands}
               />
@@ -4195,7 +4100,10 @@ const AdminDashboard = () => {
               isOpen={true}
               isPageMode={true}
               onClose={() => navigateToTab('products')}
-              onNavigateToProducts={() => navigateToTab('products')}
+              onNavigateToProducts={() => {
+                setShowProductSuccess(true);
+                navigateToTab('products');
+              }}
               onNavigateToBrands={() => navigateToTab('add_brand')}
               onNavigateToCategories={() => navigateToTab('categories')}
               categories={categories}
@@ -4204,15 +4112,13 @@ const AdminDashboard = () => {
               onUploadProductImage={uploadProductImage}
               defaultPricingRules={pricingRules}
               onSubmitBulk={async (validRows, onProgress) => {
+                let res = null;
                 if (saveBulkProducts) {
-                  const res = await saveBulkProducts(validRows, onProgress);
-                  setDashboardToast({
-                    type: 'success',
-                    message: `Successfully imported ${res?.count || validRows.length} products! All items are now active in the Products catalog.`
-                  });
+                  res = await saveBulkProducts(validRows, onProgress);
+                } else {
+                  res = await chunkedBulkSave(validRows, { onProgress, updateExisting: true, allowBlankOverwrite: false });
                 }
-                setShowProductSuccess(true);
-                navigateToTab('products');
+                return res;
               }}
             />
           )}

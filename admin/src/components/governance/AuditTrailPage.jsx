@@ -21,7 +21,8 @@ import {
   ChevronUp,
   Download,
   Calendar,
-  Tag
+  Tag,
+  X
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 

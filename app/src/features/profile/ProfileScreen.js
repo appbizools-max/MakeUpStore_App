@@ -58,6 +58,7 @@ export const ProfileScreen = () => {
   const initialLetter = name && name.trim().length > 0 ? name.trim().charAt(0).toUpperCase() : 'S';
 
   const [editType, setEditType] = useState(null); // null | 'profile' | 'saved_addresses' | 'address_form'
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [editName, setEditName] = useState(name);
   const [editEmail, setEditEmail] = useState(email);
   const [editPhone, setEditPhone] = useState(phone);
@@ -290,24 +291,7 @@ export const ProfileScreen = () => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Log Out Salbeau Account',
-      'Are you sure you want to sign out from your Salbeau account?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: () => {
-            if (logout) {
-              logout();
-            } else {
-              setCurrentScreen('onboarding');
-            }
-          }
-        }
-      ]
-    );
+    setShowLogoutModal(true);
   };
 
   return (
@@ -1636,6 +1620,105 @@ export const ProfileScreen = () => {
                 {editingAddressId ? 'UPDATE DELIVERY ADDRESS' : 'SAVE DELIVERY ADDRESS'}
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      {/* ========================================================
+          4. Custom Logout Confirmation Modal
+         ======================================================== */}
+      <Modal
+        visible={showLogoutModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.45)' }}
+          className="flex-1 justify-center items-center p-5"
+        >
+          <View
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderColor: PALETTE.borderAccent,
+              borderWidth: 1,
+              borderRadius: 24,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 12,
+              elevation: 5
+            }}
+            className="w-full max-w-sm p-6 items-center"
+          >
+            <View
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: PALETTE.logoPinkLight,
+                borderColor: PALETTE.borderAccent,
+                borderWidth: 1
+              }}
+              className="items-center justify-center mb-4"
+            >
+              <Ionicons name="log-out-outline" size={28} color={PALETTE.logoPink} />
+            </View>
+
+            <Text
+              style={{ color: PALETTE.textDark }}
+              className="text-base font-extrabold text-center mb-1.5"
+            >
+              Log Out Salbeau Account?
+            </Text>
+
+            <Text
+              style={{ color: PALETTE.textMuted }}
+              className="text-xs text-center leading-relaxed mb-6 px-2"
+            >
+              Are you sure you want to sign out? You will need your mobile number to sign in again.
+            </Text>
+
+            <View className="flex-row gap-3 w-full">
+              <TouchableOpacity
+                onPress={() => setShowLogoutModal(false)}
+                activeOpacity={0.7}
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderColor: PALETTE.borderNeutral,
+                  borderWidth: 1
+                }}
+                className="flex-1 py-3 rounded-xl items-center"
+              >
+                <Text style={{ color: PALETTE.textDark }} className="text-xs font-bold">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setShowLogoutModal(false);
+                  if (logout) {
+                    logout();
+                  } else {
+                    setCurrentScreen('onboarding');
+                  }
+                }}
+                activeOpacity={0.85}
+                style={{
+                  backgroundColor: PALETTE.logoPink,
+                  shadowColor: PALETTE.logoPink,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 2
+                }}
+                className="flex-1 py-3 rounded-xl items-center"
+              >
+                <Text className="text-xs font-bold text-white">
+                  Log Out
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

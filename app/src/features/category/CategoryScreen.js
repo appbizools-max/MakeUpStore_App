@@ -6,30 +6,141 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
-  SafeAreaView
+  SafeAreaView,
+  StatusBar
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import {
   MAIN_CATEGORIES,
+  CATEGORY_IMAGES,
   findCategoryConfig,
   filterProductsByHierarchy
 } from '../../config/categoriesHierarchy';
-import { getSafeImageUri, getSafeImageSource, DEFAULT_CATEGORY_FALLBACKS } from '../../utils/imageUtils';
+
+import { getCategoryFA5Icon } from '../../utils/categoryIcons';
 import { CategoryDetailView } from './CategoryDetailView';
 import { SubcategoryView } from './SubcategoryView';
 import { ProductListingView } from './ProductListingView';
 
+// Curated 12 Core Categories in exact mandated sequence
+// iconName fields kept for backward compatibility with CategoryDetailView/SubcategoryView;
+// the grid cards now resolve icons via getCategoryFA5Icon() for consistent FA5 rendering.
+export const MANDATED_CATEGORIES = [
+  {
+    id: 'cat_skincare',
+    name: 'Skincare',
+    iconName: 'spa',                    // FA5
+    image: CATEGORY_IMAGES.skincare,
+    fallbackImage: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Glow from Within'
+  },
+  {
+    id: 'cat_makeup',
+    name: 'Makeup',
+    iconName: 'paint-brush',            // FA5
+    image: CATEGORY_IMAGES.makeup,
+    fallbackImage: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Bold. Radiant. Iconic.'
+  },
+  {
+    id: 'cat_hair_styling',
+    name: 'Hair Styling',
+    iconName: 'magic',                  // FA5
+    image: CATEGORY_IMAGES.hairStylingTools,
+    fallbackImage: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Salon Finish at Home'
+  },
+  {
+    id: 'cat_hair_care',
+    name: 'Hair Care',
+    iconName: 'leaf',                   // FA5
+    image: CATEGORY_IMAGES.hairCare,
+    fallbackImage: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Strong. Silky. Vibrant.'
+  },
+  {
+    id: 'cat_fragrance',
+    name: 'Fragrance',
+    iconName: 'spray-can',              // FA5
+    image: CATEGORY_IMAGES.fragrance,
+    fallbackImage: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Your Signature Scent'
+  },
+  {
+    id: 'cat_nail_care',
+    name: 'Nail Care',
+    iconName: 'gem',                    // FA5
+    image: CATEGORY_IMAGES.nailCare,
+    fallbackImage: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Chic. Polished. Flawless.'
+  },
+  {
+    id: 'cat_bath_body',
+    name: 'Bath & Body',
+    iconName: 'bath',                   // FA5
+    image: CATEGORY_IMAGES.bathBody,
+    fallbackImage: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Pure Indulgence'
+  },
+  {
+    id: 'cat_mens_grooming',
+    name: "Men's Grooming",
+    iconName: 'male',                   // FA5
+    image: CATEGORY_IMAGES.mensGrooming,
+    fallbackImage: 'https://images.unsplash.com/photo-1621607512214-68297480165e?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Sharp. Refined. Confident.'
+  },
+  {
+    id: 'cat_beauty_tools',
+    name: 'Beauty Tools',
+    iconName: 'tools',                  // FA5
+    image: CATEGORY_IMAGES.beautyTools,
+    fallbackImage: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Precision Essentials'
+  },
+  {
+    id: 'cat_personal_care',
+    name: 'Personal Care',
+    iconName: 'pump-soap',              // FA5
+    image: CATEGORY_IMAGES.personalCare,
+    fallbackImage: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Daily Wellness & Hygiene'
+  },
+  {
+    id: 'cat_wellness',
+    name: 'Wellness',
+    iconName: 'heartbeat',              // FA5
+    image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=500&auto=format&fit=crop&q=80',
+    fallbackImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=500&auto=format&fit=crop&q=80',
+    tagline: 'Balance & Inner Vitality'
+  },
+  {
+    id: 'cat_gift_sets',
+    name: 'Gift Sets',
+    iconName: 'gift',                   // FA5
+    image: CATEGORY_IMAGES.beautyKits,
+    fallbackImage: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop&q=80',
+    tagline: 'The Ultimate Gift of Beauty'
+  }
+];
+
 export const CategoryScreen = () => {
   const {
-    categories: dbCategories,
+    categories: dbCategories = [],
     subcategories: liveSubcategories,
     leafCategories: liveLeafCategories,
     selectedCategory,
     setSelectedCategory,
     activeProducts,
-    setCurrentScreen
+    setCurrentScreen,
+    cart = []
   } = useApp();
+
+  const cartCount = useMemo(() => {
+    if (!Array.isArray(cart)) return 0;
+    return cart.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0);
+  }, [cart]);
 
   const [windowDimensions, setWindowDimensions] = useState(Dimensions.get('window'));
 
@@ -61,84 +172,59 @@ export const CategoryScreen = () => {
   // Synchronize when coming with selectedCategory from HomeScreen or elsewhere
   useEffect(() => {
     if (selectedCategory) {
-      const matched = findCategoryConfig(selectedCategory);
-      setActiveCategory(matched);
-      setNavLevel(2);
-      setOpenedFromHome(true);
+      const categoryName = typeof selectedCategory === 'string' ? selectedCategory : selectedCategory?.name;
+      const matched = findCategoryConfig(categoryName) || MANDATED_CATEGORIES.find(c => c.name.toLowerCase() === (categoryName || '').toLowerCase());
+      if (matched) {
+        setActiveCategory(matched);
+        setNavLevel(2);
+        setOpenedFromHome(true);
+      }
     }
   }, [selectedCategory]);
 
-  // Combined categories list (using MAIN_CATEGORIES with any custom DB categories preserved)
-  // Combined categories list (using active DB categories as source of truth, matching MAIN_CATEGORIES configs)
+  // Merge live database categories with Mandated Sequence
   const displayCategories = useMemo(() => {
-    if (!dbCategories || dbCategories.length === 0) {
-      return MAIN_CATEGORIES.map(c => ({
-        ...c,
-        image: getSafeImageUri(c.image, c.fallbackImage || DEFAULT_CATEGORY_FALLBACKS.default),
-        fallbackImage: getSafeImageUri(c.fallbackImage, DEFAULT_CATEGORY_FALLBACKS.default),
-      }));
-    }
-
-    // Filter active categories from db
-    const activeDbCats = dbCategories.filter(c => c.enabled !== false);
-    if (activeDbCats.length === 0) return [];
-
-    return activeDbCats.map(dbCat => {
-      const c = MAIN_CATEGORIES.find(mc =>
-        mc.id === dbCat.id ||
-        (dbCat.name && mc.name && dbCat.name.trim().toLowerCase() === mc.name.trim().toLowerCase()) ||
-        (dbCat.name && mc.dbKey && dbCat.name.trim().toLowerCase() === mc.dbKey.trim().toLowerCase())
+    return MANDATED_CATEGORIES.map(mCat => {
+      // Find matching db category if present for real-time live database synchronization
+      const dbMatch = dbCategories.find(dbCat =>
+        dbCat.id === mCat.id ||
+        (dbCat.name && mCat.name && dbCat.name.trim().toLowerCase() === mCat.name.trim().toLowerCase())
       );
 
-      const safeImage = getSafeImageUri(dbCat.image || c?.image, c?.fallbackImage || DEFAULT_CATEGORY_FALLBACKS.default);
-      const safeFallback = getSafeImageUri(c?.fallbackImage || dbCat.image, DEFAULT_CATEGORY_FALLBACKS.default);
-
       return {
-        id: dbCat.id,
-        dbKey: c?.dbKey || dbCat.name.toLowerCase(),
-        name: dbCat.name,
-        image: safeImage,
-        fallbackImage: safeFallback,
-        tagline: c?.tagline || 'Premium Beauty Collection',
-        description: c?.description || 'Explore verified authentic formulations',
-        accent: c?.accent || '#C2477A',
-        bgLight: c?.bgLight || '#FFF0F5',
-        enabled: dbCat.enabled
+        ...mCat,
+        dbId: dbMatch?.id,
+        enabled: dbMatch ? dbMatch.enabled !== false : true
       };
     });
   }, [dbCategories]);
 
   // ── NAVIGATION HANDLERS ─────────────────────────────────────────
-
-  // Level 1 -> Level 2
   const handleSelectCategory = (cat) => {
-    setActiveCategory(cat);
+    const config = findCategoryConfig(cat.name) || cat;
+    setActiveCategory(config);
     setActiveSubcategory(null);
     setActiveLeafCategory(null);
     setNavLevel(2);
-    if (setSelectedCategory) setSelectedCategory(cat);
+    if (setSelectedCategory) setSelectedCategory(cat.name);
   };
 
-  // Level 2 -> Level 3
   const handleSelectSubcategory = (subcat) => {
     setActiveSubcategory(subcat);
     setActiveLeafCategory(null);
     setNavLevel(3);
   };
 
-  // Level 3 -> Level 4
   const handleSelectLeafCategory = (leaf) => {
     setActiveLeafCategory(leaf);
     setNavLevel(4);
   };
 
-  // Direct View All from Level 2 or Level 3
   const handleViewAllProducts = () => {
     setActiveLeafCategory(null);
     setNavLevel(4);
   };
 
-  // Back Navigation Handler
   const handleBack = () => {
     if (navLevel === 4) {
       if (activeLeafCategory) {
@@ -216,103 +302,174 @@ export const CategoryScreen = () => {
   // ── RENDER LEVEL 1: SHOP BY CATEGORY GRID ───────────────────────
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* ── TOP HEADER ────────────────────────────────────────────── */}
-      <View className="bg-white border-b border-[#FCE4EC] px-4 py-3 flex-row items-center justify-between">
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      {/* ── FIXED TOP HEADER ───────────────────────────────────────── */}
+      <View
+        style={{
+          borderBottomWidth: 1,
+          borderBottomColor: '#F0E3EA',
+          backgroundColor: '#FFFFFF',
+          elevation: 2,
+          shadowColor: '#B64F7D',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.05,
+          shadowRadius: 3,
+        }}
+        className="px-4 py-3 flex-row items-center justify-between z-30"
+      >
+        {/* Back Button */}
         <TouchableOpacity
           onPress={() => setCurrentScreen('home')}
           activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="flex-row items-center gap-1 -ml-1 py-1 px-1.5 rounded-lg active:bg-pink-50"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          className="flex-row items-center gap-1 -ml-1 py-1.5 px-2 rounded-xl active:bg-pink-50"
         >
-          <Ionicons name="chevron-back" size={20} color="#C2477A" />
-          <Text className="text-xs font-bold text-[#C2477A]">Home</Text>
+          <Ionicons name="chevron-back" size={20} color="#B64F7D" />
+          <Text style={{ color: '#B64F7D' }} className="text-xs font-bold">
+            Home
+          </Text>
         </TouchableOpacity>
 
-        <Text className="text-sm font-extrabold text-[#3A2430] uppercase tracking-wider">
+        {/* Title */}
+        <Text style={{ color: '#33252F' }} className="text-sm font-extrabold uppercase tracking-wider">
           Shop by Category
         </Text>
 
-        <TouchableOpacity
-          onPress={() => setCurrentScreen('search')}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="w-8 h-8 rounded-full bg-[#FFF0F5] items-center justify-center border border-[#FCE4EC]"
-        >
-          <Ionicons name="search" size={15} color="#C2477A" />
-        </TouchableOpacity>
+        {/* Actions: Search & Cart with Badge */}
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={() => setCurrentScreen('search')}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ borderColor: '#F0E3EA', borderWidth: 1 }}
+            className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center shadow-2xs"
+            accessibilityLabel="Search"
+          >
+            <Ionicons name="search" size={16} color="#B64F7D" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setCurrentScreen('cart')}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ borderColor: '#F0E3EA', borderWidth: 1 }}
+            className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center shadow-2xs relative"
+            accessibilityLabel="Shopping Cart"
+          >
+            <Ionicons name="bag-handle-outline" size={17} color="#B64F7D" />
+            {cartCount > 0 && (
+              <View
+                style={{ minWidth: 16, height: 16, paddingHorizontal: 3 }}
+                className="absolute -top-1 -right-1 bg-[#C2477A] rounded-full items-center justify-center border border-white"
+              >
+                <Text className="text-[9px] font-black text-white leading-none">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* ── 2-3 COLUMN RESPONSIVE GRID ────────────────────────────── */}
+      {/* ── VERTICALLY SCROLLABLE 2-COLUMN GRID ─────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        overScrollMode="never"
         contentContainerStyle={{
           paddingHorizontal: horizontalPadding,
           paddingTop: 16,
-          paddingBottom: 95
+          paddingBottom: 110 // Ensures categories 7-12 appear naturally without overlapping bottom nav
         }}
+        className="bg-white flex-1"
       >
         {/* Subtle Sub-heading */}
         <View className="mb-4">
-          <Text className="text-base font-black text-[#3A2430]">
+          <Text style={{ color: '#33252F' }} className="text-base font-black">
             Explore Collections
           </Text>
-          <Text className="text-xs text-[#8C7078] font-medium mt-0.5">
+          <Text style={{ color: '#82727C' }} className="text-xs font-medium mt-0.5">
             Discover 100% authentic beauty, salon & grooming formulations
           </Text>
         </View>
 
-        {/* Categories Grid or Empty State */}
-        {displayCategories.length === 0 ? (
-          <View className="items-center justify-center py-20 px-6">
-            <View className="w-16 h-16 rounded-full bg-[#FFF0F5] items-center justify-center mb-3 border border-[#FCE4EC]">
-              <Ionicons name="grid-outline" size={28} color="#C2477A" />
-            </View>
-            <Text className="text-base font-extrabold text-[#3A2430] mb-1 text-center">
-              No Categories Available
-            </Text>
-            <Text className="text-xs text-[#8C7078] text-center mb-4 leading-4">
-              Please check back shortly or explore our best sellers from the home screen.
-            </Text>
+        {/* Categories 2-Column Responsive Grid */}
+        <View className="flex-row flex-wrap justify-between gap-y-3.5">
+          {displayCategories.map((cat, idx) => (
             <TouchableOpacity
-              onPress={() => setCurrentScreen('home')}
-              className="bg-[#C2477A] px-5 py-2.5 rounded-xl shadow-xs"
+              key={cat.id || cat.name}
+              activeOpacity={0.82}
+              onPress={() => handleSelectCategory(cat)}
+              style={{
+                width: cardWidth,
+                backgroundColor: '#FFFFFF',
+                borderColor: '#F0E3EA',
+                borderWidth: 1,
+                borderRadius: 18,
+                padding: 10,
+                shadowColor: '#B64F7D',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 5,
+                elevation: 2,
+              }}
+              className="flex-col justify-between"
             >
-              <Text className="text-xs font-bold text-white">Go to Home</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View className="flex-row flex-wrap justify-between gap-y-3.5">
-            {displayCategories.map((cat) => (
-              <TouchableOpacity
-                key={cat.id || cat.name}
-                activeOpacity={0.88}
-                onPress={() => handleSelectCategory(cat)}
-                style={{ width: cardWidth }}
-                className="bg-white rounded-2xl border border-[#FCE4EC] p-2.5 shadow-2xs active:scale-[0.98] transition-transform"
-              >
-                {/* Category Image - Consistent Aspect Ratio */}
-                <View className="w-full aspect-square rounded-xl overflow-hidden bg-[#FFF5F8] border border-[#FCE4EC] mb-2 relative">
-                  <Image
-                    source={getSafeImageSource(cat.image, cat.fallbackImage)}
-                    className="w-full h-full object-cover"
-                    resizeMode="cover"
-                  />
-                </View>
-
-                {/* Category Name Only - DO NOT show product or category counts */}
-                <View className="items-center py-1">
-                  <Text
-                    className="text-xs font-bold text-[#3A2430] text-center"
-                    numberOfLines={2}
+              {/* 1. FA5 Icon Box — replaces product category image */}
+              {(() => {
+                const { icon, color, bg } = getCategoryFA5Icon(cat.name);
+                return (
+                  <View
+                    style={{
+                      width: '100%',
+                      height: 116,
+                      borderRadius: 14,
+                      backgroundColor: '#FFFFFF',
+                      borderColor: '#F0E3EA',
+                      borderWidth: 1,
+                      marginBottom: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
                   >
-                    {cat.name}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+                    <FontAwesome5 name={icon} size={48} color={color} solid />
+                  </View>
+                );
+              })()}
+
+              {/* 2 & 3. FA5 icon badge + Category Title */}
+              {(() => {
+                const { icon, color, bg } = getCategoryFA5Icon(cat.name);
+                return (
+                  <View className="flex-row items-center gap-1.5 mb-1">
+                    <View
+                      style={{ borderColor: '#F0E3EA', borderWidth: 1, backgroundColor: '#FFFFFF', width: 24, height: 24, borderRadius: 12 }}
+                      className="items-center justify-center shrink-0"
+                    >
+                      <FontAwesome5 name={icon} size={11} color={color} solid />
+                    </View>
+                    <Text
+                      style={{ color: '#33252F' }}
+                      className="text-[12.5px] font-extrabold flex-1 leading-tight"
+                      numberOfLines={2}
+                    >
+                      {cat.name}
+                    </Text>
+                  </View>
+                );
+              })()}
+
+              {/* 4. Explore Products text with right arrow */}
+              <View className="flex-row items-center gap-1 mt-0.5 pt-0.5">
+                <Text style={{ color: '#82727C' }} className="text-[10.5px] font-semibold">
+                  Explore Products
+                </Text>
+                <Ionicons name="arrow-forward" size={10} color="#B64F7D" />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -88,6 +88,37 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [showContactDropdown, setShowContactDropdown] = useState(false);
+  const contactContainerRef = useRef(null);
+  const [contactPlacement, setContactPlacement] = useState({ opensUpward: false });
+
+  const updateContactPlacement = useCallback(() => {
+    if (!contactContainerRef.current) return;
+    const rect = contactContainerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    setContactPlacement({
+      opensUpward: spaceBelow < 200 && spaceAbove > spaceBelow
+    });
+  }, []);
+
+  useEffect(() => {
+    if (showContactDropdown) {
+      updateContactPlacement();
+      const handleClickOutside = (e) => {
+        if (contactContainerRef.current && !contactContainerRef.current.contains(e.target)) {
+          setShowContactDropdown(false);
+        }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('resize', updateContactPlacement);
+      window.addEventListener('scroll', updateContactPlacement, true);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('resize', updateContactPlacement);
+        window.removeEventListener('scroll', updateContactPlacement, true);
+      };
+    }
+  }, [showContactDropdown, updateContactPlacement]);
 
   // Sync initialSubTab when changed from sidebar menu
   useEffect(() => {
@@ -443,11 +474,10 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         {/* Total Applications */}
         <div
           onClick={() => setActiveSubTab('all')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            activeSubTab === 'all'
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'all'
               ? 'bg-[#3A2430] text-white border-[#3A2430] shadow-md'
               : 'bg-white text-gray-800 border-gray-200/80 hover:border-gray-300 shadow-2xs'
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
             <span>All Applications</span>
@@ -459,11 +489,10 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         {/* Pending / Submitted */}
         <div
           onClick={() => setActiveSubTab('submitted')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            activeSubTab === 'submitted'
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'submitted'
               ? 'bg-amber-600 text-white border-amber-600 shadow-md'
               : 'bg-white text-gray-800 border-gray-200/80 hover:border-amber-300 shadow-2xs'
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
             <span>Pending</span>
@@ -477,11 +506,10 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         {/* Under Review */}
         <div
           onClick={() => setActiveSubTab('under_review')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            activeSubTab === 'under_review'
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'under_review'
               ? 'bg-blue-600 text-white border-blue-600 shadow-md'
               : 'bg-white text-gray-800 border-gray-200/80 hover:border-blue-300 shadow-2xs'
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
             <span>Under Review</span>
@@ -495,11 +523,10 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         {/* Approved */}
         <div
           onClick={() => setActiveSubTab('approved')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            activeSubTab === 'approved'
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'approved'
               ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
               : 'bg-white text-gray-800 border-gray-200/80 hover:border-emerald-300 shadow-2xs'
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
             <span>Approved (B2B)</span>
@@ -513,11 +540,10 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         {/* Resubmission Required */}
         <div
           onClick={() => setActiveSubTab('resubmission_required')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            activeSubTab === 'resubmission_required'
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'resubmission_required'
               ? 'bg-orange-600 text-white border-orange-600 shadow-md'
               : 'bg-white text-gray-800 border-gray-200/80 hover:border-orange-300 shadow-2xs'
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
             <span>Resubmission</span>
@@ -531,11 +557,10 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         {/* Rejected & Suspended */}
         <div
           onClick={() => setActiveSubTab('rejected')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            activeSubTab === 'rejected' || activeSubTab === 'suspended'
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'rejected' || activeSubTab === 'suspended'
               ? 'bg-rose-700 text-white border-rose-700 shadow-md'
               : 'bg-white text-gray-800 border-gray-200/80 hover:border-rose-300 shadow-2xs'
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
             <span>Rejected / Suspend</span>
@@ -563,17 +588,15 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
             <button
               key={tab.key}
               onClick={() => setActiveSubTab(tab.key)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
-                activeSubTab === tab.key
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${activeSubTab === tab.key
                   ? 'bg-[#C2477A] text-white shadow-xs'
                   : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
+                }`}
             >
               <span>{tab.label}</span>
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
-                  activeSubTab === tab.key ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${activeSubTab === tab.key ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
               >
                 {tab.count}
               </span>
@@ -821,12 +844,12 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         const bizAddressFull = isSame
           ? profAddressFull
           : [
-              reviewApplication.business_address || reviewApplication.businessAddress,
-              reviewApplication.business_city || reviewApplication.businessCity,
-              reviewApplication.business_state || reviewApplication.businessState,
-              reviewApplication.business_pincode || reviewApplication.businessPincode,
-              reviewApplication.business_country || reviewApplication.businessCountry
-            ].filter(Boolean).join(', ');
+            reviewApplication.business_address || reviewApplication.businessAddress,
+            reviewApplication.business_city || reviewApplication.businessCity,
+            reviewApplication.business_state || reviewApplication.businessState,
+            reviewApplication.business_pincode || reviewApplication.businessPincode,
+            reviewApplication.business_country || reviewApplication.businessCountry
+          ].filter(Boolean).join(', ');
         const bizCoords = isSame ? profCoords : (reviewApplication.business_location_coords || reviewApplication.businessLocationCoords || '');
 
         return (
@@ -1288,9 +1311,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                       return (
                         <div
                           key={slot.key}
-                          className={`bg-white p-3 rounded-xl border transition-all flex flex-col justify-between ${
-                            uploadedDoc ? 'border-emerald-200 shadow-2xs hover:border-emerald-400' : 'border-gray-200'
-                          }`}
+                          className={`bg-white p-3 rounded-xl border transition-all flex flex-col justify-between ${uploadedDoc ? 'border-emerald-200 shadow-2xs hover:border-emerald-400' : 'border-gray-200'
+                            }`}
                         >
                           <div>
                             {/* Card Header */}
@@ -1365,7 +1387,12 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                                   const fallback = uploadedDoc.file_url || uploadedDoc.url || uploadedDoc.fileUrl;
                                   const path = uploadedDoc.path || uploadedDoc.file_path;
                                   const signedUrl = await getVerificationDocumentSignedUrl(supabase, path || fallback);
-                                  if (signedUrl) window.open(signedUrl, '_blank');
+                                  if (signedUrl) {
+                                    setPreviewImage({
+                                      url: signedUrl,
+                                      title: `${slot.label} - ${reviewApplication.business_name || reviewApplication.professional_name || 'Verification'}`
+                                    });
+                                  }
                                 }}
                                 className="font-bold text-[#C2477A] hover:underline flex items-center gap-1 cursor-pointer"
                               >
@@ -1396,9 +1423,16 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                           .map((doc, idx) => (
                             <div key={doc.id || idx} className="bg-white p-2.5 rounded-xl border border-gray-200 text-xs flex items-center justify-between">
                               <span className="font-bold text-gray-800 truncate">{doc.file_name || doc.document_type}</span>
-                              <a href={doc.file_url || doc.url || doc.fileUrl} target="_blank" rel="noreferrer" className="text-[#C2477A] font-bold text-[10px] ml-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = doc.file_url || doc.url || doc.fileUrl;
+                                  if (url) setPreviewImage({ url, title: doc.file_name || doc.document_type || 'Attachment' });
+                                }}
+                                className="text-[#C2477A] font-bold text-[10px] ml-2 hover:underline cursor-pointer"
+                              >
                                 View
-                              </a>
+                              </button>
                             </div>
                           ))}
                       </div>
@@ -1472,7 +1506,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                   </button>
 
                   {/* Action 2: Contact (Dropdown: Phone Call, WhatsApp, Email) */}
-                  <div className="relative">
+                  <div ref={contactContainerRef} className="relative">
                     <button
                       type="button"
                       onClick={() => setShowContactDropdown(prev => !prev)}
@@ -1480,11 +1514,11 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                     >
                       <PhoneCall size={13} className="text-[#C2477A]" />
                       Contact
-                      <ChevronDown size={12} />
+                      <ChevronDown size={12} className={`transition-transform ${showContactDropdown ? 'rotate-180' : ''}`} />
                     </button>
 
                     {showContactDropdown && (
-                      <div className="absolute bottom-full right-0 mb-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-1.5 z-50 animate-in fade-in zoom-in-95">
+                      <div className={`absolute ${contactPlacement.opensUpward ? 'bottom-full mb-2 origin-bottom' : 'top-full mt-2 origin-top'} right-0 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-1.5 z-50 animate-in fade-in zoom-in-95`}>
                         <a
                           href={`tel:${reviewApplication.phone}`}
                           className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-[#C2477A]"
@@ -1568,17 +1602,16 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white ${
-                    actionModal.type === 'approve'
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white ${actionModal.type === 'approve'
                       ? 'bg-emerald-600'
                       : actionModal.type === 'reject'
-                      ? 'bg-rose-600'
-                      : actionModal.type === 'request_documents'
-                      ? 'bg-amber-600'
-                      : actionModal.type === 'request_info'
-                      ? 'bg-blue-600'
-                      : 'bg-gray-800'
-                  }`}
+                        ? 'bg-rose-600'
+                        : actionModal.type === 'request_documents'
+                          ? 'bg-amber-600'
+                          : actionModal.type === 'request_info'
+                            ? 'bg-blue-600'
+                            : 'bg-gray-800'
+                    }`}
                 >
                   {actionModal.type === 'approve' && <CheckCircle2 size={18} />}
                   {actionModal.type === 'reject' && <XCircle size={18} />}
@@ -1657,17 +1690,16 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                       <div
                         key={slot.key}
                         onClick={() => toggleDocSelection(slot.key)}
-                        className={`p-2.5 rounded-lg border text-xs flex items-center justify-between cursor-pointer transition-all ${
-                          isSelected
+                        className={`p-2.5 rounded-lg border text-xs flex items-center justify-between cursor-pointer transition-all ${isSelected
                             ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-2xs'
                             : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => {}} // Handled by div onClick
+                            onChange={() => { }} // Handled by div onClick
                             className="w-4 h-4 text-[#C2477A] accent-[#C2477A] rounded cursor-pointer"
                           />
                           <div>
@@ -1752,17 +1784,16 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                 type="button"
                 disabled={isProcessingAction}
                 onClick={handleConfirmAction}
-                className={`px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
-                  actionModal.type === 'approve'
+                className={`px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${actionModal.type === 'approve'
                     ? 'bg-emerald-600 hover:bg-emerald-700'
                     : actionModal.type === 'reject'
-                    ? 'bg-rose-600 hover:bg-rose-700'
-                    : actionModal.type === 'request_documents'
-                    ? 'bg-amber-600 hover:bg-amber-700'
-                    : actionModal.type === 'request_info'
-                    ? 'bg-blue-600 hover:bg-blue-700'
-                    : 'bg-gray-900 hover:bg-black'
-                }`}
+                      ? 'bg-rose-600 hover:bg-rose-700'
+                      : actionModal.type === 'request_documents'
+                        ? 'bg-amber-600 hover:bg-amber-700'
+                        : actionModal.type === 'request_info'
+                          ? 'bg-blue-600 hover:bg-blue-700'
+                          : 'bg-gray-900 hover:bg-black'
+                  }`}
               >
                 {isProcessingAction && <RefreshCw size={13} className="animate-spin" />}
                 {actionModal.type === 'approve' && 'Confirm Approval'}

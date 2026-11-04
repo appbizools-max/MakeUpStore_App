@@ -410,15 +410,37 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
   const barcode = getCell('BARCODE');
   const image = getCell('IMAGE');
   const selectCategory = getCell('SELECT_CATEGORY') || getCell('PRODUCT_TYPE');
-  const parentSku = getCell('SKU_NUMBER') || getCell('PARENT_SKU') || getCell('SKU');
+  const rawParentSku = getCell('SKU_NUMBER') || getCell('PARENT_SKU') || getCell('SKU');
   const productName = getCell('PRODUCT_NAME');
   const category = getCell('CATEGORY');
   const subcategory = getCell('SUBCATEGORY');
   const brand = getCell('BRAND');
-  const variantSku = getCell('VARIANT_SKU');
+  const rawVariantSku = getCell('VARIANT_SKU');
   const shadeName = getCell('SHADE_NAME');
   const hexAndSwatch = getCell('HEX & SWATCH');
   const sizeOrWeight = getCell('SIZE_OR_WEIGHT');
+
+  // Intelligent SKU stem & variant detection (e.g. LAK-P001-V01 -> base LAK-P001, variant LAK-P001-V01)
+  let resolvedParentSku = rawParentSku;
+  let resolvedVariantSku = rawVariantSku;
+  const variantSuffixPattern = /[-_](?:V|VAR|SH|SHADE|SZ|SIZE)?\d{1,4}$/i;
+  if (rawParentSku && variantSuffixPattern.test(rawParentSku)) {
+    if (!resolvedVariantSku) {
+      resolvedVariantSku = rawParentSku;
+    }
+    resolvedParentSku = rawParentSku.replace(variantSuffixPattern, '');
+  }
+
+  // Derive shade code from shadeName (e.g. "01 Ruby Rush" -> "01") or variant SKU (e.g. "V01" -> "01")
+  let resolvedShadeCode = '';
+  if (shadeName) {
+    const codeMatch = shadeName.match(/^(\d{1,3})\b/);
+    if (codeMatch) resolvedShadeCode = codeMatch[1].padStart(2, '0');
+  }
+  if (!resolvedShadeCode && resolvedVariantSku) {
+    const vMatch = resolvedVariantSku.match(/(?:V|VAR|SH|SHADE)?(\d{1,4})$/i);
+    if (vMatch) resolvedShadeCode = vMatch[1].padStart(2, '0');
+  }
 
   const rawMrp = getNumCell('MRP');
   const mrp = rawMrp !== null ? rawMrp : 0;
@@ -450,7 +472,7 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
     _id: 'row_' + Date.now() + '_' + rowIndex + '_' + Math.random().toString(36).substring(2, 6),
     barcode,
     barcodeStatus: barcode ? 'detected' : 'manual',
-    parentSku: parentSku || (brand && productName ? `${brand.slice(0, 3).toUpperCase()}-${productName.slice(0, 8).toUpperCase().replace(/\s+/g, '-')}` : ''),
+    parentSku: resolvedParentSku || (brand && productName ? `${brand.slice(0, 3).toUpperCase()}-${productName.slice(0, 8).toUpperCase().replace(/\s+/g, '-')}` : ''),
     name: productName,
     productType: selectCategory || subcategory || category || '',
     category,
@@ -458,11 +480,11 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
     brand,
     description: '',
     highlights: [],
-    variantSku: variantSku || '',
+    variantSku: resolvedVariantSku || '',
     variantName: shadeName || '',
     variantType: shadeName ? 'Shade' : 'Standard',
     shade: shadeName,
-    shadeCode: '',
+    shadeCode: resolvedShadeCode,
     hexColor,
     rgb: hexToRgbString(hexColor),
     size: sizeOrWeight,

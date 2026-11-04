@@ -107,8 +107,16 @@ export default function BrandImportModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-fade-in">
+    <div 
+      className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px] transition-all"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isProcessing) onClose();
+      }}
+    >
+      <div 
+        className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col border-l border-pink-100 animate-slide-left relative overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-pink-50/70 via-white to-pink-50/40">
           <div className="flex items-center gap-3">
@@ -169,10 +177,10 @@ export default function BrandImportModal({
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 space-y-2">
                 <div className="flex items-center gap-2 font-black text-sm">
                   <CheckCircle size={18} className="text-emerald-600" />
-                  <span>Import Completed Successfully!</span>
+                  <span>Saved Permanently to Supabase Database!</span>
                 </div>
                 <p className="text-xs text-emerald-700">
-                  Processed all valid rows according to your selection. Database and catalog state updated.
+                  All valid brands and their categories have been validated and saved permanently to Supabase. Records persist across page reloads and refreshes.
                 </p>
               </div>
 
@@ -367,7 +375,7 @@ export default function BrandImportModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-pink-100 bg-gray-50/80 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-t border-pink-100 bg-white flex items-center justify-between shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
           <button
             type="button"
             onClick={onClose}
@@ -386,12 +394,12 @@ export default function BrandImportModal({
               {isProcessing ? (
                 <>
                   <Loader2 size={15} className="animate-spin" />
-                  <span>Processing {previewData.validRows} Brands...</span>
+                  <span>Submitting & Saving {previewData.validRows} Brands to Supabase...</span>
                 </>
               ) : (
                 <>
                   <CheckCircle size={15} />
-                  <span>Confirm & Import ({previewData.validRows} Valid)</span>
+                  <span>Submit & Save to Database ({previewData.validRows} Valid)</span>
                 </>
               )}
             </button>

@@ -238,56 +238,167 @@ export const CATEGORY_DETAILS_MAP = {
     title: 'Skincare',
     subcategories: [
       {
-        id: 'sub_cleansers',
-        name: 'Cleansers & Facewash',
-        image: '',
-        tagline: 'Deep purify without stripping natural moisture',
+        id: 'sub_face_cleansers',
+        name: 'Face Cleansers',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Deep cleanse.\nFresh, healthy skin.',
+        description: 'Deep cleanse.\nFresh, healthy skin.',
+        productCount: 108,
         leafCategories: [
-          { id: 'leaf_face_wash', name: 'Face Wash', keywords: ['face wash', 'cleanser', 'foaming wash'] },
-          { id: 'leaf_micellar', name: 'Micellar Water', keywords: ['micellar', 'cleansing water', 'makeup remover'] },
-          { id: 'leaf_scrub', name: 'Face Scrub & Exfoliator', keywords: ['scrub', 'exfoliator', 'peeling'] }
+          {
+            id: 'leaf_gel_cleansers',
+            name: 'Gel Cleansers',
+            description: 'Gentle, deep-cleansing gel formulas.',
+            productCount: 32,
+            keywords: ['gel cleanser', 'cleansing gel', 'gel wash'],
+            image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80'
+          },
+          {
+            id: 'leaf_foam_cleansers',
+            name: 'Foam Cleansers',
+            description: 'Lightweight foaming cleansers.',
+            productCount: 28,
+            keywords: ['foam cleanser', 'foaming cleanser', 'foam wash', 'foaming wash'],
+            image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80'
+          },
+          {
+            id: 'leaf_cream_cleansers',
+            name: 'Cream Cleansers',
+            description: 'Nourishing and non-drying cleansers.',
+            productCount: 18,
+            keywords: ['cream cleanser', 'cleansing cream', 'cleansing milk', 'nourishing cleanser'],
+            image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80'
+          },
+          {
+            id: 'leaf_oil_cleansers',
+            name: 'Oil Cleansers',
+            description: 'Melt away makeup and impurities.',
+            productCount: 16,
+            keywords: ['oil cleanser', 'cleansing oil', 'cleansing balm', 'balm'],
+            image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80'
+          },
+          {
+            id: 'leaf_micellar_cleansers',
+            name: 'Micellar Cleansers',
+            description: 'Cleanse, refresh and remove makeup.',
+            productCount: 14,
+            keywords: ['micellar', 'micellar water', 'cleansing water', 'makeup remover'],
+            image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80'
+          }
+        ]
+      },
+      {
+        id: 'sub_face_wash',
+        name: 'Face Wash',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Refreshing daily washes for clear, radiant skin.',
+        description: 'Pore purifying foaming gels and non-stripping creamy formulas.',
+        productCount: 64,
+        leafCategories: [
+          { id: 'leaf_foaming_wash', name: 'Foaming Face Wash', description: 'Deep pore unclogging lather.', productCount: 24, keywords: ['foaming', 'pore wash'] },
+          { id: 'leaf_gentle_wash', name: 'Gentle Gel Wash', description: 'Hydrating non-stripping daily cleanser.', productCount: 20, keywords: ['gentle wash', 'daily wash'] },
+          { id: 'leaf_acne_wash', name: 'Anti-Acne & Tea Tree', description: 'Target blemishes and control excess sebum.', productCount: 20, keywords: ['tea tree', 'salicylic', 'acne wash'] }
+        ]
+      },
+      {
+        id: 'sub_toners',
+        name: 'Toners & Mists',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Balance pH and prime skin for optimal absorption.',
+        description: 'Hydrating essences, pore tighteners and calming facial mists.',
+        productCount: 42,
+        leafCategories: [
+          { id: 'leaf_hydrating_toner', name: 'Hydrating Toners', description: 'Hyaluronic acid and moisture replenishing essences.', productCount: 18, keywords: ['hydrating toner', 'essence toner'] },
+          { id: 'leaf_exfoliating_toner', name: 'Exfoliating & Clarifying', description: 'AHA BHA toner for smooth refined pores.', productCount: 14, keywords: ['aha toner', 'glycolic', 'pore toner'] },
+          { id: 'leaf_face_mists', name: 'Face Mists', description: 'Rose water and refreshing midday hydration sprays.', productCount: 10, keywords: ['mist', 'rose water', 'spray'] }
         ]
       },
       {
         id: 'sub_serums',
-        name: 'Serums & Treatments',
-        image: '',
-        tagline: 'High-potency actives for targeted skin concerns',
+        name: 'Face Serums',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: 'High-potency clinical actives for targeted skin concerns.',
+        description: 'Vitamin C brightening, hydrating hyaluronic and youth restoring peptides.',
+        productCount: 86,
         leafCategories: [
-          { id: 'leaf_face_serum', name: 'Face Serums', keywords: ['serum', 'concentrate', 'ampoule'] },
-          { id: 'leaf_vit_c', name: 'Vitamin C & Brightening', keywords: ['vitamin c', 'brightening', 'radiance'] },
-          { id: 'leaf_hyaluronic', name: 'Hyaluronic & Hydrating', keywords: ['hyaluronic', 'hydration', 'plumping'] }
+          { id: 'leaf_vit_c', name: 'Vitamin C & Brightening', description: 'Fade dark spots and boost natural glow.', productCount: 26, keywords: ['vitamin c', 'brightening', 'radiance'] },
+          { id: 'leaf_hyaluronic', name: 'Hyaluronic Acid Serums', description: 'Multi-molecular intense hydration & plumpness.', productCount: 22, keywords: ['hyaluronic', 'hydration', 'plumping'] },
+          { id: 'leaf_niacinamide', name: 'Niacinamide Serums', description: 'Pore refining and oil balancing treatment.', productCount: 20, keywords: ['niacinamide', 'pore serum', 'blemish'] },
+          { id: 'leaf_retinol', name: 'Retinol & Anti-Aging', description: 'Boost collagen and reduce fine lines.', productCount: 18, keywords: ['retinol', 'anti-aging', 'peptide'] }
         ]
       },
       {
         id: 'sub_moisturizers',
-        name: 'Moisturizers & Creams',
-        image: '',
-        tagline: '24-hour hydration barrier and supple skin',
+        name: 'Face Moisturizers',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: '24-hour hydration barrier and soft supple skin.',
+        description: 'Ultralight water gels, restorative ceramides and rich night creams.',
+        productCount: 75,
         leafCategories: [
-          { id: 'leaf_day_cream', name: 'Day Cream', keywords: ['day cream', 'moisturizer', 'daily lotion'] },
-          { id: 'leaf_night_cream', name: 'Night Cream', keywords: ['night cream', 'repair cream', 'sleeping cream'] },
-          { id: 'leaf_face_gel', name: 'Gel Moisturizers', keywords: ['gel', 'water cream', 'aloe'] }
+          { id: 'leaf_gel_cream', name: 'Gel Moisturizers', description: 'Ultralight oil-free water gel hydration.', productCount: 28, keywords: ['gel cream', 'water gel', 'oil free'] },
+          { id: 'leaf_day_cream', name: 'Day Creams', description: 'Nourishing daily protection with antioxidants.', productCount: 24, keywords: ['day cream', 'daily moisturizer'] },
+          { id: 'leaf_night_cream', name: 'Night Creams', description: 'Deep barrier restoration while you sleep.', productCount: 23, keywords: ['night cream', 'repair cream', 'sleeping cream'] }
         ]
       },
       {
         id: 'sub_sunscreen',
-        name: 'Sun Protection',
-        image: '',
-        tagline: 'Broad-spectrum UV shields without white cast',
+        name: 'Sunscreen',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Broad-spectrum UV shields with zero white cast.',
+        description: 'Matte invisible gels, hydrating fluid lotions and effortless sun sticks.',
+        productCount: 52,
         leafCategories: [
-          { id: 'leaf_sunscreen_gel', name: 'Sunscreen Gel & Matte', keywords: ['sunscreen', 'sunblock', 'spf', 'uv'] },
-          { id: 'leaf_after_sun', name: 'After Sun & Soothing', keywords: ['after sun', 'soothing gel'] }
+          { id: 'leaf_gel_sunscreen', name: 'Matte Gel Sunscreens', description: 'Invisible, ultra-lightweight water-resistant SPF 50.', productCount: 22, keywords: ['sunscreen', 'gel sunscreen', 'matte spf'] },
+          { id: 'leaf_dewy_sunscreen', name: 'Dewy Sunscreen Lotions', description: 'Hydrating glow-finish sun fluids.', productCount: 18, keywords: ['sunscreen lotion', 'dewy spf'] },
+          { id: 'leaf_sun_stick', name: 'Sun Sticks & Sprays', description: 'On-the-go reapplication without messing makeup.', productCount: 12, keywords: ['sun stick', 'spf spray', 'mist spf'] }
         ]
       },
       {
-        id: 'sub_masks',
-        name: 'Masks & Peels',
-        image: '',
-        tagline: 'Weekly detox and instant radiance rituals',
+        id: 'sub_eye_care',
+        name: 'Eye Care',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Target dark circles, puffiness & delicate eye contours.',
+        description: 'Firming peptide creams, cooling metal rollers and brightening hydrogel patches.',
+        productCount: 29,
         leafCategories: [
-          { id: 'leaf_sheet_mask', name: 'Sheet Masks', keywords: ['sheet mask', 'facial mask'] },
-          { id: 'leaf_clay_mask', name: 'Clay & Mud Masks', keywords: ['clay mask', 'mud mask', 'detox mask'] }
+          { id: 'leaf_eye_cream', name: 'Under Eye Creams', description: 'Caffeine and peptide firming formulas.', productCount: 16, keywords: ['eye cream', 'caffeine eye', 'under eye'] },
+          { id: 'leaf_eye_serum', name: 'Eye Serums & Rollers', description: 'Cooling metal rollerball de-puffing serums.', productCount: 13, keywords: ['eye serum', 'eye roller', 'dark circle'] }
+        ]
+      },
+      {
+        id: 'sub_face_masks',
+        name: 'Face Masks & Peels',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Weekly detox and instant salon-facial radiance.',
+        description: 'Serum-soaked sheet masks, purifying French clays and overnight sleeping masks.',
+        productCount: 38,
+        leafCategories: [
+          { id: 'leaf_sheet_mask', name: 'Sheet Masks', description: 'Serum-drenched biocellulose sheets.', productCount: 20, keywords: ['sheet mask', 'facial mask'] },
+          { id: 'leaf_clay_mask', name: 'Clay & Mud Masks', description: 'French green and Kaolin detoxifying clays.', productCount: 18, keywords: ['clay mask', 'mud mask', 'charcoal mask'] }
+        ]
+      },
+      {
+        id: 'sub_exfoliators',
+        name: 'Exfoliators & Scrubs',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Buff away dull surface cells for velvety soft skin.',
+        description: 'Gentle micro-polishes and AHA/BHA chemical exfoliation solutions.',
+        productCount: 26,
+        leafCategories: [
+          { id: 'leaf_face_scrubs', name: 'Face Scrubs', description: 'Gentle micro-walnut & apricot seed exfoliants.', productCount: 14, keywords: ['face scrub', 'facial scrub'] },
+          { id: 'leaf_peeling_solutions', name: 'Chemical Peels (AHA BHA)', description: 'Salicylic and glycolic gentle exfoliating solutions.', productCount: 12, keywords: ['peeling solution', 'aha bha', 'chemical peel'] }
+        ]
+      },
+      {
+        id: 'sub_lip_care',
+        name: 'Lip Care',
+        image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Buttery lip treatments, sleeping masks & hydration tints.',
+        description: 'Deep overnight berry repair, tinted nourishing balms and gentle lip scrubs.',
+        productCount: 31,
+        leafCategories: [
+          { id: 'leaf_lip_balm', name: 'Lip Balms & Butters', description: 'Shea butter and SPF nourishment.', productCount: 18, keywords: ['lip balm', 'lip butter'] },
+          { id: 'leaf_lip_sleeping_mask', name: 'Lip Sleeping Masks', description: 'Overnight berry repair and plumping.', productCount: 13, keywords: ['lip mask', 'lip sleeping mask', 'lip treatment'] }
         ]
       }
     ]
@@ -636,8 +747,43 @@ export const CATEGORY_DETAILS_MAP = {
         ]
       }
     ]
+  },
+
+  // 13. WELLNESS
+  'cat_wellness': {
+    title: 'Wellness',
+    subcategories: [
+      {
+        id: 'sub_supplements',
+        name: 'Beauty Supplements',
+        image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Glow from within with clinical collagen & biotin.',
+        description: 'Bio-active marine collagen peptides, biotin gummies and glow supplements.',
+        productCount: 24,
+        leafCategories: [
+          { id: 'leaf_collagen', name: 'Collagen & Glutathione', description: 'Marine collagen peptides and brightening actives.', productCount: 14, keywords: ['collagen', 'glutathione'] },
+          { id: 'leaf_biotin_hair', name: 'Biotin & Hair Gummies', description: 'Essential vitamins for strong hair & nails.', productCount: 10, keywords: ['biotin', 'hair vitamins', 'gummies'] }
+        ]
+      },
+      {
+        id: 'sub_aromatherapy',
+        name: 'Aromatherapy & Essential Oils',
+        image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=500&auto=format&fit=crop&q=80',
+        tagline: 'Calming lavender, invigorating tea tree & pure diffusers.',
+        description: 'Pure essential oils, therapeutic diffusers and calming soy candles.',
+        productCount: 20,
+        leafCategories: [
+          { id: 'leaf_essential_oils', name: 'Pure Essential Oils', description: 'Cold-pressed steam-distilled pure drops.', productCount: 12, keywords: ['essential oil', 'lavender oil', 'tea tree oil'] },
+          { id: 'leaf_diffusers', name: 'Diffusers & Candles', description: 'Soothing ambience and stress relief.', productCount: 8, keywords: ['diffuser', 'scented candle'] }
+        ]
+      }
+    ]
   }
 };
+
+// Aliases for alternate category keys
+CATEGORY_DETAILS_MAP['cat_hair_styling'] = CATEGORY_DETAILS_MAP['cat_hair_styling_tools'];
+CATEGORY_DETAILS_MAP['cat_gift_sets'] = CATEGORY_DETAILS_MAP['cat_beauty_kits'];
 
 // Helper: Normalize strings for fuzzy matching
 export const normalizeStr = (str) => (str || '').toLowerCase().trim();

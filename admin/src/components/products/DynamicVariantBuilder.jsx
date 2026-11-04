@@ -33,6 +33,7 @@ import {
   generateCartesianVariants,
   getProductAttributeSuggestions
 } from '../../utils/attributeMasterData';
+import { generateVariantInternalSku } from '../../services/skuService';
 
 // Only attributes that can legitimately create purchasable product variations
 const VARIANT_CAPABLE_ATTRIBUTE_REGEX = /shade|colour|color|size|volume|weight|pack|finish|coverage|formula|formulation|hair type|skin type|fragrance|scent|material|flavour|flavor|length|width/i;
@@ -434,9 +435,9 @@ export default function DynamicVariantBuilder({
       name: '',
       color_name: '',
       hexColor: '#CE4270',
-      sku: '',
+      sku: baseProduct.sku ? generateVariantInternalSku(baseProduct.sku, nextNum) : '',
       barcode: '',
-      image: '',
+      image: defaultImg || '',
       mrp: parentMrp || '',
       generalPrice: baseProduct.generalPrice || calcRolePrice(parentMrp, 'general', parentMrp || ''),
       salonPrice: baseProduct.salonPrice || calcRolePrice(parentMrp, 'salon', parentMrp || ''),

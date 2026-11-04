@@ -9,7 +9,7 @@
  * 5. Returns canonical URLs, paths, dimensions, and storage savings analytics
  */
 
-import { supabase } from '../config/supabase';
+import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { 
   optimizeImage, 
   generateResponsiveVariants, 
@@ -17,7 +17,7 @@ import {
   IMAGE_PROFILES, 
   formatBytes,
   calculateStorageSavings 
-} from '../utils/imageOptimizer';
+} from '../utils/imageOptimizer.js';
 
 const BUCKET_MAPPING = {
   BRAND_LOGO: ['brand-logos', 'gc-home-assets', 'categories'],
@@ -73,16 +73,18 @@ export async function uploadOptimizedImage(source, profileType = 'PRODUCT', opti
   const masterFilename = `${cleanPrefix}_${timestamp}_${randomStr}.webp`;
   const storagePath = `${folder}/${masterFilename}`;
 
-  // 2. Select appropriate storage buckets
-  const buckets = BUCKET_MAPPING[profileType] || ['products', 'gc-home-assets', 'categories'];
+  // 2. Select appropriate storage buckets & client
+  const storageClient = supabaseAdmin || supabase;
+  const buckets = BUCKET_MAPPING[profileType] || ['categories', 'products', 'gc-home-assets'];
 
   let publicUrl = null;
   let uploadSuccess = false;
+  let successfulBucket = null;
 
-  // 3. Attempt upload to Supabase Storage
+  // 3. Direct high-speed upload to Supabase Storage
   for (const bucket of buckets) {
     try {
-      const { data, error } = await supabase.storage
+      const { data, error } = await storageClient.storage
         .from(bucket)
         .upload(storagePath, optimized.file, {
           contentType: optimized.mimeType || 'image/webp',
@@ -91,13 +93,14 @@ export async function uploadOptimizedImage(source, profileType = 'PRODUCT', opti
         });
 
       if (!error) {
-        const { data: pubData } = supabase.storage
+        const { data: pubData } = storageClient.storage
           .from(bucket)
           .getPublicUrl(storagePath);
 
         if (pubData?.publicUrl) {
           publicUrl = `${pubData.publicUrl}?v=${timestamp}`;
           uploadSuccess = true;
+          successfulBucket = bucket;
           break;
         }
       }
@@ -111,37 +114,46 @@ export async function uploadOptimizedImage(source, profileType = 'PRODUCT', opti
     publicUrl = optimized.dataUrl;
   }
 
-  // 4. Generate responsive variants if required (e.g. for products)
+  // 4. Generate responsive variants in parallel if required (e.g. for products)
   const variants = {};
   if (generateVariants && profileType === 'PRODUCT') {
     try {
       const variantResults = await generateResponsiveVariants(optimized.blob, cleanPrefix);
-      for (const [key, v] of Object.entries(variantResults)) {
-        let variantUrl = null;
-        if (uploadSuccess) {
+      const targetBucket = successfulBucket || buckets[0];
+      
+      const variantPromises = Object.entries(variantResults).map(async ([key, v]) => {
+        let variantUrl = v.dataUrl;
+        if (uploadSuccess && targetBucket) {
           const vPath = `${folder}/${cleanPrefix}_${timestamp}_${v.filename}`;
           try {
-            const { error: vErr } = await supabase.storage
-              .from(buckets[0])
+            const { error: vErr } = await storageClient.storage
+              .from(targetBucket)
               .upload(vPath, v.file, {
                 contentType: 'image/webp',
                 cacheControl: '31536000',
                 upsert: true
               });
             if (!vErr) {
-              const { data: vPub } = supabase.storage.from(buckets[0]).getPublicUrl(vPath);
-              variantUrl = vPub?.publicUrl ? `${vPub.publicUrl}?v=${timestamp}` : v.dataUrl;
+              const { data: vPub } = storageClient.storage.from(targetBucket).getPublicUrl(vPath);
+              if (vPub?.publicUrl) {
+                variantUrl = `${vPub.publicUrl}?v=${timestamp}`;
+              }
             }
           } catch (e) {
-            variantUrl = v.dataUrl;
+            // fallback to dataUrl
           }
-        } else {
-          variantUrl = v.dataUrl;
         }
-        variants[key] = variantUrl || v.dataUrl;
-      }
+        return { key, variantUrl };
+      });
+
+      const settled = await Promise.allSettled(variantPromises);
+      settled.forEach(res => {
+        if (res.status === 'fulfilled' && res.value) {
+          variants[res.value.key] = res.value.variantUrl;
+        }
+      });
     } catch (varErr) {
-      console.warn('Failed to generate one or more responsive variants:', varErr);
+      console.warn('Failed to generate responsive variants:', varErr);
     }
   }
 
