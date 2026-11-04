@@ -57,11 +57,10 @@ export default function CategoryImportModal({
   // Inspection data from uploaded workbook
   const [inspectionData, setInspectionData] = useState(null);
 
-  // Column mapping states
+  // Column mapping states (2-Level Hierarchy: Category & Subcategory)
   const [mapping, setMapping] = useState({
     mainCategoryCol: '',
     subcategoryCol: '',
-    selectCategoryCol: '',
     descriptionCol: '',
     orderCol: '',
     statusCol: '',
@@ -74,21 +73,11 @@ export default function CategoryImportModal({
     importSub: false
   });
 
-  // Parent configuration for subcategories & select categories
+  // Parent configuration for subcategories
   const [parentConfig, setParentConfig] = useState({
-    // Subcategories parent
     subParentMode: 'from_excel', // 'from_excel' | 'fixed'
     subFixedParentId: selectedCategory?.id || categories[0]?.id || '',
-    subFixedParentName: selectedCategory?.name || categories[0]?.name || '',
-
-    // Select categories parents
-    selectParentCatMode: 'from_excel', // 'from_excel' | 'fixed'
-    selectFixedParentCatId: selectedCategory?.id || categories[0]?.id || '',
-    selectFixedParentCatName: selectedCategory?.name || categories[0]?.name || '',
-
-    selectParentSubMode: 'from_excel', // 'from_excel' | 'fixed'
-    selectFixedParentSubId: selectedSubcategory?.id || '',
-    selectFixedParentSubName: selectedSubcategory?.name || ''
+    subFixedParentName: selectedCategory?.name || categories[0]?.name || ''
   });
 
   // Import mode
@@ -134,7 +123,6 @@ export default function CategoryImportModal({
         setMapping({
           mainCategoryCol: detected.mainCategoryCol || '',
           subcategoryCol: detected.subcategoryCol || '',
-          selectCategoryCol: detected.selectCategoryCol || '',
           descriptionCol: detected.descriptionCol || '',
           orderCol: detected.orderCol || '',
           statusCol: detected.statusCol || '',
@@ -142,34 +130,22 @@ export default function CategoryImportModal({
         });
 
         // Smart defaults based on detected columns:
-        // - If Main Category detected -> importMain = true
-        // - If Subcategory detected -> importSub = true
-        // - If Select Category detected -> importSelect = true
-        // - If only subcategory is detected (e.g. subcategories only file) -> importMain = false, importSub = true
         const hasMain = Boolean(detected.mainCategoryCol);
         const hasSub = Boolean(detected.subcategoryCol);
-        const hasSelect = Boolean(detected.selectCategoryCol);
 
-        if (hasSub && !hasMain && !hasSelect) {
+        if (hasSub && !hasMain) {
           // Subcategory only file
-          setToggles({ importMain: false, importSub: true,  });
+          setToggles({ importMain: false, importSub: true });
           setParentConfig(prev => ({ ...prev, subParentMode: 'fixed' }));
-        } else if (hasSelect && !hasMain && !hasSub) {
-          // Select category only file
-          setToggles({ importMain: false, importSub: false,  });
-          setParentConfig(prev => ({ ...prev, selectParentCatMode: 'fixed', selectParentSubMode: 'fixed' }));
         } else {
-          // General / Multi-level
+          // General / 2-level (Category & Subcategory)
           setToggles({
-            importMain: hasMain || (!hasSub && !hasSelect),
-            importSub: hasSub,
-            importSelect: hasSelect
+            importMain: hasMain || !hasSub,
+            importSub: hasSub
           });
           setParentConfig(prev => ({
             ...prev,
-            subParentMode: hasMain ? 'from_excel' : 'fixed',
-            selectParentCatMode: hasMain ? 'from_excel' : 'fixed',
-            selectParentSubMode: hasSub ? 'from_excel' : 'fixed'
+            subParentMode: hasMain ? 'from_excel' : 'fixed'
           }));
         }
       }

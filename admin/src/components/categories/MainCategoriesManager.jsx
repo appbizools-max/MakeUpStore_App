@@ -1789,7 +1789,7 @@ export default function MainCategoriesManager({
 
       (prods || []).forEach(p => {
         const directType = (p.product_type || '').toLowerCase().trim();
-        const infoType = (p.additional_info?.product_type || p.additional_info?.selectCategory || p.additional_info?.productType || '').toLowerCase().trim();
+        const infoType = (p.additional_info?.product_type || '').toLowerCase().trim();
         const ptNameLower = (pt.name || '').toLowerCase().trim();
         const ptSlugLower = (pt.slug || '').toLowerCase().trim();
 

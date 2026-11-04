@@ -415,10 +415,9 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
     return true;
   };
 
-  // 18 exact fields
+  // 17 exact canonical fields (SELECT_CATEGORY removed)
   const barcode = getCell('BARCODE');
   const image = getCell('IMAGE');
-  const selectCategory = getCell('SELECT_CATEGORY') || getCell('PRODUCT_TYPE');
   const rawParentSku = getCell('SKU_NUMBER') || getCell('PARENT_SKU') || getCell('SKU');
   const productName = getCell('PRODUCT_NAME');
   const category = getCell('CATEGORY');
@@ -483,7 +482,7 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
     barcodeStatus: barcode ? 'detected' : 'manual',
     parentSku: resolvedParentSku || (brand && productName ? `${brand.slice(0, 3).toUpperCase()}-${productName.slice(0, 8).toUpperCase().replace(/\s+/g, '-')}` : ''),
     name: productName,
-    productType: selectCategory || subcategory || category || '',
+    productType: subcategory || category || '',
     category,
     subcategory,
     brand,

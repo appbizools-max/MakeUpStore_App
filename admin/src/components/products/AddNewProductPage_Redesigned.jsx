@@ -107,7 +107,6 @@ export default function AddNewProductPage({
   initialBarcodeFormat = '',
   initialCategory = '',
   initialSubcategory = '',
-  initialSelectCategory = '',
   editingProduct = null
 }) {
   const {
@@ -182,7 +181,7 @@ export default function AddNewProductPage({
     publishedAt: editingProduct ? (editingProduct.publishedAt || editingProduct.additionalInfo?.publishedAt || null) : null,
     shades: [],
     quantityTiers: getDefaultQuantityTiers(),
-    searchKeywords: initialSelectCategory ? [initialSelectCategory] : [],
+    searchKeywords: [],
     searchAliases: [],
     keyPoints: [],
     benefits: [],

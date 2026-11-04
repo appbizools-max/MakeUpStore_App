@@ -458,10 +458,6 @@ export const inspectCategoryExcelWorkbook = async (file) => {
 
   const subcategoryCol = findCol([
     'Subcategory Name', 'Subcategory', 'Sub Category Name', 'Sub Category', 'Sub-category', 'SubCat'
-  ], ['select', 'leaf', 'product type']);
-
-  const selectCategoryCol = findCol([
-    'Select Category Name', 'Select Category', 'Product Type Name', 'Product Type', 'Leaf Category', 'Item Type', 'Type'
   ]);
 
   const descriptionCol = findCol([
@@ -494,7 +490,6 @@ export const inspectCategoryExcelWorkbook = async (file) => {
     detectedMapping: {
       mainCategoryCol,
       subcategoryCol,
-      selectCategoryCol,
       descriptionCol,
       orderCol,
       statusCol,
@@ -502,8 +497,7 @@ export const inspectCategoryExcelWorkbook = async (file) => {
       mobileCol
     },
     hasMain: Boolean(mainCategoryCol),
-    hasSub: Boolean(subcategoryCol),
-    hasSelect: Boolean(selectCategoryCol)
+    hasSub: Boolean(subcategoryCol)
   };
 };
 
@@ -513,14 +507,13 @@ export const inspectCategoryExcelWorkbook = async (file) => {
 export const buildFlexibleCategoryImportPlan = ({
   rawRows = [],
   mapping = {},
-  toggles = { importMain: true, importSub: false, importSelect: false },
+  toggles = { importMain: true, importSub: false },
   parentConfig = {},
   existingHierarchy = {},
   mode = 'add_new'
 }) => {
   const existingCats = existingHierarchy.categories || [];
   const existingSubs = existingHierarchy.subcategories || [];
-  const existingPTs = existingHierarchy.productTypes || [];
 
   const catByName = new Map();
   existingCats.forEach(c => catByName.set(c.name.trim().toLowerCase(), c));
@@ -643,67 +636,10 @@ export const buildFlexibleCategoryImportPlan = ({
         }
       }
     }
-
-    // 3. SELECT CATEGORY (PRODUCT TYPE)
-    if (toggles.importSelect && mapping.selectCategoryCol) {
-      const rawSelectName = String(row[mapping.selectCategoryCol] || '').trim();
-      if (rawSelectName) {
-        let parentCat = '';
-        if (parentConfig.selectParentCatMode === 'fixed' && parentConfig.selectFixedParentCatName) {
-          parentCat = parentConfig.selectFixedParentCatName.trim();
-        } else if (mapping.mainCategoryCol && row[mapping.mainCategoryCol]) {
-          parentCat = String(row[mapping.mainCategoryCol]).trim();
-        } else if (parentConfig.selectFixedParentCatName) {
-          parentCat = parentConfig.selectFixedParentCatName.trim();
-        } else {
-          parentCat = 'General';
-        }
-
-        let parentSub = '';
-        if (parentConfig.selectParentSubMode === 'fixed' && parentConfig.selectFixedParentSubName) {
-          parentSub = parentConfig.selectFixedParentSubName.trim();
-        } else if (mapping.subcategoryCol && row[mapping.subcategoryCol]) {
-          parentSub = String(row[mapping.subcategoryCol]).trim();
-        } else if (parentConfig.selectFixedParentSubName) {
-          parentSub = parentConfig.selectFixedParentSubName.trim();
-        } else {
-          parentSub = 'General';
-        }
-
-        const ptKey = `${parentCat.toLowerCase()}:::${parentSub.toLowerCase()}:::${rawSelectName.toLowerCase()}`;
-        if (!seenPTKeys.has(ptKey)) {
-          seenPTKeys.add(ptKey);
-          const existing = ptByKey.get(ptKey);
-          const isExisting = Boolean(existing);
-          if (isExisting) existingCount++;
-          else newCount++;
-          validCount++;
-
-          parsedRows.push({
-            rowNumber: rowNum,
-            levelType: 'product_type',
-            name: rawSelectName,
-            parentCategory: parentCat,
-            parentSubcategory: parentSub,
-            description: descVal,
-            displayOrder: orderVal || (parsedRows.length + 1),
-            isEnabled,
-            showInMobile,
-            imageUrl: imageVal,
-            isExisting,
-            matchedId: existing ? existing.id : null,
-            isValid: true,
-            errors: [],
-            warnings: []
-          });
-        }
-      }
-    }
   });
 
   const categoriesCount = parsedRows.filter(r => r.levelType === 'category').length;
   const subcategoriesCount = parsedRows.filter(r => r.levelType === 'subcategory').length;
-  const productTypesCount = parsedRows.filter(r => r.levelType === 'product_type').length;
 
   return {
     rows: parsedRows,
@@ -714,8 +650,7 @@ export const buildFlexibleCategoryImportPlan = ({
     newCount,
     summary: {
       categoriesCount,
-      subcategoriesCount,
-      productTypesCount
+      subcategoriesCount
     }
   };
 };

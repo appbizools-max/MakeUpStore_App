@@ -1417,13 +1417,12 @@ const AdminDashboard = () => {
 
   const [prefilledHierarchyForNewProduct, setPrefilledHierarchyForNewProduct] = useState({
     category: '',
-    subcategory: '',
-    selectCategory: ''
+    subcategory: ''
   });
 
   const handleOpenAddProduct = () => {
     setPrefilledBarcodeForNewProduct({ barcode: '', format: '' });
-    setPrefilledHierarchyForNewProduct({ category: '', subcategory: '', selectCategory: '' });
+    setPrefilledHierarchyForNewProduct({ category: '', subcategory: '' });
     navigateToTab('products/new');
   };
 
@@ -4080,7 +4079,7 @@ const AdminDashboard = () => {
             <AddNewProductPage
               onNavigateBack={() => {
                 setPrefilledBarcodeForNewProduct({ barcode: '', format: '' });
-                setPrefilledHierarchyForNewProduct({ category: '', subcategory: '', selectCategory: '' });
+                setPrefilledHierarchyForNewProduct({ category: '', subcategory: '' });
                 setPrefilledProductName('');
                 setProductSearch('');
                 setProductBrandFilter('all');
@@ -4095,7 +4094,6 @@ const AdminDashboard = () => {
               initialBarcodeFormat={prefilledBarcodeForNewProduct.format}
               initialCategory={prefilledHierarchyForNewProduct.category}
               initialSubcategory={prefilledHierarchyForNewProduct.subcategory}
-              initialSelectCategory={prefilledHierarchyForNewProduct.selectCategory}
             />
           )}
 
