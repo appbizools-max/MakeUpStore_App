@@ -93,10 +93,36 @@ export const buildBrandLookupMap = (brands = []) => {
     if (bId && !map.has(bId)) {
       map.set(bId, brandRecord);
     }
+
+    // Index first base word as fallback if multiple words and base not yet registered
+    // (e.g. "LOREAL COSMETICS" allows "loreal" to resolve to LOREAL COSMETICS if standalone "LOREAL" does not exist)
+    const baseWord = normKey.split(/\s+/)[0];
+    if (baseWord && baseWord.length >= 3 && !map.has(baseWord)) {
+      map.set(baseWord, brandRecord);
+    }
+    const strippedBaseWord = strippedKey.split(/\s+/)[0];
+    if (strippedBaseWord && strippedBaseWord.length >= 3 && !map.has(strippedBaseWord)) {
+      map.set(strippedBaseWord, brandRecord);
+    }
   });
 
   return map;
 };
+
+const COMMON_NOISE_SUFFIXES = [
+  'new york',
+  'paris',
+  'london',
+  'india',
+  'cosmetics',
+  'cosmetic',
+  'beauty',
+  'professional',
+  'skincare',
+  'skin care',
+  'haircare',
+  'hair care'
+];
 
 /**
  * Matches an input brand against Brand Master using case-insensitive, accent-insensitive logic.
@@ -128,7 +154,27 @@ export const matchBrandMaster = (inputBrand, brandsOrMap) => {
     return { matched: true, brand: lookupMap.get(strippedKey) };
   }
 
-  // 3. Brand number match (e.g. BR001, BR12)
+  // 3. Strip common noise suffixes (e.g. "Maybelline New York" -> "Maybelline", "Sugar Cosmetics" -> "Sugar")
+  for (const suffix of COMMON_NOISE_SUFFIXES) {
+    if (normKey.endsWith(' ' + suffix)) {
+      const strippedSuffixKey = normKey.slice(0, -(suffix.length + 1)).trim();
+      if (lookupMap.has(strippedSuffixKey)) {
+        return { matched: true, brand: lookupMap.get(strippedSuffixKey) };
+      }
+      const strippedClean = strippedSuffixKey.replace(/[^a-z0-9]/g, '');
+      if (strippedClean && lookupMap.has(strippedClean)) {
+        return { matched: true, brand: lookupMap.get(strippedClean) };
+      }
+    }
+  }
+
+  // 4. Base first word match (e.g. "L'Oreal Paris" -> base "loreal")
+  const firstWord = normKey.split(/[\s'’]+/)[0];
+  if (firstWord && firstWord.length >= 3 && lookupMap.has(firstWord)) {
+    return { matched: true, brand: lookupMap.get(firstWord) };
+  }
+
+  // 5. Brand number match (e.g. BR001, BR12)
   const inputLower = rawInput.toLowerCase();
   if (lookupMap.has(inputLower)) {
     return { matched: true, brand: lookupMap.get(inputLower) };
