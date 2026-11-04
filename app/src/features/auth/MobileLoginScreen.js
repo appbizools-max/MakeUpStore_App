@@ -69,7 +69,7 @@ export const MobileLoginScreen = () => {
             <Ionicons name="arrow-back" size={20} color="#C2477A" />
           </TouchableOpacity>
 
-          <View className="bg-[#FFF5F8] border border-[#F5A8C0] px-3.5 py-1.5 rounded-full">
+          <View className="bg-white border border-[#F5A8C0] px-3.5 py-1.5 rounded-full">
             <Text className="text-xs font-black text-[#C2477A]">
               {getRoleTitle()}
             </Text>

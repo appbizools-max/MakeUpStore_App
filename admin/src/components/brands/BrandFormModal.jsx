@@ -316,9 +316,9 @@ export default function BrandFormModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drawer Header */}
-        <div className="p-5 px-6 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-pink-50/70 via-white to-pink-50/40 shrink-0">
+        <div className="p-5 px-6 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-white via-white to-white shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
               {isEdit ? <Edit size={20} /> : <BadgePlus size={22} />}
             </div>
             <div>
@@ -327,7 +327,7 @@ export default function BrandFormModal({
                   {isEdit ? 'Edit Brand Master' : 'Add New Brand'}
                 </h3>
                 {formData.brandNumber && (
-                  <span className="text-[10.5px] font-black uppercase px-2 py-0.5 rounded-md bg-[#FFF0F4] text-[#C2477A] border border-pink-200">
+                  <span className="text-[10.5px] font-black uppercase px-2 py-0.5 rounded-md bg-white text-[#C2477A] border border-pink-200">
                     {formData.brandNumber}
                   </span>
                 )}
@@ -389,7 +389,7 @@ export default function BrandFormModal({
                 <Sparkles size={13} className="text-[#C2477A]" />
                 <span>Categories</span>
               </span>
-              <span className="text-[10px] font-bold text-[#C2477A] bg-pink-50 px-2 py-0.5 rounded-full border border-pink-100">
+              <span className="text-[10px] font-bold text-[#C2477A] bg-white px-2 py-0.5 rounded-full border border-pink-100">
                 {formData.categories.length} Selected
               </span>
             </label>
@@ -456,7 +456,7 @@ export default function BrandFormModal({
                           onClick={() => toggleCategory(cat)}
                           className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between cursor-pointer transition-colors ${
                             isSelected
-                              ? 'bg-pink-50 text-[#C2477A]'
+                              ? 'bg-white text-[#C2477A]'
                               : 'hover:bg-gray-50 text-gray-700'
                           }`}
                         >
@@ -482,7 +482,7 @@ export default function BrandFormModal({
           {/* ════════════════════════════════════════════════════════════════ */}
           {/* FIELD 5: BRAND VISIBILITY (ACTIVE / INACTIVE)                    */}
           {/* ════════════════════════════════════════════════════════════════ */}
-          <div className="p-4 rounded-2xl bg-[#FFF8FA] border border-pink-100 space-y-2.5">
+          <div className="p-4 rounded-2xl bg-white border border-pink-100 space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-gray-900 font-extrabold text-xs flex items-center gap-1.5 uppercase tracking-wider">
                 <Eye size={14} className="text-[#C2477A]" />

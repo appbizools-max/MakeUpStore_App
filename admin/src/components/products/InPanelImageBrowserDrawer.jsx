@@ -780,11 +780,11 @@ export default function InPanelImageBrowserDrawer({
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-all bg-white cursor-pointer ${
                   isDragging
-                    ? 'border-[#CE4270] bg-pink-50/50 scale-[0.99]'
+                    ? 'border-[#CE4270] bg-white scale-[0.99]'
                     : 'border-slate-300 hover:border-slate-400'
                 }`}
               >
-                <div className="w-12 h-12 rounded-full bg-pink-50 text-[#CE4270] flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 rounded-full bg-white text-[#CE4270] flex items-center justify-center mx-auto mb-3">
                   <Clipboard className="w-6 h-6" />
                 </div>
                 <h4 className="text-xs font-extrabold text-slate-800">

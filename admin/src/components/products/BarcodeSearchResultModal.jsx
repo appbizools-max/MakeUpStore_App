@@ -73,7 +73,7 @@ export default function BarcodeSearchResultModal({
       <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col relative animate-fade-in my-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-pink-100 bg-[#FFF2F5]/60">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-pink-100 bg-white">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-[#CE4270] text-white flex items-center justify-center shadow-xs">
               <ScanBarcode size={20} />
@@ -104,7 +104,7 @@ export default function BarcodeSearchResultModal({
           {/* ── LOADING ── */}
           {isSearching && (
             <div className="flex flex-col items-center justify-center py-10 gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-pink-50 border border-pink-200 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-2xl bg-white border border-pink-200 flex items-center justify-center">
                 <Loader2 size={26} className="animate-spin text-[#CE4270]" />
               </div>
               <div className="text-center">
@@ -151,8 +151,8 @@ export default function BarcodeSearchResultModal({
 
               <div className="rounded-2xl border border-pink-100 overflow-hidden">
                 {/* Product header */}
-                <div className="flex items-start gap-3 p-4 bg-[#FFF8FA]">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-pink-50 border border-pink-200 flex items-center justify-center shrink-0 shadow-xs">
+                <div className="flex items-start gap-3 p-4 bg-white">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border border-pink-200 flex items-center justify-center shrink-0 shadow-xs">
                     {product.image
                       ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                       : <Package size={24} className="text-gray-300" />}
@@ -213,7 +213,7 @@ export default function BarcodeSearchResultModal({
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: 'Salon', value: salonPrice, cls: 'text-[#CE4270] bg-[#FFF5F8] border-pink-100' },
+                      { label: 'Salon', value: salonPrice, cls: 'text-[#CE4270] bg-white border-pink-100' },
                       { label: 'Artist', value: artistPrice, cls: 'text-purple-700 bg-purple-50 border-purple-100' },
                       { label: 'Beautician', value: beauticianPrice, cls: 'text-emerald-700 bg-emerald-50 border-emerald-100' }
                     ].map(({ label, value, cls }) => (
@@ -246,7 +246,7 @@ export default function BarcodeSearchResultModal({
                         ))}
                         {hasMoreShades && (
                           <button type="button" onClick={() => setShowAllShades(true)}
-                            className="px-2.5 py-1 rounded-lg bg-pink-50 text-[#CE4270] text-[10.5px] font-bold border border-pink-200 cursor-pointer hover:bg-pink-100 transition-all flex items-center gap-1">
+                            className="px-2.5 py-1 rounded-lg bg-white text-[#CE4270] text-[10.5px] font-bold border border-pink-200 cursor-pointer hover:bg-pink-100 transition-all flex items-center gap-1">
                             +{shades.length - 4} more <ChevronDown size={10} />
                           </button>
                         )}
@@ -259,7 +259,7 @@ export default function BarcodeSearchResultModal({
               {/* Actions */}
               <div className="flex gap-2">
                 <button type="button" onClick={() => { onViewProduct && onViewProduct(product); onClose(); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFF2F5] hover:bg-[#CE4270] text-[#CE4270] hover:text-white border border-pink-200 font-bold text-xs cursor-pointer transition-all active:scale-[0.98]">
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-[#CE4270] text-[#CE4270] hover:text-white border border-pink-200 font-bold text-xs cursor-pointer transition-all active:scale-[0.98]">
                   <Eye size={14} />
                   <span>View in Catalog</span>
                 </button>

@@ -97,7 +97,7 @@ const CentralBannerManagementPage = React.lazy(() => import('./components/banner
 
 const PageLoadingFallback = () => (
   <div className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center animate-fade-in">
-    <div className="w-12 h-12 rounded-2xl bg-[#FDF2F8] border border-[#FCE4EC] flex items-center justify-center mb-3 shadow-sm">
+    <div className="w-12 h-12 rounded-2xl bg-white border border-[#FCE4EC] flex items-center justify-center mb-3 shadow-sm">
       <Loader2 size={24} className="text-[#C2477A] animate-spin" />
     </div>
     <span className="text-xs font-bold text-gray-800 tracking-wide">Loading Module...</span>
@@ -574,7 +574,7 @@ const AdminDashboard = () => {
           label: 'Home Banners',
           icon: ImageIcon,
           badge: homeBanners ? `${homeBanners.filter(b => b.isActive !== false).length} Active` : '5 Active',
-          badgeClass: 'bg-[#FFF5F8] text-[#C2477A] font-bold border border-[#FCE4EC] px-1.5 py-0.5 text-[9.5px] rounded-full',
+          badgeClass: 'bg-white text-[#C2477A] font-bold border border-[#FCE4EC] px-1.5 py-0.5 text-[9.5px] rounded-full',
           isPillBadge: true,
         },
         {
@@ -2757,7 +2757,7 @@ const AdminDashboard = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFF5F8] via-[#F8FAFC] to-[#FFF2F5] flex items-center justify-center p-4 font-sans antialiased">
+      <div className="min-h-screen bg-gradient-to-br from-white via-[#F8FAFC] to-white flex items-center justify-center p-4 font-sans antialiased">
         <div className="bg-white/90 backdrop-blur-md p-8 rounded-3xl border border-pink-100 shadow-2xl w-full max-w-md animate-fade-in text-center">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#C2477A] to-[#E25586] text-white flex items-center justify-center font-bold mx-auto mb-4 shadow-md">
             <Sparkles size={32} />
@@ -2936,7 +2936,7 @@ const AdminDashboard = () => {
           />
 
           {/* Current Active Section Badge on Mobile */}
-          <span className="text-[11px] font-bold text-[#C2477A] bg-[#FFF5F8] px-2.5 py-1 rounded-full border border-pink-200/50 truncate max-w-[130px]">
+          <span className="text-[11px] font-bold text-[#C2477A] bg-white px-2.5 py-1 rounded-full border border-pink-200/50 truncate max-w-[130px]">
             {getActiveTabLabel(activeTab)}
           </span>
         </div>
@@ -2974,7 +2974,7 @@ const AdminDashboard = () => {
       <main className={`flex-1 min-w-0 transition-all duration-300 h-screen max-h-screen overflow-y-auto ${activeTab === 'products/bulk'
           ? 'p-0 bg-[#F8FAFD] overflow-hidden flex flex-col min-h-0'
           : activeTab === 'products/new'
-            ? 'p-0 bg-[#FFF8FA]'
+            ? 'p-0 bg-white'
             : 'p-4 sm:p-6 lg:p-8 bg-white'
         }`}>
         {/* Top Header (Shown for standard dashboard tabs) */}
@@ -3145,7 +3145,7 @@ const AdminDashboard = () => {
                     <span className="text-xs font-semibold text-gray-500 tracking-wide">
                       Total Store Orders
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center shadow-2xs">
+                    <div className="w-10 h-10 rounded-full bg-white text-[#C2477A] flex items-center justify-center shadow-2xs">
                       <ShoppingBag size={18} />
                     </div>
                   </div>
@@ -3179,7 +3179,7 @@ const AdminDashboard = () => {
                     <span className="text-xs font-semibold text-gray-500 tracking-wide">
                       Total Revenue
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center shadow-2xs">
+                    <div className="w-10 h-10 rounded-full bg-white text-[#C2477A] flex items-center justify-center shadow-2xs">
                       <DollarSign size={18} />
                     </div>
                   </div>
@@ -3213,7 +3213,7 @@ const AdminDashboard = () => {
                     <span className="text-xs font-semibold text-gray-500 tracking-wide">
                       Active Brands Ratio
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center shadow-2xs">
+                    <div className="w-10 h-10 rounded-full bg-white text-[#C2477A] flex items-center justify-center shadow-2xs">
                       <Star size={18} />
                     </div>
                   </div>
@@ -3246,7 +3246,7 @@ const AdminDashboard = () => {
                     <span className="text-xs font-semibold text-gray-500 tracking-wide group-hover:text-[#C2477A] transition-colors">
                       Active Employees
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 rounded-full bg-white text-[#C2477A] flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
                       <Users size={18} />
                     </div>
                   </div>
@@ -3277,7 +3277,7 @@ const AdminDashboard = () => {
                     <select
                       value={selectedBranch}
                       onChange={(e) => setSelectedBranch(e.target.value)}
-                      className="appearance-none bg-[#FFF5F8] text-[#C2477A] border border-pink-100 text-xs font-semibold px-4 py-1.5 pr-8 rounded-xl outline-none cursor-pointer"
+                      className="appearance-none bg-white text-[#C2477A] border border-pink-100 text-xs font-semibold px-4 py-1.5 pr-8 rounded-xl outline-none cursor-pointer"
                     >
                       {availableBranches.map((br) => (
                         <option key={br} value={br}>
@@ -3293,7 +3293,7 @@ const AdminDashboard = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-pink-100/80 text-xs font-black text-gray-900 uppercase tracking-wider bg-[#FFF2F5]">
+                      <tr className="border-b border-pink-100/80 text-xs font-black text-gray-900 uppercase tracking-wider bg-white">
                         <th className="py-4 px-4 text-left rounded-l-xl">CUSTOMER & ADDRESS</th>
                         <th className="py-4 px-4 text-left">TYPE & ROLE</th>
                         <th className="py-4 px-4 text-left">BRANCH</th>
@@ -3340,7 +3340,7 @@ const AdminDashboard = () => {
                         filteredOrders.map((order, index) => (
                           <tr
                             key={order.id}
-                            className={`transition-colors ${index % 2 === 1 ? 'bg-[#FFF2F5]/80 hover:bg-[#FFF5F8]' : 'bg-white hover:bg-[#FFF2F5]/40'
+                            className={`transition-colors ${index % 2 === 1 ? 'bg-white hover:bg-[#FFF5F8]' : 'bg-white hover:bg-[#FFF2F5]/40'
                               }`}
                           >
                             <td className="py-3.5 px-4 rounded-l-xl">
@@ -3373,7 +3373,7 @@ const AdminDashboard = () => {
                             </td>
                             <td className="py-3.5 px-4">
                               <div className="space-y-1">
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF5F8] text-[#C2477A] whitespace-nowrap inline-block">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#C2477A] whitespace-nowrap inline-block">
                                   {order.userRole}
                                 </span>
                                 <div className="text-[11px] font-semibold text-gray-700 flex items-center gap-1">
@@ -3430,7 +3430,7 @@ const AdminDashboard = () => {
           {activeTab === 'dashboard_visibility' && (
             <div className="space-y-6 animate-fade-in">
               {/* Header / Info Banner */}
-              <div className="bg-gradient-to-r from-pink-50 via-rose-50 to-white p-6 rounded-2xl border border-pink-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="bg-gradient-to-r from-white via-rose-50 to-white p-6 rounded-2xl border border-pink-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Eye className="text-[#C2477A]" size={20} />
@@ -3507,7 +3507,7 @@ const AdminDashboard = () => {
                       >
                         <div className="flex items-start gap-3.5">
                           <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isVisible ? 'bg-[#FFF5F8] text-[#C2477A]' : 'bg-gray-100 text-gray-400'
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isVisible ? 'bg-white text-[#C2477A]' : 'bg-gray-100 text-gray-400'
                               }`}
                           >
                             <IconComp size={20} />
@@ -3549,7 +3549,7 @@ const AdminDashboard = () => {
                         <Store size={16} className="text-[#C2477A]" />
                         <h3 className="text-xs font-bold text-gray-900">Mobile Home Page Layout Preview</h3>
                       </div>
-                      <span className="text-[10px] font-bold text-[#C2477A] bg-[#FFF5F8] px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold text-[#C2477A] bg-white px-2 py-0.5 rounded-full">
                         Live State
                       </span>
                     </div>
@@ -3558,7 +3558,7 @@ const AdminDashboard = () => {
                       Visual simulation of the Customer App Home Screen reflecting your current visibility settings:
                     </p>
 
-                    <div className="w-full max-w-[260px] mx-auto border-4 border-gray-800 rounded-[28px] overflow-hidden bg-[#FFF8FA] shadow-md text-[10px]">
+                    <div className="w-full max-w-[260px] mx-auto border-4 border-gray-800 rounded-[28px] overflow-hidden bg-white shadow-md text-[10px]">
                       {/* Simulated Mobile Header */}
                       {(!homeSectionVisibility || homeSectionVisibility.branchBar !== false) ? (
                         <div className="bg-white p-2 border-b border-pink-100 flex items-center justify-between text-[#C2477A] font-semibold">
@@ -3574,7 +3574,7 @@ const AdminDashboard = () => {
 
                       {/* Simulated Role Bar */}
                       {(!homeSectionVisibility || homeSectionVisibility.pricingRoleBanner !== false) && (
-                        <div className="bg-[#FCE4EC] px-2 py-1 flex items-center justify-between text-[#8C7078] text-[9px]">
+                        <div className="bg-white px-2 py-1 flex items-center justify-between text-[#8C7078] text-[9px]">
                           <span>Role: Salon Owner</span>
                           <span className="text-[#C2477A] font-bold">Change</span>
                         </div>
@@ -3596,7 +3596,7 @@ const AdminDashboard = () => {
                           <div className="font-bold text-[#3A2430] text-[9px] mb-1">Categories</div>
                           <div className="flex gap-1.5 overflow-hidden">
                             {['Hair', 'Skin', 'Lips', 'Eyes'].map((c, idx) => (
-                              <div key={idx} className="w-9 h-9 rounded-lg bg-[#FCE4EC] flex flex-col items-center justify-center text-[8px] font-semibold text-[#3A2430]">
+                              <div key={idx} className="w-9 h-9 rounded-lg bg-white flex flex-col items-center justify-center text-[8px] font-semibold text-[#3A2430]">
                                 {c}
                               </div>
                             ))}
@@ -3629,7 +3629,7 @@ const AdminDashboard = () => {
                           <div className="grid grid-cols-2 gap-1.5">
                             {[1, 2].map((i) => (
                               <div key={i} className="bg-white p-1 rounded-lg border border-pink-100">
-                                <div className="w-full h-8 bg-pink-50 rounded mb-1"></div>
+                                <div className="w-full h-8 bg-white rounded mb-1"></div>
                                 <div className="font-bold text-[8px] text-[#C2477A]">₹450</div>
                               </div>
                             ))}
@@ -3651,7 +3651,7 @@ const AdminDashboard = () => {
               <div className="mt-6 bg-white border border-pink-200/80 rounded-2xl p-6 shadow-2xs">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-pink-100 gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#FFF0F5] text-[#C2477A] flex items-center justify-center border border-pink-200 shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-white text-[#C2477A] flex items-center justify-center border border-pink-200 shrink-0">
                       <Sparkles size={20} />
                     </div>
                     <div>
@@ -3681,7 +3681,7 @@ const AdminDashboard = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
                   {/* 1. Global Enable / Disable */}
-                  <div className="p-4 rounded-xl border border-pink-100 bg-[#FFF8FA] flex items-center justify-between">
+                  <div className="p-4 rounded-xl border border-pink-100 bg-white flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="text-xs font-bold text-gray-900">Automatic Recommendations</h4>
@@ -3768,7 +3768,7 @@ const AdminDashboard = () => {
                   </div>
 
                   {/* 4. Popular Products Fallback */}
-                  <div className="p-4 rounded-xl border border-pink-100 bg-[#FFF8FA] flex items-center justify-between">
+                  <div className="p-4 rounded-xl border border-pink-100 bg-white flex items-center justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-gray-900">Popular Products Fallback</h4>
                       <p className="text-[11px] text-gray-500 mt-1 max-w-sm">
@@ -3831,7 +3831,7 @@ const AdminDashboard = () => {
                   <select
                     value={orderStatusFilter}
                     onChange={(e) => setOrderStatusFilter(e.target.value)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#FFF5F8] border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
                   >
                     <option value="all">All Orders ({orders.length})</option>
                     <option value="placed">Placed</option>
@@ -3877,7 +3877,7 @@ const AdminDashboard = () => {
                       </div>
 
                       {/* Order Items */}
-                      <div className="bg-[#FFF9FB] p-2.5 rounded-xl border border-pink-100/60 space-y-1">
+                      <div className="bg-white p-2.5 rounded-xl border border-pink-100/60 space-y-1">
                         {(o.items || []).map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center text-[11px]">
                             <span className="text-gray-800 font-semibold">{item.product?.name || 'Item'} (x{item.quantity})</span>
@@ -3921,7 +3921,7 @@ const AdminDashboard = () => {
               {/* Desktop Table View (>= 768px) */}
               <div className="hidden md:block bg-white rounded-2xl border border-pink-100/70 shadow-xs overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#FFF2F5] text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100/80">
+                  <thead className="bg-white text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100/80">
                     <tr>
                       <th className="py-4 px-4 text-left rounded-l-xl">Order ID</th>
                       <th className="py-4 px-4 text-left">Customer & Address</th>
@@ -3937,7 +3937,7 @@ const AdminDashboard = () => {
                     {filteredOrders.map((o, index) => (
                       <tr
                         key={o.id}
-                        className={`transition-colors ${index % 2 === 1 ? 'bg-[#FFF2F5]/80 hover:bg-[#FFF5F8]' : 'bg-white hover:bg-[#FFF2F5]/40'
+                        className={`transition-colors ${index % 2 === 1 ? 'bg-white hover:bg-[#FFF5F8]' : 'bg-white hover:bg-[#FFF2F5]/40'
                           }`}
                       >
                         <td className="p-4 font-extrabold text-[#C2477A] text-xs">{o.id}</td>
@@ -4001,7 +4001,7 @@ const AdminDashboard = () => {
                           <select
                             value={o.assignedEmployeeId || ''}
                             onChange={(e) => assignOrderToEmployee(o.id, e.target.value || null)}
-                            className="px-2.5 py-1.5 text-xs rounded-xl border border-pink-100 bg-[#FFF8FA] font-medium text-gray-700 outline-none focus:border-[#C2477A] cursor-pointer"
+                            className="px-2.5 py-1.5 text-xs rounded-xl border border-pink-100 bg-white font-medium text-gray-700 outline-none focus:border-[#C2477A] cursor-pointer"
                           >
                             <option value="">Unassigned</option>
                             {(employees || []).filter(e => e.status === 'active').map(emp => (
@@ -4310,7 +4310,7 @@ const AdminDashboard = () => {
             <div className="space-y-6 animate-fade-in">
               {/* Top Customer Category Tabs: B2C Users vs B2B Users */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-pink-100/80 shadow-xs">
-                <div className="flex items-center gap-2 p-1 bg-pink-50/70 rounded-xl border border-pink-100">
+                <div className="flex items-center gap-2 p-1 bg-white rounded-xl border border-pink-100">
                   <button
                     onClick={() => {
                       navigateToTab('users/b2c');
@@ -4346,7 +4346,7 @@ const AdminDashboard = () => {
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-[#FFF5F8] px-4 py-2 rounded-xl border border-pink-100">
+                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-white px-4 py-2 rounded-xl border border-pink-100">
                   <Users size={15} className="text-[#C2477A]" />
                   <span>
                     Total Registered: <strong className="text-gray-900 font-black">{users.length}</strong>
@@ -4392,7 +4392,7 @@ const AdminDashboard = () => {
                   {/* B2B Filters Bar */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-pink-100/70 shadow-xs">
                     <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                      <div className="flex items-center gap-2 bg-[#FFF5F8] px-3.5 py-2 rounded-xl border border-pink-100 flex-1 sm:flex-initial min-w-[220px]">
+                      <div className="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-pink-100 flex-1 sm:flex-initial min-w-[220px]">
                         <Search size={14} className="text-[#C2477A]" />
                         <input
                           type="text"
@@ -4427,7 +4427,7 @@ const AdminDashboard = () => {
                             setB2bTypeFilter(e.target.value);
                             setUserCurrentPage(1);
                           }}
-                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FFF5F8] border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
                         >
                           <option value="all">All B2B Types</option>
                           <option value="salon">Salon</option>
@@ -4445,7 +4445,7 @@ const AdminDashboard = () => {
                             setB2bVerificationStatusFilter(e.target.value);
                             setUserCurrentPage(1);
                           }}
-                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FFF5F8] border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
                         >
                           <option value="all">All Statuses</option>
                           <option value="pending">Pending</option>
@@ -4477,7 +4477,7 @@ const AdminDashboard = () => {
                   <div className="bg-white rounded-2xl border border-pink-100/70 shadow-xs overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-[#FFF2F5] text-gray-900 uppercase font-black text-[11px] tracking-wider border-b border-pink-100/80">
+                        <thead className="bg-white text-gray-900 uppercase font-black text-[11px] tracking-wider border-b border-pink-100/80">
                           <tr>
                             <th className="py-4 px-5">Customer Name</th>
                             <th className="py-4 px-5">Professional / Business</th>
@@ -4647,7 +4647,7 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* Pagination Controls */}
-                    <div className="bg-[#FFF8FA] px-6 py-4 border-t border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-gray-600">
+                    <div className="bg-white px-6 py-4 border-t border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-gray-600">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                           <span className="text-gray-500 font-medium">Rows per page:</span>
@@ -4702,7 +4702,7 @@ const AdminDashboard = () => {
                 /* B2C Users Management View (General Users) */
                 <div className="space-y-4">
                   {/* B2C Info Banner */}
-                  <div className="bg-gradient-to-r from-pink-50/80 via-white to-pink-50/40 p-4 rounded-2xl border border-pink-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="bg-gradient-to-r from-white via-white to-white p-4 rounded-2xl border border-pink-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-pink-100 text-[#C2477A] flex items-center justify-center shrink-0 border border-pink-200">
                         <User size={18} />
@@ -4726,7 +4726,7 @@ const AdminDashboard = () => {
 
                   {/* B2C Search Control Bar */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-pink-100/70 shadow-xs">
-                    <div className="flex items-center gap-2 bg-[#FFF5F8] px-3.5 py-2 rounded-xl border border-pink-100 w-full sm:w-auto min-w-[280px]">
+                    <div className="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-pink-100 w-full sm:w-auto min-w-[280px]">
                       <Search size={14} className="text-[#C2477A]" />
                       <input
                         type="text"
@@ -4760,7 +4760,7 @@ const AdminDashboard = () => {
                   <div className="bg-white rounded-2xl border border-pink-100/70 shadow-xs overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-[#FFF2F5] text-gray-900 uppercase font-black text-[11px] tracking-wider border-b border-pink-100/80">
+                        <thead className="bg-white text-gray-900 uppercase font-black text-[11px] tracking-wider border-b border-pink-100/80">
                           <tr>
                             <th className="py-4 px-6 min-w-[240px]">Customer Details</th>
                             <th className="py-4 px-6 min-w-[180px]">Contact & Email</th>
@@ -4836,7 +4836,7 @@ const AdminDashboard = () => {
 
                                   {/* Pricing Mode */}
                                   <td className="py-4 px-6">
-                                    <span className="inline-block font-extrabold text-[11px] px-2.5 py-1 rounded-lg border uppercase tracking-wider bg-pink-50 text-[#C2477A] border-pink-200">
+                                    <span className="inline-block font-extrabold text-[11px] px-2.5 py-1 rounded-lg border uppercase tracking-wider bg-white text-[#C2477A] border-pink-200">
                                       General Retail
                                     </span>
                                   </td>
@@ -4866,7 +4866,7 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* Pagination Controls */}
-                    <div className="bg-[#FFF8FA] px-6 py-4 border-t border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-gray-600">
+                    <div className="bg-white px-6 py-4 border-t border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-gray-600">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                           <span className="text-gray-500 font-medium">Rows per page:</span>
@@ -4933,7 +4933,7 @@ const AdminDashboard = () => {
                   <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-up">
                       {/* Modal Header */}
-                      <div className="p-6 bg-gradient-to-r from-[#FFF2F5] via-white to-[#FFF5F8] border-b border-pink-100 flex items-start justify-between">
+                      <div className="p-6 bg-gradient-to-r from-white via-white to-white border-b border-pink-100 flex items-start justify-between">
                         <div className="flex items-center gap-4">
                           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-400 to-[#C2477A] text-white flex items-center justify-center font-black text-xl shadow-md">
                             {initial}
@@ -5206,7 +5206,7 @@ const AdminDashboard = () => {
 
                 <div className="bg-white rounded-xl border border-pink-100 overflow-hidden">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-[#FFF2F5] text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100/80">
+                    <thead className="bg-white text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100/80">
                       <tr>
                         <th className="py-4 px-4">Order ID</th>
                         <th className="py-4 px-4">Customer & Role</th>
@@ -5230,7 +5230,7 @@ const AdminDashboard = () => {
                               onClick={() => toggleFeeWaived(item.id)}
                               className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold border transition-colors cursor-pointer ${item.feeWaived
                                 ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                : 'bg-[#FFF5F8] text-[#C2477A] border-pink-200 hover:bg-[#FFF5F8]'
+                                : 'bg-white text-[#C2477A] border-pink-200 hover:bg-[#FFF5F8]'
                                 }`}
                             >
                               {item.feeWaived ? '✓ Fee Waived' : 'Waive Fee'}
@@ -5378,7 +5378,7 @@ const AdminDashboard = () => {
                     <div className="bg-white p-6 rounded-2xl border border-pink-100/80 shadow-sm">
                       <div className="flex items-center justify-between mb-5 pb-4 border-b border-pink-100/60">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center shadow-xs">
+                          <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center shadow-xs">
                             <Sparkles size={18} />
                           </div>
                           <div>
@@ -5394,13 +5394,13 @@ const AdminDashboard = () => {
                       </div>
 
                       {/* Role Pricing Formula Banner */}
-                      <div className="mb-5 p-3.5 rounded-xl bg-gradient-to-r from-[#FFF5F8] to-pink-50/50 border border-pink-100/80">
+                      <div className="mb-5 p-3.5 rounded-xl bg-gradient-to-r from-white to-white border border-pink-100/80">
                         <p className="text-[10.5px] font-bold text-gray-700 flex items-center gap-1.5 flex-wrap">
                           <span className="bg-gray-200 px-1.5 py-0.5 rounded font-mono text-gray-600">MRP</span>
                           <span className="text-gray-400">→</span>
                           <span className="bg-[#C2477A]/10 text-[#C2477A] px-1.5 py-0.5 rounded font-bold">Role Discount %</span>
                           <span className="text-gray-400">→</span>
-                          <span className="bg-[#FDF2F8] text-[#C2477A] px-1.5 py-0.5 rounded font-bold">Role Base Price</span>
+                          <span className="bg-white text-[#C2477A] px-1.5 py-0.5 rounded font-bold">Role Base Price</span>
                           <span className="text-gray-400">→</span>
                           <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">Qty Tier Discount %</span>
                           <span className="text-gray-400">→</span>
@@ -5472,7 +5472,7 @@ const AdminDashboard = () => {
                     <div className="bg-white p-6 rounded-2xl border border-pink-100/80 shadow-sm">
                       <div className="flex items-center justify-between mb-5 pb-4 border-b border-pink-100/60">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center shadow-xs">
+                          <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center shadow-xs">
                             <Layers size={18} />
                           </div>
                           <div>
@@ -5482,7 +5482,7 @@ const AdminDashboard = () => {
                         </div>
                         <button
                           onClick={handleAddTier}
-                          className="flex items-center gap-1.5 text-[11px] font-bold bg-[#FFF5F8] text-[#C2477A] border border-[#FCE4EC] px-3 py-1.5 rounded-xl hover:bg-[#FDF2F8] transition-all cursor-pointer"
+                          className="flex items-center gap-1.5 text-[11px] font-bold bg-white text-[#C2477A] border border-[#FCE4EC] px-3 py-1.5 rounded-xl hover:bg-[#FDF2F8] transition-all cursor-pointer"
                         >
                           <Plus size={13} /> Add Tier
                         </button>
@@ -5542,7 +5542,7 @@ const AdminDashboard = () => {
                                   step="0.5"
                                   value={tier.additionalDiscount}
                                   onChange={(e) => handleTierChange(idx, 'additionalDiscount', e.target.value)}
-                                  className="w-full p-2 pr-6 rounded-lg border border-[#FCE4EC]/80 outline-none focus:border-[#C2477A] bg-[#FFF5F8]/50 text-xs font-extrabold text-[#C2477A] text-center shadow-xs"
+                                  className="w-full p-2 pr-6 rounded-lg border border-[#FCE4EC]/80 outline-none focus:border-[#C2477A] bg-white text-xs font-extrabold text-[#C2477A] text-center shadow-xs"
                                 />
                                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-violet-400 font-bold text-xs">%</span>
                               </div>
@@ -5610,7 +5610,7 @@ const AdminDashboard = () => {
                       </div>
 
                       {/* Active qty tier indicator */}
-                      <div className="mb-4 p-2.5 rounded-xl bg-[#FFF5F8] border border-[#FCE4EC]">
+                      <div className="mb-4 p-2.5 rounded-xl bg-white border border-[#FCE4EC]">
                         <p className="text-[10.5px] font-bold text-[#C2477A] flex items-center gap-1.5">
                           <Layers size={11} />
                           Active Qty Tier: <span className="text-black">
@@ -5645,7 +5645,7 @@ const AdminDashboard = () => {
                           { label: 'Makeup Artist', emoji: '🎨', base: preview.artistBase, final: preview.artistFinal, discPct: Number(roleDiscounts.artist) || 0 },
                           { label: 'Beautician', emoji: '💅', base: preview.beauticianBase, final: preview.beauticianFinal, discPct: Number(roleDiscounts.beautician) || 0 },
                         ].map(({ label, emoji, base, final, discPct }) => (
-                          <div key={label} className="p-3 rounded-xl bg-[#FFF5F8]/60 border border-pink-100/70">
+                          <div key={label} className="p-3 rounded-xl bg-white border border-pink-100/70">
                             <div className="flex items-center gap-1.5 mb-2">
                               <span className="text-sm">{emoji}</span>
                               <span className="text-[10px] font-black text-gray-700 uppercase">{label}</span>
@@ -5900,7 +5900,7 @@ const AdminDashboard = () => {
                 <div className="bg-white rounded-3xl p-5 border border-pink-100/80 shadow-xs hover:shadow-md transition-all">
                   <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-gray-100">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-pink-50 text-[#C2477A] flex items-center justify-center font-bold">
+                      <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold">
                         <Package size={18} />
                       </div>
                       <div>
@@ -6141,7 +6141,7 @@ const AdminDashboard = () => {
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-4 mb-5 border-b border-pink-100/70">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+                    <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
                       <FolderPlus size={20} />
                     </div>
                     <div>
@@ -6180,7 +6180,7 @@ const AdminDashboard = () => {
                     />
                   </div>
 
-                  <div className="flex items-center gap-3 pt-2 p-3 rounded-xl bg-[#FFF5F8]/50 border border-pink-100/60">
+                  <div className="flex items-center gap-3 pt-2 p-3 rounded-xl bg-white border border-pink-100/60">
                     <input
                       type="checkbox"
                       id="enabledCheckCatModal"
@@ -6221,7 +6221,7 @@ const AdminDashboard = () => {
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-4 mb-5 border-b border-pink-100/70">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+                    <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
                       <Edit size={18} />
                     </div>
                     <div>
@@ -6260,7 +6260,7 @@ const AdminDashboard = () => {
                     />
                   </div>
 
-                  <div className="flex items-center gap-3 pt-2 p-3 rounded-xl bg-[#FFF5F8]/50 border border-pink-100/60">
+                  <div className="flex items-center gap-3 pt-2 p-3 rounded-xl bg-white border border-pink-100/60">
                     <input
                       type="checkbox"
                       id="editEnabledCheckCatModal"
@@ -6471,7 +6471,7 @@ const AdminDashboard = () => {
               <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between pb-4 mb-4 border-b border-pink-100/70">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+                    <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
                       <ImageIcon size={20} />
                     </div>
                     <div>
@@ -6600,7 +6600,7 @@ const AdminDashboard = () => {
                     />
 
                     {/* Quick Select Presets for the 5 official banners */}
-                    <div className="bg-[#FFF5F8] p-2.5 rounded-xl border border-[#FCE4EC]">
+                    <div className="bg-white p-2.5 rounded-xl border border-[#FCE4EC]">
                       <span className="text-[10px] font-bold text-gray-500 block mb-1.5">
                         Quick Preset Images (Supabase Storage):
                       </span>
@@ -6625,7 +6625,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 pt-2 p-3 rounded-xl bg-[#FFF5F8]/50 border border-pink-100/60">
+                  <div className="flex items-center gap-3 pt-2 p-3 rounded-xl bg-white border border-pink-100/60">
                     <input
                       type="checkbox"
                       id="bannerActiveCheckAdd"
@@ -6665,7 +6665,7 @@ const AdminDashboard = () => {
               <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between pb-4 mb-4 border-b border-pink-100/70">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+                    <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
                       <Edit size={20} />
                     </div>
                     <div>
@@ -6793,7 +6793,7 @@ const AdminDashboard = () => {
                     />
 
                     {/* Quick Select Presets for the 5 official banners */}
-                    <div className="bg-[#FFF5F8] p-2.5 rounded-xl border border-[#FCE4EC]">
+                    <div className="bg-white p-2.5 rounded-xl border border-[#FCE4EC]">
                       <span className="text-[10px] font-bold text-gray-500 block mb-1.5">
                         Quick Preset Images (Supabase Storage):
                       </span>
@@ -6818,7 +6818,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 pt-2 p-3 rounded-xl bg-[#FFF5F8]/50 border border-pink-100/60">
+                  <div className="flex items-center gap-3 pt-2 p-3 rounded-xl bg-white border border-pink-100/60">
                     <input
                       type="checkbox"
                       id="bannerActiveCheckEdit"
@@ -7075,7 +7075,7 @@ const AdminDashboard = () => {
                       acceptanceTargetOrder.items.map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-white border border-gray-100 shadow-2xs text-xs">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-pink-50 border border-pink-100 overflow-hidden shrink-0 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg bg-white border border-pink-100 overflow-hidden shrink-0 flex items-center justify-center">
                               {item.product?.image || item.product?.imageUrl ? (
                                 <img src={item.product?.image || item.product?.imageUrl} alt={item.product?.name} className="w-full h-full object-cover" />
                               ) : (
@@ -7097,7 +7097,7 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="px-2 py-0.5 rounded-full bg-pink-50 border border-pink-200 text-[#C2477A] font-extrabold text-[11px]">
+                            <span className="px-2 py-0.5 rounded-full bg-white border border-pink-200 text-[#C2477A] font-extrabold text-[11px]">
                               Qty: {item.quantity || 1}
                             </span>
                             <span className="block font-bold text-gray-800 text-[11px] mt-0.5">
@@ -7191,7 +7191,7 @@ const AdminDashboard = () => {
                   </button>
                 </div>
 
-                <div className="bg-[#FFF2F5]/60 p-4 rounded-2xl border border-pink-100/70 mb-4 text-xs space-y-2">
+                <div className="bg-white p-4 rounded-2xl border border-pink-100/70 mb-4 text-xs space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-semibold">Customer Name:</span>
                     <span className="font-extrabold text-gray-900">{selectedInvoiceOrder.userName} ({selectedInvoiceOrder.userRole})</span>
@@ -7224,7 +7224,7 @@ const AdminDashboard = () => {
 
                 <div className="rounded-xl border border-pink-100 overflow-hidden mb-4">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-[#FFF2F5] text-gray-900 uppercase font-black text-[10px]">
+                    <thead className="bg-white text-gray-900 uppercase font-black text-[10px]">
                       <tr>
                         <th className="py-2.5 px-3">Item Description</th>
                         <th className="py-2.5 px-3 text-center">Status</th>
@@ -7240,7 +7240,7 @@ const AdminDashboard = () => {
                           let itemBadgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
                           if (itemStatus === 'delivered') itemBadgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                           if (itemStatus === 'processing') itemBadgeColor = 'bg-sky-50 text-sky-700 border-sky-200';
-                          if (itemStatus === 'pending_fulfillment') itemBadgeColor = 'bg-[#FFF5F8] text-[#C2477A] border-[#FCE4EC]';
+                          if (itemStatus === 'pending_fulfillment') itemBadgeColor = 'bg-white text-[#C2477A] border-[#FCE4EC]';
                           if (itemStatus === 'rejected') itemBadgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
                           if (itemStatus === 'cancelled') itemBadgeColor = 'bg-gray-100 text-gray-500 border-gray-200';
 
@@ -7350,7 +7350,7 @@ const AdminDashboard = () => {
                   {/* Header */}
                   <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-pink-100/80 bg-white/95 backdrop-blur-xs shrink-0 z-10">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
                         <Edit size={18} />
                       </div>
                       <div>
@@ -7429,7 +7429,7 @@ const AdminDashboard = () => {
                       </div>
 
                       {/* Barcode Entry & Scanning for Edit Product */}
-                      <div className="sm:col-span-2 space-y-2 p-3.5 rounded-2xl bg-gradient-to-br from-[#FFF2F5]/70 to-pink-50/40 border border-pink-100">
+                      <div className="sm:col-span-2 space-y-2 p-3.5 rounded-2xl bg-gradient-to-br from-white to-white border border-pink-100">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                           <label className="text-gray-900 font-extrabold flex items-center gap-1.5 text-xs">
                             <Barcode size={16} className="text-[#C2477A]" />
@@ -7669,7 +7669,7 @@ const AdminDashboard = () => {
                           {!hasVariants && !showAddVariantForm ? (
                             /* Clean "No variants configured" state */
                             <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#FCE4EC] shadow-2xs text-center space-y-3">
-                              <div className="w-11 h-11 rounded-2xl bg-[#FFF5F8] text-[#C2477A] border border-pink-100 flex items-center justify-center mx-auto shadow-2xs">
+                              <div className="w-11 h-11 rounded-2xl bg-white text-[#C2477A] border border-pink-100 flex items-center justify-center mx-auto shadow-2xs">
                                 <Layers size={22} />
                               </div>
                               <div className="space-y-1">
@@ -7698,7 +7698,7 @@ const AdminDashboard = () => {
                             </div>
                           ) : (
                             /* Dynamic Variants Management Card */
-                            <div className="p-4 rounded-2xl bg-[#FFF5F8]/60 border border-[#FCE4EC]/80 space-y-3.5">
+                            <div className="p-4 rounded-2xl bg-white border border-[#FCE4EC]/80 space-y-3.5">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
                                   <span className="font-extrabold text-xs text-[#C2477A] uppercase tracking-wider flex items-center gap-1.5">
@@ -7746,7 +7746,7 @@ const AdminDashboard = () => {
                                               className="w-7 h-7 rounded-lg object-cover border border-pink-100 shrink-0"
                                             />
                                           ) : (
-                                            <span className="w-6 h-6 rounded-lg bg-[#FFF5F8] text-[#C2477A] border border-pink-200 flex items-center justify-center text-[10px] font-black shrink-0">
+                                            <span className="w-6 h-6 rounded-lg bg-white text-[#C2477A] border border-pink-200 flex items-center justify-center text-[10px] font-black shrink-0">
                                               #{idx + 1}
                                             </span>
                                           )}
@@ -7756,7 +7756,7 @@ const AdminDashboard = () => {
                                             {shade.attributes && Object.keys(shade.attributes).length > 0 && (
                                               <div className="flex flex-wrap items-center gap-1 mt-0.5">
                                                 {Object.entries(shade.attributes).map(([attrK, attrV]) => (
-                                                  <span key={attrK} className="px-1.5 py-0.2 rounded bg-pink-50/80 border border-pink-100 text-[#C2477A] text-[9.5px] font-bold">
+                                                  <span key={attrK} className="px-1.5 py-0.2 rounded bg-white border border-pink-100 text-[#C2477A] text-[9.5px] font-bold">
                                                     {attrK}: <strong className="text-gray-800 font-bold">{attrV}</strong>
                                                   </span>
                                                 ))}
@@ -7781,7 +7781,7 @@ const AdminDashboard = () => {
                                           <button
                                             type="button"
                                             onClick={() => handleOpenShadePricing(shade, editingProductData, 'edit')}
-                                            className="px-2.5 py-1 rounded-lg bg-[#FFF5F8] hover:bg-[#C2477A] text-[#C2477A] hover:text-white font-bold text-[10.5px] border border-[#FCE4EC] transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white font-bold text-[10.5px] border border-[#FCE4EC] transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                                             title="Configure role pricing & quantity discount tiers for this variant"
                                           >
                                             <BadgePercent size={11} />
@@ -7820,7 +7820,7 @@ const AdminDashboard = () => {
                                       {editProductActiveAttributes.map(attr => (
                                         <span
                                           key={attr}
-                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FFF5F8] text-[#C2477A] border border-[#FCE4EC] font-bold text-[10.5px]"
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-[#C2477A] border border-[#FCE4EC] font-bold text-[10.5px]"
                                         >
                                           <span>{attr}</span>
                                           <button
@@ -8103,7 +8103,7 @@ const AdminDashboard = () => {
                   </div>
 
                   {/* Product Card with Thumbnail Image & Name */}
-                  <div className="p-3.5 rounded-2xl bg-[#FFF8FA] border border-pink-100/80 flex items-center gap-3.5 mb-4">
+                  <div className="p-3.5 rounded-2xl bg-white border border-pink-100/80 flex items-center gap-3.5 mb-4">
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border border-pink-200 shrink-0 shadow-2xs">
                       <img
                         src={targetImage}

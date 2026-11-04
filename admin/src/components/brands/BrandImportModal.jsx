@@ -177,9 +177,9 @@ export default function BrandImportModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-pink-50/70 via-white to-pink-50/40 shrink-0">
+        <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-white via-white to-white shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
               <FileSpreadsheet size={22} />
             </div>
             <div>
@@ -204,7 +204,7 @@ export default function BrandImportModal({
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 custom-scrollbar text-xs">
           {/* Action Bar with Download Template */}
-          <div className="p-4 rounded-2xl bg-[#FFF8FA] border border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-4 rounded-2xl bg-white border border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-2.5">
               <Info size={16} className="text-[#C2477A] shrink-0 mt-0.5" />
               <div>
@@ -300,7 +300,7 @@ export default function BrandImportModal({
               }}
               className={`p-10 rounded-3xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                 isDragging
-                  ? 'border-[#C2477A] bg-pink-50/70 scale-[1.01]'
+                  ? 'border-[#C2477A] bg-white scale-[1.01]'
                   : 'border-pink-200 hover:border-[#C2477A] bg-[#FFFDFE]'
               }`}
               onClick={() => fileInputRef.current?.click()}
@@ -316,7 +316,7 @@ export default function BrandImportModal({
                   }
                 }}
               />
-              <div className="w-14 h-14 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center mb-3 shadow-2xs">
+              <div className="w-14 h-14 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center mb-3 shadow-2xs">
                 {isValidating ? <Loader2 size={26} className="animate-spin text-[#C2477A]" /> : <Upload size={26} />}
               </div>
               <h4 className="font-extrabold text-sm text-gray-900 mb-1">
@@ -460,7 +460,7 @@ export default function BrandImportModal({
                           <td className="py-2 px-3 text-gray-500 font-mono font-medium">#{r.rowNumber}</td>
                           <td className="py-2 px-3 font-bold text-gray-900">{r.brandName || <span className="text-rose-500 italic">Missing</span>}</td>
                           <td className="py-2 px-3">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-50 text-[#C2477A] border border-pink-200">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#C2477A] border border-pink-200">
                               {r.category || (Array.isArray(r.categories) && r.categories[0]) || <span className="text-rose-500 italic">Missing</span>}
                             </span>
                           </td>
@@ -499,7 +499,7 @@ export default function BrandImportModal({
                     onClick={() => setImportMode('add_new')}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                       importMode === 'add_new'
-                        ? 'border-[#C2477A] bg-pink-50/60 ring-2 ring-[#C2477A]/20'
+                        ? 'border-[#C2477A] bg-white ring-2 ring-[#C2477A]/20'
                         : 'border-gray-200 hover:border-pink-200'
                     }`}
                   >
@@ -522,7 +522,7 @@ export default function BrandImportModal({
                     onClick={() => setImportMode('update_existing')}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                       importMode === 'update_existing'
-                        ? 'border-[#C2477A] bg-pink-50/60 ring-2 ring-[#C2477A]/20'
+                        ? 'border-[#C2477A] bg-white ring-2 ring-[#C2477A]/20'
                         : 'border-gray-200 hover:border-pink-200'
                     }`}
                   >

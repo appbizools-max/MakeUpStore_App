@@ -39,7 +39,7 @@ const getBadgeStyles = (variant = 'neutral') => {
     case 'amber':
       return 'bg-amber-50 text-amber-700 border border-amber-200/90 font-bold';
     case 'brand':
-      return 'bg-[#FFF0F4] text-[#C2477A] border border-[#FCD8E3] font-bold';
+      return 'bg-white text-[#C2477A] border border-[#FCD8E3] font-bold';
     case 'emerald':
       return 'bg-emerald-50 text-emerald-700 border border-emerald-200/90 font-bold';
     case 'purple':
@@ -526,7 +526,7 @@ export const AdminSidebar = ({
                           onMouseEnter={(e) => handleTooltipEnter(e, item.label, tooltipBadge)}
                           onMouseLeave={handleTooltipLeave}
                           className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isActive
-                              ? 'bg-[#FFF0F4] text-[#C2477A] shadow-2xs ring-1 ring-[#C2477A]/30 font-bold'
+                              ? 'bg-white text-[#C2477A] shadow-2xs ring-1 ring-[#C2477A]/30 font-bold'
                               : 'text-slate-500 hover:bg-[#FFF5F8] hover:text-[#C2477A]'
                             }`}
                           aria-label={item.label}
@@ -561,7 +561,7 @@ export const AdminSidebar = ({
                           }}
                           aria-expanded={hasSubItems ? isSubOpen : undefined}
                           className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isActive
-                              ? 'bg-[#FFF0F4] text-[#C2477A] font-semibold shadow-2xs relative before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-1 before:bg-[#C2477A] before:rounded-r-full'
+                              ? 'bg-white text-[#C2477A] font-semibold shadow-2xs relative before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-1 before:bg-[#C2477A] before:rounded-r-full'
                               : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
                             }`}
                         >
@@ -597,7 +597,7 @@ export const AdminSidebar = ({
                                   type="button"
                                   onClick={() => navigateToTab(sub.id)}
                                   className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isSubActive
-                                      ? 'bg-[#FFF5F8] text-[#C2477A] font-semibold'
+                                      ? 'bg-white text-[#C2477A] font-semibold'
                                       : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
                                     }`}
                                 >
@@ -749,7 +749,7 @@ export const AdminSidebar = ({
                               setIsMobileDrawerOpen(false);
                             }}
                             className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-colors cursor-pointer ${isActive
-                                ? 'bg-[#FFF0F4] text-[#C2477A] font-semibold'
+                                ? 'bg-white text-[#C2477A] font-semibold'
                                 : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
                               }`}
                           >
@@ -787,7 +787,7 @@ export const AdminSidebar = ({
                                       setIsMobileDrawerOpen(false);
                                     }}
                                     className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${isSubActive
-                                        ? 'bg-[#FFF5F8] text-[#C2477A] font-semibold'
+                                        ? 'bg-white text-[#C2477A] font-semibold'
                                         : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
                                       }`}
                                   >

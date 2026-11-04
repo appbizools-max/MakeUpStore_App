@@ -526,7 +526,7 @@ export const AdminNotificationBell = ({
           <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100 bg-slate-50/50">
             {displayedNotifications.length === 0 ? (
               <div className="py-12 px-6 text-center">
-                <div className="w-14 h-14 rounded-full bg-pink-50 border border-pink-100 text-[#C2477A] flex items-center justify-center mx-auto mb-3 shadow-2xs">
+                <div className="w-14 h-14 rounded-full bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center mx-auto mb-3 shadow-2xs">
                   <Sparkles size={24} />
                 </div>
                 <h4 className="text-sm font-black text-slate-800">No Notifications</h4>
@@ -547,7 +547,7 @@ export const AdminNotificationBell = ({
                     key={item.id}
                     onClick={() => handleNotificationClick(item)}
                     className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer group hover:bg-white relative ${
-                      isRead ? 'bg-white/60 opacity-80' : 'bg-[#FFF9FB]'
+                      isRead ? 'bg-white/60 opacity-80' : 'bg-white'
                     }`}
                   >
                     {/* Category Icon */}
@@ -621,7 +621,7 @@ export const AdminNotificationBell = ({
           }}
           className="fixed top-5 right-5 z-[9999] max-w-sm w-full bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-2xl border-2 border-[#C2477A] animate-in slide-in-from-top-4 duration-200 cursor-pointer flex items-start gap-3 text-slate-900 group hover:bg-white"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#FFF5F8] border border-pink-200 text-[#C2477A] flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-white border border-pink-200 text-[#C2477A] flex items-center justify-center shrink-0 shadow-2xs">
             <BellRing size={20} className="animate-bounce" />
           </div>
 

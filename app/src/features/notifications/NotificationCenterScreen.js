@@ -147,7 +147,7 @@ export const NotificationCenterScreen = () => {
           <TouchableOpacity
             onPress={() => setCurrentScreen('home')}
             activeOpacity={0.7}
-            className="w-9 h-9 rounded-full bg-[#FFF5F8] border border-[#FCE4EC] items-center justify-center"
+            className="w-9 h-9 rounded-full bg-white border border-[#FCE4EC] items-center justify-center"
           >
             <Ionicons name="chevron-back" size={20} color="#C2477A" />
           </TouchableOpacity>
@@ -165,7 +165,7 @@ export const NotificationCenterScreen = () => {
           <TouchableOpacity
             onPress={markAllNotificationsAsRead}
             activeOpacity={0.7}
-            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFF5F8] border border-[#FCE4EC]"
+            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#FCE4EC]"
           >
             <Ionicons name="checkmark-done" size={15} color="#C2477A" />
             <Text className="text-[11px] font-extrabold text-[#C2477A]">
@@ -220,7 +220,7 @@ export const NotificationCenterScreen = () => {
         }}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center p-8 mt-12">
-            <View className="w-20 h-20 rounded-full bg-[#FFF5F8] items-center justify-center mb-4 border border-[#FCE4EC]">
+            <View className="w-20 h-20 rounded-full bg-white items-center justify-center mb-4 border border-[#FCE4EC]">
               <Ionicons name="notifications-off-outline" size={38} color="#C2477A" />
             </View>
             <Text className="text-base font-black text-slate-800 mb-1">
@@ -242,7 +242,7 @@ export const NotificationCenterScreen = () => {
               onPress={() => handleNotificationClick(item)}
               activeOpacity={0.75}
               className={`px-4 py-3.5 border-b border-slate-100 flex-row items-start gap-3 ${
-                isUnread ? 'bg-[#FFF9FB]' : 'bg-white'
+                isUnread ? 'bg-white' : 'bg-white'
               }`}
             >
               {/* Type Icon */}

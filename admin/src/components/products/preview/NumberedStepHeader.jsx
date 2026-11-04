@@ -6,7 +6,7 @@ import React from 'react';
  */
 const NumberedStepHeader = ({ stepNumber, title, description }) => {
   return (
-    <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 px-6 py-4 border-b border-pink-300">
+    <div className="bg-gradient-to-r from-white0 via-rose-500 to-pink-600 px-6 py-4 border-b border-pink-300">
       <div className="flex items-center gap-4">
         {/* Numbered Circle Badge */}
         <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center border-2 border-white">

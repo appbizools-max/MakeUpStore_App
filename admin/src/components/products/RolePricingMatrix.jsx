@@ -35,7 +35,7 @@ export const PRICING_ROLES = [
     colorText: 'text-[#C2477A]',
     accentColor: '#C2477A',
     ringColor: 'focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20',
-    badgeBg: 'bg-[#FFF2F5] text-[#C2477A] border border-pink-200',
+    badgeBg: 'bg-white text-[#C2477A] border border-pink-200',
     rowBg: 'hover:bg-rose-50/20'
   },
   {
@@ -48,7 +48,7 @@ export const PRICING_ROLES = [
     colorText: 'text-black',
     accentColor: '#7C3AED',
     ringColor: 'focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20',
-    badgeBg: 'bg-[#FFF5F8] text-black border border-[#FCE4EC]',
+    badgeBg: 'bg-white text-black border border-[#FCE4EC]',
     rowBg: 'hover:bg-[#FFF5F8]/20'
   },
   {
@@ -180,9 +180,9 @@ export default function RolePricingMatrix({
   return (
     <div className="rounded-2xl sm:rounded-3xl border border-pink-100/90 bg-white shadow-xs overflow-hidden transition-all">
       {/* Table Header / Banner */}
-      <div className="px-5 py-3.5 bg-gradient-to-r from-[#FFF5F7] via-white to-[#FFF5F8] border-b border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="px-5 py-3.5 bg-gradient-to-r from-[#FFF5F7] via-white to-white border-b border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="w-7 h-7 rounded-xl bg-[#FFF2F5] text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+          <span className="w-7 h-7 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
             <Sparkles size={15} />
           </span>
           <div>
@@ -236,7 +236,7 @@ export default function RolePricingMatrix({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="bg-[#FFF5F8]/70 border-b border-pink-100/90 text-gray-700">
+            <tr className="bg-white border-b border-pink-100/90 text-gray-700">
               <th className="py-3 px-4 sm:px-5 font-extrabold text-[11px] uppercase tracking-wider text-[#C2477A] w-2/5">
                 User Type
               </th>

@@ -91,7 +91,7 @@ export default function InlineImageSection({
   };
 
   return (
-    <div className="bg-[#FFF9FB] p-3 rounded-2xl border border-pink-100/90 space-y-2.5 shadow-2xs">
+    <div className="bg-white p-3 rounded-2xl border border-pink-100/90 space-y-2.5 shadow-2xs">
       {/* Hidden File Input */}
       <input
         ref={fileInputRef}
@@ -123,7 +123,7 @@ export default function InlineImageSection({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="px-2.5 py-1 bg-pink-50 hover:bg-pink-100 text-[#C2477A] border border-pink-200 rounded-lg text-[10.5px] font-extrabold flex items-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+            className="px-2.5 py-1 bg-white hover:bg-pink-100 text-[#C2477A] border border-pink-200 rounded-lg text-[10.5px] font-extrabold flex items-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
             title="Upload local image from computer"
           >
             {isUploading ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />}

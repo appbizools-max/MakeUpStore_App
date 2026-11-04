@@ -1077,7 +1077,7 @@ export const ProfileScreen = () => {
                 className="rounded-3xl p-8 items-center text-center my-6 shadow-xs"
               >
                 <View
-                  style={{ backgroundColor: '#FDF2F8' }}
+                  style={{ backgroundColor: '#FFFFFF' }}
                   className="w-16 h-16 rounded-full items-center justify-center mb-4"
                 >
                   <Ionicons name="location-outline" size={32} color={PALETTE.logoPink} />

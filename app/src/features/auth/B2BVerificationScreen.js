@@ -326,7 +326,7 @@ export const B2BVerificationScreen = () => {
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => setCurrentScreen('home')}
-          className="w-10 h-10 rounded-full bg-[#FFF0F5] items-center justify-center"
+          className="w-10 h-10 rounded-full bg-white items-center justify-center"
         >
           <Ionicons name="arrow-back" size={20} color="#C2477A" />
         </TouchableOpacity>
@@ -436,7 +436,7 @@ export const B2BVerificationScreen = () => {
           <View className="mb-6 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
             <View className="flex-row items-center justify-between mb-3 border-b border-stone-100 pb-2.5">
               <View className="flex-row items-center gap-2">
-                <View className="w-6 h-6 rounded-full bg-[#FFF0F5] items-center justify-center">
+                <View className="w-6 h-6 rounded-full bg-white items-center justify-center">
                   <Ionicons name="checkmark-circle" size={16} color="#C2477A" />
                 </View>
                 <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
@@ -445,7 +445,7 @@ export const B2BVerificationScreen = () => {
               </View>
               <TouchableOpacity
                 onPress={() => setIsEditingBusinessInfo(true)}
-                className="bg-[#FFF0F5] px-2.5 py-1 rounded-full border border-[#F8BBD0] flex-row items-center gap-1 active:opacity-80"
+                className="bg-white px-2.5 py-1 rounded-full border border-[#F8BBD0] flex-row items-center gap-1 active:opacity-80"
               >
                 <Ionicons name="create-outline" size={13} color="#C2477A" />
                 <Text className="text-[11px] font-bold text-[#C2477A]">Edit</Text>
@@ -528,7 +528,7 @@ export const B2BVerificationScreen = () => {
                 <TouchableOpacity
                   key={rKey}
                   onPress={() => setUserRole(rKey)}
-                  className={`px-3 py-1.5 rounded-full border ${effectiveRole === rKey ? 'bg-[#FFF0F5] border-[#C2477A]' : 'bg-stone-50 border-stone-200'}`}
+                  className={`px-3 py-1.5 rounded-full border ${effectiveRole === rKey ? 'bg-white border-[#C2477A]' : 'bg-stone-50 border-stone-200'}`}
                 >
                   <Text className={`text-xs font-bold ${effectiveRole === rKey ? 'text-[#C2477A]' : 'text-stone-600'}`}>
                     {ROLE_SHORT_TITLES[rKey]}
@@ -586,7 +586,7 @@ export const B2BVerificationScreen = () => {
             <TouchableOpacity
               onPress={() => handleUseCurrentLocation('professional')}
               disabled={isLocatingProf}
-              className="bg-[#FFF0F5] border border-[#F8BBD0] px-3 py-1 rounded-full flex-row items-center gap-1.5 active:opacity-80"
+              className="bg-white border border-[#F8BBD0] px-3 py-1 rounded-full flex-row items-center gap-1.5 active:opacity-80"
             >
               {isLocatingProf ? (
                 <ActivityIndicator size="small" color="#C2477A" />
@@ -748,7 +748,7 @@ export const B2BVerificationScreen = () => {
                 <TouchableOpacity
                   onPress={() => handleUseCurrentLocation('business')}
                   disabled={isLocatingBiz}
-                  className="bg-[#FFF0F5] border border-[#F8BBD0] px-3 py-1 rounded-full flex-row items-center gap-1.5"
+                  className="bg-white border border-[#F8BBD0] px-3 py-1 rounded-full flex-row items-center gap-1.5"
                 >
                   {isLocatingBiz ? (
                     <ActivityIndicator size="small" color="#C2477A" />
@@ -860,7 +860,7 @@ export const B2BVerificationScreen = () => {
 
         <TouchableOpacity
           onPress={() => setIsEditingBusinessInfo(false)}
-          className="mb-6 bg-[#FFF0F5] py-3 rounded-xl items-center border border-[#F8BBD0] active:bg-pink-100"
+          className="mb-6 bg-white py-3 rounded-xl items-center border border-[#F8BBD0] active:bg-pink-100"
         >
           <Text className="text-xs font-bold text-[#C2477A]">Save & Collapse Information</Text>
         </TouchableOpacity>
@@ -883,7 +883,7 @@ export const B2BVerificationScreen = () => {
           </View>
 
           {/* Guidance note */}
-          <View className="bg-[#FFF5F8] border border-[#F8BBD0] p-3 rounded-xl mb-4">
+          <View className="bg-white border border-[#F8BBD0] p-3 rounded-xl mb-4">
             <Text className="text-[11px] text-[#8C7078] leading-relaxed font-medium">
               Documents are optional at registration. Our verification team may request additional documents if required.
             </Text>
@@ -941,7 +941,7 @@ export const B2BVerificationScreen = () => {
                             resizeMode="cover"
                           />
                         ) : (
-                          <View className="w-9 h-9 rounded bg-[#FFF0F5] items-center justify-center border border-[#FCE4EC]">
+                          <View className="w-9 h-9 rounded bg-white items-center justify-center border border-[#FCE4EC]">
                             <Ionicons name="document-text" size={18} color="#C2477A" />
                           </View>
                         )}
@@ -962,7 +962,7 @@ export const B2BVerificationScreen = () => {
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => openUploadModal(slot)}
-                          className="px-2 py-1 rounded bg-pink-50"
+                          className="px-2 py-1 rounded bg-white"
                         >
                           <Text className="text-[10.5px] font-bold text-[#C2477A]">Replace</Text>
                         </TouchableOpacity>

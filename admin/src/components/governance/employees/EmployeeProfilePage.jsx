@@ -375,7 +375,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
                       Customer: {order.userName || order.user_name || 'Retail Customer'} • ₹{order.totalAmount || order.total_amount || 0}
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-pink-50 text-[#CE4270] border border-pink-100">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-white text-[#CE4270] border border-pink-100">
                     {order.status}
                   </span>
                 </div>

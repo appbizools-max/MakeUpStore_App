@@ -136,7 +136,7 @@ export default function RoleQuantityTiersManager({
   return (
     <div className="bg-white rounded-2xl sm:rounded-3xl border border-pink-100 shadow-xs overflow-hidden space-y-4">
       {/* Header Bar */}
-      <div className="p-4 sm:p-5 border-b border-pink-100/80 bg-gradient-to-r from-[#FFF2F5] via-pink-50/40 to-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-4 sm:p-5 border-b border-pink-100/80 bg-gradient-to-r from-white via-pink-50/40 to-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-[#CE4270] text-white flex items-center justify-center shadow-2xs shrink-0">

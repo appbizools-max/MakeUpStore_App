@@ -42,7 +42,7 @@ export default function ResponsiveImage({
 
   if (!resolvedUri || hasError) {
     return (
-      <div className={`w-full h-full ${aspectClass} bg-pink-50/40 flex flex-col items-center justify-center text-pink-300 select-none p-2 rounded-inherit ${className}`}>
+      <div className={`w-full h-full ${aspectClass} bg-white flex flex-col items-center justify-center text-pink-300 select-none p-2 rounded-inherit ${className}`}>
         {fallbackIcon || (
           <div className="w-7 h-7 rounded-lg bg-pink-100/60 flex items-center justify-center text-[#C2477A] font-bold text-[10px] uppercase">
             {fallbackText ? fallbackText.slice(0, 2) : 'SB'}
@@ -55,7 +55,7 @@ export default function ResponsiveImage({
   return (
     <div className={`relative w-full h-full overflow-hidden ${aspectClass} ${className}`}>
       {!isLoaded && (
-        <div className="absolute inset-0 bg-pink-50/30 animate-pulse flex items-center justify-center">
+        <div className="absolute inset-0 bg-white animate-pulse flex items-center justify-center">
           <div className="w-4 h-4 rounded-full border-2 border-pink-200 border-t-[#C2477A] animate-spin" />
         </div>
       )}

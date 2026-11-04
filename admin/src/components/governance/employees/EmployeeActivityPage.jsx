@@ -77,7 +77,7 @@ export default function EmployeeActivityPage({ onNavigate }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-pink-100 shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center font-bold shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-xs">
             <Activity size={22} />
           </div>
           <div>
@@ -202,7 +202,7 @@ export default function EmployeeActivityPage({ onNavigate }) {
                         {/* Employee */}
                         <td className="py-3.5 px-5 font-bold text-gray-900">
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-pink-50 text-[#C2477A] flex items-center justify-center font-bold text-[10px]">
+                            <div className="w-7 h-7 rounded-lg bg-white text-[#C2477A] flex items-center justify-center font-bold text-[10px]">
                               {(log.employee_name || 'E').substring(0, 2).toUpperCase()}
                             </div>
                             <span className="truncate">{log.employee_name || log.employee_id}</span>

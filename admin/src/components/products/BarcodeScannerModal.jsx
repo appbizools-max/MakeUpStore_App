@@ -400,7 +400,7 @@ export default function BarcodeScannerModal({
     <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fade-in">
       <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col relative animate-fade-in my-auto">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-pink-100 bg-[#FFF2F5]/60">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-pink-100 bg-white">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-[#CE4270] text-white flex items-center justify-center shadow-xs">
               <Barcode size={22} />
@@ -714,7 +714,7 @@ export default function BarcodeScannerModal({
             className="hidden"
           />
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-2.5 rounded-2xl bg-[#FFF2F5]/50 border border-pink-100 text-[11px]">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-2.5 rounded-2xl bg-white border border-pink-100 text-[11px]">
             <div className="flex items-center gap-1.5 text-gray-600 font-medium">
               <Info size={13} className="text-[#CE4270] shrink-0" />
               <span>Scanning from gallery photo or screenshot?</span>

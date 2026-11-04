@@ -120,9 +120,9 @@ export default function BrandLogoSearchModal({
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[60] flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-fade-in">
         {/* Header */}
-        <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-pink-50/70 via-white to-pink-50/40">
+        <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-white via-white to-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
               <Globe size={20} />
             </div>
             <div>
@@ -210,7 +210,7 @@ export default function BrandLogoSearchModal({
 
           {loading ? (
             <div className="py-16 flex flex-col items-center justify-center text-center">
-              <div className="w-12 h-12 rounded-2xl bg-[#FFF5F8] border border-pink-100 flex items-center justify-center mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-pink-100 flex items-center justify-center mb-3">
                 <Loader2 size={24} className="text-[#C2477A] animate-spin" />
               </div>
               <p className="text-xs font-bold text-gray-800">Retrieving Brand Logo Previews...</p>
@@ -229,7 +229,7 @@ export default function BrandLogoSearchModal({
                     }}
                     className={`relative p-3 rounded-2xl border transition-all cursor-pointer flex flex-col items-center text-center group ${
                       isSelected
-                        ? 'border-[#C2477A] bg-pink-50/50 ring-2 ring-[#C2477A]/30 shadow-md'
+                        ? 'border-[#C2477A] bg-white ring-2 ring-[#C2477A]/30 shadow-md'
                         : 'border-pink-100/80 bg-white hover:border-pink-300 hover:shadow-xs'
                     }`}
                   >

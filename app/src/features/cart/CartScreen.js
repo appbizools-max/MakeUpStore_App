@@ -89,7 +89,7 @@ export const CartScreen = () => {
   if (cart.length === 0) {
     return (
       <View className="flex-1 bg-white p-6 justify-center items-center">
-        <View className="w-16 h-16 rounded-full bg-[#FFF5F8] items-center justify-center border border-[#FCE4EC] mb-4">
+        <View className="w-16 h-16 rounded-full bg-white items-center justify-center border border-[#FCE4EC] mb-4">
           <Ionicons name="bag-handle-outline" size={32} color="#C2477A" />
         </View>
         <Text className="text-lg font-extrabold text-[#3A2430] mb-1">Your Cart is Empty</Text>
@@ -152,7 +152,7 @@ export const CartScreen = () => {
               className="bg-white rounded-3xl border border-[#FCE4EC] p-3 mb-3.5 flex-row items-center gap-3 shadow-2xs"
             >
               {/* Product Image Stage */}
-              <View className="w-20 h-20 rounded-2xl overflow-hidden bg-[#FFF5F8] border border-[#F0E3EA] justify-center items-center p-1.5">
+              <View className="w-20 h-20 rounded-2xl overflow-hidden bg-white border border-[#F0E3EA] justify-center items-center p-1.5">
                 <Image
                   source={getSafeImageSource(item.shade?.image || product.image, '')}
                   style={{ width: '90%', height: '90%' }}
@@ -201,7 +201,7 @@ export const CartScreen = () => {
                   </View>
 
                   {/* Non-Overlapping Stepper Pill */}
-                  <View className="flex-row items-center border border-[#F5A8C0] rounded-full px-2 py-1 bg-[#FFF5F8] gap-1 shadow-2xs">
+                  <View className="flex-row items-center border border-[#F5A8C0] rounded-full px-2 py-1 bg-white gap-1 shadow-2xs">
                     <TouchableOpacity
                       onPress={() => updateCartQuantity(cartItemId, quantity - 1)}
                       className="w-6 h-6 rounded-full bg-white items-center justify-center border border-[#FCE4EC]"
@@ -231,7 +231,7 @@ export const CartScreen = () => {
           <View className="bg-white rounded-3xl border border-[#FCE4EC] py-4 mb-4 shadow-2xs">
             <View className="px-4 flex-row items-center justify-between mb-3">
               <View className="flex-row items-center gap-1.5">
-                <View className="w-6 h-6 rounded-lg bg-[#FFF0F5] items-center justify-center border border-[#FCE4EC]">
+                <View className="w-6 h-6 rounded-lg bg-white items-center justify-center border border-[#FCE4EC]">
                   <Ionicons name="sparkles" size={13} color="#C2477A" />
                 </View>
                 <View>
@@ -243,7 +243,7 @@ export const CartScreen = () => {
                   </Text>
                 </View>
               </View>
-              <View className="bg-[#FFF0F5] px-2 py-0.5 rounded-full border border-[#FCE4EC]">
+              <View className="bg-white px-2 py-0.5 rounded-full border border-[#FCE4EC]">
                 <Text className="text-[10px] font-bold text-[#C2477A]">{cartAddOns.length}</Text>
               </View>
             </View>
@@ -270,7 +270,7 @@ export const CartScreen = () => {
                         setSelectedProduct(p);
                         setCurrentScreen('product');
                       }}
-                      className="relative w-full h-24 rounded-xl overflow-hidden mb-1.5 bg-[#FFF5F8] border border-[#F0E3EA] items-center justify-center p-1.5"
+                      className="relative w-full h-24 rounded-xl overflow-hidden mb-1.5 bg-white border border-[#F0E3EA] items-center justify-center p-1.5"
                     >
                       <Image
                         source={getSafeImageSource(subItems[0]?.image || p.image, '')}
@@ -364,7 +364,7 @@ export const CartScreen = () => {
 
             {/* Savings Banner Pill */}
             {totalSavings > 0 && (
-              <View className="bg-[#FFF5F8] border border-[#FCE4EC] p-2.5 rounded-2xl items-center justify-center mt-3">
+              <View className="bg-white border border-[#FCE4EC] p-2.5 rounded-2xl items-center justify-center mt-3">
                 <Text className="text-xs font-extrabold text-[#C2477A]">
                   🎉 You are saving ₹{totalSavings} on this order!
                 </Text>
@@ -419,7 +419,7 @@ export const CartScreen = () => {
               {/* Modal Header */}
               <View className="flex-row items-center justify-between pb-3 border-b border-[#FCE4EC]">
                 <View className="flex-row items-center gap-2">
-                  <View className="w-8 h-8 rounded-full bg-[#FFF0F5] items-center justify-center border border-[#FCE4EC]">
+                  <View className="w-8 h-8 rounded-full bg-white items-center justify-center border border-[#FCE4EC]">
                     <Ionicons name="sparkles" size={15} color="#C2477A" />
                   </View>
                   <View>
@@ -439,7 +439,7 @@ export const CartScreen = () => {
 
               {/* Selected Shade Preview */}
               {selectedQuickShade && (
-                <View className="flex-row items-center gap-3 bg-[#FFF5F8] p-3 rounded-2xl border border-[#F0E3EA] my-3">
+                <View className="flex-row items-center gap-3 bg-white p-3 rounded-2xl border border-[#F0E3EA] my-3">
                   <View className="w-12 h-12 rounded-xl bg-white border border-[#F0E3EA] overflow-hidden items-center justify-center p-1">
                     <Image
                       source={getSafeImageSource(selectedQuickShade.image || quickShadeModalItem.image, '')}
@@ -480,10 +480,10 @@ export const CartScreen = () => {
                       activeOpacity={0.85}
                       onPress={() => setSelectedQuickShade(shade)}
                       className={`mr-2.5 p-2 rounded-2xl border items-center w-24 ${
-                        isSel ? 'bg-[#FFF0F5] border-[#C2477A]' : 'bg-white border-[#FCE4EC]'
+                        isSel ? 'bg-white border-[#C2477A]' : 'bg-white border-[#FCE4EC]'
                       }`}
                     >
-                      <View className="relative w-16 h-16 rounded-xl overflow-hidden mb-1 bg-[#FFF5F8] border border-[#F0E3EA] items-center justify-center p-1">
+                      <View className="relative w-16 h-16 rounded-xl overflow-hidden mb-1 bg-white border border-[#F0E3EA] items-center justify-center p-1">
                         <Image
                           source={getSafeImageSource(shade.image || quickShadeModalItem.image, '')}
                           style={{ width: '90%', height: '90%' }}

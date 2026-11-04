@@ -221,7 +221,7 @@ export default function ProductFormRightPanel({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-pink-100/70">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-[#FFF2F5] text-[#C2477A] flex items-center justify-center font-bold">
+            <div className="w-7 h-7 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold">
               <Eye size={15} />
             </div>
             <h3 className="font-extrabold text-xs uppercase tracking-wider text-gray-900">
@@ -259,7 +259,7 @@ export default function ProductFormRightPanel({
             </div>
             <div className="flex flex-wrap items-center gap-1 text-[10px]">
               {formData.brandName ? (
-                <span className="font-bold text-[#C2477A] bg-pink-50 px-1.5 py-0.5 rounded">
+                <span className="font-bold text-[#C2477A] bg-white px-1.5 py-0.5 rounded">
                   {formData.brandName}
                 </span>
               ) : (
@@ -362,7 +362,7 @@ export default function ProductFormRightPanel({
 
               <div className="py-1.5 flex justify-between items-center">
                 <span className="text-gray-500">Variants Configured:</span>
-                <span className="font-bold text-black bg-[#FFF5F8] px-2 py-0.5 rounded-full text-[10.5px]">
+                <span className="font-bold text-black bg-white px-2 py-0.5 rounded-full text-[10.5px]">
                   {shadesList.length} {shadesList.length === 1 ? 'variant' : 'variants'}
                 </span>
               </div>
@@ -382,7 +382,7 @@ export default function ProductFormRightPanel({
                 <div key={r.id} className="p-2.5 rounded-xl bg-gray-50 border border-gray-200/80 space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-gray-800">{r.shortName}</span>
-                    <span className="text-[10px] font-bold text-[#C2477A] bg-pink-50 px-1 rounded">
+                    <span className="text-[10px] font-bold text-[#C2477A] bg-white px-1 rounded">
                       {r.discountPct}% OFF
                     </span>
                   </div>
@@ -496,7 +496,7 @@ export default function ProductFormRightPanel({
                     </span>
                   ))}
                   {benefits.map((b, i) => (
-                    <span key={i} className="px-2 py-0.5 rounded-md bg-[#FFF5F8] text-black text-[10.5px] font-bold border border-[#FCE4EC]">
+                    <span key={i} className="px-2 py-0.5 rounded-md bg-white text-black text-[10.5px] font-bold border border-[#FCE4EC]">
                       ✓ {b}
                     </span>
                   ))}
@@ -531,12 +531,12 @@ export default function ProductFormRightPanel({
                 </div>
                 <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar">
                   {searchKeywords.map((kw, i) => (
-                    <span key={i} className="px-1.5 py-0.5 rounded bg-[#FFF5F8] text-black text-[10px] font-medium border border-[#FCE4EC]/60 font-mono">
+                    <span key={i} className="px-1.5 py-0.5 rounded bg-white text-black text-[10px] font-medium border border-[#FCE4EC]/60 font-mono">
                       {kw}
                     </span>
                   ))}
                   {searchAliases.map((al, i) => (
-                    <span key={i} className="px-1.5 py-0.5 rounded bg-[#FFF5F8] text-black text-[10px] font-medium border border-[#FCE4EC]/60 font-mono">
+                    <span key={i} className="px-1.5 py-0.5 rounded bg-white text-black text-[10px] font-medium border border-[#FCE4EC]/60 font-mono">
                       ~{al}
                     </span>
                   ))}
@@ -553,14 +553,14 @@ export default function ProductFormRightPanel({
       <div className="bg-white rounded-2xl sm:rounded-3xl border border-pink-100 p-5 shadow-2xs space-y-3.5">
         <div className="flex items-center justify-between pb-2 border-b border-pink-100/70">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-[#FFF5F8] text-black flex items-center justify-center font-bold">
+            <div className="w-7 h-7 rounded-xl bg-white text-black flex items-center justify-center font-bold">
               <Calculator size={15} />
             </div>
             <h3 className="font-extrabold text-xs uppercase tracking-wider text-gray-900">
               Price Preview
             </h3>
           </div>
-          <span className="text-[10px] font-bold text-black bg-[#FFF5F8] px-2 py-0.5 rounded-full border border-[#FCE4EC]">
+          <span className="text-[10px] font-bold text-black bg-white px-2 py-0.5 rounded-full border border-[#FCE4EC]">
             Live Calculation
           </span>
         </div>
@@ -641,7 +641,7 @@ export default function ProductFormRightPanel({
           </div>
 
           {applicableTier && (
-            <div className="text-[10.5px] text-black bg-[#FFF5F8] p-1.5 rounded-lg border border-[#FCE4EC]/80 font-medium">
+            <div className="text-[10.5px] text-black bg-white p-1.5 rounded-lg border border-[#FCE4EC]/80 font-medium">
               Applied tier: ≥ {applicableTier.minQty} units (+{applicableTier.additionalDiscount}% discount)
             </div>
           )}

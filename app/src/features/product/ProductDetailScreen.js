@@ -478,7 +478,7 @@ export const ProductDetailScreen = () => {
                     className="w-32 mr-3 bg-white rounded-2xl p-2.5 items-center justify-between shadow-2xs"
                   >
                     {/* Optional Promotional Badge */}
-                    <View className="bg-pink-50 px-2 py-0.5 rounded-full mb-1">
+                    <View className="bg-white px-2 py-0.5 rounded-full mb-1">
                       <Text className="text-[9px] font-bold text-[#C2477A]">
                         {promoBadge}
                       </Text>
@@ -526,7 +526,7 @@ export const ProductDetailScreen = () => {
                     <View
                       key={tier.id || tIdx}
                       className={`p-2 rounded-xl border items-center min-w-[70px] ${
-                        isActive ? 'bg-[#FFF0F5] border-[#C2477A]' : 'bg-white border-slate-200'
+                        isActive ? 'bg-white border-[#C2477A]' : 'bg-white border-slate-200'
                       }`}
                     >
                       <Text className="text-[10px] font-bold text-gray-800">{tier.minQty}+ units</Text>

@@ -29,7 +29,7 @@ export const DISCOUNT_ROLES = [
     shortName: 'Salon',
     basePriceLabel: 'Salon Base Price',
     color: '#CE4270',
-    badgeBg: 'bg-pink-50',
+    badgeBg: 'bg-white',
     badgeText: 'text-[#CE4270]',
     badgeBorder: 'border-pink-200',
     tabActive: 'bg-[#CE4270] text-white shadow-xs',

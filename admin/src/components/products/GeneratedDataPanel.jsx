@@ -10,7 +10,7 @@ import { generateAllRichData } from '../../utils/productRichDataEngine';
 
 function TagList({ items, onRemove, colour = 'pink', mono = false }) {
   const base = {
-    pink:   'bg-pink-50 text-[#C2477A] border-pink-200',
+    pink:   'bg-white text-[#C2477A] border-pink-200',
     indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
     emerald:'bg-emerald-50 text-emerald-700 border-emerald-200',
     amber:  'bg-amber-50 text-amber-700 border-amber-200',
@@ -81,7 +81,7 @@ function AddTagInput({ placeholder, onAdd, colour = 'pink' }) {
 function Section({ title, icon: Icon, colour = 'pink', badge, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   const ringColour = { pink: 'border-pink-100', indigo: 'border-indigo-100', emerald: 'border-emerald-100', amber: 'border-amber-100', purple: 'border-purple-100' }[colour] || 'border-gray-100';
-  const iconBg = { pink: 'bg-pink-50 text-[#C2477A]', indigo: 'bg-indigo-50 text-indigo-600', emerald: 'bg-emerald-50 text-emerald-600', amber: 'bg-amber-50 text-amber-600', purple: 'bg-purple-50 text-purple-600' }[colour] || 'bg-gray-100 text-gray-600';
+  const iconBg = { pink: 'bg-white text-[#C2477A]', indigo: 'bg-indigo-50 text-indigo-600', emerald: 'bg-emerald-50 text-emerald-600', amber: 'bg-amber-50 text-amber-600', purple: 'bg-purple-50 text-purple-600' }[colour] || 'bg-gray-100 text-gray-600';
 
   return (
     <div className={`rounded-2xl border ${ringColour} overflow-hidden`}>
@@ -412,7 +412,7 @@ export default function GeneratedDataPanel({ product, onSave, onClose }) {
               {data.highlights.length === 0
                 ? <p className="text-xs text-gray-400 italic py-1">None yet.</p>
                 : data.highlights.map((hl, i) => (
-                    <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-xl bg-pink-50 border border-pink-200 group">
+                    <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-xl bg-white border border-pink-200 group">
                       <span className="text-[#C2477A] font-extrabold mt-0.5 shrink-0">•</span>
                       <span className="flex-1 text-xs text-gray-700 leading-relaxed">{hl}</span>
                       <button

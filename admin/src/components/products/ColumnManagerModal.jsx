@@ -10,7 +10,7 @@ const GROUP_STYLES = {
   },
   'Variant Details': {
     badgeBg: 'bg-pink-100 text-pink-700 border-pink-200',
-    headerBg: 'bg-pink-50/70 border-pink-100 text-pink-950',
+    headerBg: 'bg-white border-pink-100 text-pink-950',
     accent: 'text-pink-600',
     title: 'Group 2: Variant Details & Swatches (Cols 11-16)'
   },

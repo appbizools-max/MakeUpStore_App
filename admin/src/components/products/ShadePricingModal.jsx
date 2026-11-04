@@ -196,7 +196,7 @@ export default function ShadePricingModal({
     >
       <div className="bg-white rounded-2xl sm:rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-3xl max-h-[94vh] flex flex-col relative overflow-hidden animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-pink-100/80 bg-gradient-to-r from-violet-50/80 via-white to-pink-50/60 backdrop-blur-xs shrink-0">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-pink-100/80 bg-gradient-to-r from-violet-50/80 via-white to-white backdrop-blur-xs shrink-0">
           <div className="flex items-center gap-3">
             {/* Dynamic Icon: Palette for color shade, Package/Layers for other attributes */}
             {isColorVariant ? (
@@ -207,7 +207,7 @@ export default function ShadePricingModal({
                 <Palette size={18} className="text-white drop-shadow" />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-2xl bg-[#FFF5F8] text-[#C2477A] border border-pink-200 shadow-xs flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-white text-[#C2477A] border border-pink-200 shadow-xs flex items-center justify-center shrink-0">
                 <Package size={18} />
               </div>
             )}
@@ -216,7 +216,7 @@ export default function ShadePricingModal({
                 <h3 className="font-extrabold text-base text-gray-900 tracking-wide uppercase">
                   {shadeData.name || 'Unnamed Variant'} — Pricing & Tiers
                 </h3>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#FDF2F8] text-black border border-[#FCE4EC]">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white text-black border border-[#FCE4EC]">
                   Independent Variant
                 </span>
               </div>
@@ -245,7 +245,7 @@ export default function ShadePricingModal({
               <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-pink-100/60">
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Configured Attributes:</span>
                 {Object.entries(shadeData.attributes).map(([attrK, attrV]) => (
-                  <span key={attrK} className="px-2 py-0.5 rounded-lg bg-[#FFF5F8] border border-[#FCE4EC] text-[#C2477A] text-[10.5px] font-bold">
+                  <span key={attrK} className="px-2 py-0.5 rounded-lg bg-white border border-[#FCE4EC] text-[#C2477A] text-[10.5px] font-bold">
                     {attrK}: <strong className="text-gray-900">{attrV}</strong>
                   </span>
                 ))}

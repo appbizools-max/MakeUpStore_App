@@ -130,7 +130,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
     switch (m) {
       case 'products':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-pink-50 text-[#C2477A] border border-pink-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white text-[#C2477A] border border-pink-200">
             <Package size={11} /> Products
           </span>
         );
@@ -218,7 +218,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
             <h1 className="text-xl font-bold text-black tracking-tight">
               Employee Operations & Approval Center
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FFF5F8] text-[#C2477A] border border-[#F8B4CB]">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-[#C2477A] border border-[#F8B4CB]">
               Production Gatekeeper
             </span>
           </div>
@@ -245,7 +245,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
         <div
           onClick={() => setFilterStatus('pending')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            filterStatus === 'pending' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-[#FFF5F8]/20' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            filterStatus === 'pending' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -261,7 +261,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
         <div
           onClick={() => setFilterStatus('approved')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            filterStatus === 'approved' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-[#FFF5F8]/20' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            filterStatus === 'approved' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -277,7 +277,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
         <div
           onClick={() => setFilterStatus('rejected')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            filterStatus === 'rejected' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-[#FFF5F8]/20' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            filterStatus === 'rejected' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -293,12 +293,12 @@ export default function ApprovalCenterPage({ onNavigate }) {
         <div
           onClick={() => setFilterStatus('all')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            filterStatus === 'all' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-[#FFF5F8]/20' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            filterStatus === 'all' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-black uppercase tracking-wider">Total Operations</span>
-            <div className="w-7 h-7 rounded-lg bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-white text-[#C2477A] flex items-center justify-center">
               <FileText size={14} />
             </div>
           </div>
@@ -363,7 +363,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
                 <span>{tab.label}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                    isActive ? 'bg-white/25 text-white' : 'bg-[#FFF5F8] text-[#C2477A]'
+                    isActive ? 'bg-white/25 text-white' : 'bg-white text-[#C2477A]'
                   }`}
                 >
                   {tab.count}
@@ -378,7 +378,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
       <div className="bg-white border border-[#FCE4EC] rounded-2xl shadow-sm overflow-hidden">
         {filteredOperations.length === 0 ? (
           <div className="py-20 text-center flex flex-col items-center justify-center p-6">
-            <div className="w-16 h-16 rounded-full bg-[#FFF5F8] border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] mb-3">
+            <div className="w-16 h-16 rounded-full bg-white border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] mb-3">
               <ShieldCheck size={28} />
             </div>
             <h3 className="text-base font-bold text-black mb-1">
@@ -403,7 +403,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     {/* Operation Info */}
                     <div className="flex items-start gap-3 flex-1">
-                      <div className="w-9 h-9 rounded-xl bg-[#FFF5F8] border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] shrink-0 font-bold">
+                      <div className="w-9 h-9 rounded-xl bg-white border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] shrink-0 font-bold">
                         <User size={16} />
                       </div>
                       <div className="space-y-1">

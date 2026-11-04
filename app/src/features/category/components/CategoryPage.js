@@ -100,7 +100,7 @@ export const CategoryPage = ({
           ))
         ) : (
           <View className="items-center justify-center py-12 px-6">
-            <View className="w-14 h-14 rounded-full bg-[#FFF5F8] items-center justify-center mb-2 border border-[#F0E3EA]">
+            <View className="w-14 h-14 rounded-full bg-white items-center justify-center mb-2 border border-[#F0E3EA]">
               <Ionicons name="sparkles-outline" size={24} color="#B64F7D" />
             </View>
             <Text style={{ color: '#33252F' }} className="text-sm font-bold mb-1">No Subcategories Found</Text>

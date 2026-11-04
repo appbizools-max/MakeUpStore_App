@@ -407,7 +407,7 @@ export default function BannerManagementPage({
       <div className="bg-white p-6 sm:p-7 rounded-3xl border border-pink-100/80 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#C2477A] bg-[#FFF5F8] px-2.5 py-0.5 rounded-full border border-pink-100">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#C2477A] bg-white px-2.5 py-0.5 rounded-full border border-pink-100">
               Marketing & Visual Merchandising
             </span>
           </div>
@@ -472,7 +472,7 @@ export default function BannerManagementPage({
                 >
                   <span>{t.label.replace(' Banner', '')}</span>
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                    typeFilter === t.id ? 'bg-[#FFF5F8] text-[#C2477A]' : 'bg-gray-200/70 text-gray-600'
+                    typeFilter === t.id ? 'bg-white text-[#C2477A]' : 'bg-gray-200/70 text-gray-600'
                   }`}>
                     {count}
                   </span>
@@ -486,7 +486,7 @@ export default function BannerManagementPage({
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3.5 py-2 rounded-xl border border-pink-100 bg-[#FFF5F8]/40 text-xs font-bold text-gray-700 outline-none cursor-pointer"
+              className="px-3.5 py-2 rounded-xl border border-pink-100 bg-white text-xs font-bold text-gray-700 outline-none cursor-pointer"
             >
               <option value="all">All Statuses</option>
               <option value="active">Active Only</option>
@@ -496,7 +496,7 @@ export default function BannerManagementPage({
         </div>
 
         {/* Search Input */}
-        <div className="flex items-center gap-2.5 bg-[#FFF5F8] px-3.5 py-2.5 rounded-xl border border-pink-100">
+        <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100">
           <Search size={16} className="text-[#C2477A] shrink-0" />
           <input
             type="text"
@@ -521,7 +521,7 @@ export default function BannerManagementPage({
         </div>
       ) : filteredBanners.length === 0 ? (
         <div className="bg-white rounded-3xl p-16 border border-pink-100 text-center space-y-4">
-          <div className="w-16 h-16 rounded-3xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center mx-auto border border-pink-100">
+          <div className="w-16 h-16 rounded-3xl bg-white text-[#C2477A] flex items-center justify-center mx-auto border border-pink-100">
             <ImageIcon size={32} />
           </div>
           <div>
@@ -620,7 +620,7 @@ export default function BannerManagementPage({
                     {/* Routing Assignment Badges */}
                     <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                       {banner.categoryName && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-[#FFF5F8] text-[#C2477A] border border-pink-100">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-white text-[#C2477A] border border-pink-100">
                           <FolderPlus size={11} />
                           <span>{banner.categoryName}</span>
                         </span>
@@ -699,7 +699,7 @@ export default function BannerManagementPage({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Compact Drawer Header */}
-            <div className="p-4 px-5 bg-gradient-to-r from-[#FFF5F8] via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
+            <div className="p-4 px-5 bg-gradient-to-r from-white via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <div className="w-9 h-9 rounded-xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs shrink-0">
                   <ImageIcon size={18} />
@@ -739,7 +739,7 @@ export default function BannerManagementPage({
                       const newType = e.target.value;
                       setDrawerFormData(prev => ({ ...prev, bannerType: newType }));
                     }}
-                    className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-[#FFF5F8]/50 outline-none cursor-pointer focus:border-[#C2477A]"
+                    className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none cursor-pointer focus:border-[#C2477A]"
                   >
                     {BANNER_TYPES.map(t => (
                       <option key={t.id} value={t.id}>
@@ -761,7 +761,7 @@ export default function BannerManagementPage({
                         setDrawerFormData(prev => ({ ...prev, title: e.target.value }));
                         if (formErrors.title) setFormErrors(prev => ({ ...prev, title: null }));
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-[#FFF5F8]/40 outline-none focus:border-[#C2477A]"
+                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none focus:border-[#C2477A]"
                     />
                   </div>
 
@@ -772,7 +772,7 @@ export default function BannerManagementPage({
                       placeholder="e.g. Up to 40% Off"
                       value={drawerFormData.subtitle}
                       onChange={(e) => setDrawerFormData(prev => ({ ...prev, subtitle: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-medium text-gray-800 bg-[#FFF5F8]/40 outline-none focus:border-[#C2477A]"
+                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-medium text-gray-800 bg-white outline-none focus:border-[#C2477A]"
                     />
                   </div>
                 </div>
@@ -781,7 +781,7 @@ export default function BannerManagementPage({
                 {(drawerFormData.bannerType === 'category' ||
                   drawerFormData.bannerType === 'subcategory' ||
                   drawerFormData.bannerType === 'selection') && (
-                  <div className="p-3 rounded-xl bg-pink-50/50 border border-pink-100 space-y-2.5">
+                  <div className="p-3 rounded-xl bg-white border border-pink-100 space-y-2.5">
                     <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#C2477A]">
                       <Layers size={13} />
                       <span>Category Routing Assignment</span>
@@ -854,7 +854,7 @@ export default function BannerManagementPage({
                   </div>
 
                   {drawerFormData.imageUrl ? (
-                    <div className="relative rounded-xl overflow-hidden border border-pink-200 bg-[#FFF5F8] shadow-2xs group">
+                    <div className="relative rounded-xl overflow-hidden border border-pink-200 bg-white shadow-2xs group">
                       <img
                         src={drawerFormData.imageUrl}
                         alt="Banner preview"
@@ -899,7 +899,7 @@ export default function BannerManagementPage({
                         className={`p-3.5 rounded-xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                           isDragging
                             ? 'border-[#C2477A] bg-pink-100/70 scale-[0.99]'
-                            : 'border-pink-200 bg-[#FFF5F8]/40 hover:bg-[#FFF5F8] hover:border-[#C2477A]'
+                            : 'border-pink-200 bg-white hover:bg-[#FFF5F8] hover:border-[#C2477A]'
                         }`}
                       >
                         <input
@@ -987,7 +987,7 @@ export default function BannerManagementPage({
                       placeholder="e.g. Shop Now →"
                       value={drawerFormData.ctaText}
                       onChange={(e) => setDrawerFormData(prev => ({ ...prev, ctaText: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-[#FFF5F8]/40 outline-none focus:border-[#C2477A]"
+                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none focus:border-[#C2477A]"
                     />
                   </div>
 
@@ -998,7 +998,7 @@ export default function BannerManagementPage({
                       min="1"
                       value={drawerFormData.displayOrder}
                       onChange={(e) => setDrawerFormData(prev => ({ ...prev, displayOrder: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-[#FFF5F8]/40 outline-none focus:border-[#C2477A]"
+                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none focus:border-[#C2477A]"
                     />
                   </div>
                 </div>

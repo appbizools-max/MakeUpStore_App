@@ -261,13 +261,13 @@ export default function FulfillmentStatusSelector({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-5 sm:px-6 py-4 border-b border-pink-100/80 bg-gradient-to-r from-pink-50/60 via-white to-pink-50/30 flex items-center justify-between shrink-0">
+            <div className="px-5 sm:px-6 py-4 border-b border-pink-100/80 bg-gradient-to-r from-white via-white to-white flex items-center justify-between shrink-0">
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-extrabold text-sm sm:text-base text-gray-900 tracking-tight">
                     Update Fulfillment Status
                   </h3>
-                  <span className="font-mono text-xs font-bold text-[#CE4270] bg-pink-50 px-2 py-0.5 rounded-md border border-pink-100">
+                  <span className="font-mono text-xs font-bold text-[#CE4270] bg-white px-2 py-0.5 rounded-md border border-pink-100">
                     #{order.id}
                   </span>
                 </div>
@@ -289,7 +289,7 @@ export default function FulfillmentStatusSelector({
             <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
               
               {/* CURRENT STATUS BANNER */}
-              <div className="bg-[#FFF8FA] p-3.5 rounded-2xl border border-pink-100 flex items-center justify-between">
+              <div className="bg-white p-3.5 rounded-2xl border border-pink-100 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold ${currentCfg.badgeClass}`}>
                     <currentCfg.icon size={16} />
@@ -355,7 +355,7 @@ export default function FulfillmentStatusSelector({
                             isSelected
                               ? 'border-violet-500 bg-violet-50/60 shadow-xs'
                               : isCurrentOrderState
-                              ? 'border-[#CE4270]/40 bg-[#FFF5F8]'
+                              ? 'border-[#CE4270]/40 bg-white'
                               : 'border-gray-100 bg-white hover:border-gray-300 hover:bg-gray-50/50'
                           } ${isInvalidTransition ? 'opacity-40 cursor-not-allowed' : ''}`}
                         >
@@ -415,7 +415,7 @@ export default function FulfillmentStatusSelector({
                           isSelected
                             ? 'border-violet-500 bg-violet-50/70 shadow-xs'
                             : isCurrentOrderState
-                            ? 'border-[#CE4270]/40 bg-[#FFF5F8]'
+                            ? 'border-[#CE4270]/40 bg-white'
                             : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
@@ -439,7 +439,7 @@ export default function FulfillmentStatusSelector({
 
               {/* 3. DYNAMIC CONFIRMATION & ACTION AREA */}
               {isChanged && (
-                <div className="p-4 rounded-2xl border bg-gradient-to-br from-gray-50 to-pink-50/30 border-pink-200/80 space-y-3 animate-fade-in">
+                <div className="p-4 rounded-2xl border bg-gradient-to-br from-gray-50 to-white border-pink-200/80 space-y-3 animate-fade-in">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black text-gray-900 uppercase">
                       Confirm Transition:

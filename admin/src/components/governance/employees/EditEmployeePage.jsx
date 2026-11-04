@@ -278,7 +278,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
             <select
               value={formData.designation}
               onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-              className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-[#FFF8FA] cursor-pointer shadow-2xs"
+              className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-white cursor-pointer shadow-2xs"
             >
               <option value="(admin)">1) (admin)</option>
               <option value="manager">2) manager</option>

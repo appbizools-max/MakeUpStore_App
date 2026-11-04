@@ -83,7 +83,7 @@ export const VerificationStatusScreen = () => {
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => setCurrentScreen('home')}
-          className="w-10 h-10 rounded-full bg-[#FFF0F5] items-center justify-center"
+          className="w-10 h-10 rounded-full bg-white items-center justify-center"
         >
           <Ionicons name="arrow-back" size={20} color="#C2477A" />
         </TouchableOpacity>
@@ -304,7 +304,7 @@ export const VerificationStatusScreen = () => {
                       resizeMode="cover"
                     />
                   ) : (
-                    <View className="w-10 h-10 rounded-lg bg-[#FFF0F5] items-center justify-center border border-[#FCE4EC]">
+                    <View className="w-10 h-10 rounded-lg bg-white items-center justify-center border border-[#FCE4EC]">
                       <Ionicons name="document-text" size={20} color="#C2477A" />
                     </View>
                   )}
@@ -325,7 +325,7 @@ export const VerificationStatusScreen = () => {
         )}
 
         {/* CONTACT / SUPPORT OPTION */}
-        <View className="bg-[#FFF5F8] border border-[#FCE4EC] rounded-2xl p-4 mb-6">
+        <View className="bg-white border border-[#FCE4EC] rounded-2xl p-4 mb-6">
           <Text className="text-xs font-black text-[#3A2430] mb-1">
             Need Help With Verification?
           </Text>

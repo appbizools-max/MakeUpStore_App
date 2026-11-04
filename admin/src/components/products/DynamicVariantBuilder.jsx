@@ -553,7 +553,7 @@ export default function DynamicVariantBuilder({
             }}
             className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
               hasVariants
-                ? 'bg-pink-50 text-[#E11D48] border-pink-200'
+                ? 'bg-white text-[#E11D48] border-pink-200'
                 : 'bg-gray-100 text-gray-600 border-gray-200'
             }`}
           >
@@ -808,7 +808,7 @@ export default function DynamicVariantBuilder({
                           type="button"
                           onClick={() => handleAddNewValueToAttribute(attr.id)}
                           disabled={!draft.name?.trim()}
-                          className="px-3.5 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-[#E11D48] border border-pink-200 text-xs font-bold transition-all disabled:opacity-40 cursor-pointer"
+                          className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-pink-100 text-[#E11D48] border border-pink-200 text-xs font-bold transition-all disabled:opacity-40 cursor-pointer"
                         >
                           + Add Value
                         </button>
@@ -819,7 +819,7 @@ export default function DynamicVariantBuilder({
               </div>
 
               {/* 4. COMBINATIONS SUMMARY & GENERATE BUTTON */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-50 via-white to-pink-50 border border-pink-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-white via-white to-white border border-pink-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                 <div>
                   <div className="font-black text-xs text-gray-900">
                     Variant Combinations: {combinationsCount} Unique Product Variant(s)
@@ -1032,7 +1032,7 @@ export default function DynamicVariantBuilder({
                             <button
                               type="button"
                               onClick={() => onOpenScanner && onOpenScanner(idx)}
-                              className="p-2 rounded-xl bg-pink-50 hover:bg-pink-100 text-[#E11D48] border border-pink-200 shrink-0 cursor-pointer"
+                              className="p-2 rounded-xl bg-white hover:bg-pink-100 text-[#E11D48] border border-pink-200 shrink-0 cursor-pointer"
                               title="Scan barcode with camera"
                             >
                               <ScanBarcode size={13} />
@@ -1083,7 +1083,7 @@ export default function DynamicVariantBuilder({
                           <div className="flex items-center justify-between mb-1">
                             <label className="text-gray-700 font-bold text-[11px] truncate">Salon Owner (₹)</label>
                             {Number(roleDiscounts?.salon) > 0 && (
-                              <span className="text-[9px] font-bold text-[#E11D48] bg-pink-50 px-1 rounded">
+                              <span className="text-[9px] font-bold text-[#E11D48] bg-white px-1 rounded">
                                 {roleDiscounts.salon}%
                               </span>
                             )}
@@ -1317,7 +1317,7 @@ export default function DynamicVariantBuilder({
                       onClick={() => handleToggleAttribute(a.name)}
                       className={`w-full text-left p-2 rounded-xl flex items-center justify-between text-xs transition-colors cursor-pointer ${
                         isSelected
-                          ? 'bg-pink-50 border border-pink-200 text-[#E11D48]'
+                          ? 'bg-white border border-pink-200 text-[#E11D48]'
                           : 'hover:bg-gray-50 border border-transparent text-gray-800'
                       }`}
                     >

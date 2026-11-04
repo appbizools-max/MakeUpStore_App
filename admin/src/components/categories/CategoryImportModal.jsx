@@ -241,9 +241,9 @@ export default function CategoryImportModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-pink-50/70 via-white to-pink-50/40">
+        <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-white via-white to-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
               <FileSpreadsheet size={22} />
             </div>
             <div>
@@ -330,7 +330,7 @@ export default function CategoryImportModal({
                   onClick={() => fileInputRef.current?.click()}
                   className={`p-8 rounded-3xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-3 ${
                     isDragging
-                      ? 'border-[#C2477A] bg-pink-50/70 scale-[0.99]'
+                      ? 'border-[#C2477A] bg-white scale-[0.99]'
                       : 'border-pink-200/80 bg-[#FFFDFE] hover:border-[#C2477A] hover:bg-pink-50/30'
                   }`}
                 >
@@ -345,7 +345,7 @@ export default function CategoryImportModal({
                       }
                     }}
                   />
-                  <div className="w-14 h-14 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center shadow-2xs">
+                  <div className="w-14 h-14 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center shadow-2xs">
                     <Upload size={26} />
                   </div>
                   <div>
@@ -371,7 +371,7 @@ export default function CategoryImportModal({
                   </div>
                 </div>
               ) : (
-                <div className="p-4 rounded-2xl bg-pink-50/40 border border-pink-100 flex items-center justify-between gap-3">
+                <div className="p-4 rounded-2xl bg-white border border-pink-100 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-xl bg-white border border-pink-200 text-[#C2477A] flex items-center justify-center font-bold shrink-0 shadow-2xs">
                       <FileSpreadsheet size={20} />
@@ -416,7 +416,7 @@ export default function CategoryImportModal({
 
               {/* Validation Loader */}
               {isValidating && (
-                <div className="p-8 rounded-2xl bg-pink-50/30 border border-pink-100 flex flex-col items-center justify-center gap-2 text-gray-600">
+                <div className="p-8 rounded-2xl bg-white border border-pink-100 flex flex-col items-center justify-center gap-2 text-gray-600">
                   <Loader2 size={24} className="animate-spin text-[#C2477A]" />
                   <span className="font-bold text-xs">Analyzing spreadsheet columns and rows...</span>
                 </div>
@@ -444,7 +444,7 @@ export default function CategoryImportModal({
                             key={i}
                             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
                               isMapped
-                                ? 'bg-pink-50 text-[#C2477A] border-pink-200 shadow-2xs'
+                                ? 'bg-white text-[#C2477A] border-pink-200 shadow-2xs'
                                 : 'bg-white text-gray-600 border-gray-200'
                             }`}
                           >
@@ -849,7 +849,7 @@ export default function CategoryImportModal({
                       <div className="flex items-center justify-between">
                         <span className="font-extrabold text-xs text-gray-900 flex items-center gap-2">
                           <span>Import Preview</span>
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-pink-50 text-[#C2477A] border border-pink-200">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-[#C2477A] border border-pink-200">
                             {importPlan.totalToImport} records ready
                           </span>
                         </span>
@@ -883,7 +883,7 @@ export default function CategoryImportModal({
                                     <td className="px-3.5 py-2 font-mono text-gray-400 text-[11px]">#{r.rowNumber}</td>
                                     <td className="px-3.5 py-2">
                                       {r.levelType === 'category' && (
-                                        <span className="px-2 py-0.5 rounded-md bg-pink-50 text-[#C2477A] border border-pink-200 text-[10px] font-bold">
+                                        <span className="px-2 py-0.5 rounded-md bg-white text-[#C2477A] border border-pink-200 text-[10px] font-bold">
                                           Main
                                         </span>
                                       )}

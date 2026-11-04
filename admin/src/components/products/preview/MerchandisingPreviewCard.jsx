@@ -32,7 +32,7 @@ const MerchandisingPreviewCard = ({ merchandising = {} }) => {
       key: 'isTrending',
       label: 'Trending',
       icon: TrendingUp,
-      color: 'bg-pink-500',
+      color: 'bg-white0',
       active: isTrending,
     },
     {

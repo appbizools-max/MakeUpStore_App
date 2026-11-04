@@ -38,7 +38,7 @@ export class ErrorBoundary extends React.Component {
 
       return (
         <SafeAreaView className="flex-1 bg-white justify-center items-center p-6">
-          <View className="w-16 h-16 rounded-full bg-[#FFF0F5] items-center justify-center mb-4 border border-[#FCE4EC]">
+          <View className="w-16 h-16 rounded-full bg-white items-center justify-center mb-4 border border-[#FCE4EC]">
             <Ionicons name="alert-circle-outline" size={36} color="#C2477A" />
           </View>
 

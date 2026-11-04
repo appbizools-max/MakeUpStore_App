@@ -78,7 +78,7 @@ export const WishlistScreen = () => {
             setCurrentScreen('product');
           }}
           style={{
-            backgroundColor: '#FFF0F5',
+            backgroundColor: '#FFFFFF',
             borderColor: '#C2477A',
             borderWidth: 1.2,
           }}
@@ -199,7 +199,7 @@ export const WishlistScreen = () => {
               width: 80,
               height: 80,
               borderRadius: 40,
-              backgroundColor: '#FFF0F5',
+              backgroundColor: '#FFFFFF',
               borderColor: '#E2D1DC',
               borderWidth: 1.5,
             }}
@@ -270,7 +270,7 @@ export const WishlistScreen = () => {
                 >
                   <View>
                     {/* Product Image Box with Heart Button */}
-                    <View className="relative w-full h-32 rounded-xl overflow-hidden mb-2 bg-[#FFF8FB] border border-[#F0E3EA] items-center justify-center p-2">
+                    <View className="relative w-full h-32 rounded-xl overflow-hidden mb-2 bg-white border border-[#F0E3EA] items-center justify-center p-2">
                       <Image
                         source={getSafeImageSource(item.image, '')}
                         style={{ width: '90%', height: '90%' }}

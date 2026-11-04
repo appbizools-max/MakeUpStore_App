@@ -33,7 +33,7 @@ const ProductPreviewCard = ({
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-4 py-3 border-b border-gray-200">
+      <div className="bg-gradient-to-r from-purple-50 to-white px-4 py-3 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <Package className="w-5 h-5 text-purple-600" />
           <h3 className="font-semibold text-gray-800">Product Preview</h3>

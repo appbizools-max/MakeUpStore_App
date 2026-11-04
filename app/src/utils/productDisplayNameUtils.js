@@ -34,3 +34,4 @@ export const cleanProductDisplayName = (name) => {
 };
 
 export default cleanProductDisplayName;
+

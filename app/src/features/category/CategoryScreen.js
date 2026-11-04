@@ -278,7 +278,7 @@ export const CategoryScreen = () => {
             activeOpacity={0.7}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={{ borderColor: '#F0E3EA', borderWidth: 1 }}
-            className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center shadow-2xs"
+            className="w-9 h-9 rounded-full bg-white items-center justify-center shadow-2xs"
             accessibilityLabel="Search"
           >
             <Ionicons name="search" size={16} color="#C2477A" />
@@ -289,7 +289,7 @@ export const CategoryScreen = () => {
             activeOpacity={0.7}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={{ borderColor: '#F0E3EA', borderWidth: 1 }}
-            className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center shadow-2xs relative"
+            className="w-9 h-9 rounded-full bg-white items-center justify-center shadow-2xs relative"
             accessibilityLabel="Shopping Cart"
           >
             <Ionicons name="bag-handle-outline" size={17} color="#C2477A" />

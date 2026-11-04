@@ -341,7 +341,7 @@ export default function AddEmployeePage({ onNavigate }) {
 
       {/* Success Notification & Employee Credentials Card */}
       {createdEmployeeResult && (
-        <div className="p-6 sm:p-8 bg-gradient-to-br from-emerald-50 via-white to-pink-50 border border-emerald-200 rounded-3xl shadow-sm space-y-6 animate-scale-up">
+        <div className="p-6 sm:p-8 bg-gradient-to-br from-emerald-50 via-white to-white border border-emerald-200 rounded-3xl shadow-sm space-y-6 animate-scale-up">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-bold shadow-md">
               <CheckCircle2 size={26} />
@@ -378,7 +378,7 @@ export default function AddEmployeePage({ onNavigate }) {
                 <span className="text-gray-400 font-bold block text-[10px]">DESIGNATION</span>
                 <span className="font-extrabold text-[#CE4270] uppercase text-xs">{formData.designation}</span>
               </div>
-              <div className="sm:col-span-2 p-3.5 rounded-xl bg-pink-50/70 border border-pink-200 flex items-center justify-between">
+              <div className="sm:col-span-2 p-3.5 rounded-xl bg-white border border-pink-200 flex items-center justify-between">
                 <div>
                   <span className="text-gray-500 font-bold block text-[10px]">TEMPORARY PASSWORD</span>
                   <span className="font-mono font-bold text-gray-900 text-sm">
@@ -616,7 +616,7 @@ export default function AddEmployeePage({ onNavigate }) {
                 <select
                   value={formData.designation}
                   onChange={(e) => handleDesignationChange(e.target.value)}
-                  className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-[#FFF8FA] cursor-pointer shadow-2xs"
+                  className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-white cursor-pointer shadow-2xs"
                 >
                   <option value="(admin)">1) (admin)</option>
                   <option value="manager">2) manager</option>
@@ -664,7 +664,7 @@ export default function AddEmployeePage({ onNavigate }) {
           {/* Employee Summary Card */}
           <div className="bg-white p-5 rounded-3xl border border-pink-100 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-13 h-13 rounded-2xl bg-pink-50 border border-pink-100 flex items-center justify-center overflow-hidden shrink-0">
+              <div className="w-13 h-13 rounded-2xl bg-white border border-pink-100 flex items-center justify-center overflow-hidden shrink-0">
                 {formData.profilePhoto ? (
                   <img src={formData.profilePhoto} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -741,7 +741,7 @@ export default function AddEmployeePage({ onNavigate }) {
             </div>
 
             {/* Quick Metrics Bar */}
-            <div className="flex items-center justify-between text-xs text-gray-500 bg-pink-50/50 p-3 rounded-2xl border border-pink-100/60">
+            <div className="flex items-center justify-between text-xs text-gray-500 bg-white p-3 rounded-2xl border border-pink-100/60">
               <div className="flex items-center gap-4">
                 <span>
                   Active Modules: <strong className="text-gray-900">{permSummary.enabledModulesCount}</strong> / {permSummary.totalModulesCount}
@@ -775,7 +775,7 @@ export default function AddEmployeePage({ onNavigate }) {
                   {/* Module Header Bar with Master Toggle */}
                   <div
                     className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b ${
-                      isModuleEnabled ? 'bg-gradient-to-r from-[#FFF5F8] to-white border-pink-100/80' : 'bg-gray-50/70 border-gray-100'
+                      isModuleEnabled ? 'bg-gradient-to-r from-white to-white border-pink-100/80' : 'bg-gray-50/70 border-gray-100'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -848,7 +848,7 @@ export default function AddEmployeePage({ onNavigate }) {
                             key={act.key}
                             className={`p-3 rounded-2xl border text-xs font-semibold flex items-center justify-between cursor-pointer transition-all ${
                               isChecked
-                                ? 'bg-pink-50/60 border-pink-200 text-gray-900 shadow-2xs'
+                                ? 'bg-white border-pink-200 text-gray-900 shadow-2xs'
                                 : 'bg-gray-50/40 border-gray-200/80 text-gray-600 hover:bg-gray-50'
                             }`}
                           >

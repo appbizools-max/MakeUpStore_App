@@ -183,7 +183,7 @@ export default function ProductsCatalogMatrix({
             <h3 className="font-black text-base sm:text-lg text-gray-900 tracking-tight">
               Products Catalog Matrix
             </h3>
-            <span className="text-[10px] font-extrabold text-[#C2477A] bg-pink-50 border border-pink-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+            <span className="text-[10px] font-extrabold text-[#C2477A] bg-white border border-pink-200 px-2.5 py-0.5 rounded-full shadow-2xs">
               {isFiltered
                 ? `${filteredProducts.length} of ${catalogViewMode === 'variants' ? totalVariantsCount : totalFamiliesCount} ${catalogViewMode === 'variants' ? 'Variants' : 'Families'}`
                 : `${filteredProducts.length} ${catalogViewMode === 'variants' ? 'Sellable Variants' : 'Product Families'}`}
@@ -196,7 +196,7 @@ export default function ProductsCatalogMatrix({
 
         <div className="flex items-center gap-3 flex-wrap">
           {/* Segmented View Mode Toggle */}
-          <div className="flex items-center bg-[#FFF5F8] p-1 rounded-xl border border-pink-100/80 shadow-2xs">
+          <div className="flex items-center bg-white p-1 rounded-xl border border-pink-100/80 shadow-2xs">
             <button
               type="button"
               onClick={() => {
@@ -261,7 +261,7 @@ export default function ProductsCatalogMatrix({
             <button
               type="button"
               onClick={expandAllDetails}
-              className="bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[#C2477A] font-extrabold text-xs px-3 py-2.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              className="bg-white hover:bg-pink-100 border border-pink-200 text-[#C2477A] font-extrabold text-xs px-3 py-2.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               title="Expand/collapse full details for all products on current page"
             >
               <Eye size={14} />
@@ -272,7 +272,7 @@ export default function ProductsCatalogMatrix({
       </div>
 
       {/* 2. Search & Filters Bar */}
-      <div className="p-3 bg-[#FFF9FB] rounded-2xl border border-pink-100/90 flex flex-wrap items-center gap-2.5">
+      <div className="p-3 bg-white rounded-2xl border border-pink-100/90 flex flex-wrap items-center gap-2.5">
         {/* Search Bar */}
         <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100 shadow-2xs flex-1 min-w-[220px] focus-within:border-[#C2477A] transition-colors">
           <Search size={15} className="text-[#C2477A] shrink-0" />
@@ -382,7 +382,7 @@ export default function ProductsCatalogMatrix({
             return (
               <React.Fragment key={`m_frag_${p.id || p._id || p.barcode || pIdx}`}>
                 {showBrandHeader && (
-                  <div className="bg-gradient-to-r from-pink-50 via-white to-pink-50/20 p-2.5 rounded-xl border border-pink-200 flex items-center justify-between shadow-2xs mt-1">
+                  <div className="bg-gradient-to-r from-white via-white to-white p-2.5 rounded-xl border border-pink-200 flex items-center justify-between shadow-2xs mt-1">
                     <div className="flex items-center gap-2">
                       <Building2 size={14} className="text-[#C2477A]" />
                       <span className="font-black text-xs uppercase tracking-wider text-gray-900">
@@ -398,7 +398,7 @@ export default function ProductsCatalogMatrix({
                 <div className="flex gap-3">
                   <div
                     onClick={() => pImage && setActiveImagePreview(pImage)}
-                    className="w-16 h-16 rounded-xl bg-pink-50 border border-pink-100 shrink-0 overflow-hidden flex items-center justify-center cursor-pointer"
+                    className="w-16 h-16 rounded-xl bg-white border border-pink-100 shrink-0 overflow-hidden flex items-center justify-center cursor-pointer"
                   >
                     {pImage ? (
                       <img src={pImage} alt={p.name} className="w-full h-full object-cover" />
@@ -433,7 +433,7 @@ export default function ProductsCatalogMatrix({
                 </div>
 
                 {/* 4-Tier Role Pricing Grid */}
-                <div className="grid grid-cols-2 gap-2 bg-[#FFF9FB] p-2.5 rounded-xl border border-pink-100/60 text-xs">
+                <div className="grid grid-cols-2 gap-2 bg-white p-2.5 rounded-xl border border-pink-100/60 text-xs">
                   <div>
                     <span className="text-[10px] text-gray-500 block">MRP</span>
                     <span className="font-bold text-gray-800">₹{p.mrp || 0}</span>
@@ -470,7 +470,7 @@ export default function ProductsCatalogMatrix({
                         handleStartEditProduct(p);
                       }
                     }}
-                    className="flex-1 py-1.5 px-2 bg-pink-50 hover:bg-pink-100 text-[#C2477A] font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 border border-pink-200 cursor-pointer"
+                    className="flex-1 py-1.5 px-2 bg-white hover:bg-pink-100 text-[#C2477A] font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 border border-pink-200 cursor-pointer"
                   >
                     <Edit size={12} /> Edit
                   </button>
@@ -499,7 +499,7 @@ export default function ProductsCatalogMatrix({
       <div className="hidden md:block overflow-x-auto rounded-2xl border border-pink-100 shadow-2xs custom-scrollbar bg-white">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="bg-[#FFF5F8]/95 backdrop-blur-md text-gray-700 uppercase font-black text-[10.5px] tracking-wider border-b border-pink-200/80 sticky top-0 z-10 shadow-2xs">
+            <tr className="bg-white backdrop-blur-md text-gray-700 uppercase font-black text-[10.5px] tracking-wider border-b border-pink-200/80 sticky top-0 z-10 shadow-2xs">
               <th className="py-3.5 px-3 text-center w-14">IMAGE</th>
               <th className="py-3.5 px-4 text-left min-w-[280px]">PRODUCT & DETAILS</th>
               <th className="py-3.5 px-3 text-left whitespace-nowrap">BARCODE</th>
@@ -517,7 +517,7 @@ export default function ProductsCatalogMatrix({
               <tr>
                 <td colSpan={10} className="py-14 px-6 text-center">
                   {isBarcodeQuery && isBarcodeQuery(productSearch) ? (
-                    <div className="max-w-md mx-auto p-6 bg-[#FFF8FA] border border-pink-200 rounded-3xl shadow-xs space-y-3">
+                    <div className="max-w-md mx-auto p-6 bg-white border border-pink-200 rounded-3xl shadow-xs space-y-3">
                       <div className="w-12 h-12 rounded-2xl bg-pink-100 text-[#C2477A] flex items-center justify-center mx-auto shadow-2xs">
                         <ScanBarcode size={24} />
                       </div>
@@ -559,7 +559,7 @@ export default function ProductsCatalogMatrix({
                             setProductCategoryFilter('all');
                             setProductCurrentPage(1);
                           }}
-                          className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-50 text-[#C2477A] border border-pink-200 font-bold text-xs hover:bg-pink-100 transition-all cursor-pointer"
+                          className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-[#C2477A] border border-pink-200 font-bold text-xs hover:bg-pink-100 transition-all cursor-pointer"
                         >
                           <RotateCcw size={12} />
                           <span>Clear Filters</span>
@@ -600,7 +600,7 @@ export default function ProductsCatalogMatrix({
                 return (
                   <React.Fragment key={p.id || p._id || p.barcode || index}>
                     {showBrandHeader && (
-                      <tr className="bg-gradient-to-r from-pink-50/90 via-pink-50/30 to-white border-y border-pink-200/90">
+                      <tr className="bg-gradient-to-r from-white via-pink-50/30 to-white border-y border-pink-200/90">
                         <td colSpan={10} className="py-2 px-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -619,11 +619,11 @@ export default function ProductsCatalogMatrix({
                     <tr
                       className={`transition-colors border-b border-pink-100/50 ${
                         isExpandedDetails
-                          ? 'bg-pink-50/30'
+                          ? 'bg-white'
                           : editingTiersProductId === p.id
                           ? 'bg-amber-50/40'
                           : index % 2 === 1
-                          ? 'bg-[#FFF9FB]/50 hover:bg-[#FFF2F5]'
+                          ? 'bg-white hover:bg-[#FFF2F5]'
                           : 'bg-white hover:bg-[#FFF2F5]/60'
                       }`}
                     >
@@ -633,7 +633,7 @@ export default function ProductsCatalogMatrix({
                           onClick={() => {
                             if (pImage) setActiveImagePreview(pImage);
                           }}
-                          className="relative w-12 h-12 rounded-xl overflow-hidden bg-pink-50/70 border border-pink-100 flex items-center justify-center mx-auto shadow-2xs group cursor-pointer"
+                          className="relative w-12 h-12 rounded-xl overflow-hidden bg-white border border-pink-100 flex items-center justify-center mx-auto shadow-2xs group cursor-pointer"
                           title="Click to view full image"
                         >
                           {pImage ? (
@@ -672,7 +672,7 @@ export default function ProductsCatalogMatrix({
 
                               {/* Standalone vs Variant vs Product Family badge */}
                               {p.isVariantChild ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-50 text-[#C2477A] border border-pink-200 text-[10px] font-bold">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[#C2477A] border border-pink-200 text-[10px] font-bold">
                                   {p.hexColor && (
                                     <span
                                       className="w-2.5 h-2.5 rounded-full border border-gray-300"
@@ -688,7 +688,7 @@ export default function ProductsCatalogMatrix({
                                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
                                     isExpandedVariants
                                       ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-2xs'
-                                      : 'bg-pink-50 text-[#C2477A] border-pink-200 hover:bg-pink-100'
+                                      : 'bg-white text-[#C2477A] border-pink-200 hover:bg-pink-100'
                                   }`}
                                   title={isExpandedVariants ? 'Collapse variants' : 'Expand all child variants'}
                                 >
@@ -766,7 +766,7 @@ export default function ProductsCatalogMatrix({
 
                             {/* Category */}
                             {p.category && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-pink-50 text-[#C2477A] font-bold text-[9.5px] border border-pink-100">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white text-[#C2477A] font-bold text-[9.5px] border border-pink-100">
                                 {p.category.trim()}
                               </span>
                             )}
@@ -811,7 +811,7 @@ export default function ProductsCatalogMatrix({
                                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9.5px] font-bold transition-all border cursor-pointer ${
                                     editingShadeProductId === p.id
                                       ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-2xs'
-                                      : 'bg-pink-50 text-[#C2477A] border-pink-200 hover:bg-pink-100'
+                                      : 'bg-white text-[#C2477A] border-pink-200 hover:bg-pink-100'
                                   }`}
                                   title="Manage shade variants and role prices"
                                 >
@@ -996,14 +996,14 @@ export default function ProductsCatalogMatrix({
                           />
                         ) : (
                           <div className="flex items-center justify-end gap-1">
-                            <span className="font-extrabold text-[#C2477A] bg-[#FFF5F8] px-2 py-1 rounded-lg border border-pink-200/80 inline-block min-w-[65px] text-right shadow-2xs">
+                            <span className="font-extrabold text-[#C2477A] bg-white px-2 py-1 rounded-lg border border-pink-200/80 inline-block min-w-[65px] text-right shadow-2xs">
                               ₹
                               {p.salonPrice !== undefined && p.salonPrice !== null && p.salonPrice !== ''
                                 ? p.salonPrice
                                 : p.mrp ?? 0}
                             </span>
                             {salonDisc > 0 && (
-                              <span className="text-[9.5px] font-extrabold text-[#C2477A] bg-pink-50 px-1 py-0.5 rounded border border-pink-200">
+                              <span className="text-[9.5px] font-extrabold text-[#C2477A] bg-white px-1 py-0.5 rounded border border-pink-200">
                                 {salonDisc}%
                               </span>
                             )}
@@ -1103,7 +1103,7 @@ export default function ProductsCatalogMatrix({
                             <button
                               type="button"
                               onClick={() => handleOpenEditProduct(p)}
-                              className="bg-pink-50 hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-pink-200 transition-all text-[11px] cursor-pointer shadow-2xs"
+                              className="bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-pink-200 transition-all text-[11px] cursor-pointer shadow-2xs"
                               title="Edit product details & barcode"
                             >
                               <Edit size={12} />
@@ -1134,13 +1134,13 @@ export default function ProductsCatalogMatrix({
 
                     {/* INLINE EXPANDABLE FULL PRODUCT DETAILS PANEL */}
                     {isExpandedDetails && (
-                      <tr key={p.id + '_full_details_panel'} className="bg-pink-50/20 border-y-2 border-pink-200/80">
+                      <tr key={p.id + '_full_details_panel'} className="bg-white border-y-2 border-pink-200/80">
                         <td colSpan={10} className="p-4 sm:p-6">
                           <div className="bg-white rounded-3xl border border-pink-200 shadow-sm p-5 sm:p-6 space-y-6">
                             {/* Card Header with Key Identifiers */}
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-pink-100">
                               <div className="flex items-start gap-4">
-                                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-pink-50 border border-pink-200 shrink-0 shadow-xs">
+                                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white border border-pink-200 shrink-0 shadow-xs">
                                   {pImage ? (
                                     <img src={pImage} alt={p.name} className="w-full h-full object-cover" />
                                   ) : (
@@ -1175,7 +1175,7 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEditProduct(p)}
-                                  className="px-3.5 py-2 rounded-xl bg-pink-50 hover:bg-[#C2477A] hover:text-white border border-pink-200 text-[#C2477A] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#C2477A] hover:text-white border border-pink-200 text-[#C2477A] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
                                 >
                                   <Edit size={13} />
                                   <span>Edit Product</span>
@@ -1193,7 +1193,7 @@ export default function ProductsCatalogMatrix({
                             {/* Section Grid: 4-Role Pricing Matrix, Catalog Specs & Details, Category Attributes */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
                               {/* 1. Multi-Role Pricing Matrix */}
-                              <div className="bg-[#FFF9FB] p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
+                              <div className="bg-white p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
                                 <div>
                                   <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-pink-100 text-xs font-black text-gray-900 uppercase tracking-wider">
                                     <Tag size={14} className="text-[#C2477A]" />
@@ -1211,7 +1211,7 @@ export default function ProductsCatalogMatrix({
                                         {genDisc > 0 && <span className="text-emerald-600 text-[10px]">({genDisc}% off)</span>}
                                       </span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-pink-100 bg-pink-50/60 px-2 rounded-lg">
+                                    <div className="flex justify-between items-center py-1 border-b border-pink-100 bg-white px-2 rounded-lg">
                                       <span className="text-[#C2477A] font-bold">Salon Owner:</span>
                                       <span className="font-black text-[#C2477A]">
                                         ₹{p.salonPrice ?? p.mrp ?? 0}{' '}
@@ -1237,7 +1237,7 @@ export default function ProductsCatalogMatrix({
                               </div>
 
                               {/* 2. Core Specifications */}
-                              <div className="bg-[#FFF9FB] p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
+                              <div className="bg-white p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
                                 <div>
                                   <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-pink-100 text-xs font-black text-gray-900 uppercase tracking-wider">
                                     <Sliders size={14} className="text-blue-600" />
@@ -1284,7 +1284,7 @@ export default function ProductsCatalogMatrix({
                               </div>
 
                               {/* 3. Category Attributes */}
-                              <div className="bg-[#FFF9FB] p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
+                              <div className="bg-white p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
                                 <div>
                                   <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-pink-100 text-xs font-black text-gray-900 uppercase tracking-wider">
                                     <Layers size={14} className="text-purple-600" />
@@ -1357,7 +1357,7 @@ export default function ProductsCatalogMatrix({
                         return (
                           <tr
                             key={v.id || `${p.id}_var_${vIdx}`}
-                            className="bg-[#FFF9FB]/70 hover:bg-[#FFF2F5] border-b border-pink-100/60 transition-colors"
+                            className="bg-white hover:bg-[#FFF2F5] border-b border-pink-100/60 transition-colors"
                           >
                             {/* 1. Child Variant Thumbnail */}
                             <td className="py-2.5 px-3 text-center align-middle w-14">
@@ -1390,7 +1390,7 @@ export default function ProductsCatalogMatrix({
                                       #{shadeNumber}
                                     </span>
                                   )}
-                                  <span className="text-[9px] font-bold text-[#C2477A] bg-pink-50 px-1.5 py-0.5 rounded border border-pink-200">
+                                  <span className="text-[9px] font-bold text-[#C2477A] bg-white px-1.5 py-0.5 rounded border border-pink-200">
                                     Variant
                                   </span>
                                 </div>
@@ -1463,7 +1463,7 @@ export default function ProductsCatalogMatrix({
 
                             {/* 7. Salon Price */}
                             <td className="py-2.5 px-3 whitespace-nowrap text-right align-middle">
-                              <span className="font-extrabold text-[#C2477A] bg-[#FFF5F8] px-2 py-1 rounded-lg border border-pink-200/80 inline-block min-w-[65px] text-right shadow-2xs">
+                              <span className="font-extrabold text-[#C2477A] bg-white px-2 py-1 rounded-lg border border-pink-200/80 inline-block min-w-[65px] text-right shadow-2xs">
                                 ₹{vSalon}
                               </span>
                             </td>
@@ -1488,7 +1488,7 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => handleToggleProductShadesPanel(p)}
-                                  className="bg-pink-50 hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-pink-200 transition-all text-[11px] cursor-pointer shadow-2xs"
+                                  className="bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-pink-200 transition-all text-[11px] cursor-pointer shadow-2xs"
                                   title="Edit variant details"
                                 >
                                   <span>Edit Variant</span>
@@ -1531,7 +1531,7 @@ export default function ProductsCatalogMatrix({
 
                     {/* EXPANDABLE SHADE / COLOR VARIANT MANAGER PANEL */}
                     {editingShadeProductId === p.id && (
-                      <tr key={p.id + '_shades_panel'} className="bg-[#FFF5F8]/40 border-y-2 border-[#FCE4EC]">
+                      <tr key={p.id + '_shades_panel'} className="bg-white border-y-2 border-[#FCE4EC]">
                         <td colSpan={10} className="p-4 sm:p-5">
                           <div className="bg-white rounded-3xl border border-[#FCE4EC] shadow-sm p-5 space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#FCE4EC]">
@@ -1589,7 +1589,7 @@ export default function ProductsCatalogMatrix({
                             {/* Variants Table */}
                             <div className="overflow-x-auto rounded-2xl border border-[#FCE4EC]">
                               <table className="w-full text-left text-xs">
-                                <thead className="bg-[#FFF5F8] text-gray-800 uppercase font-black text-[10px] tracking-wider border-b border-[#FCE4EC]">
+                                <thead className="bg-white text-gray-800 uppercase font-black text-[10px] tracking-wider border-b border-[#FCE4EC]">
                                   <tr>
                                     <th className="py-2.5 px-3">Variant / Attributes</th>
                                     <th className="py-2.5 px-3">MRP (General)</th>
@@ -1656,7 +1656,7 @@ export default function ProductsCatalogMatrix({
                                                 {shade.attributes && Object.keys(shade.attributes).length > 0 && (
                                                   <div className="flex flex-wrap gap-1 mt-0.5">
                                                     {Object.entries(shade.attributes).map(([ak, av]) => (
-                                                      <span key={ak} className="px-1.5 py-0.2 rounded bg-pink-50 text-[#C2477A] text-[9.5px] font-semibold border border-pink-100">
+                                                      <span key={ak} className="px-1.5 py-0.2 rounded bg-white text-[#C2477A] text-[9.5px] font-semibold border border-pink-100">
                                                         {ak}: {av}
                                                       </span>
                                                     ))}
@@ -1686,7 +1686,7 @@ export default function ProductsCatalogMatrix({
                                               <button
                                                 type="button"
                                                 onClick={() => handleOpenShadePricing(shade, p, 'catalog')}
-                                                className="px-2.5 py-1 rounded-xl bg-pink-50 hover:bg-[#C2477A] text-[#C2477A] hover:text-white font-bold text-[11px] border border-pink-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                className="px-2.5 py-1 rounded-xl bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white font-bold text-[11px] border border-pink-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
                                               >
                                                 <BadgePercent size={11} />
                                                 <span>Pricing & Tiers</span>
@@ -1715,7 +1715,7 @@ export default function ProductsCatalogMatrix({
                             </div>
 
                             {/* Quick Add Variant Row */}
-                            <div className="p-3 bg-[#FFF5F8]/50 rounded-2xl border border-[#FCE4EC] flex flex-wrap items-center gap-2.5">
+                            <div className="p-3 bg-white rounded-2xl border border-[#FCE4EC] flex flex-wrap items-center gap-2.5">
                               <span className="text-xs font-black text-gray-800 shrink-0">Add Variant:</span>
                               <input
                                 type="text"
@@ -1812,7 +1812,7 @@ export default function ProductsCatalogMatrix({
       </div>
 
       {/* 4. Pagination Bar */}
-      <div className="bg-[#FFF9FB] px-5 py-3.5 rounded-2xl border border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-gray-600">
+      <div className="bg-white px-5 py-3.5 rounded-2xl border border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-gray-600">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-gray-500 font-medium">Rows per page:</span>
@@ -1913,7 +1913,7 @@ export default function ProductsCatalogMatrix({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in">
           <div className="bg-white rounded-3xl border border-pink-200 shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95">
             {/* Modal Header */}
-            <div className="p-5 sm:p-6 bg-gradient-to-r from-pink-50 via-white to-pink-50/40 border-b border-pink-100 flex items-center justify-between gap-4 shrink-0">
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-white via-white to-white border-b border-pink-100 flex items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#C2477A] to-[#9E2D5B] text-white flex items-center justify-center shadow-xs shrink-0">
                   <Package size={20} />
@@ -1971,7 +1971,7 @@ export default function ProductsCatalogMatrix({
                     onClick={() => setActiveDetailTab(tab.id)}
                     className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all flex items-center gap-1.5 border-b-2 whitespace-nowrap cursor-pointer ${
                       isActive
-                        ? 'border-[#C2477A] text-[#C2477A] bg-pink-50/50'
+                        ? 'border-[#C2477A] text-[#C2477A] bg-white'
                         : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                   >
@@ -1989,19 +1989,19 @@ export default function ProductsCatalogMatrix({
                 <div className="space-y-6">
                   {/* Quick Highlight Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-[#FFF9FB] p-3.5 rounded-2xl border border-pink-100">
+                    <div className="bg-white p-3.5 rounded-2xl border border-pink-100">
                       <span className="text-[10.5px] font-bold text-gray-500 block">Category</span>
                       <span className="font-extrabold text-sm text-[#C2477A]">{selectedDetailModalProduct.category || '—'}</span>
                     </div>
-                    <div className="bg-[#FFF9FB] p-3.5 rounded-2xl border border-pink-100">
+                    <div className="bg-white p-3.5 rounded-2xl border border-pink-100">
                       <span className="text-[10.5px] font-bold text-gray-500 block">Subcategory</span>
                       <span className="font-extrabold text-sm text-gray-900">{selectedDetailModalProduct.subcategory || '—'}</span>
                     </div>
-                    <div className="bg-[#FFF9FB] p-3.5 rounded-2xl border border-pink-100">
+                    <div className="bg-white p-3.5 rounded-2xl border border-pink-100">
                       <span className="text-[10.5px] font-bold text-gray-500 block">Brand</span>
                       <span className="font-extrabold text-sm text-gray-900">{selectedDetailModalProduct.brandName || brands?.find(b => b.id === selectedDetailModalProduct.brandId)?.name || '—'}</span>
                     </div>
-                    <div className="bg-[#FFF9FB] p-3.5 rounded-2xl border border-pink-100">
+                    <div className="bg-white p-3.5 rounded-2xl border border-pink-100">
                       <span className="text-[10.5px] font-bold text-gray-500 block">Catalog Status</span>
                       <span className={`font-extrabold text-sm ${selectedDetailModalProduct.enabled !== false ? 'text-emerald-700' : 'text-gray-500'}`}>
                         {selectedDetailModalProduct.enabled !== false ? 'Active' : 'Inactive'}
@@ -2011,7 +2011,7 @@ export default function ProductsCatalogMatrix({
 
                   {/* 4-Role Pricing Master Table */}
                   <div className="bg-white rounded-2xl border border-pink-200 overflow-hidden shadow-2xs">
-                    <div className="bg-[#FFF5F8] p-3 border-b border-pink-200 flex items-center justify-between">
+                    <div className="bg-white p-3 border-b border-pink-200 flex items-center justify-between">
                       <span className="font-black text-gray-900 uppercase text-[11px] tracking-wide">Multi-Role Pricing & Discount Architecture</span>
                       <span className="text-[10px] font-bold text-gray-500">GST: {selectedDetailModalProduct.gstPercent ?? 18}%</span>
                     </div>
@@ -2029,7 +2029,7 @@ export default function ProductsCatalogMatrix({
                         <tbody className="divide-y divide-gray-100">
                           {[
                             { role: 'General Customer', price: selectedDetailModalProduct.generalPrice ?? selectedDetailModalProduct.mrp, color: 'text-gray-900', bg: 'bg-white' },
-                            { role: 'Salon Owner', price: selectedDetailModalProduct.salonPrice ?? selectedDetailModalProduct.mrp, color: 'text-[#C2477A]', bg: 'bg-pink-50/40' },
+                            { role: 'Salon Owner', price: selectedDetailModalProduct.salonPrice ?? selectedDetailModalProduct.mrp, color: 'text-[#C2477A]', bg: 'bg-white' },
                             { role: 'Makeup Artist', price: selectedDetailModalProduct.artistPrice ?? selectedDetailModalProduct.mrp, color: 'text-purple-700', bg: 'bg-purple-50/40' },
                             { role: 'Beautician', price: selectedDetailModalProduct.beauticianPrice ?? selectedDetailModalProduct.mrp, color: 'text-indigo-700', bg: 'bg-indigo-50/40' }
                           ].map((row, rIdx) => {
@@ -2080,7 +2080,7 @@ export default function ProductsCatalogMatrix({
                   {selectedDetailModalProduct.attributes && typeof selectedDetailModalProduct.attributes === 'object' && Object.keys(selectedDetailModalProduct.attributes).length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {Object.entries(selectedDetailModalProduct.attributes).map(([ak, av]) => (
-                        <div key={ak} className="p-2.5 bg-pink-50/40 rounded-xl border border-pink-100 flex justify-between items-center">
+                        <div key={ak} className="p-2.5 bg-white rounded-xl border border-pink-100 flex justify-between items-center">
                           <span className="text-gray-600 font-semibold capitalize">{ak.replace(/_/g, ' ')}:</span>
                           <span className="font-bold text-gray-900">{String(av)}</span>
                         </div>
@@ -2130,7 +2130,7 @@ export default function ProductsCatalogMatrix({
                   {selectedDetailModalProduct.shades && Array.isArray(selectedDetailModalProduct.shades) && selectedDetailModalProduct.shades.length > 0 ? (
                     <div className="overflow-x-auto rounded-2xl border border-pink-200">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-[#FFF5F8] text-gray-800 font-bold border-b border-pink-200">
+                        <thead className="bg-white text-gray-800 font-bold border-b border-pink-200">
                           <tr>
                             <th className="py-2.5 px-3">Variant</th>
                             <th className="py-2.5 px-3">Barcode</th>

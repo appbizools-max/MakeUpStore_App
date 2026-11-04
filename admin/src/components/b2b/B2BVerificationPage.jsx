@@ -443,7 +443,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#C2477A] to-pink-500 text-white flex items-center justify-center shadow-md">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#C2477A] to-white0 text-white flex items-center justify-center shadow-md">
               <ShieldCheck size={24} />
             </div>
             <div>
@@ -630,7 +630,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Role Filter */}
             {isPresetRole ? (
-              <div className="px-3 py-2 bg-pink-50 border border-pink-200 rounded-xl text-xs font-bold text-[#C2477A] flex items-center gap-1.5 shadow-2xs">
+              <div className="px-3 py-2 bg-white border border-pink-200 rounded-xl text-xs font-bold text-[#C2477A] flex items-center gap-1.5 shadow-2xs">
                 <Building2 size={13} className="text-[#C2477A]" />
                 <span>
                   {normalizedRolePreset === 'salon' ? 'Salon Applications' : (normalizedRolePreset === 'artist' ? 'Makeup Artist Applications' : 'Beautician Applications')}
@@ -920,7 +920,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
 
                 {/* SUMMARY CHECKLIST TABLE (ADMIN REQUIREMENTS) */}
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-2xs">
-                  <div className="bg-gradient-to-r from-gray-50 to-pink-50/40 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-gray-50 to-white px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                     <span className="text-xs font-black text-[#3A2430] uppercase tracking-wider flex items-center gap-2">
                       <CheckCircle2 size={15} className="text-[#C2477A]" />
                       B2B Verification Status Checklist
@@ -1266,7 +1266,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                             href={getMapUrl(bizCoords, bizAddressFull)}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-[11px] font-bold text-[#C2477A] hover:underline flex items-center gap-1 bg-pink-50 px-2.5 py-1.5 rounded-lg border border-pink-200"
+                            className="text-[11px] font-bold text-[#C2477A] hover:underline flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-lg border border-pink-200"
                           >
                             <Navigation size={12} />
                             View on Google Maps
@@ -1293,7 +1293,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                   </div>
 
                   {/* Informational Callout (User requirement) */}
-                  <div className="p-3.5 rounded-xl bg-pink-50/60 border border-pink-100 flex items-start gap-2.5 mb-4 text-xs text-gray-700">
+                  <div className="p-3.5 rounded-xl bg-white border border-pink-100 flex items-start gap-2.5 mb-4 text-xs text-gray-700">
                     <Info size={16} className="text-[#C2477A] shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold text-[#C2477A]">Documents are optional at registration.</span>

@@ -496,7 +496,7 @@ export default function BrandManagementPage({
         {/* Module Header Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-5 border-b border-pink-100/70">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[#FFF5F8] border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
               <Store size={22} />
             </div>
             <div>
@@ -526,7 +526,7 @@ export default function BrandManagementPage({
                 <button
                   type="button"
                   onClick={handleExportSelected}
-                  className="px-3.5 py-2.5 rounded-xl bg-pink-50 border border-pink-300 text-[#C2477A] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 animate-fade-in"
+                  className="px-3.5 py-2.5 rounded-xl bg-white border border-pink-300 text-[#C2477A] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 animate-fade-in"
                 >
                   <Download size={14} />
                   <span>Export ({selectedBrandIds.size}) Selected</span>
@@ -580,7 +580,7 @@ export default function BrandManagementPage({
 
         {/* Brand Master KPI Metric Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <div className="p-3.5 rounded-2xl bg-[#FFF9FB] border border-pink-100 flex items-center justify-between shadow-2xs">
+          <div className="p-3.5 rounded-2xl bg-white border border-pink-100 flex items-center justify-between shadow-2xs">
             <div>
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Brands</span>
               <span className="text-xl font-black text-gray-900">{brandStats.total}</span>
@@ -630,7 +630,7 @@ export default function BrandManagementPage({
         </div>
 
         {/* Filter & Search Toolbar */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 p-3.5 rounded-2xl bg-[#FFF8FA] border border-pink-100/80">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 p-3.5 rounded-2xl bg-white border border-pink-100/80">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
             {/* Search Input: Brand Number, Name */}
             <div className="flex items-center gap-2 bg-white px-3.5 h-10 rounded-xl border border-pink-200/90 w-full sm:w-72 focus-within:ring-2 focus-within:ring-[#C2477A]/20 transition-all shadow-2xs">
@@ -791,7 +791,7 @@ export default function BrandManagementPage({
               <col className="w-48" />
             </colgroup>
             <thead>
-              <tr className="bg-[#FFF0F4] text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100">
+              <tr className="bg-white text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100">
                 {/* Checkbox for Select All */}
                 <th className="py-4 px-3 text-center align-middle">
                   <input
@@ -859,9 +859,9 @@ export default function BrandManagementPage({
                       key={brand.id}
                       className={`transition-colors ${
                         isSelected
-                          ? 'bg-pink-50/70 hover:bg-pink-100/40'
+                          ? 'bg-white hover:bg-pink-100/40'
                           : index % 2 === 1
-                            ? 'bg-[#FFF9FB]/70 hover:bg-pink-50/40'
+                            ? 'bg-white hover:bg-pink-50/40'
                             : 'bg-white hover:bg-pink-50/30'
                       }`}
                     >
@@ -878,7 +878,7 @@ export default function BrandManagementPage({
                       {/* COLUMN 1: Brand Number */}
                       <td className="py-3 px-3 whitespace-nowrap font-mono font-extrabold text-[#C2477A] text-xs align-middle">
                         <div className="inline-flex items-center gap-1.5">
-                          <span className="px-2.5 py-1 rounded-lg bg-[#FFF0F4] border border-pink-200/90 shadow-2xs font-mono font-black text-[#C2477A]">
+                          <span className="px-2.5 py-1 rounded-lg bg-white border border-pink-200/90 shadow-2xs font-mono font-black text-[#C2477A]">
                             {brandNum}
                           </span>
                           {brandSeq > 0 && (
@@ -900,7 +900,7 @@ export default function BrandManagementPage({
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : (
-                            <div className="w-7 h-7 rounded-lg bg-pink-50 border border-pink-100 flex items-center justify-center shrink-0 text-[#C2477A]">
+                            <div className="w-7 h-7 rounded-lg bg-white border border-pink-100 flex items-center justify-center shrink-0 text-[#C2477A]">
                               <Store size={13} />
                             </div>
                           )}
@@ -928,7 +928,7 @@ export default function BrandManagementPage({
                             brandCats.map((cat) => (
                               <span
                                 key={cat}
-                                className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF5F8] text-[#8C7078] border border-pink-100/80"
+                                className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#8C7078] border border-pink-100/80"
                               >
                                 {cat}
                               </span>
@@ -1006,7 +1006,7 @@ export default function BrandManagementPage({
         </div>
 
         {/* Pagination & Rows-Per-Page Controls */}
-        <div className="bg-[#FFF8FA] px-5 py-3 mt-4 rounded-2xl border border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-gray-600">
+        <div className="bg-white px-5 py-3 mt-4 rounded-2xl border border-pink-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-gray-600">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-gray-500 font-medium">Rows per page:</span>

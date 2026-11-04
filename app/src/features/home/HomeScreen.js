@@ -73,8 +73,8 @@ const SkeletonCategoryCard = () => (
   <View
     style={{ width: 78 }} className="items-center mr-3"
   >
-    <View style={{ width: 62, height: 62 }} className="rounded-xl mb-1.5 bg-[#FFF0F5] opacity-60" />
-    <View style={{ width: 52, height: 10 }} className="rounded bg-[#FCE4EC] opacity-60" />
+    <View style={{ width: 62, height: 62 }} className="rounded-xl mb-1.5 bg-white opacity-60" />
+    <View style={{ width: 52, height: 10 }} className="rounded bg-white opacity-60" />
   </View>
 );
 
@@ -84,10 +84,10 @@ const SkeletonProductCard = () => (
     className="mr-3 bg-white rounded-2xl p-2.5 shadow-xs flex-col"
   >
     <View style={{ width: '100%', height: 126 }} className="rounded-xl mb-2 bg-[#F3F4F6] opacity-60" />
-    <View style={{ width: 60, height: 8 }} className="rounded bg-[#FCE4EC] mb-1.5 opacity-60" />
-    <View style={{ width: 110, height: 12 }} className="rounded bg-[#FCE4EC] mb-2 opacity-60" />
-    <View style={{ width: 80, height: 14 }} className="rounded bg-[#FCE4EC]/70 opacity-60 mb-2" />
-    <View style={{ width: '100%', height: 28 }} className="rounded-full bg-[#FFF0F5] opacity-60 mt-auto" />
+    <View style={{ width: 60, height: 8 }} className="rounded bg-white mb-1.5 opacity-60" />
+    <View style={{ width: 110, height: 12 }} className="rounded bg-white mb-2 opacity-60" />
+    <View style={{ width: 80, height: 14 }} className="rounded bg-white opacity-60 mb-2" />
+    <View style={{ width: '100%', height: 28 }} className="rounded-full bg-white opacity-60 mt-auto" />
   </View>
 );
 
@@ -142,7 +142,7 @@ const SkeletonBrandCard = () => (
       borderRadius: 14,
       borderColor: '#F0E3EA',
       borderWidth: 1.5,
-      backgroundColor: '#FFF0F5',
+      backgroundColor: '#FFFFFF',
       marginRight: 10,
     }}
     className="opacity-60"
@@ -820,7 +820,7 @@ export const HomeScreen = () => {
                     marginRight: idx < displayBanners.length - 1 ? 12 : 0,
                     borderRadius: 22,
                     overflow: 'hidden',
-                    backgroundColor: '#FFF0F5',
+                    backgroundColor: '#FFFFFF',
                     borderColor: '#F0E3EA',
                     borderWidth: 1,
                     elevation: 3,
@@ -846,7 +846,7 @@ export const HomeScreen = () => {
                       </View>
                     ) : (
                       /* Styled editorial fallback card */
-                      <View className="flex-1 flex-row items-center justify-between p-4 relative bg-[#FFF0F5]">
+                      <View className="flex-1 flex-row items-center justify-between p-4 relative bg-white">
                         <View className="flex-1 pr-3 justify-center z-10">
                           <Text
                             className="text-lg font-black text-[#3A2430] leading-tight mb-1"

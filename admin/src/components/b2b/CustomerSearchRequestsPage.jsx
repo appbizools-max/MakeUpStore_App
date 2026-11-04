@@ -157,7 +157,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
             <h1 className="text-xl font-bold text-black tracking-tight">
               Customer Search Requests & Search Activity
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FFF5F8] text-[#C2477A] border border-[#F8B4CB]">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-[#C2477A] border border-[#F8B4CB]">
               100% Real-Time Tracking
             </span>
           </div>
@@ -186,12 +186,12 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
         <div
           onClick={() => setSelectedScope('all')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            selectedScope === 'all' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-[#FFF5F8]/20' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            selectedScope === 'all' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-black uppercase tracking-wider">Total Customer Searches</span>
-            <div className="w-7 h-7 rounded-lg bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-white text-[#C2477A] flex items-center justify-center">
               <TrendingUp size={14} />
             </div>
           </div>
@@ -203,7 +203,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
         <div
           onClick={() => setSelectedScope('not_found')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            selectedScope === 'not_found' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-[#FFF5F8]/20' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            selectedScope === 'not_found' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -220,7 +220,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
         <div
           onClick={() => setSelectedScope('found')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            selectedScope === 'found' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-[#FFF5F8]/20' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            selectedScope === 'found' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -311,7 +311,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                   <span>{tab.label}</span>
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                      isActive ? 'bg-white/25 text-white' : 'bg-[#FFF5F8] text-[#C2477A]'
+                      isActive ? 'bg-white/25 text-white' : 'bg-white text-[#C2477A]'
                     }`}
                   >
                     {tab.count}
@@ -343,7 +343,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
       <div className="bg-white border border-[#FCE4EC] rounded-2xl shadow-sm overflow-hidden">
         {filteredRequests.length === 0 ? (
           <div className="py-20 text-center flex flex-col items-center justify-center p-6">
-            <div className="w-16 h-16 rounded-full bg-[#FFF5F8] border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] mb-3">
+            <div className="w-16 h-16 rounded-full bg-white border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] mb-3">
               <Search size={26} />
             </div>
             <h3 className="text-base font-bold text-black mb-1">No customer searches found</h3>
@@ -355,7 +355,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#FFF5F8] border-b border-[#FCE4EC] text-[11px] font-black uppercase tracking-wider text-black">
+                <tr className="bg-white border-b border-[#FCE4EC] text-[11px] font-black uppercase tracking-wider text-black">
                   <th className="py-3 px-4">Search Query / Barcode</th>
                   <th className="py-3 px-4">Result Status</th>
                   <th className="py-3 px-4">Search Count</th>
@@ -379,7 +379,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                       {/* Search Query */}
                       <td className="py-3.5 px-4 font-bold text-black">
                         <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center shrink-0 border border-[#FCE4EC]">
+                          <span className="w-6 h-6 rounded-lg bg-white text-[#C2477A] flex items-center justify-center shrink-0 border border-[#FCE4EC]">
                             {request.barcode ? <Barcode size={13} /> : <Search size={12} />}
                           </span>
                           <div>
@@ -426,7 +426,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                             count >= 5
                               ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-xs'
                               : count >= 2
-                              ? 'bg-[#FFF5F8] text-[#C2477A] border-[#F8B4CB]'
+                              ? 'bg-white text-[#C2477A] border-[#F8B4CB]'
                               : 'bg-gray-50 text-black border-gray-200'
                           }`}
                         >

@@ -341,7 +341,7 @@ export default function ImageManagerModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Standardized Aspect Ratio & Dimensions Banner */}
           {spec && (
-            <div className="p-3.5 bg-gradient-to-r from-pink-50/80 via-white to-pink-50/50 border border-pink-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="p-3.5 bg-gradient-to-r from-white via-white to-white border border-pink-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-pink-600 text-white flex items-center justify-center font-bold text-[11px] shadow-xs">
                   {spec.aspectRatio.includes('16:9') ? '16:9' : '1:1'}
@@ -548,7 +548,7 @@ export default function ImageManagerModal({
                     onClick={() => setActiveTab('upload')}
                     className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
                       activeTab === 'upload'
-                        ? 'border-pink-600 bg-pink-50/60 text-pink-900 shadow-sm'
+                        ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
@@ -564,7 +564,7 @@ export default function ImageManagerModal({
                     onClick={() => setActiveTab('paste')}
                     className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
                       activeTab === 'paste'
-                        ? 'border-pink-600 bg-pink-50/60 text-pink-900 shadow-sm'
+                        ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
@@ -580,7 +580,7 @@ export default function ImageManagerModal({
                     onClick={() => setActiveTab('google')}
                     className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
                       activeTab === 'google'
-                        ? 'border-pink-600 bg-pink-50/60 text-pink-900 shadow-sm'
+                        ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
@@ -596,7 +596,7 @@ export default function ImageManagerModal({
                     onClick={() => setActiveTab('url')}
                     className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
                       activeTab === 'url'
-                        ? 'border-pink-600 bg-pink-50/60 text-pink-900 shadow-sm'
+                        ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
@@ -618,7 +618,7 @@ export default function ImageManagerModal({
                   onDrop={handleDrop}
                   className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all flex flex-col items-center justify-center cursor-pointer min-h-[220px] ${
                     isDragging
-                      ? 'border-pink-500 bg-pink-50 scale-[1.01]'
+                      ? 'border-pink-500 bg-white scale-[1.01]'
                       : 'border-gray-300 hover:border-pink-400 bg-gray-50/50 hover:bg-gray-50'
                   }`}
                   onClick={() => fileInputRef.current?.click()}

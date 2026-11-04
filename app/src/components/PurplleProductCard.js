@@ -252,7 +252,7 @@ export const PurplleProductCard = ({
               <TouchableOpacity
                 onPress={handleOpenShades}
                 activeOpacity={0.85}
-                className="flex-row items-center gap-1 px-2 py-1 rounded-lg border border-[#C2477A] bg-[#FFF0F5] shadow-2xs active:bg-[#FCE4EC]"
+                className="flex-row items-center gap-1 px-2 py-1 rounded-lg border border-[#C2477A] bg-white shadow-2xs active:bg-[#FCE4EC]"
               >
                 <Text className="text-[#C2477A] text-[9.5px] font-black uppercase tracking-wider">
                   Select Shade

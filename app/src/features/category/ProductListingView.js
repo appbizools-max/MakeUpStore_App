@@ -187,7 +187,7 @@ export const ProductListingView = ({
               onPress={() => setShowSortModal(true)}
               activeOpacity={0.7}
               style={{
-                backgroundColor: '#FFF0F5',
+                backgroundColor: '#FFFFFF',
                 borderColor: '#F0E3EA',
                 borderWidth: 1,
               }}
@@ -202,7 +202,7 @@ export const ProductListingView = ({
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={{ borderColor: '#F0E3EA', borderWidth: 1 }}
-              className="w-8 h-8 rounded-full bg-[#FFF0F5] items-center justify-center shadow-2xs relative"
+              className="w-8 h-8 rounded-full bg-white items-center justify-center shadow-2xs relative"
               accessibilityLabel="Cart"
             >
               <Ionicons name="bag-handle-outline" size={15} color="#B64F7D" />
@@ -226,7 +226,7 @@ export const ProductListingView = ({
         <View
           style={{
             height: 52,
-            backgroundColor: '#FFF0F5',
+            backgroundColor: '#FFFFFF',
             borderColor: '#F0E3EA',
             borderWidth: 1,
             borderRadius: 16,
@@ -338,7 +338,7 @@ export const ProductListingView = ({
           <View
             style={{
               borderRadius: 18,
-              backgroundColor: '#FFF0F5',
+              backgroundColor: '#FFFFFF',
               borderColor: '#F0E3EA',
               borderWidth: 1,
               padding: 16,
@@ -383,7 +383,7 @@ export const ProductListingView = ({
               overflow: 'hidden',
               marginBottom: 14,
               height: 140,
-              backgroundColor: '#FFF0F5',
+              backgroundColor: '#FFFFFF',
               borderColor: '#F0E3EA',
               borderWidth: 1,
               shadowColor: '#B64F7D',
@@ -404,7 +404,7 @@ export const ProductListingView = ({
           <View
             style={{
               borderRadius: 18,
-              backgroundColor: '#FFF0F5',
+              backgroundColor: '#FFFFFF',
               borderColor: '#F0E3EA',
               borderWidth: 1,
               padding: 16,
@@ -424,7 +424,7 @@ export const ProductListingView = ({
           <View className="items-center justify-center py-16 px-6">
             <View
               style={{
-                backgroundColor: '#FFF0F5',
+                backgroundColor: '#FFFFFF',
                 borderColor: '#F0E3EA',
                 borderWidth: 1,
               }}

@@ -98,9 +98,9 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
     const r = (role || '').toLowerCase();
     switch (r) {
       case 'salon':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FDF2F8] text-black border border-[#FCE4EC]">Salon Owner</span>;
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-black border border-[#FCE4EC]">Salon Owner</span>;
       case 'artist':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FDF2F8] text-black border border-[#FCE4EC]">Makeup Artist</span>;
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-black border border-[#FCE4EC]">Makeup Artist</span>;
       case 'beautician':
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 text-pink-700 border border-pink-200">Beautician</span>;
       default:
@@ -180,7 +180,7 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
         <div className="bg-white p-5 rounded-2xl border border-pink-100 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#C2477A] uppercase tracking-wider">Recovery Rate</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FFF5F8] border border-pink-200 flex items-center justify-center text-[#C2477A]">
+            <div className="w-8 h-8 rounded-xl bg-white border border-pink-200 flex items-center justify-center text-[#C2477A]">
               <DollarSign size={16} />
             </div>
           </div>
@@ -246,7 +246,7 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
       {/* 3. Abandoned Carts Feed / Cards */}
       {filteredCarts.length === 0 ? (
         <div className="bg-white rounded-3xl border border-pink-100 p-12 text-center shadow-2xs">
-          <div className="w-14 h-14 rounded-2xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center mx-auto mb-3">
+          <div className="w-14 h-14 rounded-2xl bg-white text-[#C2477A] flex items-center justify-center mx-auto mb-3">
             <ShoppingCart size={28} />
           </div>
           <h3 className="text-base font-bold text-gray-900">No Carts Found</h3>
@@ -270,7 +270,7 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
                 {/* Header: Customer Info + Status Badge + Time */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-pink-100/60 gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#FFF5F8] border border-pink-200 text-[#C2477A] flex items-center justify-center font-black text-sm shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-white border border-pink-200 text-[#C2477A] flex items-center justify-center font-black text-sm shrink-0">
                       {(cart.user_name || 'C').charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -307,7 +307,7 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
                     {items.map((it, idx) => (
                       <div
                         key={idx}
-                        className="p-3 rounded-xl border border-pink-100/70 bg-[#FFF8FA]/60 flex items-center gap-3"
+                        className="p-3 rounded-xl border border-pink-100/70 bg-white flex items-center gap-3"
                       >
                         {it.image ? (
                           <img
@@ -398,7 +398,7 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
                     {cart.status === 'converted' && cart.order_id && onNavigateToOrders && (
                       <button
                         onClick={() => onNavigateToOrders(cart.order_id)}
-                        className="px-3 py-1.5 rounded-xl bg-[#FFF5F8] text-[#C2477A] hover:bg-pink-100 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-white text-[#C2477A] hover:bg-pink-100 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
                       >
                         <ExternalLink size={12} />
                         <span>View Order</span>

@@ -213,7 +213,7 @@ export const B2BRegistrationForm = () => {
           <Ionicons name="arrow-back" size={20} color="#C2477A" />
         </TouchableOpacity>
 
-        <View className="bg-[#FFF5F8] border border-[#F5A8C0] px-3.5 py-1.5 rounded-full flex-row items-center gap-1.5">
+        <View className="bg-white border border-[#F5A8C0] px-3.5 py-1.5 rounded-full flex-row items-center gap-1.5">
           <Ionicons name="shield-checkmark" size={14} color="#C2477A" />
           <Text className="text-xs font-black text-[#C2477A]">
             {roleTitle} Partner
@@ -385,7 +385,7 @@ export const B2BRegistrationForm = () => {
                     onPress={() => setBusinessType(spec)}
                     className={`px-3 py-2 rounded-full border ${
                       isSelected
-                        ? 'bg-[#FFF0F5] border-[#C2477A]'
+                        ? 'bg-white border-[#C2477A]'
                         : 'bg-white border-stone-200'
                     }`}
                   >
@@ -417,7 +417,7 @@ export const B2BRegistrationForm = () => {
                     onPress={() => setExperience(exp)}
                     className={`px-3 py-2 rounded-full border ${
                       isSelected
-                        ? 'bg-[#FFF0F5] border-[#C2477A]'
+                        ? 'bg-white border-[#C2477A]'
                         : 'bg-white border-stone-200'
                     }`}
                   >

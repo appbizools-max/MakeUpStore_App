@@ -1829,7 +1829,7 @@ export default function AddNewProductPage({
                             {selected.name}
                           </span>
                           {brandNum && (
-                            <span className="text-[10px] font-mono font-bold text-[#C2477A] bg-pink-50 px-1.5 py-0.5 rounded border border-pink-200 shrink-0">
+                            <span className="text-[10px] font-mono font-bold text-[#C2477A] bg-white px-1.5 py-0.5 rounded border border-pink-200 shrink-0">
                               {brandNum}
                             </span>
                           )}
@@ -1854,7 +1854,7 @@ export default function AddNewProductPage({
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0 ml-2">
                             {brandNum && (
-                              <span className="text-[10px] font-mono font-bold text-[#C2477A] bg-[#FFF0F4] px-1.5 py-0.5 rounded border border-pink-200">
+                              <span className="text-[10px] font-mono font-bold text-[#C2477A] bg-white px-1.5 py-0.5 rounded border border-pink-200">
                                 {brandNum}
                               </span>
                             )}
@@ -1960,7 +1960,7 @@ export default function AddNewProductPage({
 
               {/* Shade / Swatch handling (ONLY if shade-applicable, strictly hidden for skincare/haircare/fragrance) */}
               {shadeApplicable && !hasVariants && (
-                <div className="p-4 bg-pink-50/50 rounded-2xl border border-pink-200/80 space-y-3 mt-2">
+                <div className="p-4 bg-white rounded-2xl border border-pink-200/80 space-y-3 mt-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
                       <Palette size={14} className="text-[#E11D48]" />
@@ -2092,7 +2092,7 @@ export default function AddNewProductPage({
                     Retail Barcode (EAN-13, UPC-A, Code 128)
                   </label>
                   {barcodeStatus.isChecking ? (
-                    <span className="text-[10px] text-gray-500 flex items-center gap-1 font-medium bg-pink-50/80 px-2 py-0.5 rounded-full border border-pink-100">
+                    <span className="text-[10px] text-gray-500 flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded-full border border-pink-100">
                       <Loader2 size={10} className="animate-spin text-[#E11D48]" /> Checking catalog database...
                     </span>
                   ) : barcodeStatus.checkedBarcode && !barcodeStatus.exists && !barcodeStatus.formatError ? (
@@ -2175,7 +2175,7 @@ export default function AddNewProductPage({
                       setBarcodeScannerTarget(null);
                       setIsBarcodeScannerOpen(true);
                     }}
-                    className="px-3.5 py-2.5 rounded-xl border border-pink-200 bg-pink-50/60 hover:bg-pink-100 text-[#E11D48] font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs shrink-0"
+                    className="px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-100 text-[#E11D48] font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs shrink-0"
                     title="Scan barcode with camera / webcam"
                   >
                     <ScanBarcode size={15} />
@@ -2222,7 +2222,7 @@ export default function AddNewProductPage({
                           className="w-12 h-12 object-cover rounded-lg border border-pink-100 shrink-0"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-pink-50 text-[#E11D48] flex items-center justify-center font-bold text-xs shrink-0">
+                        <div className="w-12 h-12 rounded-lg bg-white text-[#E11D48] flex items-center justify-center font-bold text-xs shrink-0">
                           <Package size={20} />
                         </div>
                       )}
@@ -2289,7 +2289,7 @@ export default function AddNewProductPage({
                 }
               }}
               onDrop={handleImageDrop}
-              className={`bg-white rounded-2xl border transition-all p-6 shadow-xs space-y-4 ${isDraggingImage ? 'border-[#E11D48] ring-2 ring-pink-100 bg-[#FFF9FB]' : 'border-[#F3D7DF]'
+              className={`bg-white rounded-2xl border transition-all p-6 shadow-xs space-y-4 ${isDraggingImage ? 'border-[#E11D48] ring-2 ring-pink-100 bg-white' : 'border-[#F3D7DF]'
                 }`}
             >
               <div className="flex items-center justify-between pb-3 border-b border-pink-100/70">
@@ -2303,7 +2303,7 @@ export default function AddNewProductPage({
                         Product Media &amp; Gallery
                       </h2>
                       {uploadedImagesList.length > 0 && (
-                        <span className="text-[10px] font-bold text-[#E11D48] bg-pink-50 border border-pink-100 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold text-[#E11D48] bg-white border border-pink-100 px-2 py-0.5 rounded-full">
                           {uploadedImagesList.length} {uploadedImagesList.length === 1 ? 'image' : 'images'}
                         </span>
                       )}
@@ -2318,7 +2318,7 @@ export default function AddNewProductPage({
                   <button
                     type="button"
                     onClick={() => setShowUrlInput(!showUrlInput)}
-                    className="px-2.5 py-1.5 rounded-xl border border-pink-200 text-[#E11D48] bg-pink-50/60 hover:bg-pink-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    className="px-2.5 py-1.5 rounded-xl border border-pink-200 text-[#E11D48] bg-white hover:bg-pink-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                   >
                     <LinkIcon size={12} />
                     <span>Paste URL</span>
@@ -2326,7 +2326,7 @@ export default function AddNewProductPage({
                   <button
                     type="button"
                     onClick={handleOpenImageSearch}
-                    className="px-2.5 py-1.5 rounded-xl border border-pink-200 text-[#E11D48] bg-pink-50/60 hover:bg-pink-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    className="px-2.5 py-1.5 rounded-xl border border-pink-200 text-[#E11D48] bg-white hover:bg-pink-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                     title="Open Image Search Browser on the right"
                   >
                     <Search size={12} />
@@ -2337,7 +2337,7 @@ export default function AddNewProductPage({
 
               {/* URL Input Bar */}
               {showUrlInput && (
-                <div className="p-3 bg-pink-50/40 rounded-xl border border-pink-100 flex items-center gap-2">
+                <div className="p-3 bg-white rounded-xl border border-pink-100 flex items-center gap-2">
                   <input
                     type="url"
                     placeholder="https://images.example.com/products/packshot.jpg"
@@ -2384,8 +2384,8 @@ export default function AddNewProductPage({
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className={`w-full py-6 px-4 rounded-xl border-2 border-dashed flex flex-col sm:flex-row items-center justify-between gap-4 transition-all cursor-pointer ${isDraggingImage
-                    ? 'border-[#E11D48] bg-pink-50'
-                    : 'border-pink-200/90 hover:border-[#E11D48] bg-[#FFF8FA] hover:bg-pink-50/50'
+                    ? 'border-[#E11D48] bg-white'
+                    : 'border-pink-200/90 hover:border-[#E11D48] bg-white hover:bg-pink-50/50'
                     }`}
                 >
                   <div className="flex items-center gap-3">
@@ -2479,7 +2479,7 @@ export default function AddNewProductPage({
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploadingImage}
-                      className="w-24 h-28 rounded-2xl border-2 border-dashed border-pink-200 hover:border-[#E11D48] bg-[#FFF8FA] hover:bg-pink-50/50 flex flex-col items-center justify-center gap-1.5 shrink-0 text-[#E11D48] transition-colors cursor-pointer"
+                      className="w-24 h-28 rounded-2xl border-2 border-dashed border-pink-200 hover:border-[#E11D48] bg-white hover:bg-pink-50/50 flex flex-col items-center justify-center gap-1.5 shrink-0 text-[#E11D48] transition-colors cursor-pointer"
                       title="Upload or drag & drop more packshots"
                     >
                       {isUploadingImage ? (
@@ -2548,7 +2548,7 @@ export default function AddNewProductPage({
                         Product Attributes ({formData.category || 'All Categories'})
                       </h2>
                       {Object.keys(formData.categoryAttributes || {}).filter(k => formData.categoryAttributes[k]).length > 0 && (
-                        <span className="text-[10px] font-bold text-[#E11D48] bg-pink-50 border border-pink-200 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold text-[#E11D48] bg-white border border-pink-200 px-2 py-0.5 rounded-full">
                           {Object.keys(formData.categoryAttributes || {}).filter(k => formData.categoryAttributes[k]).length} Configured
                         </span>
                       )}
@@ -2579,7 +2579,7 @@ export default function AddNewProductPage({
                         setIsAttributesExpanded(true);
                         setSelectedAttrToAdd('');
                       }}
-                      className="px-3 py-1.5 rounded-xl border border-pink-200 bg-pink-50/40 hover:bg-pink-100/60 text-xs font-bold text-[#E11D48] outline-none cursor-pointer shadow-2xs transition-all"
+                      className="px-3 py-1.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-100/60 text-xs font-bold text-[#E11D48] outline-none cursor-pointer shadow-2xs transition-all"
                     >
                       <option value="">+ Add Attribute from Master...</option>
                       {masterAttributesList.filter(a => a.status !== 'inactive').map(a => (
@@ -2596,7 +2596,7 @@ export default function AddNewProductPage({
                     className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 ${
                       isAttributesExpanded
                         ? 'bg-[#E11D48] text-white border-[#E11D48]'
-                        : 'bg-pink-50/70 hover:bg-pink-100 text-[#E11D48] border-pink-200'
+                        : 'bg-white hover:bg-pink-100 text-[#E11D48] border-pink-200'
                     }`}
                   >
                     <Sliders size={13} />
@@ -2609,7 +2609,7 @@ export default function AddNewProductPage({
               {isAttributesExpanded && (
                 <div className="pt-2 animate-fade-in">
                   {allProductAttributes.length === 0 ? (
-                    <div className="text-center py-6 border border-dashed border-pink-200 rounded-2xl bg-pink-50/30">
+                    <div className="text-center py-6 border border-dashed border-pink-200 rounded-2xl bg-white">
                       <Sliders size={22} className="mx-auto text-pink-300 mb-1.5" />
                       <p className="text-xs font-bold text-gray-700">No attributes assigned yet</p>
                       <p className="text-[11px] text-gray-400 mt-0.5">
@@ -2968,7 +2968,7 @@ export default function AddNewProductPage({
                 </div>
 
                 {/* Quick Presets & Add Tier Row */}
-                <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-pink-50/60 rounded-xl border border-pink-100">
+                <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white rounded-xl border border-pink-100">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[11px] font-bold text-gray-700 mr-1">Quick Range Presets:</span>
                     <button
@@ -3168,7 +3168,7 @@ export default function AddNewProductPage({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {/* New Arrival */}
                   <label className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${formData.showInNewArrivals !== false
-                    ? 'border-[#E11D48] bg-pink-50/40 text-gray-900'
+                    ? 'border-[#E11D48] bg-white text-gray-900'
                     : 'border-pink-100 hover:border-pink-200 bg-white text-gray-700'
                     }`}>
                     <div className="flex items-center justify-between">
@@ -3185,7 +3185,7 @@ export default function AddNewProductPage({
 
                   {/* Featured Product */}
                   <div className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between gap-2 ${formData.isFeatured
-                    ? 'border-[#E11D48] bg-pink-50/40 text-gray-900'
+                    ? 'border-[#E11D48] bg-white text-gray-900'
                     : 'border-pink-100 bg-white text-gray-700'
                     }`}>
                     <div className="flex items-center justify-between">
@@ -3218,7 +3218,7 @@ export default function AddNewProductPage({
 
                   {/* Trending Product */}
                   <div className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between gap-2 ${formData.isTrending
-                    ? 'border-[#E11D48] bg-pink-50/40 text-gray-900'
+                    ? 'border-[#E11D48] bg-white text-gray-900'
                     : 'border-pink-100 bg-white text-gray-700'
                     }`}>
                     <div className="flex items-center justify-between">
@@ -3251,7 +3251,7 @@ export default function AddNewProductPage({
 
                   {/* Recommended */}
                   <label className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${formData.isRecommended
-                    ? 'border-[#E11D48] bg-pink-50/40 text-gray-900'
+                    ? 'border-[#E11D48] bg-white text-gray-900'
                     : 'border-pink-100 hover:border-pink-200 bg-white text-gray-700'
                     }`}>
                     <div className="flex items-center justify-between">
@@ -3413,7 +3413,7 @@ export default function AddNewProductPage({
                 </div>
 
                 {/* 3. ROLE-BASED PRICE */}
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-pink-50/90 to-rose-50/70 border border-pink-200/80 space-y-1.5">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-white to-rose-50/70 border border-pink-200/80 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[10.5px] font-bold text-gray-600 uppercase tracking-wide">
                       {DISCOUNT_ROLES.find(r => r.id === previewCustomerRole)?.name} Price
@@ -3513,7 +3513,7 @@ export default function AddNewProductPage({
                             key={v.id || idx}
                             onClick={() => setSelectedVariantPreviewIndex(idx)}
                             className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 ${isSelected
-                              ? 'border-[#E11D48] bg-pink-50 ring-2 ring-pink-200'
+                              ? 'border-[#E11D48] bg-white ring-2 ring-pink-200'
                               : 'border-gray-200 hover:border-pink-200 bg-white'
                               }`}
                           >

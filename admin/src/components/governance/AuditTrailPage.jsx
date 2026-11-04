@@ -148,7 +148,7 @@ export default function AuditTrailPage({ onNavigate }) {
             <h1 className="text-xl font-bold text-black tracking-tight">
               Audit Trail & Immutable Activity Log
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FFF5F8] text-[#C2477A] border border-[#F8B4CB]">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-[#C2477A] border border-[#F8B4CB]">
               Security Compliance
             </span>
           </div>
@@ -184,7 +184,7 @@ export default function AuditTrailPage({ onNavigate }) {
         <div className="bg-white border border-[#FCE4EC] rounded-2xl p-4 shadow-sm hover:border-[#C2477A] transition-all">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-black uppercase tracking-wider">Total Audit Records</span>
-            <div className="w-7 h-7 rounded-lg bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-white text-[#C2477A] flex items-center justify-center">
               <FileText size={14} />
             </div>
           </div>
@@ -217,7 +217,7 @@ export default function AuditTrailPage({ onNavigate }) {
         <div className="bg-white border border-[#FCE4EC] rounded-2xl p-4 shadow-sm hover:border-[#C2477A] transition-all">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-black uppercase tracking-wider">Approvals Handled</span>
-            <div className="w-7 h-7 rounded-lg bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-white text-[#C2477A] flex items-center justify-center">
               <ShieldCheck size={14} />
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function AuditTrailPage({ onNavigate }) {
       <div className="bg-white border border-[#FCE4EC] rounded-2xl shadow-sm overflow-hidden">
         {filteredLogs.length === 0 ? (
           <div className="py-20 text-center flex flex-col items-center justify-center p-6">
-            <div className="w-16 h-16 rounded-full bg-[#FFF5F8] border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] mb-3">
+            <div className="w-16 h-16 rounded-full bg-white border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] mb-3">
               <Activity size={26} />
             </div>
             <h3 className="text-base font-bold text-black mb-1">No Audit Records Found</h3>
@@ -291,7 +291,7 @@ export default function AuditTrailPage({ onNavigate }) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#FFF5F8] border-b border-[#FCE4EC] text-[11px] font-black uppercase tracking-wider text-black">
+                <tr className="bg-white border-b border-[#FCE4EC] text-[11px] font-black uppercase tracking-wider text-black">
                   <th className="py-3 px-4">Timestamp</th>
                   <th className="py-3 px-4">Operator</th>
                   <th className="py-3 px-4">Module</th>

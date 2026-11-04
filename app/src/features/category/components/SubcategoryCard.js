@@ -107,7 +107,7 @@ export const SubcategoryCard = ({
           width: 32,
           height: 32,
           borderRadius: 16,
-          backgroundColor: '#FFF0F5',
+          backgroundColor: '#FFFFFF',
           borderColor: '#F8B4D9',
           borderWidth: 1,
           alignItems: 'center',

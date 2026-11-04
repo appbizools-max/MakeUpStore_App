@@ -236,7 +236,7 @@ export default function AttributesMasterPage({ categories = [] }) {
       {/* Header Card */}
       <div className="bg-white p-5 rounded-3xl border border-pink-100/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-[#FFF2F5] border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
             <Layers size={20} />
           </div>
           <div>
@@ -244,7 +244,7 @@ export default function AttributesMasterPage({ categories = [] }) {
               <h2 className="font-extrabold text-base text-gray-900 tracking-tight">
                 Universal Attribute Master & Category Mappings
               </h2>
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#FFF2F5] text-[#C2477A] border border-pink-100">
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#C2477A] border border-pink-100">
                 {attributes.length} Attributes
               </span>
             </div>
@@ -343,7 +343,7 @@ export default function AttributesMasterPage({ categories = [] }) {
           <div className="overflow-x-auto rounded-2xl border border-pink-100 bg-white shadow-xs">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-[#FFF2F5] text-gray-900 uppercase font-black text-[11px] tracking-wider border-b border-pink-100">
+                <tr className="bg-white text-gray-900 uppercase font-black text-[11px] tracking-wider border-b border-pink-100">
                   <th className="py-3.5 px-4">ATTRIBUTE NAME</th>
                   <th className="py-3.5 px-3">ATTRIBUTE GROUP</th>
                   <th className="py-3.5 px-3">INPUT TYPE</th>
@@ -374,7 +374,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                         {attr.inputType || 'select'}
                       </td>
                       <td className="py-3 px-3 text-center">
-                        <span className="font-extrabold text-[#C2477A] bg-pink-50 px-2.5 py-0.5 rounded-full border border-pink-100">
+                        <span className="font-extrabold text-[#C2477A] bg-white px-2.5 py-0.5 rounded-full border border-pink-100">
                           {(attr.values || []).length} values
                         </span>
                       </td>
@@ -396,7 +396,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                           <button
                             type="button"
                             onClick={() => setManagingValuesAttr(attr)}
-                            className="px-2.5 py-1 rounded-xl bg-[#FFF5F8] hover:bg-[#FDF2F8] text-black font-bold text-[11px] cursor-pointer shadow-2xs"
+                            className="px-2.5 py-1 rounded-xl bg-white hover:bg-[#FDF2F8] text-black font-bold text-[11px] cursor-pointer shadow-2xs"
                             title="Manage Values"
                           >
                             Manage Values
@@ -471,7 +471,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                           onClick={() => handleToggleCategoryAttribute(catName, attr.name)}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                             isMapped
-                              ? 'bg-[#FFF5F8] text-black border-[#F8B4CB] shadow-2xs font-extrabold'
+                              ? 'bg-white text-black border-[#F8B4CB] shadow-2xs font-extrabold'
                               : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
                           }`}
                         >

@@ -173,7 +173,7 @@ export default function AllEmployeesPage({ onNavigate }) {
         <div className="bg-white p-5 rounded-3xl border border-pink-100/80 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-gray-500">Total Employees</span>
-            <div className="w-8 h-8 rounded-xl bg-pink-50 text-[#C2477A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-white text-[#C2477A] flex items-center justify-center">
               <Users size={16} />
             </div>
           </div>
@@ -206,7 +206,7 @@ export default function AllEmployeesPage({ onNavigate }) {
         <div className="bg-white p-5 rounded-3xl border border-pink-100/80 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-black">Active in Last 24h</span>
-            <div className="w-8 h-8 rounded-xl bg-[#FFF5F8] text-[#C2477A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-white text-[#C2477A] flex items-center justify-center">
               <Clock size={16} />
             </div>
           </div>
@@ -373,7 +373,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                         <button
                           type="button"
                           onClick={() => onNavigate(`employees/${emp.id}/permissions`)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#FFF5F8] text-black hover:bg-[#FDF2F8] border border-[#FCE4EC] font-bold text-[11px] transition-colors"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white text-black hover:bg-[#FDF2F8] border border-[#FCE4EC] font-bold text-[11px] transition-colors"
                           title="Click to configure granular permissions"
                         >
                           <Sliders size={12} />

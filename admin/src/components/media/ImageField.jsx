@@ -103,7 +103,7 @@ export default function ImageField({
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
               {label}
             </label>
-            <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200/60 rounded text-[10px] font-bold">
+            <span className="px-2 py-0.5 bg-white text-pink-700 border border-pink-200/60 rounded text-[10px] font-bold">
               {spec.aspectRatio} • {spec.recommendedDimensions}
             </span>
           </div>
@@ -156,7 +156,7 @@ export default function ImageField({
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="px-3.5 py-1.5 bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                className="px-3.5 py-1.5 bg-white hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Replace Image</span>

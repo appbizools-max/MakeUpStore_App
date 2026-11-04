@@ -73,7 +73,7 @@ export default function ImageDropzoneUploader({
     <div className={`w-full ${className}`}>
       {/* Current Image Active */}
       {currentImageUrl ? (
-        <div className="relative rounded-2xl border border-pink-200/80 bg-[#FFF5F8] p-3.5 flex items-center justify-between gap-3.5 shadow-2xs group overflow-hidden">
+        <div className="relative rounded-2xl border border-pink-200/80 bg-white p-3.5 flex items-center justify-between gap-3.5 shadow-2xs group overflow-hidden">
           <div className="flex items-center gap-3.5 min-w-0">
             <div
               onClick={() => !disabled && setIsModalOpen(true)}
@@ -137,11 +137,11 @@ export default function ImageDropzoneUploader({
           onClick={() => !disabled && setIsModalOpen(true)}
           className={`relative rounded-2xl border-2 border-dashed transition-all p-5 text-center flex flex-col items-center justify-center cursor-pointer select-none ${
             isDragging
-              ? 'border-[#CE4270] bg-pink-50/80 scale-[1.01]'
+              ? 'border-[#CE4270] bg-white scale-[1.01]'
               : 'border-pink-200/90 bg-[#FAF9F6]/60 hover:bg-[#FFF2F5]/50 hover:border-[#CE4270]'
           } ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
         >
-          <div className="w-12 h-12 rounded-2xl bg-[#FFF0F5] text-[#CE4270] flex items-center justify-center mb-2.5 shadow-2xs border border-pink-100 group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-white text-[#CE4270] flex items-center justify-center mb-2.5 shadow-2xs border border-pink-100 group-hover:scale-105 transition-transform">
             <Upload size={20} />
           </div>
           <div className="text-xs font-bold text-gray-800">

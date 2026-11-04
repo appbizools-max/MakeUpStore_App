@@ -4012,7 +4012,7 @@ export const BulkProductEntryModal = ({
 
                   {/* Column 9: Shade Name */}
                   {isColVisible('shade') && (
-                    <th className="min-w-[180px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
+                    <th className="min-w-[180px] px-2.5 text-left bg-white text-[#831843]">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 9</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SHADE_NAME</span>
@@ -4023,7 +4023,7 @@ export const BulkProductEntryModal = ({
 
                   {/* Column 10: Swatch & HEX Helper */}
                   {isColVisible('swatch') && (
-                    <th className="min-w-[180px] px-3 text-left bg-[#FDF2F8] text-[#831843]">
+                    <th className="min-w-[180px] px-3 text-left bg-white text-[#831843]">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 10</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">HEX & SWATCH</span>
@@ -4034,7 +4034,7 @@ export const BulkProductEntryModal = ({
 
                   {/* Column 11: Size or Weight */}
                   {isColVisible('size') && (
-                    <th className="min-w-[130px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
+                    <th className="min-w-[130px] px-2.5 text-left bg-white text-[#831843]">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-pink-100 text-pink-700">COL 11</span>
                         <span className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SIZE_OR_WEIGHT</span>
@@ -4146,19 +4146,19 @@ export const BulkProductEntryModal = ({
                   )}
                   
                   {isColVisible('variantName') && (
-                    <th className="min-w-[160px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
+                    <th className="min-w-[160px] px-2.5 text-left bg-white text-[#831843]">
                       <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">VARIANT_NAME</div>
                       <div className="text-[11px] font-bold text-pink-700">Display Name</div>
                     </th>
                   )}
                   {isColVisible('shadeCode') && (
-                    <th className="min-w-[110px] px-2 text-left bg-[#FDF2F8] text-[#831843]">
+                    <th className="min-w-[110px] px-2 text-left bg-white text-[#831843]">
                       <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">SHADE_CODE</div>
                       <div className="text-[11px] font-bold text-pink-700">01, 02...</div>
                     </th>
                   )}
                   {isColVisible('variantBarcode') && (
-                    <th className="min-w-[170px] px-2.5 text-left bg-[#FDF2F8] text-[#831843]">
+                    <th className="min-w-[170px] px-2.5 text-left bg-white text-[#831843]">
                       <div className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">VARIANT_BARCODE</div>
                       <div className="text-[11px] font-bold text-pink-700">Child Barcode</div>
                     </th>
@@ -4266,7 +4266,7 @@ export const BulkProductEntryModal = ({
                         {/* Column 0A: # */}
                         {isColVisible('index') && (
                           <td className={`sticky left-0 z-20 w-[50px] min-w-[50px] max-w-[50px] px-1.5 py-3 text-center font-mono font-bold text-xs border-r border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] ${
-                            isChild ? 'bg-pink-50/80 text-[#C2477A]' : 'bg-slate-100 text-slate-700'
+                            isChild ? 'bg-white text-[#C2477A]' : 'bg-slate-100 text-slate-700'
                           }`}>
                             <div>{row._rowIndex}</div>
                             {isChild && (
@@ -4285,7 +4285,7 @@ export const BulkProductEntryModal = ({
                         {/* Column 0B: Checkbox */}
                         {isColVisible('select') && (
                           <td className={`sticky left-[50px] z-20 w-[50px] min-w-[50px] max-w-[50px] px-2 py-3 text-center border-r border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] ${
-                            isChild ? 'bg-pink-50/80' : 'bg-slate-100'
+                            isChild ? 'bg-white' : 'bg-slate-100'
                           }`}>
                             <input
                               type="checkbox"
@@ -4474,7 +4474,7 @@ export const BulkProductEntryModal = ({
                                   e.stopPropagation();
                                   setInPanelBrowserRowId(row._id);
                                 }}
-                                className="px-1.5 py-0.5 bg-pink-50 hover:bg-pink-100 text-[#C2477A] hover:text-[#9A3460] border border-pink-200 rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                                className="px-1.5 py-0.5 bg-white hover:bg-pink-100 text-[#C2477A] hover:text-[#9A3460] border border-pink-200 rounded text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
                                 title="Open Image Search Browser for this product"
                               >
                                 <Search className="w-2.5 h-2.5 text-[#C2477A]" />
@@ -4644,7 +4644,7 @@ export const BulkProductEntryModal = ({
 
                         {/* Column 9: Shade Name */}
                         {isColVisible('shade') && (
-                          <td className="min-w-[180px] px-2.5 py-2 bg-[#FFF8FA]">
+                          <td className="min-w-[180px] px-2.5 py-2 bg-white">
                             {rowHasShades ? (
                               <ShadeNameCell
                                 id={`cell_shade_${row._id}`}
@@ -4682,7 +4682,7 @@ export const BulkProductEntryModal = ({
 
                         {/* Column 10: Swatch & HEX Helper */}
                         {isColVisible('swatch') && (
-                          <td className="min-w-[180px] px-3 py-2 bg-[#FFF8FA]">
+                          <td className="min-w-[180px] px-3 py-2 bg-white">
                             <div className="flex items-center gap-2">
                               <input
                                 id={`cell_swatch_${row._id}`}
@@ -4706,7 +4706,7 @@ export const BulkProductEntryModal = ({
 
                         {/* Column 11: Size or Weight */}
                         {isColVisible('size') && (
-                          <td className="min-w-[130px] px-2.5 py-2 bg-[#FFF8FA]">
+                          <td className="min-w-[130px] px-2.5 py-2 bg-white">
                             <input
                               id={`cell_size_${row._id}`}
                               type="text"
@@ -4942,7 +4942,7 @@ export const BulkProductEntryModal = ({
                         )}
                         
                         {isColVisible('variantName') && (
-                          <td className="min-w-[160px] px-2.5 py-2 bg-[#FFF8FA]">
+                          <td className="min-w-[160px] px-2.5 py-2 bg-white">
                             <input
                               id={`cell_variantName_${row._id}`}
                               type="text"
@@ -4955,7 +4955,7 @@ export const BulkProductEntryModal = ({
                           </td>
                         )}
                         {isColVisible('shadeCode') && (
-                          <td className="min-w-[110px] px-2 py-2 font-mono bg-[#FFF8FA]">
+                          <td className="min-w-[110px] px-2 py-2 font-mono bg-white">
                             <input
                               id={`cell_shadeCode_${row._id}`}
                               type="text"
@@ -4968,7 +4968,7 @@ export const BulkProductEntryModal = ({
                           </td>
                         )}
                         {isColVisible('variantBarcode') && (
-                          <td className="min-w-[170px] px-2.5 py-2 font-mono bg-[#FFF8FA]">
+                          <td className="min-w-[170px] px-2.5 py-2 font-mono bg-white">
                             <input
                               id={`cell_variantBarcode_${row._id}`}
                               type="text"
@@ -5129,7 +5129,7 @@ export const BulkProductEntryModal = ({
                                     <button
                                       type="button"
                                       onClick={() => setInPanelBrowserRowId(row._id)}
-                                      className="w-full py-1.5 px-2 bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[#C2477A] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                                      className="w-full py-1.5 px-2 bg-white hover:bg-pink-100 border border-pink-200 text-[#C2477A] rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
                                       title="Open Image Search Browser on the right"
                                     >
                                       <Search className="w-3 h-3 text-[#C2477A]" />
@@ -5569,7 +5569,7 @@ export const BulkProductEntryModal = ({
                                         <button
                                           type="button"
                                           onClick={() => handleAddTierToRow(row._id, activeTierRoleTab)}
-                                          className="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold bg-pink-50 hover:bg-pink-100 text-[#CE4270] border border-pink-200 inline-flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                                          className="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-pink-100 text-[#CE4270] border border-pink-200 inline-flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                                         >
                                           <Plus className="w-3.5 h-3.5" />
                                           <span>+ Add First Tier to {activeTierRoleTab.charAt(0).toUpperCase() + activeTierRoleTab.slice(1)}</span>
@@ -6026,7 +6026,7 @@ export const BulkProductEntryModal = ({
           <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
             <div className="bg-white rounded-3xl shadow-2xl border border-rose-200 w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95">
               {/* Header */}
-              <div className="px-6 py-4.5 border-b border-rose-100 flex items-center justify-between bg-gradient-to-r from-rose-50 to-pink-50/40">
+              <div className="px-6 py-4.5 border-b border-rose-100 flex items-center justify-between bg-gradient-to-r from-rose-50 to-white">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-black shadow-inner">
                     <AlertTriangle className="w-5 h-5" />

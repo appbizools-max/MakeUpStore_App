@@ -2030,7 +2030,7 @@ export default function MainCategoriesManager({
                 currentView === 'subcategories' ? 'text-[#C2477A] font-extrabold' : 'text-gray-600 hover:text-[#C2477A]'
               }`}
             >
-              <span className="px-2 py-0.5 rounded-md bg-[#FFF5F8] text-[#C2477A] border border-pink-100 text-[10px] uppercase font-bold">
+              <span className="px-2 py-0.5 rounded-md bg-white text-[#C2477A] border border-pink-100 text-[10px] uppercase font-bold">
                 Main
               </span>
               <span>{selectedCategory.name}</span>
@@ -2072,7 +2072,7 @@ export default function MainCategoriesManager({
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full xl:w-auto">
-              <div className="hidden lg:flex items-center gap-2 bg-[#FFF5F8] px-3.5 h-10 rounded-xl border border-pink-100/90 shadow-2xs">
+              <div className="hidden lg:flex items-center gap-2 bg-white px-3.5 h-10 rounded-xl border border-pink-100/90 shadow-2xs">
                 <span className="text-xs font-extrabold text-[#C2477A]">{hierarchyStats.totalCategories} Main Categories</span>
                 <span className="text-pink-300">•</span>
                 <span className="text-xs font-bold text-gray-700">{hierarchyStats.totalSubcategories} Subcategories</span>
@@ -2127,7 +2127,7 @@ export default function MainCategoriesManager({
 
           {/* Search & Filters */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-pink-100/80 shadow-xs flex flex-wrap items-center justify-between gap-3.5">
-            <div className="flex items-center gap-2.5 bg-[#FFF5F8] px-3.5 py-2.5 rounded-xl border border-pink-100 flex-1 min-w-[260px]">
+            <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100 flex-1 min-w-[260px]">
               <Search size={16} className="text-[#C2477A] shrink-0" />
               <input
                 type="text"
@@ -2149,7 +2149,7 @@ export default function MainCategoriesManager({
                 <select
                   value={catStatusFilter}
                   onChange={(e) => setCatStatusFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-[#FFF5F8] border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
                 >
                   <option value="all">All</option>
                   <option value="active">Active</option>
@@ -2162,7 +2162,7 @@ export default function MainCategoriesManager({
                 <select
                   value={catMobileFilter}
                   onChange={(e) => setCatMobileFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-[#FFF5F8] border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
                 >
                   <option value="all">All</option>
                   <option value="visible">Visible</option>
@@ -2202,7 +2202,7 @@ export default function MainCategoriesManager({
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[900px]">
                   <thead>
-                    <tr className="border-b border-pink-100 bg-[#FFF5F8] text-[11px] font-extrabold text-gray-600 uppercase tracking-wider">
+                    <tr className="border-b border-pink-100 bg-white text-[11px] font-extrabold text-gray-600 uppercase tracking-wider">
                       <th className="py-4 px-4 w-16 text-center">#</th>
                       <th className="py-4 px-4 min-w-[260px]">Category Name</th>
                       <th className="py-4 px-4 text-center w-48">Subcategories</th>
@@ -2226,7 +2226,7 @@ export default function MainCategoriesManager({
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={() => handleCategoryDrop(idx)}
                           className={`transition-all group ${
-                            isDragged ? 'opacity-40 bg-pink-50' : isDragOver ? 'bg-pink-100/50' : 'hover:bg-[#FFF9FB]'
+                            isDragged ? 'opacity-40 bg-white' : isDragOver ? 'bg-pink-100/50' : 'hover:bg-[#FFF9FB]'
                           }`}
                         >
                           {/* # Priority & Editable Sequence */}
@@ -2243,7 +2243,7 @@ export default function MainCategoriesManager({
                                 key={`cat_seq_${cat.id}_${idx + 1}`}
                                 onBlur={(e) => handleCategorySequenceChange(cat.id, parseInt(e.target.value, 10))}
                                 onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
-                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-[#FFF5F8]/70 text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
+                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-white text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
                                 title="Edit priority sequence number directly"
                               />
                             </div>
@@ -2252,7 +2252,7 @@ export default function MainCategoriesManager({
                           {/* Category Name */}
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-11 h-11 rounded-xl bg-[#FFF5F8] border border-pink-100 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs group-hover:border-pink-300 transition-colors">
+                              <div className="w-11 h-11 rounded-xl bg-white border border-pink-100 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs group-hover:border-pink-300 transition-colors">
                                 {cat.image ? (
                                   <img
                                     src={cat.image}
@@ -2282,7 +2282,7 @@ export default function MainCategoriesManager({
 
                           {/* Subcategories Badge */}
                           <td className="py-3.5 px-4 text-center">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-[#FFF5F8] text-[#C2477A] border border-pink-200">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-white text-[#C2477A] border border-pink-200">
                               <Layers size={12} className="text-[#C2477A]" />
                               <span>{childSubs.length} Subcategories</span>
                             </span>
@@ -2326,7 +2326,7 @@ export default function MainCategoriesManager({
                               <button
                                 type="button"
                                 onClick={() => handleOpenCategorySubcategories(cat)}
-                                className="px-3.5 py-1.5 rounded-xl bg-[#FFF5F8] hover:bg-[#C2477A] text-[#C2477A] hover:text-white border border-pink-200 font-extrabold text-xs transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1.5 group/btn"
+                                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white border border-pink-200 font-extrabold text-xs transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1.5 group/btn"
                                 title={`Show Subcategories for ${cat.name}`}
                               >
                                 <span>Show Subcategories</span>
@@ -2371,7 +2371,7 @@ export default function MainCategoriesManager({
       {currentView === 'subcategories' && selectedCategory && (
         <div className="space-y-6">
           {/* Parent Context Banner */}
-          <div className="bg-gradient-to-r from-[#FFF5F8] to-white p-6 sm:p-7 rounded-2xl border border-pink-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="bg-gradient-to-r from-white to-white p-6 sm:p-7 rounded-2xl border border-pink-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
             <div className="flex items-center gap-4">
               <button
                 type="button"
@@ -2465,7 +2465,7 @@ export default function MainCategoriesManager({
 
           {/* Subcategories Search & Filter Controls */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-pink-100/80 shadow-xs flex flex-wrap items-center justify-between gap-3.5">
-            <div className="flex items-center gap-2.5 bg-[#FFF5F8] px-3.5 py-2.5 rounded-xl border border-pink-100 flex-1 min-w-[260px]">
+            <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100 flex-1 min-w-[260px]">
               <Search size={16} className="text-[#C2477A] shrink-0" />
               <input
                 type="text"
@@ -2487,7 +2487,7 @@ export default function MainCategoriesManager({
                 <select
                   value={subStatusFilter}
                   onChange={(e) => setSubStatusFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-[#FFF5F8] border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
                 >
                   <option value="all">All</option>
                   <option value="active">Active</option>
@@ -2500,7 +2500,7 @@ export default function MainCategoriesManager({
                 <select
                   value={subMobileFilter}
                   onChange={(e) => setSubMobileFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-[#FFF5F8] border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
                 >
                   <option value="all">All</option>
                   <option value="visible">Visible</option>
@@ -2546,7 +2546,7 @@ export default function MainCategoriesManager({
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[950px]">
                   <thead>
-                    <tr className="border-b border-pink-100 bg-[#FFF5F8] text-[11px] font-extrabold text-gray-600 uppercase tracking-wider">
+                    <tr className="border-b border-pink-100 bg-white text-[11px] font-extrabold text-gray-600 uppercase tracking-wider">
                       <th className="py-4 px-4 w-16 text-center">#</th>
                       <th className="py-4 px-4 min-w-[220px]">Sub Category</th>
                       <th className="py-4 px-4 min-w-[150px]">Main Category</th>
@@ -2571,7 +2571,7 @@ export default function MainCategoriesManager({
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={() => handleSubcategoryDrop(idx)}
                           className={`transition-all group ${
-                            isDragged ? 'opacity-40 bg-pink-50' : isDragOver ? 'bg-pink-100/50' : 'hover:bg-[#FFF9FB]'
+                            isDragged ? 'opacity-40 bg-white' : isDragOver ? 'bg-pink-100/50' : 'hover:bg-[#FFF9FB]'
                           }`}
                         >
                           {/* # Priority & Editable Sequence */}
@@ -2588,7 +2588,7 @@ export default function MainCategoriesManager({
                                 key={`sub_seq_${sub.id}_${idx + 1}`}
                                 onBlur={(e) => handleSubcategorySequenceChange(sub.id, parseInt(e.target.value, 10))}
                                 onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
-                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-[#FFF5F8]/70 text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
+                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-white text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
                                 title="Edit priority sequence number directly"
                               />
                             </div>
@@ -2610,7 +2610,7 @@ export default function MainCategoriesManager({
 
                           {/* Main Category */}
                           <td className="py-3.5 px-4">
-                            <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold bg-[#FFF5F8] text-[#C2477A] border border-pink-100">
+                            <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold bg-white text-[#C2477A] border border-pink-100">
                               {selectedCategory.name}
                             </span>
                           </td>
@@ -2955,7 +2955,7 @@ export default function MainCategoriesManager({
 
                           {/* Main Category */}
                           <td className="py-3.5 px-4">
-                            <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold bg-[#FFF5F8] text-[#C2477A] border border-pink-100">
+                            <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold bg-white text-[#C2477A] border border-pink-100">
                               {selectedCategory?.name || 'Main Category'}
                             </span>
                           </td>
@@ -3050,7 +3050,7 @@ export default function MainCategoriesManager({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header - Sticky with prominent Close (✕) button */}
-            <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-[#FFF5F8] via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
+            <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-white via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
               <div className="flex items-center gap-3 min-w-0 pr-2">
                 <div className="w-10 h-10 rounded-2xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs shrink-0">
                   <FolderPlus size={20} />
@@ -3109,7 +3109,7 @@ export default function MainCategoriesManager({
                 </div>
 
                 {/* Mobile App & Status Switches */}
-                <div className="bg-[#FFF9FB] p-3.5 rounded-xl border border-pink-100/80 flex items-center justify-around">
+                <div className="bg-white p-3.5 rounded-xl border border-pink-100/80 flex items-center justify-around">
                   <div className="flex flex-col items-center gap-1.5 text-center">
                     <span className="text-xs font-bold text-gray-700">Show in Mobile App</span>
                     <button
@@ -3199,7 +3199,7 @@ export default function MainCategoriesManager({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header - Sticky with prominent Close (✕) button */}
-            <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-[#FFF5F8] via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
+            <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-white via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
               <div className="flex items-center gap-3 min-w-0 pr-2">
                 <div className="w-10 h-10 rounded-2xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs shrink-0">
                   <Layers size={20} />
@@ -3242,7 +3242,7 @@ export default function MainCategoriesManager({
                       setSubFormData(prev => ({ ...prev, category_id: newCatId }));
                       if (formErrors.category_id) setFormErrors(prev => ({ ...prev, category_id: null }));
                     }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-bold text-gray-800 bg-[#FFF5F8]/50 outline-none transition-all cursor-pointer"
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-bold text-gray-800 bg-white outline-none transition-all cursor-pointer"
                   >
                     <option value="" disabled>Select Parent Main Category...</option>
                     {categories.map(c => (
@@ -3285,7 +3285,7 @@ export default function MainCategoriesManager({
                 </div>
 
                 {/* Mobile App & Status Switches */}
-                <div className="bg-[#FFF9FB] p-3.5 rounded-xl border border-pink-100/80 flex items-center justify-around">
+                <div className="bg-white p-3.5 rounded-xl border border-pink-100/80 flex items-center justify-around">
                   <div className="flex flex-col items-center gap-1.5 text-center">
                     <span className="text-xs font-bold text-gray-700">Show in Mobile App</span>
                     <button

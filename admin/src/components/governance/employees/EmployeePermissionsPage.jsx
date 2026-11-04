@@ -308,7 +308,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
               <div
                 className={`p-4 flex items-center justify-between border-b transition-colors ${
                   isModuleEnabled
-                    ? 'bg-gradient-to-r from-[#FFF5F8] to-white border-pink-100'
+                    ? 'bg-gradient-to-r from-white to-white border-pink-100'
                     : 'bg-gray-100/70 border-gray-200'
                 }`}
               >
@@ -357,7 +357,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
                           !isModuleEnabled
                             ? 'opacity-40 cursor-not-allowed border-gray-100 bg-gray-50'
                             : isChecked
-                            ? 'border-pink-200 bg-pink-50/40 text-gray-900 cursor-pointer'
+                            ? 'border-pink-200 bg-white text-gray-900 cursor-pointer'
                             : 'border-gray-100 hover:border-gray-200 text-gray-500 cursor-pointer'
                         }`}
                       >

@@ -367,9 +367,9 @@ export default function SearchableSelect({
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     className={`w-full px-3 py-2 rounded-xl text-left font-bold text-xs flex items-center justify-between transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-[#FFF2F5] text-[#CE4270]'
+                        ? 'bg-white text-[#CE4270]'
                         : isHighlighted
-                        ? 'bg-pink-50/60 text-gray-900'
+                        ? 'bg-white text-gray-900'
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
