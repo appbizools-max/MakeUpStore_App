@@ -933,6 +933,7 @@ export const HomeScreen = () => {
                       <View
                         style={{
                           width: 68, height: 68, borderRadius: 34, backgroundColor: '#FFFFFF',
+                          borderColor: '#F8B4D9', borderWidth: 1.5,
                           marginBottom: 6,
                           overflow: 'hidden',
                           alignItems: 'center',

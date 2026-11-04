@@ -2,19 +2,21 @@
 // Structured for 4-Level Navigation Flow (Nykaa / Tira / Sephora style)
 
 export const CATEGORY_IMAGES = {
-  makeup: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505754975_gvytzx.webp?v=1793505754975',
-  skincare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505683962_hunl1d.webp?v=1793505683962',
-  hairCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505874428_6r1hr8.webp?v=1793505874428',
-  hairStylingTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505817403_oybioz.webp?v=1793505817403',
-  bathBody: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505998316_5h3t1a.webp?v=1793505998316',
-  fragrance: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505916828_ivu8o1.webp?v=1793505916828',
-  mensGrooming: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506238512_er0eqb.webp?v=1793506238512',
-  nailCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505951442_sl1hjy.webp?v=1793505951442',
-  salonProducts: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506188470_oisjf7.webp?v=1793506188470',
-  beautyTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506139285_xc2eij.webp?v=1793506139285',
-  personalCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506048096_8lqwd8.webp?v=1793506048096',
-  beautyKits: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506188470_oisjf7.webp?v=1793506188470',
-  eyeMakeup: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/sub_1790838756897_sy637u.jpg',
+  makeup: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_makeup.png',
+  skincare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_skincare.png',
+  hairCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_hair.png',
+  hairStylingTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_appliances.png',
+  bathBody: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_bath_body.png',
+  fragrance: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_fragrance.png',
+  mensGrooming: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_mens_grooming.png',
+  nailCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_sub_nail_art.png',
+  salonProducts: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_hair.png',
+  beautyTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_appliances.png',
+  personalCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_wellness.png',
+  beautyKits: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_gifting.png',
+  babyCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_baby_care.png',
+  wellness: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_wellness.png',
+  eyeMakeup: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/nykaa_3d_sub_eyeshadow.png',
 };
 
 export const MAIN_CATEGORIES = [

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,9 @@ import {
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import {
-  MAIN_CATEGORIES,
-  CATEGORY_IMAGES,
   findCategoryConfig,
-  filterProductsByHierarchy
+  filterProductsByHierarchy,
+  CATEGORY_IMAGES
 } from '../../config/categoriesHierarchy';
 
 import { getCategoryFA5Icon } from '../../utils/categoryIcons';
@@ -23,116 +22,22 @@ import { CategoryDetailView } from './CategoryDetailView';
 import { SubcategoryView } from './SubcategoryView';
 import { ProductListingView } from './ProductListingView';
 
-// Curated 12 Core Categories in exact mandated sequence
-// iconName fields kept for backward compatibility with CategoryDetailView/SubcategoryView;
-// the grid cards now resolve icons via getCategoryFA5Icon() for consistent FA5 rendering.
-export const MANDATED_CATEGORIES = [
-  {
-    id: 'cat_skincare',
-    name: 'Skincare',
-    iconName: 'spa',                    // FA5
-    image: CATEGORY_IMAGES.skincare,
-    fallbackImage: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Glow from Within'
-  },
-  {
-    id: 'cat_makeup',
-    name: 'Makeup',
-    iconName: 'paint-brush',            // FA5
-    image: CATEGORY_IMAGES.makeup,
-    fallbackImage: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Bold. Radiant. Iconic.'
-  },
-  {
-    id: 'cat_hair_styling',
-    name: 'Hair Styling',
-    iconName: 'magic',                  // FA5
-    image: CATEGORY_IMAGES.hairStylingTools,
-    fallbackImage: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Salon Finish at Home'
-  },
-  {
-    id: 'cat_hair_care',
-    name: 'Hair Care',
-    iconName: 'leaf',                   // FA5
-    image: CATEGORY_IMAGES.hairCare,
-    fallbackImage: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Strong. Silky. Vibrant.'
-  },
-  {
-    id: 'cat_fragrance',
-    name: 'Fragrance',
-    iconName: 'spray-can',              // FA5
-    image: CATEGORY_IMAGES.fragrance,
-    fallbackImage: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Your Signature Scent'
-  },
-  {
-    id: 'cat_nail_care',
-    name: 'Nail Care',
-    iconName: 'gem',                    // FA5
-    image: CATEGORY_IMAGES.nailCare,
-    fallbackImage: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Chic. Polished. Flawless.'
-  },
-  {
-    id: 'cat_bath_body',
-    name: 'Bath & Body',
-    iconName: 'bath',                   // FA5
-    image: CATEGORY_IMAGES.bathBody,
-    fallbackImage: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Pure Indulgence'
-  },
-  {
-    id: 'cat_mens_grooming',
-    name: "Men's Grooming",
-    iconName: 'male',                   // FA5
-    image: CATEGORY_IMAGES.mensGrooming,
-    fallbackImage: 'https://images.unsplash.com/photo-1621607512214-68297480165e?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Sharp. Refined. Confident.'
-  },
-  {
-    id: 'cat_beauty_tools',
-    name: 'Beauty Tools',
-    iconName: 'tools',                  // FA5
-    image: CATEGORY_IMAGES.beautyTools,
-    fallbackImage: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Precision Essentials'
-  },
-  {
-    id: 'cat_personal_care',
-    name: 'Personal Care',
-    iconName: 'pump-soap',              // FA5
-    image: CATEGORY_IMAGES.personalCare,
-    fallbackImage: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Daily Wellness & Hygiene'
-  },
-  {
-    id: 'cat_wellness',
-    name: 'Wellness',
-    iconName: 'heartbeat',              // FA5
-    image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=500&auto=format&fit=crop&q=80',
-    fallbackImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=500&auto=format&fit=crop&q=80',
-    tagline: 'Balance & Inner Vitality'
-  },
-  {
-    id: 'cat_gift_sets',
-    name: 'Gift Sets',
-    iconName: 'gift',                   // FA5
-    image: CATEGORY_IMAGES.beautyKits,
-    fallbackImage: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop&q=80',
-    tagline: 'The Ultimate Gift of Beauty'
-  }
-];
-
+/**
+ * CategoryScreen - Luxury Cosmetics Category Experience (Nykaa-inspired)
+ *
+ * 1. Single Source of Truth: Driven directly by live Supabase categories (CRUD in sync with Admin Panel).
+ * 2. Vertical Row Layout: One category per row, eliminating square cards and 2-column grids.
+ * 3. 3D Nykaa Icon Consistency: Reuses identical 3D circular cosmetic product illustrations.
+ * 4. Distinct Explore Now Pill: Clear interactive navigation into subcategories & product catalogs.
+ */
 export const CategoryScreen = () => {
   const {
     categories: dbCategories = [],
-    subcategories: liveSubcategories,
-    leafCategories: liveLeafCategories,
+    subcategories: liveSubcategories = [],
+    leafCategories: liveLeafCategories = [],
     selectedCategory,
     setSelectedCategory,
-    activeProducts,
+    activeProducts = [],
     setCurrentScreen,
     cart = []
   } = useApp();
@@ -151,61 +56,92 @@ export const CategoryScreen = () => {
     return () => subscription?.remove?.();
   }, []);
 
-  const screenWidth = windowDimensions.width;
-  const isTablet = screenWidth >= 600;
-  const numColumns = isTablet ? 3 : 2;
-  const cardGap = 12;
-  const horizontalPadding = 16;
-  const cardWidth = (screenWidth - (horizontalPadding * 2) - (cardGap * (numColumns - 1))) / numColumns;
-
   // ── NAVIGATION LEVELS ───────────────────────────────────────────
-  // level: 1 = Main Categories Grid ("Shop by Category")
-  // level: 2 = Category Detail (Top Banner + Subcategories visual list)
-  // level: 3 = Subcategory Screen (Subcategory Banner + Leaf Categories)
-  // level: 4 = Product Listing Screen (2-column products grid with search & filters)
+  // level 1: Main Categories Vertical List ("Shop by Category")
+  // level 2: Category Detail (Hero Banner + Subcategories visual list)
+  // level 3: Subcategory Screen (Subcategory Banner + Leaf Categories)
+  // level 4: Product Listing Screen (2-column products grid with search & filters)
   const [navLevel, setNavLevel] = useState(1);
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeSubcategory, setActiveSubcategory] = useState(null);
   const [activeLeafCategory, setActiveLeafCategory] = useState(null);
   const [openedFromHome, setOpenedFromHome] = useState(false);
 
-  // Synchronize when coming with selectedCategory from HomeScreen or elsewhere
+  // ── DYNAMIC SINGLE SOURCE OF TRUTH: LIVE SUPABASE CATEGORIES ────
+  const displayCategories = useMemo(() => {
+    if (!dbCategories || dbCategories.length === 0) return [];
+
+    return dbCategories
+      .filter(c => c && c.enabled !== false && !c.id?.startsWith('app_') && !c.id?.startsWith('salbeau_'))
+      .sort((a, b) => (Number(a.sort_order ?? a.sortOrder ?? 0)) - (Number(b.sort_order ?? b.sortOrder ?? 0)))
+      .map(cat => {
+        const fallbackConfig = findCategoryConfig(cat.name);
+        // Canonical 3D icon URL from database, fallback to hierarchy config
+        const normKey = (cat.name || '').toLowerCase().trim();
+        let fallbackImage = null;
+        if (normKey.includes('makeup')) fallbackImage = CATEGORY_IMAGES.makeup;
+        else if (normKey.includes('skin')) fallbackImage = CATEGORY_IMAGES.skincare;
+        else if (normKey.includes('hair care') || normKey.includes('salon')) fallbackImage = CATEGORY_IMAGES.hairCare;
+        else if (normKey.includes('styling') || normKey.includes('tool') || normKey.includes('appliance')) fallbackImage = CATEGORY_IMAGES.hairStylingTools;
+        else if (normKey.includes('bath') || normKey.includes('body')) fallbackImage = CATEGORY_IMAGES.bathBody;
+        else if (normKey.includes('fragrance') || normKey.includes('perfume') || normKey.includes('freshener')) fallbackImage = CATEGORY_IMAGES.fragrance;
+        else if (normKey.includes('men') || normKey.includes('grooming')) fallbackImage = CATEGORY_IMAGES.mensGrooming;
+        else if (normKey.includes('nail')) fallbackImage = CATEGORY_IMAGES.nailCare;
+        else if (normKey.includes('baby')) fallbackImage = CATEGORY_IMAGES.babyCare;
+        else if (normKey.includes('wellness') || normKey.includes('personal')) fallbackImage = CATEGORY_IMAGES.personalCare;
+        else if (normKey.includes('gift') || normKey.includes('kit')) fallbackImage = CATEGORY_IMAGES.beautyKits;
+
+        const imageUrl = cat.image || cat.image_url || fallbackConfig?.image || fallbackImage || null;
+        const { icon, color } = getCategoryFA5Icon(cat.name);
+
+        const subCount = (liveSubcategories || []).filter(s =>
+          (s.categoryId === cat.id || s.category_id === cat.id) ||
+          (s.parentCategory && s.parentCategory.toLowerCase() === cat.name.toLowerCase())
+        ).length;
+
+        return {
+          id: cat.id,
+          name: cat.name,
+          image: imageUrl,
+          sort_order: cat.sort_order,
+          icon,
+          iconColor: color,
+          tagline: cat.tagline || fallbackConfig?.tagline || '100% Authentic Luxury Formulations',
+          description: cat.description || fallbackConfig?.description || '',
+          subcategoriesCount: subCount
+        };
+      });
+  }, [dbCategories, liveSubcategories]);
+
+  // Synchronize when navigating with selectedCategory from HomeScreen
   useEffect(() => {
     if (selectedCategory) {
       const categoryName = typeof selectedCategory === 'string' ? selectedCategory : selectedCategory?.name;
-      const matched = findCategoryConfig(categoryName) || MANDATED_CATEGORIES.find(c => c.name.toLowerCase() === (categoryName || '').toLowerCase());
+      const matched = displayCategories.find(c => c.name.toLowerCase() === (categoryName || '').toLowerCase());
       if (matched) {
         setActiveCategory(matched);
         setNavLevel(2);
         setOpenedFromHome(true);
       }
     }
-  }, [selectedCategory]);
-
-  // Merge live database categories with Mandated Sequence
-  const displayCategories = useMemo(() => {
-    return MANDATED_CATEGORIES.map(mCat => {
-      // Find matching db category if present for real-time live database synchronization
-      const dbMatch = dbCategories.find(dbCat =>
-        dbCat.id === mCat.id ||
-        (dbCat.name && mCat.name && dbCat.name.trim().toLowerCase() === mCat.name.trim().toLowerCase())
-      );
-
-      return {
-        ...mCat,
-        dbId: dbMatch?.id,
-        enabled: dbMatch ? dbMatch.enabled !== false : true
-      };
-    });
-  }, [dbCategories]);
+  }, [selectedCategory, displayCategories]);
 
   // ── NAVIGATION HANDLERS ─────────────────────────────────────────
   const handleSelectCategory = (cat) => {
-    const config = findCategoryConfig(cat.name) || cat;
-    setActiveCategory(config);
+    const config = findCategoryConfig(cat.name) || {};
+    const fullCategory = { ...cat, ...config };
+    setActiveCategory(fullCategory);
     setActiveSubcategory(null);
     setActiveLeafCategory(null);
-    setNavLevel(2);
+
+    // If subcategories exist, navigate to Category Detail View (Level 2)
+    // If flat category, jump straight to Product Listing View (Level 4)
+    if (cat.subcategoriesCount > 0 || (fullCategory.subcategories && fullCategory.subcategories.length > 0)) {
+      setNavLevel(2);
+    } else {
+      setNavLevel(4);
+    }
+
     if (setSelectedCategory) setSelectedCategory(cat.name);
   };
 
@@ -229,8 +165,10 @@ export const CategoryScreen = () => {
     if (navLevel === 4) {
       if (activeLeafCategory) {
         setNavLevel(3);
-      } else {
+      } else if (activeCategory?.subcategoriesCount > 0) {
         setNavLevel(2);
+      } else {
+        setNavLevel(1);
       }
     } else if (navLevel === 3) {
       setNavLevel(2);
@@ -258,7 +196,7 @@ export const CategoryScreen = () => {
     );
   }, [activeProducts, activeCategory, activeSubcategory, activeLeafCategory]);
 
-  // ── RENDER LEVEL 4: PRODUCT LISTING ─────────────────────────────
+  // ── LEVEL 4: PRODUCT LISTING ────────────────────────────────────
   if (navLevel === 4) {
     return (
       <ProductListingView
@@ -271,7 +209,7 @@ export const CategoryScreen = () => {
     );
   }
 
-  // ── RENDER LEVEL 3: SUBCATEGORY (LEAF CATEGORIES) ───────────────
+  // ── LEVEL 3: SUBCATEGORY (LEAF CATEGORIES) ──────────────────────
   if (navLevel === 3) {
     return (
       <SubcategoryView
@@ -285,7 +223,7 @@ export const CategoryScreen = () => {
     );
   }
 
-  // ── RENDER LEVEL 2: CATEGORY DETAIL ─────────────────────────────
+  // ── LEVEL 2: CATEGORY DETAIL ────────────────────────────────────
   if (navLevel === 2 && activeCategory) {
     return (
       <CategoryDetailView
@@ -299,44 +237,41 @@ export const CategoryScreen = () => {
     );
   }
 
-  // ── RENDER LEVEL 1: SHOP BY CATEGORY GRID ───────────────────────
+  // ── LEVEL 1: VERTICAL SHOP BY CATEGORY EXPERIENCE ───────────────
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* ── FIXED TOP HEADER ───────────────────────────────────────── */}
+      {/* ── TOP HEADER ──────────────────────────────────────────────── */}
       <View
         style={{
           borderBottomWidth: 1,
           borderBottomColor: '#F0E3EA',
           backgroundColor: '#FFFFFF',
           elevation: 2,
-          shadowColor: '#B64F7D',
+          shadowColor: '#C2477A',
           shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.05,
+          shadowOpacity: 0.06,
           shadowRadius: 3,
         }}
         className="px-4 py-3 flex-row items-center justify-between z-30"
       >
-        {/* Back Button */}
         <TouchableOpacity
           onPress={() => setCurrentScreen('home')}
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          className="flex-row items-center gap-1 -ml-1 py-1.5 px-2 rounded-xl active:bg-pink-50"
+          className="flex-row items-center gap-1 -ml-1 py-1 px-2 rounded-xl active:bg-pink-50"
         >
-          <Ionicons name="chevron-back" size={20} color="#B64F7D" />
-          <Text style={{ color: '#B64F7D' }} className="text-xs font-bold">
+          <Ionicons name="chevron-back" size={20} color="#C2477A" />
+          <Text style={{ color: '#C2477A' }} className="text-xs font-bold">
             Home
           </Text>
         </TouchableOpacity>
 
-        {/* Title */}
-        <Text style={{ color: '#33252F' }} className="text-sm font-extrabold uppercase tracking-wider">
-          Shop by Category
+        <Text style={{ color: '#2B1A24' }} className="text-sm font-extrabold uppercase tracking-wider">
+          Shop by Categories
         </Text>
 
-        {/* Actions: Search & Cart with Badge */}
         <View className="flex-row items-center gap-2">
           <TouchableOpacity
             onPress={() => setCurrentScreen('search')}
@@ -346,7 +281,7 @@ export const CategoryScreen = () => {
             className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center shadow-2xs"
             accessibilityLabel="Search"
           >
-            <Ionicons name="search" size={16} color="#B64F7D" />
+            <Ionicons name="search" size={16} color="#C2477A" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -357,7 +292,7 @@ export const CategoryScreen = () => {
             className="w-9 h-9 rounded-full bg-[#FFF5F8] items-center justify-center shadow-2xs relative"
             accessibilityLabel="Shopping Cart"
           >
-            <Ionicons name="bag-handle-outline" size={17} color="#B64F7D" />
+            <Ionicons name="bag-handle-outline" size={17} color="#C2477A" />
             {cartCount > 0 && (
               <View
                 style={{ minWidth: 16, height: 16, paddingHorizontal: 3 }}
@@ -372,88 +307,75 @@ export const CategoryScreen = () => {
         </View>
       </View>
 
-      {/* ── VERTICALLY SCROLLABLE 2-COLUMN GRID ─────────────────────── */}
+      {/* ── VERTICAL ONE-CATEGORY-PER-ROW LIST ───────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         overScrollMode="never"
         contentContainerStyle={{
-          paddingHorizontal: horizontalPadding,
+          paddingHorizontal: 16,
           paddingTop: 16,
-          paddingBottom: 110 // Ensures categories 7-12 appear naturally without overlapping bottom nav
+          paddingBottom: 110
         }}
         className="bg-white flex-1"
       >
-        {/* Subtle Sub-heading */}
+        {/* Module Sub-Header */}
         <View className="mb-4">
-          <Text style={{ color: '#33252F' }} className="text-base font-black">
-            Explore Collections
+          <Text style={{ color: '#2B1A24' }} className="text-base font-black">
+            Explore All Collections
           </Text>
-          <Text style={{ color: '#82727C' }} className="text-xs font-medium mt-0.5">
-            Discover 100% authentic beauty, salon & grooming formulations
+          <Text style={{ color: '#8A7A84' }} className="text-xs font-medium mt-0.5">
+            Discover 100% authentic cosmetic formulations & beauty essentials
           </Text>
         </View>
 
-        {/* Categories 2-Column Responsive Grid */}
-        <View className="flex-row flex-wrap justify-between gap-y-3.5">
-          {displayCategories.map((cat, idx) => (
+        {/* Vertical Category Rows */}
+        <View className="space-y-3">
+          {displayCategories.map((cat) => (
             <TouchableOpacity
               key={cat.id || cat.name}
-              activeOpacity={0.82}
+              activeOpacity={0.88}
               onPress={() => handleSelectCategory(cat)}
               style={{
-                width: cardWidth,
                 backgroundColor: '#FFFFFF',
-                borderColor: '#F0E3EA',
-                borderWidth: 1,
-                borderRadius: 18,
-                padding: 10,
-                shadowColor: '#B64F7D',
+                borderColor: '#F3E8EE',
+                borderWidth: 1.2,
+                borderRadius: 20,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                marginBottom: 12,
+                shadowColor: '#C2477A',
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.05,
-                shadowRadius: 5,
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
                 elevation: 2,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between'
               }}
-              className="flex-col justify-between"
             >
-              {/* 1. 3D Beauty Face Avatar Image Box */}
-              <View
-                style={{
-                  width: '100%',
-                  height: 116,
-                  borderRadius: 16,
-                  backgroundColor: '#FFFFFF', borderColor: '#FCE4EC',
-                  borderWidth: 1,
-                  marginBottom: 8,
-                  overflow: 'hidden',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {cat.image ? (
-                  <Image
-                    source={{ uri: cat.image }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <FontAwesome5 name={catIconMeta.icon || 'sparkles'} size={32} color="#C2477A" />
-                )}
-              </View>
-
-              {/* 2 & 3. 3D face avatar badge + Category Title */}
-              <View className="flex-row items-center gap-1.5 mb-1">
+              {/* Left Side: 3D Golden/Pink Circular Icon + Category Title */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 }}>
+                {/* 3D Circular Avatar Container */}
                 <View
                   style={{
-                    borderColor: '#C2477A',
-                    borderWidth: 1,
-                    backgroundColor: '#FFF0F5',
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
+                    width: 66,
+                    height: 66,
+                    borderRadius: 33,
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#F8B4D9',
+                    borderWidth: 1.5,
                     overflow: 'hidden',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#C2477A',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.16,
+                    shadowRadius: 4,
+                    elevation: 3,
+                    marginRight: 14,
+                    flexShrink: 0
                   }}
-                  className="items-center justify-center shrink-0"
                 >
                   {cat.image ? (
                     <Image
@@ -462,25 +384,52 @@ export const CategoryScreen = () => {
                       resizeMode="contain"
                     />
                   ) : (
-                    <FontAwesome5 name={catIconMeta.icon || 'sparkles'} size={11} color="#C2477A" />
+                    <FontAwesome5 name={cat.icon || 'sparkles'} size={24} color={cat.iconColor || '#C2477A'} />
                   )}
                 </View>
-                <Text
-                  style={{ color: '#33252F' }}
-                  className="text-[12.5px] font-extrabold flex-1 leading-tight"
-                  numberOfLines={2}
-                >
-                  {cat.name}
-                </Text>
+
+                {/* Typography Area */}
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                  <Text
+                    style={{ color: '#2B1A24', fontSize: 15, fontWeight: '800', lineHeight: 20 }}
+                    numberOfLines={2}
+                  >
+                    {cat.name}
+                  </Text>
+                  <Text
+                    style={{ color: '#8A7A84', fontSize: 11.5, fontWeight: '500', marginTop: 2 }}
+                    numberOfLines={1}
+                  >
+                    {cat.subcategoriesCount > 0 ? `${cat.subcategoriesCount} Curated Collections` : cat.tagline}
+                  </Text>
+                </View>
               </View>
 
-              {/* 4. Explore Products text with right arrow */}
-              <View className="flex-row items-center gap-1 mt-0.5 pt-0.5">
-                <Text style={{ color: '#82727C' }} className="text-[10.5px] font-semibold">
-                  Explore Products
+              {/* Right Side: Attractive Explore Now Pill Button */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleSelectCategory(cat)}
+                style={{
+                  backgroundColor: '#C2477A',
+                  paddingVertical: 8,
+                  paddingHorizontal: 13,
+                  borderRadius: 20,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 3,
+                  shadowColor: '#C2477A',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 4,
+                  elevation: 2,
+                  flexShrink: 0
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>
+                  Explore Now
                 </Text>
-                <Ionicons name="arrow-forward" size={10} color="#B64F7D" />
-              </View>
+                <Ionicons name="chevron-forward" size={13} color="#FFFFFF" />
+              </TouchableOpacity>
             </TouchableOpacity>
           ))}
         </View>

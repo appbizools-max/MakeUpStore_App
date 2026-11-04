@@ -94,6 +94,7 @@ export const CategoryPage = ({
               description={sub.displayDesc}
               productCount={sub.computedCount}
               parentCategoryName={title}
+              image={sub.image || sub.imageUrl}
               onPress={() => onSelectSubcategory?.(sub)}
             />
           ))
