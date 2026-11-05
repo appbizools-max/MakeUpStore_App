@@ -718,7 +718,10 @@ export const AdminProvider = ({ children }) => {
     } catch (e) { }
     return null;
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    const cached = getCachedData('salbeau_admin_cache_products', null);
+    return !cached || (Array.isArray(cached) && cached.length === 0);
+  });
   const [fetchError, setFetchError] = useState(null);
 
   // Keep products state continuously synchronized to persistent storage cache
@@ -730,16 +733,38 @@ export const AdminProvider = ({ children }) => {
 
   // Fetch initial data and subscribe to real-time updates via Supabase
   const fetchData = async () => {
-    setIsLoading(true);
+    // SWR Optimization: Only trigger blocking loader if no cached products are available
+    setProducts(prev => {
+      if (!prev || prev.length === 0) {
+        setIsLoading(true);
+      }
+      return prev;
+    });
     setFetchError(null);
     try {
-      const [ordersRes, usersRes, brandsRes, productsRes, categoriesRes, cartsRes] = await Promise.all([
-        supabase.from('orders').select('*').order('date', { ascending: false }),
-        supabase.from('users').select('*'),
+      // Parallelize all queries into a single concurrent batch to eliminate sequential waterfalls
+      const [
+        ordersRes,
+        usersRes,
+        brandsRes,
+        productsRes,
+        categoriesRes,
+        cartsRes,
+        directReqs,
+        empRes,
+        logsRes,
+        backupRes
+      ] = await Promise.all([
+        supabase.from('orders').select('*').order('date', { ascending: false }).limit(300),
+        supabase.from('users').select('*').limit(500),
         supabase.from('brands').select('*'),
         supabase.from('products').select('*').order('created_at', { ascending: false }),
         supabase.from('categories').select('*').order('sort_order', { ascending: true }),
-        supabase.from('abandoned_carts').select('*').order('updated_at', { ascending: false })
+        supabase.from('abandoned_carts').select('*').order('updated_at', { ascending: false }).limit(100),
+        fetchAllSearchRequests().catch(() => []),
+        supabase.from('employees').select('*, employee_permissions(*)').order('created_at', { ascending: false }).catch(() => ({ data: [] })),
+        supabase.from('employee_activity_logs').select('*').order('created_at', { ascending: false }).limit(200).catch(() => ({ data: [] })),
+        supabase.from('brands').select('logo').eq('id', 'salbeau_employees_backup').limit(1).catch(() => ({ data: [] }))
       ]);
 
       if (ordersRes.data) setOrders(ordersRes.data.map(mapOrderFromDb));
@@ -906,22 +931,13 @@ export const AdminProvider = ({ children }) => {
         setCategories(categoriesRes.data.map(mapCategoryFromDb).sort((a, b) => a.sort_order - b.sort_order));
       }
 
-      // Also attempt direct fetch for customer_search_requests if dedicated table exists
-      try {
-        const directReqs = await fetchAllSearchRequests();
-        if (Array.isArray(directReqs) && directReqs.length > 0) {
-          setSearchRequests(directReqs);
-        }
-      } catch (e) { }
+      // Direct set for customer_search_requests (fetched in parallel above)
+      if (Array.isArray(directReqs) && directReqs.length > 0) {
+        setSearchRequests(directReqs);
+      }
 
-      // Fetch Employees and Employee Activity Logs with resilient multi-tier merge
+      // Process Employees and Employee Activity Logs (fetched in parallel above)
       try {
-        const [empRes, logsRes, backupRes] = await Promise.all([
-          supabase.from('employees').select('*, employee_permissions(*)').order('created_at', { ascending: false }),
-          supabase.from('employee_activity_logs').select('*').order('created_at', { ascending: false }).limit(200),
-          supabase.from('brands').select('logo').eq('id', 'salbeau_employees_backup').limit(1)
-        ]);
-
         const employeeMap = new Map();
 
         // 1. Incorporate local cache

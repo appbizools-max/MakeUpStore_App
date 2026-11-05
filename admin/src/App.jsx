@@ -116,7 +116,9 @@ import RolePricingMatrix from './components/products/RolePricingMatrix';
 import ShadePricingModal from './components/products/ShadePricingModal';
 import { AbandonedCartsManager } from './components/orders/AbandonedCartsManager';
 import FulfillmentStatusSelector from './components/orders/FulfillmentStatusSelector';
-import { BulkProductEntryModal } from './components/products/BulkProductEntryModal';
+const BulkProductEntryModal = React.lazy(() =>
+  import('./components/products/BulkProductEntryModal').then(m => ({ default: m.BulkProductEntryModal }))
+);
 import GeneratedDataPanel from './components/products/GeneratedDataPanel';
 import SearchableSelect from './components/common/SearchableSelect';
 import AdminSidebar from './components/common/AdminSidebar';
