@@ -206,8 +206,6 @@ const HomeProductCard = React.memo(({
   const discountPercent = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 15;
 
   const displayImage = selectedShade?.image || selectedShade?.imageUrl || product?.image;
-  const rating = product?.rating ? Number(product.rating).toFixed(1) : '4.5';
-  const reviews = product?.reviewCount || 120;
 
   return (
     <TouchableOpacity
@@ -324,12 +322,7 @@ const HomeProductCard = React.memo(({
         </View>
       )}
 
-      {/* 5. Rating Row */}
-      <View className="flex-row items-center gap-1 mb-1 mt-0.5">
-        <Ionicons name="star" size={11} color="#F59E0B" />
-        <Text className="text-[10px] font-bold text-[#1F2937]">{rating}</Text>
-        <Text className="text-[9.5px] text-[#8C7078]">({reviews})</Text>
-      </View>
+      
 
       {/* 6. Pricing Row */}
       <View className="flex-row items-baseline gap-1.5 mb-2.5 flex-wrap">
@@ -584,7 +577,7 @@ export const HomeScreen = () => {
       const salesA = productSalesCounts[a.id] || 0;
       const salesB = productSalesCounts[b.id] || 0;
       if (salesB !== salesA) return salesB - salesA;
-      return (b.rating || 0) - (a.rating || 0);
+      return Number(b.sort_order ?? 99999) - Number(a.sort_order ?? 99999);
     }).slice(0, 10);
   }, [activeProducts, productSalesCounts]);
 
@@ -639,7 +632,7 @@ export const HomeScreen = () => {
       const salesA = productSalesCounts[a.id] || 0;
       const salesB = productSalesCounts[b.id] || 0;
       if (salesB !== salesA) return salesB - salesA;
-      return (b.rating || 0) - (a.rating || 0);
+      return Number(b.sort_order ?? 99999) - Number(a.sort_order ?? 99999);
     }).slice(0, 10);
   }, [activeProducts, productSalesCounts]);
 

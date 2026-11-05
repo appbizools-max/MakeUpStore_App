@@ -237,10 +237,6 @@ export const ProductDetailScreen = () => {
   const savings = displayMrp - currentRolePrice;
   const discountPercent = hasDiscount ? Math.round((savings / displayMrp) * 100) : 0;
 
-  // Rating & Review values
-  const rating = selectedProduct.rating ? Number(selectedProduct.rating).toFixed(1) : '4.3';
-  const reviews = selectedProduct.reviewCount || 2272;
-
   // "More Products from [Brand]"
   const brandName = selectedProduct.brandName || selectedProduct.brand || 'Lakmé';
   const brandProducts = useMemo(() => {

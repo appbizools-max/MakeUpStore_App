@@ -53,7 +53,6 @@ export const ProductListingView = ({
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedPriceRange, setSelectedPriceRange] = useState('all');
   const [selectedDiscount, setSelectedDiscount] = useState(0);
-  const [selectedRating, setSelectedRating] = useState(0);
 
   // Cart quantity map (Purplle-style keyed by cartKey)
   const cartQuantityMap = useMemo(() => {
@@ -65,9 +64,8 @@ export const ProductListingView = ({
     if (selectedBrands.length > 0) count += selectedBrands.length;
     if (selectedPriceRange !== 'all') count++;
     if (selectedDiscount > 0) count++;
-    if (selectedRating > 0) count++;
     return count;
-  }, [selectedBrands, selectedPriceRange, selectedDiscount, selectedRating]);
+  }, [selectedBrands, selectedPriceRange, selectedDiscount]);
 
   // Unique brands list from current products
   const availableBrands = useMemo(() => {
@@ -144,14 +142,6 @@ export const ProductListingView = ({
       });
     }
 
-    // Rating filter
-    if (selectedRating > 0) {
-      list = list.filter(p => {
-        const r = Number(p.rating) || 4.2;
-        return r >= selectedRating;
-      });
-    }
-
     // Sort order
     if (selectedSort === 'price_asc') {
       list.sort((a, b) => getRolePrice(a, userRole) - getRolePrice(b, userRole));
@@ -169,7 +159,7 @@ export const ProductListingView = ({
     }
 
     return list;
-  }, [products, searchQuery, selectedBrand, selectedBrands, selectedPriceTier, selectedPriceRange, selectedDiscount, selectedRating, selectedSort, userRole, getRolePrice]);
+  }, [products, searchQuery, selectedBrand, selectedBrands, selectedPriceTier, selectedPriceRange, selectedDiscount, selectedSort, userRole, getRolePrice]);
 
   const handleProductPress = (product) => {
     if (setSelectedProduct) setSelectedProduct(product);
@@ -558,14 +548,11 @@ export const ProductListingView = ({
         onSelectPriceRange={setSelectedPriceRange}
         selectedDiscount={selectedDiscount}
         onSelectDiscount={setSelectedDiscount}
-        selectedRating={selectedRating}
-        onSelectRating={setSelectedRating}
         activeFilterCount={activeFilterCount}
         onClearAll={() => {
           setSelectedBrands([]);
           setSelectedPriceRange('all');
           setSelectedDiscount(0);
-          setSelectedRating(0);
           setSelectedBrand('ALL');
           setSelectedPriceTier('ALL');
         }}

@@ -3369,14 +3369,6 @@ export default function AddNewProductPage({
                   </h3>
 
                   <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                    <span className="flex items-center text-amber-500 font-bold">
-                      ★ {formData.rating || 4.8}
-                    </span>
-                    <span>•</span>
-                    <span className="text-gray-400">
-                      ({formData.reviewCount || 120} reviews)
-                    </span>
-                    <span>•</span>
                     <span className="text-emerald-600 font-semibold">Verified Salbeau Authenticity</span>
                   </div>
                 </div>

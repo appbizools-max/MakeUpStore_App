@@ -89,7 +89,6 @@ export const SearchScreen = () => {
   const [selectedBrands, setSelectedBrands] = useState([]); // Multi-select brands
   const [selectedPriceRange, setSelectedPriceRange] = useState('all'); // 'all' | 'u500' | '500_1000' | '1000_2000' | 'a2000'
   const [selectedDiscount, setSelectedDiscount] = useState(0);
-  const [selectedRating, setSelectedRating] = useState(0);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const [brandFilterSearch, setBrandFilterSearch] = useState('');
@@ -178,9 +177,8 @@ export const SearchScreen = () => {
     if (selectedBrands.length > 0) count += selectedBrands.length;
     if (selectedPriceRange !== 'all') count++;
     if (selectedDiscount > 0) count++;
-    if (selectedRating > 0) count++;
     return count;
-  }, [selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, selectedDiscount, selectedRating]);
+  }, [selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, selectedDiscount]);
 
   const resetAllFilters = () => {
     setSelectedCategory('All');
@@ -188,7 +186,6 @@ export const SearchScreen = () => {
     setSelectedBrands([]);
     setSelectedPriceRange('all');
     setSelectedDiscount(0);
-    setSelectedRating(0);
     setBrandFilterSearch('');
   };
 
@@ -282,15 +279,9 @@ export const SearchScreen = () => {
         if (disc < selectedDiscount) return false;
       }
 
-      // Rating filter
-      if (selectedRating > 0) {
-        const r = Number(p.rating) || 4.2;
-        if (r < selectedRating) return false;
-      }
-
       return true;
     });
-  }, [activeProducts, query, selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, selectedDiscount, selectedRating, userRole, getRolePrice]);
+  }, [activeProducts, query, selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, selectedDiscount, userRole, getRolePrice]);
 
   // Customer Search Analytics Tracking
   useEffect(() => {
@@ -989,8 +980,6 @@ export const SearchScreen = () => {
         onSelectPriceRange={setSelectedPriceRange}
         selectedDiscount={selectedDiscount}
         onSelectDiscount={setSelectedDiscount}
-        selectedRating={selectedRating}
-        onSelectRating={setSelectedRating}
         activeFilterCount={activeFilterCount}
         onClearAll={resetAllFilters}
         onApply={() => setIsFilterModalOpen(false)}

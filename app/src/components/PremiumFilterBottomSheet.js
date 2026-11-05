@@ -45,8 +45,6 @@ export const PremiumFilterBottomSheet = ({
   onSelectPriceRange,
   selectedDiscount = 0,
   onSelectDiscount,
-  selectedRating = 0,
-  onSelectRating,
   activeFilterCount = 0,
   onClearAll,
   onApply,
@@ -54,7 +52,7 @@ export const PremiumFilterBottomSheet = ({
 }) => {
   const { activeProducts = [] } = useApp() || {};
 
-  // Active section on the left navigation rail: 'brands' | 'categories' | 'subcategories' | 'price' | 'discount' | 'rating'
+  // Active section on the left navigation rail: 'brands' | 'categories' | 'subcategories' | 'price' | 'discount'
   const [activeTab, setActiveTab] = useState('brands');
   const [brandSearch, setBrandSearch] = useState('');
 
@@ -155,14 +153,6 @@ export const PremiumFilterBottomSheet = ({
     { value: 10, label: '10% & Above' },
   ];
 
-  // Customer rating options
-  const ratingOptions = [
-    { value: 0, label: 'All Ratings' },
-    { value: 4, label: '4★ & Above' },
-    { value: 3, label: '3★ & Above' },
-    { value: 2, label: '2★ & Above' },
-  ];
-
   // Count active filters per section for left rail badge indicators
   const sectionCounts = {
     categories: selectedCategory !== 'All' ? 1 : 0,
@@ -170,7 +160,6 @@ export const PremiumFilterBottomSheet = ({
     brands: selectedBrands.length,
     price: selectedPriceRange !== 'all' ? 1 : 0,
     discount: selectedDiscount > 0 ? 1 : 0,
-    rating: selectedRating > 0 ? 1 : 0,
   };
 
   const navTabs = [
@@ -179,7 +168,6 @@ export const PremiumFilterBottomSheet = ({
     { id: 'subcategories', label: 'Subcategory', count: sectionCounts.subcategories },
     { id: 'price', label: 'Price Range', count: sectionCounts.price },
     { id: 'discount', label: 'Discount', count: sectionCounts.discount },
-    { id: 'rating', label: 'Customer Rating', count: sectionCounts.rating },
   ];
 
   return (
@@ -530,48 +518,6 @@ export const PremiumFilterBottomSheet = ({
                             ]}>
                               {d.label}
                             </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-                  )}
-
-                  {/* TAB 6: CUSTOMER RATING */}
-                  {activeTab === 'rating' && (
-                    <ScrollView
-                      showsVerticalScrollIndicator={true}
-                      contentContainerStyle={styles.optionsList}
-                    >
-                      <Text style={styles.sectionHeaderLabel}>Customer Ratings</Text>
-                      {ratingOptions.map(r => {
-                        const isSelected = Number(selectedRating || 0) === r.value;
-                        return (
-                          <TouchableOpacity
-                            key={r.value}
-                            activeOpacity={0.7}
-                            onPress={() => onSelectRating && onSelectRating(r.value)}
-                            style={[
-                              styles.radioRowItem,
-                              isSelected && styles.radioRowItemSelected
-                            ]}
-                          >
-                            <View style={[
-                              styles.radioCircle,
-                              isSelected && styles.radioCircleSelected
-                            ]}>
-                              {isSelected && <View style={styles.radioInnerDot} />}
-                            </View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                              <Text style={[
-                                styles.radioLabelText,
-                                isSelected && styles.radioLabelTextSelected
-                              ]}>
-                                {r.label}
-                              </Text>
-                              {r.value > 0 && (
-                                <Ionicons name="star" size={13} color="#F59E0B" />
-                              )}
-                            </View>
                           </TouchableOpacity>
                         );
                       })}
