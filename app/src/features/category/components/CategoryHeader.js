@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../../context/AppContext';
 
@@ -71,17 +71,8 @@ export const CategoryHeader = ({
         </Text>
       </TouchableOpacity>
 
-      {/* Dynamic Centered Icon + Title */}
-      <View className="flex-row items-center justify-center flex-1 px-2 gap-1.5">
-        {categoryImage ? (
-          <Image
-            source={{ uri: categoryImage }}
-            style={{ width: 22, height: 22, borderRadius: 11 }}
-            resizeMode="contain"
-          />
-        ) : (
-          <Ionicons name={categoryIcon || 'leaf-outline'} size={18} color="#C2477A" />
-        )}
+      {/* Centered Category Title */}
+      <View className="flex-row items-center justify-center flex-1 px-2">
         <Text
           style={{ color: '#1F2937' }}
           className="text-base font-bold text-center"
