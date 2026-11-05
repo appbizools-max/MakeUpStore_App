@@ -475,6 +475,19 @@ export const AppProvider = ({ children }) => {
     let isMounted = true;
     const restoreSession = async () => {
       try {
+        // Automatic global cache reset for mobile app
+        const cacheVer = await storage.getItem('salbeau_mobile_cache_v11');
+        if (cacheVer !== 'true') {
+          await Promise.all([
+            storage.removeItem('salbeau_cache_products'),
+            storage.removeItem('salbeau_cache_categories'),
+            storage.removeItem('salbeau_cache_brands'),
+            storage.removeItem('salbeau_cache_subcategories'),
+            storage.removeItem('salbeau_recently_viewed_ids'),
+            storage.setItem('salbeau_mobile_cache_v11', 'true')
+          ]).catch(() => {});
+        }
+
         const [savedAuth, savedProds, savedCats, savedBrands, savedSubs] = await Promise.all([
           storage.getItem(AUTH_SESSION_KEY),
           storage.getItem('salbeau_cache_products'),

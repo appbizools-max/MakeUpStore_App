@@ -34,24 +34,28 @@ import {
 import { uploadOptimizedImage } from '../services/imageStorageService';
 import { IMAGE_PROFILES, optimizeImage, formatBytes, calculateStorageSavings } from '../utils/imageOptimizer';
 
-// Automatic clean slate cache reset: Purge legacy mock data caches on startup
+// Global Automatic Cache Reset: Purge stale caches, draft rows, and old catalogs across the project
 if (typeof window !== 'undefined' && window.localStorage) {
-  if (localStorage.getItem('salbeau_db_clean_slate_purged_v1') !== 'true') {
-    [
-      'salbeau_admin_cache_brands',
-      'salbeau_admin_cache_categories',
-      'salbeau_admin_cache_products',
-      'salbeau_admin_cache_orders',
-      'salbeau_admin_cache_users',
-      'salbeau_admin_cache_b2b',
-      'salbeau_admin_cache_employees',
-      'salbeau_customer_search_requests',
-      'salbeau_home_banners',
-      'salbeau_cancelled_orders_log'
-    ].forEach(k => {
+  if (localStorage.getItem('salbeau_global_cache_ver') !== 'v11_clean') {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (
+        key.startsWith('salbeau_admin_cache_') ||
+        key.startsWith('salbeau_bulk_draft_') ||
+        key.startsWith('salbeau_bulk_column_prefs_') ||
+        key.startsWith('salbeau_edit_draft_') ||
+        key === 'salbeau_add_product_draft' ||
+        key === 'salbeau_home_banners' ||
+        key === 'salbeau_brand_seq_counter'
+      )) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => {
       try { localStorage.removeItem(k); } catch (e) { }
     });
-    localStorage.setItem('salbeau_db_clean_slate_purged_v1', 'true');
+    localStorage.setItem('salbeau_global_cache_ver', 'v11_clean');
   }
 }
 

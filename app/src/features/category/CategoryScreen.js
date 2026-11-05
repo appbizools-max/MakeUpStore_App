@@ -157,12 +157,13 @@ export const CategoryScreen = () => {
   };
 
   const handleViewAllProducts = () => {
+    setActiveSubcategory(null);
     setActiveLeafCategory(null);
-    setNavLevel(4);
+    setNavLevel(3);
   };
 
   const handleBack = () => {
-    if (navLevel === 3) {
+    if (navLevel === 3 || navLevel === 4) {
       setNavLevel(2);
     } else if (navLevel === 2) {
       if (openedFromHome) {
@@ -189,7 +190,7 @@ export const CategoryScreen = () => {
   }, [activeProducts, activeCategory, activeSubcategory, activeLeafCategory]);
 
   // ── LEVEL 3: PRODUCT LISTING (2-Level Hierarchy: Main Category -> Subcategory) ──
-  if (navLevel === 3) {
+  if (navLevel === 3 || navLevel === 4) {
     return (
       <ProductListingView
         category={activeCategory}

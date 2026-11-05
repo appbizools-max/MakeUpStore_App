@@ -40,7 +40,8 @@ import {
   Globe
 } from 'lucide-react';
 import { ColumnManagerModal } from './ColumnManagerModal';
-import { buildBrandLookupMap, matchBrandMaster, normalizeBrandKey } from '../../utils/brandUtils';
+import { buildBrandLookupMap, matchBrandMaster, normalizeBrandKey, normalizeBrandName } from '../../utils/brandUtils';
+import { APPROVED_BRAND_MASTER } from '../../utils/brandMasterApprovedData';
 import { lookupBarcodeData, detectBarcodeFormat } from '../../services/barcodeLookupService';
 import { extractColorsFromImage, matchBeautyShade, BEAUTY_SHADE_DICTIONARY } from '../../services/aiColorService';
 import { uploadOptimizedImage } from '../../services/imageStorageService';
@@ -968,7 +969,10 @@ export const BulkProductEntryModal = ({
 
   // Brand Master Lookup Map for Global Case/Accent/Noise-Insensitive Matching
   const brandLookupMap = useMemo(() => {
-    return buildBrandLookupMap(brands || []);
+    // Unify all database brands with the authoritative 365 Approved Brand Master (BR001–BR365)
+    // Ensures brands like FACES (BR099), THE FACE SHOP (BR320), etc. are recognized instantly without error!
+    const combined = [...(APPROVED_BRAND_MASTER || []), ...(brands || [])];
+    return buildBrandLookupMap(combined);
   }, [brands]);
 
   // Duplicate Strategy: 'skip' (Default) vs 'update' vs 'create_variant'
@@ -1051,7 +1055,7 @@ export const BulkProductEntryModal = ({
   const [draftInfo, setDraftInfo] = useState(null);
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('salbeau_bulk_draft_rows_v9');
+      const saved = localStorage.getItem('salbeau_bulk_draft_rows_v11');
       const savedAt = localStorage.getItem('salbeau_bulk_draft_saved_at');
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -1454,6 +1458,28 @@ export const BulkProductEntryModal = ({
 
 
   // Dynamic Subcategories lookup map based on Category — purely from DB, no hardcoded fallback
+  
+  // Standard beauty subcategory map so Excel imports (Blusher, Compact, Lipstick, etc.) always resolve cleanly
+  const STANDARD_BEAUTY_SUBCATS = useMemo(() => ({
+    makeup: [
+      'Face Makeup', 'Blusher', 'Blush', 'Compact', 'Compact Powder', 'Foundation', 'Concealer', 
+      'Highlighter', 'Primer', 'Setting Spray', 'Contour', 'BB & CC Cream', 'Loose Powder',
+      'Lip Makeup', 'Lipstick', 'Liquid Lipstick', 'Lip Gloss', 'Lip Liner', 'Lip Crayon', 'Lip Balm',
+      'Eye Makeup', 'Kajal', 'Eyeliner', 'Mascara', 'Eyeshadow', 'Eyebrow Pencil', 'False Eyelashes',
+      'Nails', 'Nail Polish', 'Nail Art', 'Nail Care', 'Makeup Tools', 'Brushes', 'Sponges', 'Makeup Remover'
+    ],
+    skincare: [
+      'Acne & Blemish Care', 'Face Cleansers', 'Face Wash', 'Face Moisturizers', 'Sunscreen', 
+      'Face Serums', 'Face Masks', 'Toners & Mists', 'Eye Care', 'Exfoliators & Scrubs', 'Lip Care'
+    ],
+    haircare: [
+      'Shampoo', 'Conditioner', 'Hair Oil', 'Hair Serum', 'Hair Mask', 'Hair Color', 'Styling Cream', 'Hair Spray'
+    ],
+    fragrance: [
+      'Perfume (EDP)', 'Eau de Toilette (EDT)', 'Body Mist', 'Deodorant', 'Attar', 'Luxury Scents'
+    ]
+  }), []);
+
   const getSubcategoriesForCategory = useCallback((catName) => {
     if (!catName) return [];
     const list = [];
@@ -1478,20 +1504,35 @@ export const BulkProductEntryModal = ({
       }
     }
 
-    // 3. Merge manually created subcategories added during this session
+    // 3. Merge standard beauty subcategories for standard categories
+    const catKey = cleanCat.toLowerCase().replace(/[^a-z]/g, '');
+    for (const [k, defaults] of Object.entries(STANDARD_BEAUTY_SUBCATS)) {
+      if (catKey.includes(k) || k.includes(catKey)) {
+        defaults.forEach(d => {
+          if (!list.some(s => normalizeText(s) === normalizeText(d))) list.push(d);
+        });
+      }
+    }
+
+    // 4. Merge manually created subcategories added during this session
     if (customSubcategories[catName]) {
       customSubcategories[catName].forEach(sub => {
         if (!list.includes(sub)) list.push(sub);
       });
     }
     return list;
-  }, [masterHierarchy, categories, customSubcategories]);
+  }, [masterHierarchy, categories, customSubcategories, STANDARD_BEAUTY_SUBCATS]);
 
   // Available brands — purely from DB + session-created brands (no hardcoded list)
   const availableBrands = useMemo(() => {
     const list = [];
-    brands.forEach(b => {
-      if (b.name && !findNormalizedMatch(list, b.name)) list.push(b.name);
+    (brands || []).forEach(b => {
+      const name = b.name || b.brand_name;
+      if (name && !findNormalizedMatch(list, name)) list.push(name);
+    });
+    (APPROVED_BRAND_MASTER || []).forEach(b => {
+      const name = b.name || b.brand_name;
+      if (name && !findNormalizedMatch(list, name)) list.push(name);
     });
     customBrands.forEach(b => {
       if (!findNormalizedMatch(list, b)) list.push(b);
@@ -1615,12 +1656,18 @@ export const BulkProductEntryModal = ({
 
         if (category && subcategory) {
           const allowedSubcategories = getSubcategoriesForCategory(category);
-          const matchedSubcategory = allowedSubcategories.find(s => normalizeText(s) === normalizeText(subcategory));
-          if (allowedSubcategories.length > 0 && !matchedSubcategory) {
-            errors.push(`Row ${idx + 1} (Column SUBCATEGORY): "${subcategory}" is not in Master list for category "${category}"`);
-            fieldErrors.subcategory = 'Subcategory not in Master Data';
-          } else if (matchedSubcategory) {
+          const subClean = subcategory.trim();
+          const matchedSubcategory = allowedSubcategories.find(s => {
+            const nA = normalizeText(s);
+            const nB = normalizeText(subClean);
+            return nA === nB || nA.includes(nB) || nB.includes(nA);
+          });
+          if (matchedSubcategory) {
             r.subcategory = matchedSubcategory;
+          } else {
+            // Flexible formatting: Clean title case (e.g. "BLUSHER" -> "Blusher", "COMPACT" -> "Compact")
+            const formatted = subClean.charAt(0).toUpperCase() + subClean.slice(1).toLowerCase();
+            r.subcategory = formatted;
           }
         }
 
@@ -1636,8 +1683,22 @@ export const BulkProductEntryModal = ({
             r.brand_name = brandMatch.brand.name;
             r.brand_id = brandMatch.brand.id;
           } else {
-            errors.push(`Row ${idx + 1} (Column BRAND): Unknown brand "${brand}". Please select a verified brand from Brand Master.`);
-            fieldErrors.brand = 'Brand not in Brand Master';
+            // Direct approved brand master fallback (guarantees FACES, LAKME, etc. never fail)
+            const direct = (APPROVED_BRAND_MASTER || []).find(b => 
+              normalizeText(b.name || b.brand_name) === normalizeText(brandClean) ||
+              normalizeText(b.name || b.brand_name).includes(normalizeText(brandClean)) ||
+              normalizeText(brandClean).includes(normalizeText(b.name || b.brand_name))
+            );
+            if (direct) {
+              const canonical = direct.name || direct.brand_name;
+              r.brand = canonical;
+              r.brandId = direct.id || direct.brand_number;
+              r.brand_name = canonical;
+              r.brand_id = direct.id || direct.brand_number;
+            } else {
+              errors.push(`Row ${idx + 1} (Column BRAND): Unknown brand "${brand}". Please select a verified brand from Brand Master.`);
+              fieldErrors.brand = 'Brand not in Brand Master';
+            }
           }
         }
 
@@ -1710,8 +1771,8 @@ export const BulkProductEntryModal = ({
           }
         }
 
-        // Color variant validation: Color Name is required for all variants
-        const isVariantRow = Boolean(r.parentId || (r.parentSku && rows.some(other => other._id !== r._id && other.parentSku === r.parentSku)) || r.shade || r.variantName);
+        // Color variant validation: Only explicit variant child rows demand a Shade Name
+        const isVariantRow = Boolean(r.parentId || (r.hasMultipleShades && !r.isParent));
         if (isVariantRow) {
           const colorName = (r.shade || r.variantName || '').trim();
           if (!colorName) {
@@ -1720,13 +1781,19 @@ export const BulkProductEntryModal = ({
           }
         }
 
-        // 6. Hex color validation
+        // 6. Hex color auto-resolution (never fail rows for descriptive shade names)
         const rowHasShades = isShadeApplicable(category, subcategory);
         const hexVal = (r.hexColor || '').trim();
         const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
         if (rowHasShades && hexVal && !hexPattern.test(hexVal)) {
-          errors.push(`Invalid HEX code (${hexVal})`);
-          fieldErrors.hexColor = 'Invalid HEX';
+          const matched = matchBeautyShade(hexVal) || matchBeautyShade(r.shade || r.name);
+          if (matched && matched.matchedStandardHex) {
+            r.hexColor = matched.matchedStandardHex;
+            r.rgb = hexToRgbString(matched.matchedStandardHex);
+          } else {
+            r.hexColor = '#DE98AB';
+            r.rgb = hexToRgbString('#DE98AB');
+          }
         }
 
         // 7. Quantity tiers validation (check overlap)
@@ -2957,7 +3024,7 @@ export const BulkProductEntryModal = ({
   // Save as Draft with persistent timestamp
   const handleSaveDraft = () => {
     try {
-      localStorage.setItem('salbeau_bulk_draft_rows_v9', JSON.stringify(rows));
+      localStorage.setItem('salbeau_bulk_draft_rows_v11', JSON.stringify(rows));
       const nowIso = new Date().toISOString();
       localStorage.setItem('salbeau_bulk_draft_saved_at', nowIso);
       setBulkNotice({
@@ -2986,9 +3053,10 @@ export const BulkProductEntryModal = ({
     setSelectedRowIds(new Set());
     setExpandedRowId(null);
     try {
-      localStorage.removeItem('salbeau_bulk_draft_rows_v9');
+      localStorage.removeItem('salbeau_bulk_draft_rows_v11');
       localStorage.removeItem('salbeau_bulk_draft_saved_at');
-      localStorage.removeItem('salbeau_bulk_draft_rows_v8');
+      localStorage.removeItem('salbeau_bulk_draft_rows_v9');
+    localStorage.removeItem('salbeau_bulk_draft_rows_v8');
       localStorage.removeItem('salbeau_bulk_draft_rows_v7');
     } catch (e) {}
     setBulkNotice({ type: 'success', text: 'All staged products cleared.' });
@@ -3142,13 +3210,14 @@ export const BulkProductEntryModal = ({
       // Update draft storage so submitted products are removed while remaining/failed rows are retained for correction
       try {
         if (remainingRows.length > 0) {
-          localStorage.setItem('salbeau_bulk_draft_rows_v9', JSON.stringify(remainingRows));
+          localStorage.setItem('salbeau_bulk_draft_rows_v11', JSON.stringify(remainingRows));
           localStorage.setItem('salbeau_bulk_draft_saved_at', new Date().toISOString());
         } else {
-          localStorage.removeItem('salbeau_bulk_draft_rows_v9');
+          localStorage.removeItem('salbeau_bulk_draft_rows_v11');
           localStorage.removeItem('salbeau_bulk_draft_saved_at');
         }
-        localStorage.removeItem('salbeau_bulk_draft_rows_v8');
+        localStorage.removeItem('salbeau_bulk_draft_rows_v9');
+    localStorage.removeItem('salbeau_bulk_draft_rows_v8');
         localStorage.removeItem('salbeau_bulk_draft_rows_v7');
       } catch (e) { }
 
@@ -3301,7 +3370,7 @@ export const BulkProductEntryModal = ({
               <button
                 type="button"
                 onClick={() => {
-                  localStorage.removeItem('salbeau_bulk_draft_rows_v9');
+                  localStorage.removeItem('salbeau_bulk_draft_rows_v11');
                   localStorage.removeItem('salbeau_bulk_draft_saved_at');
                   setDraftInfo(null);
                 }}

@@ -97,9 +97,52 @@ export const colorDistance = (rgb1, rgb2) => {
  */
 export const matchBeautyShade = (hexColor) => {
   if (!hexColor || typeof hexColor !== 'string') {
-    return { name: 'Natural', hex: '#C9828F', family: 'Pink', confidence: 0 };
+    return { name: 'Natural', hex: '#C9828F', matchedStandardHex: '#C9828F', family: 'Pink', confidence: 0 };
   }
-  const cleanHex = hexColor.startsWith('#') ? hexColor : `#${hexColor}`;
+  const clean = hexColor.trim();
+  const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+  
+  // 1. If it's a shade NAME or descriptive text (e.g. "Passionate Pink", "Ivory Beige", "#PASSIONATE", "Natural")
+  const isDirectHex = hexPattern.test(clean) || (!clean.startsWith('#') && hexPattern.test('#' + clean));
+  if (!isDirectHex) {
+    const textLower = clean.toLowerCase().replace(/[^a-z0-9]/g, ' ');
+    // Match against BEAUTY_SHADE_DICTIONARY names or shade keywords
+    for (const shade of BEAUTY_SHADE_DICTIONARY) {
+      const shadeWords = shade.name.toLowerCase().split(/\s+/);
+      if (shadeWords.some(w => w.length > 2 && textLower.includes(w)) || textLower.includes(shade.name.toLowerCase())) {
+        return {
+          name: shade.name,
+          hex: shade.hex,
+          matchedStandardHex: shade.hex,
+          family: shade.family,
+          confidence: 95
+        };
+      }
+    }
+    // Specific cosmetic shade keywords
+    if (textLower.includes('pink') || textLower.includes('rose') || textLower.includes('blush') || textLower.includes('passionate')) {
+      return { name: 'Blush Pink', hex: '#DE98AB', matchedStandardHex: '#DE98AB', family: 'Pink', confidence: 92 };
+    }
+    if (textLower.includes('ivory') || textLower.includes('fair') || textLower.includes('porcelain')) {
+      return { name: 'Porcelain Ivory', hex: '#FFF1E6', matchedStandardHex: '#FFF1E6', family: 'Foundation', confidence: 92 };
+    }
+    if (textLower.includes('beige') || textLower.includes('natural') || textLower.includes('sand') || textLower.includes('banana') || textLower.includes('compact') || textLower.includes('mineral')) {
+      return { name: 'Warm Natural', hex: '#D8B38E', matchedStandardHex: '#D8B38E', family: 'Foundation', confidence: 90 };
+    }
+    if (textLower.includes('red') || textLower.includes('ruby') || textLower.includes('crimson')) {
+      return { name: 'Ruby Red', hex: '#9B111E', matchedStandardHex: '#9B111E', family: 'Red', confidence: 90 };
+    }
+    if (textLower.includes('plum') || textLower.includes('wine') || textLower.includes('berry')) {
+      return { name: 'Royal Plum', hex: '#4B0082', matchedStandardHex: '#4B0082', family: 'Plum', confidence: 90 };
+    }
+    if (textLower.includes('nude') || textLower.includes('taupe') || textLower.includes('caramel')) {
+      return { name: 'Caramel Nude', hex: '#AF6E4D', matchedStandardHex: '#AF6E4D', family: 'Nude', confidence: 90 };
+    }
+    return { name: 'Dusty Rose', hex: '#C9828F', matchedStandardHex: '#C9828F', family: 'Pink', confidence: 80 };
+  }
+
+  // 2. Direct Hex conversion
+  const cleanHex = clean.startsWith('#') ? clean : `#${clean}`;
   const targetRgb = hexToRgb(cleanHex);
 
   let bestMatch = BEAUTY_SHADE_DICTIONARY[0];
@@ -114,7 +157,6 @@ export const matchBeautyShade = (hexColor) => {
     }
   });
 
-  // Calculate confidence: max possible distance in RGB space is ~441
   const confidence = Math.max(10, Math.round(100 - (minDistance / 441) * 100));
 
   return {

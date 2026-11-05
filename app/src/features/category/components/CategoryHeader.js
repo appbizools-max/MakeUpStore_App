@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../../context/AppContext';
 
 /**
  * Reusable CategoryHeader Component
- * Unified header across Category pages:
- * - Back button with parent category label
- * - Centered uppercase dynamic title
+ * Premium White-and-Pink Header across Category & Subcategory screens:
+ * - Back button with parent category label (< Categories)
+ * - Centered Category Icon + Category Name
  * - Search icon (opens search screen)
  * - Cart icon with real-time badge count (opens cart screen)
  */
@@ -16,7 +16,9 @@ export const CategoryHeader = ({
   title = 'Category',
   onBack,
   onSearch,
-  onCart
+  onCart,
+  categoryIcon = null,
+  categoryImage = null
 }) => {
   const appContext = useApp ? useApp() : {};
   const { setCurrentScreen, cart = [] } = appContext || {};
@@ -49,7 +51,7 @@ export const CategoryHeader = ({
         borderBottomColor: '#F0E3EA',
         backgroundColor: '#FFFFFF',
         elevation: 2,
-        shadowColor: '#B64F7D',
+        shadowColor: '#C2477A',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 3,
@@ -61,22 +63,33 @@ export const CategoryHeader = ({
         onPress={onBack}
         activeOpacity={0.7}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        className="flex-row items-center gap-1 -ml-1 py-1 px-1.5 rounded-xl active:bg-pink-50 max-w-[28%]"
+        className="flex-row items-center gap-1 -ml-1 py-1 px-1.5 rounded-xl active:bg-pink-50 max-w-[32%]"
       >
-        <Ionicons name="chevron-back" size={20} color="#B64F7D" />
-        <Text style={{ color: '#B64F7D' }} className="text-xs font-bold" numberOfLines={1}>
+        <Ionicons name="chevron-back" size={20} color="#C2477A" />
+        <Text style={{ color: '#C2477A' }} className="text-sm font-bold" numberOfLines={1}>
           {parentTitle}
         </Text>
       </TouchableOpacity>
 
-      {/* Dynamic Centered Title */}
-      <Text
-        style={{ color: '#33252F' }}
-        className="text-[13.5px] font-extrabold uppercase tracking-wider text-center flex-1 px-2"
-        numberOfLines={1}
-      >
-        {title}
-      </Text>
+      {/* Dynamic Centered Icon + Title */}
+      <View className="flex-row items-center justify-center flex-1 px-2 gap-1.5">
+        {categoryImage ? (
+          <Image
+            source={{ uri: categoryImage }}
+            style={{ width: 22, height: 22, borderRadius: 11 }}
+            resizeMode="contain"
+          />
+        ) : (
+          <Ionicons name={categoryIcon || 'leaf-outline'} size={18} color="#C2477A" />
+        )}
+        <Text
+          style={{ color: '#1F2937' }}
+          className="text-base font-bold text-center"
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+      </View>
 
       {/* Action Icons: Search & Cart with Badge */}
       <View className="flex-row items-center gap-2">
@@ -85,10 +98,10 @@ export const CategoryHeader = ({
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={{ borderColor: '#F0E3EA', borderWidth: 1 }}
-          className="w-8 h-8 rounded-full bg-white items-center justify-center shadow-2xs"
+          className="w-9 h-9 rounded-full bg-white items-center justify-center shadow-2xs"
           accessibilityLabel="Search"
         >
-          <Ionicons name="search" size={15} color="#B64F7D" />
+          <Ionicons name="search" size={16} color="#C2477A" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -96,10 +109,10 @@ export const CategoryHeader = ({
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={{ borderColor: '#F0E3EA', borderWidth: 1 }}
-          className="w-8 h-8 rounded-full bg-white items-center justify-center shadow-2xs relative"
+          className="w-9 h-9 rounded-full bg-white items-center justify-center shadow-2xs relative"
           accessibilityLabel="Shopping Cart"
         >
-          <Ionicons name="bag-handle-outline" size={16} color="#B64F7D" />
+          <Ionicons name="bag-handle-outline" size={17} color="#C2477A" />
           {cartCount > 0 && (
             <View
               style={{ minWidth: 16, height: 16, paddingHorizontal: 3 }}

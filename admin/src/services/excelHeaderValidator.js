@@ -468,11 +468,19 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
   const statusStr = getCell('STATUS').toLowerCase();
   const status = ['published', 'active', 'ready'].includes(statusStr) ? 'published' : 'draft';
 
-  // Infer color hex if not provided but shade name exists
-  let hexColor = hexAndSwatch || '';
+  // Guarantee valid 6-digit hex color using beauty dictionary fallback
+  const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+  let hexColor = '';
+  if (hexAndSwatch && hexPattern.test(hexAndSwatch.trim())) {
+    hexColor = hexAndSwatch.trim();
+  } else if (hexAndSwatch) {
+    const matched = matchBeautyShade(hexAndSwatch.trim());
+    if (matched && matched.matchedStandardHex) hexColor = matched.matchedStandardHex;
+  }
+  
   if (!hexColor && shadeName) {
-    const matched = matchBeautyShade(shadeName);
-    if (matched && matched.hex) hexColor = matched.hex;
+    const matched = matchBeautyShade(shadeName.trim());
+    if (matched && matched.matchedStandardHex) hexColor = matched.matchedStandardHex;
   }
   if (!hexColor) hexColor = '#CE4270';
 
