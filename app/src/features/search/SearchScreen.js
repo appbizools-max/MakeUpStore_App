@@ -71,6 +71,7 @@ export const SearchScreen = () => {
     getRolePrice,
     setSelectedProduct,
     setSelectedShade,
+    rememberSelectedShade,
     setCurrentScreen,
     cart = [],
     addToCart,
@@ -87,6 +88,8 @@ export const SearchScreen = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
   const [selectedBrands, setSelectedBrands] = useState([]); // Multi-select brands
   const [selectedPriceRange, setSelectedPriceRange] = useState('all'); // 'all' | 'u500' | '500_1000' | '1000_2000' | 'a2000'
+  const [selectedDiscount, setSelectedDiscount] = useState(0);
+  const [selectedRating, setSelectedRating] = useState(0);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const [brandFilterSearch, setBrandFilterSearch] = useState('');
@@ -167,21 +170,25 @@ export const SearchScreen = () => {
     return getCartQuantityMap(cart);
   }, [cart]);
 
-  // Count active applied filters (Nykaa Specification: Category, Brand, Price Range)
+  // Count active applied filters (Nykaa Specification: Category, Subcategory, Brand, Price Range, Discount, Rating)
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedCategory !== 'All') count++;
     if (selectedSubcategory !== 'All') count++;
     if (selectedBrands.length > 0) count += selectedBrands.length;
     if (selectedPriceRange !== 'all') count++;
+    if (selectedDiscount > 0) count++;
+    if (selectedRating > 0) count++;
     return count;
-  }, [selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange]);
+  }, [selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, selectedDiscount, selectedRating]);
 
   const resetAllFilters = () => {
     setSelectedCategory('All');
     setSelectedSubcategory('All');
     setSelectedBrands([]);
     setSelectedPriceRange('all');
+    setSelectedDiscount(0);
+    setSelectedRating(0);
     setBrandFilterSearch('');
   };
 
@@ -267,9 +274,23 @@ export const SearchScreen = () => {
         if (selectedPriceRange === 'a2000' && price <= 2000) return false;
       }
 
+      // Discount filter
+      if (selectedDiscount > 0) {
+        const rolePrice = getRolePrice(p, userRole);
+        const mrp = Number(p.mrp) || rolePrice;
+        const disc = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 0;
+        if (disc < selectedDiscount) return false;
+      }
+
+      // Rating filter
+      if (selectedRating > 0) {
+        const r = Number(p.rating) || 4.2;
+        if (r < selectedRating) return false;
+      }
+
       return true;
     });
-  }, [activeProducts, query, selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, userRole, getRolePrice]);
+  }, [activeProducts, query, selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, selectedDiscount, selectedRating, userRole, getRolePrice]);
 
   // Customer Search Analytics Tracking
   useEffect(() => {
@@ -846,6 +867,9 @@ export const SearchScreen = () => {
                       onPressProduct={(prod, shade) => {
                         setSelectedProduct(prod);
                         if (setSelectedShade && shade) setSelectedShade(shade);
+                        if (rememberSelectedShade && (prod?.id || prod?.parentProductId)) {
+                          rememberSelectedShade(prod.parentProductId || prod.id, shade);
+                        }
                         setCurrentScreen('product');
                       }}
                     />
@@ -927,6 +951,9 @@ export const SearchScreen = () => {
                     onPressProduct={(prod, shade) => {
                       setSelectedProduct(prod);
                       if (setSelectedShade && shade) setSelectedShade(shade);
+                      if (rememberSelectedShade && (prod?.id || prod?.parentProductId)) {
+                        rememberSelectedShade(prod.parentProductId || prod.id, shade);
+                      }
                       setCurrentScreen('product');
                     }}
                   />
@@ -960,6 +987,10 @@ export const SearchScreen = () => {
         onClearBrands={() => setSelectedBrands([])}
         selectedPriceRange={selectedPriceRange}
         onSelectPriceRange={setSelectedPriceRange}
+        selectedDiscount={selectedDiscount}
+        onSelectDiscount={setSelectedDiscount}
+        selectedRating={selectedRating}
+        onSelectRating={setSelectedRating}
         activeFilterCount={activeFilterCount}
         onClearAll={resetAllFilters}
         onApply={() => setIsFilterModalOpen(false)}

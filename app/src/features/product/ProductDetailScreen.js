@@ -22,14 +22,15 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 /**
  * Salbeau Redesigned Product Detail Page (PDP)
  * 
- * Hierarchy strictly matching FACES CANADA design reference:
+ * Hierarchy matching Nykaa & Purplle Beauty Standards:
  * 1. Top navigation with Back, Share, Search, & Cart (with badge)
  * 2. Large product image carousel with discount badge & bottom-center pagination dots
  * 3. Product title and description with bold black typography
- * 4. Price and rating layout (Selling price, strikethrough MRP, green discount tag, & green rating pill)
+ * 4. Price and rating layout (Selling price, strikethrough MRP, green discount tag)
  * 5. Compact horizontal shade selector with rounded-square swatches & "All Shades >" trigger
- * 6. "More Products from [Brand]" horizontal carousel with magenta/purple active borders
- * 7. Fixed bottom purchase bar with Wishlist button & prominent "Add to cart" button
+ * 6. Non-sticky in-flow purchase bar with Multi-Quantity stepper, Add to Bag, and Wishlist
+ * 7. "More Products from [Brand]" horizontal carousel
+ * 8. Quantity discount tiers
  */
 export const ProductDetailScreen = () => {
   const {
@@ -41,6 +42,8 @@ export const ProductDetailScreen = () => {
     isB2BVerified,
     getRolePrice,
     addToCart,
+    updateCartQuantity,
+    removeFromCart,
     cart = [],
     setCurrentScreen,
     isFavorite,
@@ -48,7 +51,8 @@ export const ProductDetailScreen = () => {
     selectedShade: contextSelectedShade,
     setSelectedShade: setContextSelectedShade,
     openShadeSheet,
-    rememberSelectedShade
+    rememberSelectedShade,
+    lastSelectedShades = {}
   } = useApp();
 
   // Resolve true parent product and sibling variants (Nykaa 2-level hierarchy)
@@ -94,35 +98,61 @@ export const ProductDetailScreen = () => {
     return { shadeList: sList.length > 0 ? sList : allSubProducts, variantList: vList };
   }, [allSubProducts]);
 
-  // Active shade state (pre-selects clicked variant if opened from variant card)
-  const [selectedShade, setSelectedShade] = useState(() => {
+  // Track product ID to prevent shade reset on incidental re-renders
+  const activeProductIdRef = useRef(effectiveProduct?.id);
+
+  // Robust shade resolver matching Nykaa specification
+  const resolveInitialShade = useCallback(() => {
+    // 1. Clicked variant child from navigation
     if (selectedProduct?.isVariantChild && selectedProduct?.variantData) {
-      return selectedProduct.variantData;
+      const match = allSubProducts.find(s =>
+        (s.id && selectedProduct.variantData.id && String(s.id) === String(selectedProduct.variantData.id)) ||
+        (s.name && selectedProduct.variantData.name && s.name.toLowerCase() === selectedProduct.variantData.name.toLowerCase())
+      );
+      if (match) return match;
     }
-    if (contextSelectedShade && allSubProducts.some(s => (s.id || s.name) === (contextSelectedShade.id || contextSelectedShade.name))) {
-      return contextSelectedShade;
+
+    // 2. Remembered shade for this product from AppContext
+    const remembered = lastSelectedShades?.[effectiveProduct?.id];
+    if (remembered) {
+      const match = allSubProducts.find(s =>
+        (s.id && remembered.id && String(s.id) === String(remembered.id)) ||
+        (s.name && remembered.name && s.name.toLowerCase() === remembered.name.toLowerCase())
+      );
+      if (match) return match;
     }
+
+    // 3. Context selected shade
+    if (contextSelectedShade) {
+      const match = allSubProducts.find(s =>
+        (s.id && contextSelectedShade.id && String(s.id) === String(contextSelectedShade.id)) ||
+        (s.name && contextSelectedShade.name && s.name.toLowerCase() === contextSelectedShade.name.toLowerCase())
+      );
+      if (match) return match;
+    }
+
+    // 4. Default to first available shade
     return allSubProducts[0] || null;
-  });
+  }, [selectedProduct, effectiveProduct?.id, allSubProducts, lastSelectedShades, contextSelectedShade]);
+
+  // Active shade state
+  const [selectedShade, setSelectedShade] = useState(resolveInitialShade);
+  // Quantity selector state for multi-product addition
+  const [selectedQty, setSelectedQty] = useState(1);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const galleryScrollRef = useRef(null);
   const [addedToastMessage, setAddedToastMessage] = useState(null);
 
-  // Sync selected shade when product changes
+  // Sync selected shade ONLY when switching to a DIFFERENT product
   useEffect(() => {
-    if (selectedProduct?.isVariantChild && selectedProduct?.variantData) {
-      setSelectedShade(selectedProduct.variantData);
-    } else if (contextSelectedShade && allSubProducts.some(s => (s.id || s.name) === (contextSelectedShade.id || contextSelectedShade.name))) {
-      setSelectedShade(contextSelectedShade);
-    } else if (allSubProducts.length > 0) {
-      if (!selectedShade || !allSubProducts.some(s => (s.id || s.name) === (selectedShade.id || selectedShade.name))) {
-        setSelectedShade(allSubProducts[0]);
-      }
-    } else {
-      setSelectedShade(null);
+    if (activeProductIdRef.current !== effectiveProduct?.id) {
+      activeProductIdRef.current = effectiveProduct?.id;
+      const initial = resolveInitialShade();
+      setSelectedShade(initial);
+      setSelectedQty(1);
     }
-  }, [selectedProduct?.id, selectedProduct?.realVariantId, contextSelectedShade, allSubProducts]);
+  }, [effectiveProduct?.id, resolveInitialShade]);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -133,10 +163,11 @@ export const ProductDetailScreen = () => {
   }, [addedToastMessage]);
 
   const handleSelectSubProduct = (item) => {
+    if (!item) return;
     setSelectedShade(item);
     if (setContextSelectedShade) setContextSelectedShade(item);
-    if (rememberSelectedShade && selectedProduct?.id) {
-      rememberSelectedShade(selectedProduct.id, item);
+    if (rememberSelectedShade && effectiveProduct?.id) {
+      rememberSelectedShade(effectiveProduct.id, item);
     }
   };
 
@@ -190,14 +221,14 @@ export const ProductDetailScreen = () => {
     );
   }
 
-  // Cart information
+  // Cart information for the CURRENTLY selected shade
   const cartItemId = getCartKey(effectiveProduct?.id || selectedProduct?.id, selectedShade);
   const cartItem = (cart || []).find(c => c.id === cartItemId);
   const cartQty = cartItem ? cartItem.quantity : 0;
   const cartBadgeCount = (cart || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
 
   // Dynamic pricing
-  const currentRolePrice = getRolePrice(selectedProduct, userRole, selectedShade, 1);
+  const currentRolePrice = getRolePrice(selectedProduct, userRole, selectedShade, selectedQty);
   const rawShadeMrp = selectedShade?.mrp ?? selectedShade?.priceOverride ?? selectedShade?.price_override ?? selectedShade?.price ?? selectedProduct?.mrp;
   const displayMrp = (rawShadeMrp && Number(rawShadeMrp) > currentRolePrice)
     ? Number(rawShadeMrp)
@@ -224,11 +255,14 @@ export const ProductDetailScreen = () => {
     return activeProducts.filter(p => p.id !== selectedProduct.id).slice(0, 8);
   }, [selectedProduct.id, brandName, activeProducts]);
 
-  // Add to Cart Action (strictly adds selected variant)
+  // Add to Cart Action: Adds selectedQty units of the active shade
   const handleAddToCart = () => {
-    addToCart(effectiveProduct || selectedProduct, 1, selectedShade);
+    addToCart(effectiveProduct || selectedProduct, selectedQty, selectedShade);
     const shadeTitle = selectedShade?.name || selectedShade?.title || '';
-    setAddedToastMessage(`Added ${(effectiveProduct || selectedProduct).name}${shadeTitle ? ` (${shadeTitle})` : ''} to cart! ✨`);
+    setAddedToastMessage(`Added ${selectedQty}x ${(effectiveProduct || selectedProduct).name}${shadeTitle ? ` (${shadeTitle})` : ''} to bag! ✨`);
+    if (rememberSelectedShade && effectiveProduct?.id && selectedShade) {
+      rememberSelectedShade(effectiveProduct.id, selectedShade);
+    }
   };
 
   const isLiked = isFavorite ? isFavorite(selectedProduct?.id) : false;
@@ -383,49 +417,8 @@ export const ProductDetailScreen = () => {
           </Text>
         </View>
 
-        {/* Dynamic Manual Description: Only displayed if entered manually */}
-        {(() => {
-          const desc = String(effectiveProduct?.description || selectedProduct?.description || '').trim();
-          if (!desc) return null;
-          return (
-            <View className="px-4 py-3 bg-white border-b border-[#F0F0F0]">
-              <Text className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-1">
-                Description
-              </Text>
-              <Text className="text-xs text-gray-700 leading-relaxed font-normal">
-                {desc}
-              </Text>
-            </View>
-          );
-        })()}
-
-        {/* Dynamic Master Attributes (from Attributes Master) */}
-        {(() => {
-          const rawAttrs = effectiveProduct?.attributes || selectedProduct?.attributes || selectedShade?.attributes;
-          if (!rawAttrs || typeof rawAttrs !== 'object' || Object.keys(rawAttrs).length === 0) return null;
-          const validEntries = Object.entries(rawAttrs).filter(([_, v]) => v !== undefined && v !== null && String(v).trim().length > 0);
-          if (validEntries.length === 0) return null;
-
-          return (
-            <View className="px-4 py-3 bg-white border-b border-[#F0F0F0]">
-              <Text className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-2">
-                Product Specifications
-              </Text>
-              <View className="flex-row flex-wrap gap-1.5">
-                {validEntries.map(([k, v]) => (
-                  <View key={k} className="px-2.5 py-1 rounded-lg bg-pink-50/70 border border-pink-100 flex-row items-center gap-1">
-                    <Text className="text-[10px] font-bold text-gray-500 uppercase">{k}:</Text>
-                    <Text className="text-[10.5px] font-black text-[#C2477A]">{String(v)}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          );
-        })()}
-
         {/* 4. PRICE AND DISCOUNT LAYOUT */}
         <View className="px-4 py-3 bg-white flex-row items-center justify-between border-b border-[#F0F0F0]">
-          {/* Selling Price, MRP, Discount, & Taxes */}
           <View>
             <View className="flex-row items-baseline gap-2 flex-wrap">
               <Text className="text-2xl font-black text-[#171717]">
@@ -508,7 +501,135 @@ export const ProductDetailScreen = () => {
           </View>
         )}
 
-        {/* 6. MORE PRODUCTS FROM THE SAME BRAND */}
+        {/* ───────────────────────────────────────────────────────────── */}
+        {/* 6. NORMAL IN-FLOW PURCHASE & MULTI-PRODUCT CART MANAGEMENT */}
+        {/* ───────────────────────────────────────────────────────────── */}
+        <View className="px-4 py-4 bg-white border-b border-[#F0F0F0]">
+          {/* Row 1: Quantity Stepper & In-Cart Counter */}
+          <View className="flex-row items-center justify-between mb-3 bg-[#FFF8FA] p-3 rounded-2xl border border-[#F8D7E6]">
+            <View>
+              <Text className="text-xs font-extrabold text-[#1F2937]">Select Quantity</Text>
+              <Text className="text-[10.5px] text-[#8C7078] mt-0.5">
+                {cartQty > 0
+                  ? `✨ ${cartQty} units already in your bag`
+                  : 'Add multiple units as needed'}
+              </Text>
+            </View>
+
+            {/* Stepper: [-] Qty [+] */}
+            <View className="flex-row items-center bg-white rounded-xl border border-[#F0E3EA] p-1 shadow-2xs">
+              <TouchableOpacity
+                onPress={() => setSelectedQty(prev => Math.max(1, prev - 1))}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+                className="w-7 h-7 rounded-lg bg-[#FFF0F5] items-center justify-center"
+              >
+                <Ionicons name="remove" size={15} color="#C2477A" />
+              </TouchableOpacity>
+
+              <Text className="text-sm font-black text-[#1F2937] px-3.5 min-w-[34px] text-center">
+                {selectedQty}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setSelectedQty(prev => prev + 1)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+                className="w-7 h-7 rounded-lg bg-[#FFF0F5] items-center justify-center"
+              >
+                <Ionicons name="add" size={15} color="#C2477A" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Row 2: Wishlist + Add to Bag CTA */}
+          <View className="flex-row items-center gap-3">
+            {/* Wishlist Button */}
+            <TouchableOpacity
+              onPress={() => toggleFavorite(selectedProduct)}
+              activeOpacity={0.8}
+              className="flex-row items-center justify-center gap-1.5 px-4 h-12 rounded-xl bg-white border border-[#E8E8E8] shadow-2xs"
+            >
+              <Ionicons
+                name={isLiked ? "heart" : "heart-outline"}
+                size={19}
+                color={isLiked ? "#C2477A" : "#171717"}
+              />
+              <Text className="text-xs font-bold text-[#171717]">Wishlist</Text>
+            </TouchableOpacity>
+
+            {/* Add to Cart CTA */}
+            <TouchableOpacity
+              onPress={handleAddToCart}
+              activeOpacity={0.85}
+              style={styles.addToCartButton}
+              className="flex-1 h-12 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:bg-[#B83760]"
+            >
+              <Ionicons name="bag-handle" size={16} color="#FFFFFF" />
+              <Text className="text-white text-xs font-black uppercase tracking-wider">
+                {cartQty > 0
+                  ? `Add ${selectedQty} More to Bag`
+                  : `Add to Bag • ₹${currentRolePrice * selectedQty}`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Optional Direct Shortcut to Bag */}
+          {cartQty > 0 && (
+            <TouchableOpacity
+              onPress={() => setCurrentScreen('cart')}
+              activeOpacity={0.75}
+              className="mt-2.5 flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#FFF0F5] border border-[#F8B4D9]"
+            >
+              <Ionicons name="checkmark-circle" size={15} color="#C2477A" />
+              <Text className="text-xs font-extrabold text-[#C2477A]">
+                {cartQty} {cartQty === 1 ? 'unit' : 'units'} in Bag • View Bag & Checkout ↗
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Dynamic Manual Description */}
+        {(() => {
+          const desc = String(effectiveProduct?.description || selectedProduct?.description || '').trim();
+          if (!desc) return null;
+          return (
+            <View className="px-4 py-3 bg-white border-b border-[#F0F0F0]">
+              <Text className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-1">
+                Description
+              </Text>
+              <Text className="text-xs text-gray-700 leading-relaxed font-normal">
+                {desc}
+              </Text>
+            </View>
+          );
+        })()}
+
+        {/* Dynamic Master Attributes */}
+        {(() => {
+          const rawAttrs = effectiveProduct?.attributes || selectedProduct?.attributes || selectedShade?.attributes;
+          if (!rawAttrs || typeof rawAttrs !== 'object' || Object.keys(rawAttrs).length === 0) return null;
+          const validEntries = Object.entries(rawAttrs).filter(([_, v]) => v !== undefined && v !== null && String(v).trim().length > 0);
+          if (validEntries.length === 0) return null;
+
+          return (
+            <View className="px-4 py-3 bg-white border-b border-[#F0F0F0]">
+              <Text className="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-2">
+                Product Specifications
+              </Text>
+              <View className="flex-row flex-wrap gap-1.5">
+                {validEntries.map(([k, v]) => (
+                  <View key={k} className="px-2.5 py-1 rounded-lg bg-pink-50/70 border border-pink-100 flex-row items-center gap-1">
+                    <Text className="text-[10px] font-bold text-gray-500 uppercase">{k}:</Text>
+                    <Text className="text-[10.5px] font-black text-[#C2477A]">{String(v)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* 7. MORE PRODUCTS FROM THE SAME BRAND */}
         {brandProducts.length > 0 && (
           <View className="px-4 py-4 bg-white border-b border-[#F0F0F0]">
             <Text className="text-sm font-bold text-[#171717] mb-3">
@@ -536,14 +657,12 @@ export const ProductDetailScreen = () => {
                     }}
                     className="w-32 mr-3 bg-white rounded-2xl p-2.5 items-center justify-between shadow-2xs"
                   >
-                    {/* Optional Promotional Badge */}
                     <View className="bg-white px-2 py-0.5 rounded-full mb-1">
                       <Text className="text-[9px] font-bold text-[#C2477A]">
                         {promoBadge}
                       </Text>
                     </View>
 
-                    {/* Product Image */}
                     <View className="w-20 h-20 items-center justify-center my-1">
                       <Image
                         source={getSafeImageSource(item.image, '')}
@@ -552,7 +671,6 @@ export const ProductDetailScreen = () => {
                       />
                     </View>
 
-                    {/* Product Name */}
                     <Text
                       className="text-xs font-bold text-[#171717] text-center"
                       numberOfLines={2}
@@ -566,7 +684,7 @@ export const ProductDetailScreen = () => {
           </View>
         )}
 
-        {/* Quantity Discount Tiers (when applicable for user role) */}
+        {/* 8. Quantity Discount Tiers */}
         {(() => {
           const effectiveRole = (isB2BRole(userRole) && !isB2BVerified) ? 'general' : userRole;
           const roleTiers = getProductTiersForRole(selectedProduct, effectiveRole, selectedShade);
@@ -602,37 +720,6 @@ export const ProductDetailScreen = () => {
         })()}
       </ScrollView>
 
-      {/* ───────────────────────────────────────────────────────────────── */}
-      {/* 7. FIXED BOTTOM PURCHASE BAR */}
-      {/* ───────────────────────────────────────────────────────────────── */}
-      <View style={styles.fixedBottomBar}>
-        {/* Wishlist Button */}
-        <TouchableOpacity
-          onPress={() => toggleFavorite(selectedProduct)}
-          activeOpacity={0.8}
-          className="flex-row items-center justify-center gap-1.5 px-5 py-3 rounded-xl bg-white border border-[#E8E8E8] shadow-2xs"
-        >
-          <Ionicons
-            name={isLiked ? "heart" : "heart-outline"}
-            size={18}
-            color={isLiked ? "#C2477A" : "#171717"}
-          />
-          <Text className="text-xs font-bold text-[#171717]">Wishlist</Text>
-        </TouchableOpacity>
-
-        {/* Add to Cart Button */}
-        <TouchableOpacity
-          onPress={handleAddToCart}
-          activeOpacity={0.85}
-          style={styles.addToCartButton}
-          className="flex-1 py-3 rounded-xl items-center justify-center shadow-md active:bg-[#B83760]"
-        >
-          <Text className="text-white text-xs font-black uppercase tracking-wider">
-            Add to cart
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Celebratory In-App Toast */}
       {addedToastMessage && (
         <View style={styles.toastContainer}>
@@ -646,27 +733,7 @@ export const ProductDetailScreen = () => {
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    paddingBottom: 150
-  },
-  fixedBottomBar: {
-    position: 'absolute',
-    bottom: 53, // Sits directly above the 5-button bottom nav bar
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    zIndex: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 12
+    paddingBottom: 40
   },
   addToCartButton: {
     backgroundColor: '#C2477A',
@@ -678,7 +745,7 @@ const styles = StyleSheet.create({
   },
   toastContainer: {
     position: 'absolute',
-    bottom: 125,
+    bottom: 24,
     alignSelf: 'center',
     backgroundColor: 'rgba(23, 23, 23, 0.95)',
     paddingHorizontal: 16,

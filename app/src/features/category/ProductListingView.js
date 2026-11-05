@@ -31,6 +31,7 @@ export const ProductListingView = ({
     getRolePrice,
     setSelectedProduct,
     setSelectedShade,
+    rememberSelectedShade,
     setCurrentScreen,
     cart = [],
     addToCart,
@@ -48,11 +49,22 @@ export const ProductListingView = ({
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedPriceRange, setSelectedPriceRange] = useState('all');
+  const [selectedDiscount, setSelectedDiscount] = useState(0);
+  const [selectedRating, setSelectedRating] = useState(0);
 
   // Cart quantity map (Purplle-style keyed by cartKey)
   const cartQuantityMap = useMemo(() => {
     return getCartQuantityMap(cart);
   }, [cart]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedBrands.length > 0) count += selectedBrands.length;
+    if (selectedPriceRange !== 'all') count++;
+    if (selectedDiscount > 0) count++;
+    if (selectedRating > 0) count++;
+    return count;
+  }, [selectedBrands, selectedPriceRange, selectedDiscount, selectedRating]);
 
   // Unique brands list from current products
   const availableBrands = useMemo(() => {
@@ -79,11 +91,20 @@ export const ProductListingView = ({
       });
     }
 
-    // Brand filter
+    // Brand filter (Legacy single brand)
     if (selectedBrand !== 'ALL') {
       list = list.filter(p => {
         const b = p.brandName || p.brand_name || p.brand || '';
         return b.toLowerCase() === selectedBrand.toLowerCase();
+      });
+    }
+
+    // Multi-select brands filter
+    if (selectedBrands.length > 0) {
+      const lowerBrands = selectedBrands.map(b => b.toLowerCase().trim());
+      list = list.filter(p => {
+        const b = (p.brandName || p.brand_name || p.brand || '').toLowerCase().trim();
+        return lowerBrands.includes(b);
       });
     }
 
@@ -95,6 +116,36 @@ export const ProductListingView = ({
         if (selectedPriceTier === '500_1000') return price >= 500 && price <= 1000;
         if (selectedPriceTier === 'a1000') return price > 1000;
         return true;
+      });
+    }
+
+    // Price range filter
+    if (selectedPriceRange !== 'all') {
+      list = list.filter(p => {
+        const price = getRolePrice(p, userRole);
+        if (selectedPriceRange === 'u500') return price < 500;
+        if (selectedPriceRange === '500_1000') return price >= 500 && price <= 1000;
+        if (selectedPriceRange === '1000_2000') return price >= 1000 && price <= 2000;
+        if (selectedPriceRange === 'a2000') return price > 2000;
+        return true;
+      });
+    }
+
+    // Discount filter
+    if (selectedDiscount > 0) {
+      list = list.filter(p => {
+        const rolePrice = getRolePrice(p, userRole);
+        const mrp = Number(p.mrp) || rolePrice;
+        const disc = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 0;
+        return disc >= selectedDiscount;
+      });
+    }
+
+    // Rating filter
+    if (selectedRating > 0) {
+      list = list.filter(p => {
+        const r = Number(p.rating) || 4.2;
+        return r >= selectedRating;
       });
     }
 
@@ -115,7 +166,7 @@ export const ProductListingView = ({
     }
 
     return list;
-  }, [products, searchQuery, selectedBrand, selectedBrands, selectedPriceTier, selectedPriceRange, selectedSort, userRole, getRolePrice]);
+  }, [products, searchQuery, selectedBrand, selectedBrands, selectedPriceTier, selectedPriceRange, selectedDiscount, selectedRating, selectedSort, userRole, getRolePrice]);
 
   const handleProductPress = (product) => {
     if (setSelectedProduct) setSelectedProduct(product);
@@ -205,15 +256,15 @@ export const ProductListingView = ({
               onPress={() => setShowFilterModal(true)}
               activeOpacity={0.7}
               style={{
-                backgroundColor: (selectedBrands.length > 0 || selectedPriceRange !== 'all') ? '#C2477A' : '#FFFFFF',
-                borderColor: (selectedBrands.length > 0 || selectedPriceRange !== 'all') ? '#C2477A' : '#F0E3EA',
+                backgroundColor: activeFilterCount > 0 ? '#C2477A' : '#FFFFFF',
+                borderColor: activeFilterCount > 0 ? '#C2477A' : '#F0E3EA',
                 borderWidth: 1,
               }}
               className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full shadow-2xs"
             >
-              <Ionicons name="options-outline" size={13} color={(selectedBrands.length > 0 || selectedPriceRange !== 'all') ? '#FFFFFF' : '#B64F7D'} />
-              <Text style={{ color: (selectedBrands.length > 0 || selectedPriceRange !== 'all') ? '#FFFFFF' : '#B64F7D' }} className="text-[11px] font-bold">
-                Filter{(selectedBrands.length + (selectedPriceRange !== 'all' ? 1 : 0)) > 0 ? ` (${selectedBrands.length + (selectedPriceRange !== 'all' ? 1 : 0)})` : ''}
+              <Ionicons name="options-outline" size={13} color={activeFilterCount > 0 ? '#FFFFFF' : '#B64F7D'} />
+              <Text style={{ color: activeFilterCount > 0 ? '#FFFFFF' : '#B64F7D' }} className="text-[11px] font-bold">
+                Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
               </Text>
             </TouchableOpacity>
 
@@ -473,6 +524,9 @@ export const ProductListingView = ({
                 toggleFavorite={toggleFavorite}
                 onPressProduct={(prod, shade) => {
                   if (setSelectedShade && shade) setSelectedShade(shade);
+                  if (rememberSelectedShade && (prod?.id || prod?.parentProductId)) {
+                    appCtx.rememberSelectedShade(prod.parentProductId || prod.id, shade);
+                  }
                   handleProductPress(prod);
                 }}
               />
@@ -485,7 +539,11 @@ export const ProductListingView = ({
       <PremiumFilterBottomSheet
         visible={showFilterModal}
         onClose={() => setShowFilterModal(false)}
+        categories={categories}
+        subcategories={subcategories}
         brands={availableBrands.map(b => ({ name: b }))}
+        selectedCategory={category?.name || 'All'}
+        selectedSubcategory={subcategory?.name || 'All'}
         selectedBrands={selectedBrands}
         onToggleBrand={(bName) => {
           setSelectedBrands(prev =>
@@ -495,10 +553,16 @@ export const ProductListingView = ({
         onClearBrands={() => setSelectedBrands([])}
         selectedPriceRange={selectedPriceRange}
         onSelectPriceRange={setSelectedPriceRange}
-        activeFilterCount={selectedBrands.length + (selectedPriceRange !== 'all' ? 1 : 0)}
+        selectedDiscount={selectedDiscount}
+        onSelectDiscount={setSelectedDiscount}
+        selectedRating={selectedRating}
+        onSelectRating={setSelectedRating}
+        activeFilterCount={activeFilterCount}
         onClearAll={() => {
           setSelectedBrands([]);
           setSelectedPriceRange('all');
+          setSelectedDiscount(0);
+          setSelectedRating(0);
           setSelectedBrand('ALL');
           setSelectedPriceTier('ALL');
         }}

@@ -216,6 +216,12 @@ export const PurplleProductCard = ({
                   onPress={(e) => {
                     e?.stopPropagation?.();
                     setSelectedShade(shade);
+                    if (appCtx?.rememberSelectedShade && effectiveParentId) {
+                      appCtx.rememberSelectedShade(effectiveParentId, shade);
+                    }
+                    if (appCtx?.setSelectedShade) {
+                      appCtx.setSelectedShade(shade);
+                    }
                   }}
                   activeOpacity={0.7}
                   hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}

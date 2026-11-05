@@ -434,6 +434,7 @@ export const HomeScreen = () => {
     getRolePrice,
     setSelectedProduct,
     setSelectedShade,
+    rememberSelectedShade,
     setSelectedCategory,
     setCurrentScreen,
     cart = [],
@@ -514,6 +515,9 @@ export const HomeScreen = () => {
     }
     if (setSelectedShade && shade) {
       setSelectedShade(shade);
+    }
+    if (rememberSelectedShade && (product?.id || product?.parentProductId) && shade) {
+      rememberSelectedShade(product.parentProductId || product.id, shade);
     }
     setSelectedProduct(product);
     setCurrentScreen('product');
