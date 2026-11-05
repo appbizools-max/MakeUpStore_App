@@ -41,7 +41,6 @@ import {
 } from 'lucide-react';
 import { ColumnManagerModal } from './ColumnManagerModal';
 import { buildBrandLookupMap, matchBrandMaster, normalizeBrandKey } from '../../utils/brandUtils';
-import InPanelImageBrowserDrawer from './InPanelImageBrowserDrawer';
 import { lookupBarcodeData, detectBarcodeFormat } from '../../services/barcodeLookupService';
 import { extractColorsFromImage, matchBeautyShade, BEAUTY_SHADE_DICTIONARY } from '../../services/aiColorService';
 import { uploadOptimizedImage } from '../../services/imageStorageService';
@@ -4982,15 +4981,6 @@ export const BulkProductEntryModal = ({
                                           <Globe className="w-2.5 h-2.5" />
                                           <span>Google ↗</span>
                                         </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => setInPanelBrowserRowId(row._id)}
-                                          className="px-2 py-0.5 bg-[#C2477A] hover:bg-[#a03662] text-white rounded-md text-[10px] font-extrabold flex items-center gap-1 shadow-2xs cursor-pointer transition-all active:scale-95"
-                                          title="Open In-Panel Image Search Browser Drawer"
-                                        >
-                                          <Search className="w-2.5 h-2.5" />
-                                          <span>Browser</span>
-                                        </button>
                                       </div>
                                     </div>
 
@@ -5378,15 +5368,6 @@ export const BulkProductEntryModal = ({
                                       >
                                         <Globe className="w-3 h-3" />
                                         <span>Search Google Images ↗</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setInPanelBrowserRowId(row._id)}
-                                        className="px-2.5 py-1 bg-[#C2477A] hover:bg-[#a03662] text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer transition-all active:scale-95"
-                                        title="Open In-Panel Image Browser Drawer"
-                                      >
-                                        <Search className="w-3 h-3" />
-                                        <span>In-Panel Image Browser</span>
                                       </button>
                                     </div>
                                   </div>
@@ -6469,38 +6450,6 @@ export const BulkProductEntryModal = ({
           onToggleColumn={handleToggleColumn}
           onResetColumns={handleResetColumns}
         />
-
-        {/* =====================================================================
-            10. IN-PANEL IMAGE SEARCH BROWSER DRAWER (Right-Side Drawer)
-            ===================================================================== */}
-        {inPanelBrowserRowId && (
-          <InPanelImageBrowserDrawer
-            isOpen={Boolean(inPanelBrowserRowId)}
-            onClose={() => setInPanelBrowserRowId(null)}
-            row={rows.find(r => r._id === inPanelBrowserRowId)}
-            rowIndex={rows.findIndex(r => r._id === inPanelBrowserRowId)}
-            totalRows={rows.length}
-            onAddImageToRow={(imgUrl) => handleAddImageToRow(inPanelBrowserRowId, imgUrl)}
-            onRemoveImageFromRow={(imgUrl) => handleRemoveImageFromRow(inPanelBrowserRowId, imgUrl)}
-            onSelectPrevRow={() => {
-              const currIdx = rows.findIndex(r => r._id === inPanelBrowserRowId);
-              if (currIdx > 0) setInPanelBrowserRowId(rows[currIdx - 1]._id);
-            }}
-            onSelectNextRow={() => {
-              const currIdx = rows.findIndex(r => r._id === inPanelBrowserRowId);
-              if (currIdx < rows.length - 1) setInPanelBrowserRowId(rows[currIdx + 1]._id);
-            }}
-            onUploadProductImage={async (file) => {
-              if (typeof onUploadProductImage === 'function') {
-                return await onUploadProductImage(file);
-              }
-              if (typeof adminCtx?.uploadImage === 'function') {
-                return await adminCtx.uploadImage(file, { folder: 'products', filenamePrefix: 'prod' });
-              }
-              return null;
-            }}
-          />
-        )}
 
       </div>
     </div>

@@ -114,7 +114,7 @@ export const SearchScreen = () => {
             setRecentSearches(parsed);
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     };
     loadSearches();
   }, []);
@@ -124,7 +124,7 @@ export const SearchScreen = () => {
     setRecentSearches(newList);
     try {
       storage.setItem(STORAGE_KEY_RECENT, JSON.stringify(newList));
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   const addRecentSearch = useCallback((term) => {
@@ -135,7 +135,7 @@ export const SearchScreen = () => {
       const updated = [clean, ...filtered].slice(0, 10);
       try {
         storage.setItem(STORAGE_KEY_RECENT, JSON.stringify(updated));
-      } catch (_) {}
+      } catch (_) { }
       return updated;
     });
   }, []);
@@ -145,7 +145,7 @@ export const SearchScreen = () => {
       const updated = prev.filter(item => item !== itemToRemove);
       try {
         storage.setItem(STORAGE_KEY_RECENT, JSON.stringify(updated));
-      } catch (_) {}
+      } catch (_) { }
       return updated;
     });
   }, []);
@@ -216,9 +216,9 @@ export const SearchScreen = () => {
           };
           recognition.start();
           return () => {
-            try { recognition.stop(); } catch (_) {}
+            try { recognition.stop(); } catch (_) { }
           };
-        } catch (_) {}
+        } catch (_) { }
       }
     }
   }, [isVoiceModalOpen]);
@@ -548,8 +548,8 @@ export const SearchScreen = () => {
                     item.type === 'brand'
                       ? 'business-outline'
                       : item.type === 'trending'
-                      ? 'flame-outline'
-                      : 'search-outline'
+                        ? 'flame-outline'
+                        : 'search-outline'
                   }
                   size={15}
                   color="#B34D7D"
@@ -805,67 +805,67 @@ export const SearchScreen = () => {
                 >
                   {displayBrands.length > 0
                     ? displayBrands.slice(0, 20).map((brand) => {
-                        const isSelected = selectedBrands.some(
-                          b => (b || '').toLowerCase() === (brand.name || '').toLowerCase()
-                        );
-                        return (
-                          <TouchableOpacity
-                            key={brand.id || brand.name}
-                            activeOpacity={0.8}
-                            onPress={() => {
-                              setSelectedBrands(prev =>
-                                prev.some(b => (b || '').toLowerCase() === (brand.name || '').toLowerCase())
-                                  ? prev.filter(b => (b || '').toLowerCase() !== (brand.name || '').toLowerCase())
-                                  : [...prev, brand.name]
-                              );
-                              if (!isSelected) addRecentSearch(brand.name);
-                            }}
-                            style={{
-                              minWidth: 108,
-                              height: 42,
-                              paddingHorizontal: 14,
-                              marginRight: 10,
-                              backgroundColor: isSelected ? '#FFF0F5' : '#FFFFFF',
-                              borderColor: isSelected ? '#C2477A' : '#F0E3EA',
-                              borderWidth: 1.5,
-                              borderRadius: 14,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              shadowColor: '#B64F7D',
-                              shadowOffset: { width: 0, height: 1 },
-                              shadowOpacity: 0.05,
-                              shadowRadius: 3,
-                              elevation: 1.5,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: isSelected ? '#C2477A' : '#3A2430',
-                                fontSize: 11.5,
-                                fontWeight: isSelected ? '800' : '700',
-                                textAlign: 'center',
-                              }}
-                              numberOfLines={1}
-                            >
-                              {brand.name}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })
-                    : [1, 2, 3, 4, 5].map((k) => (
-                        <View
-                          key={`sk_br_${k}`}
+                      const isSelected = selectedBrands.some(
+                        b => (b || '').toLowerCase() === (brand.name || '').toLowerCase()
+                      );
+                      return (
+                        <TouchableOpacity
+                          key={brand.id || brand.name}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            setSelectedBrands(prev =>
+                              prev.some(b => (b || '').toLowerCase() === (brand.name || '').toLowerCase())
+                                ? prev.filter(b => (b || '').toLowerCase() !== (brand.name || '').toLowerCase())
+                                : [...prev, brand.name]
+                            );
+                            if (!isSelected) addRecentSearch(brand.name);
+                          }}
                           style={{
                             minWidth: 108,
                             height: 42,
+                            paddingHorizontal: 14,
                             marginRight: 10,
-                            backgroundColor: '#F9F5F7',
-                            borderColor: '#F0E3EA',
-                            borderWidth: 1,
+                            backgroundColor: isSelected ? '#FFF0F5' : '#FFFFFF',
+                            borderColor: isSelected ? '#C2477A' : '#F0E3EA',
+                            borderWidth: 1.5,
                             borderRadius: 14,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            shadowColor: '#B64F7D',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 3,
+                            elevation: 1.5,
                           }}
-                        />
-                      ))}
+                        >
+                          <Text
+                            style={{
+                              color: isSelected ? '#C2477A' : '#3A2430',
+                              fontSize: 11.5,
+                              fontWeight: isSelected ? '800' : '700',
+                              textAlign: 'center',
+                            }}
+                            numberOfLines={1}
+                          >
+                            {brand.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })
+                    : [1, 2, 3, 4, 5].map((k) => (
+                      <View
+                        key={`sk_br_${k}`}
+                        style={{
+                          minWidth: 108,
+                          height: 42,
+                          marginRight: 10,
+                          backgroundColor: '#F9F5F7',
+                          borderColor: '#F0E3EA',
+                          borderWidth: 1,
+                          borderRadius: 14,
+                        }}
+                      />
+                    ))}
                 </ScrollView>
               </View>
             )}
@@ -984,7 +984,7 @@ export const SearchScreen = () => {
         )}
       </ScrollView>
 
-            {/* ── 8. COMPREHENSIVE NYKAA-STYLE FILTER MODAL ────────────────── */}
+      {/* ── 8. COMPREHENSIVE NYKAA-STYLE FILTER MODAL ────────────────── */}
       <Modal
         visible={isFilterModalOpen}
         transparent
