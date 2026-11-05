@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import { getSafeImageSource } from '../../utils/imageUtils';
 import { PurplleProductCard } from '../../components/PurplleProductCard';
+import { PremiumFilterBottomSheet } from '../../components/PremiumFilterBottomSheet';
 import { getCartQuantityMap } from '../../utils/cartKeyUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -44,6 +45,9 @@ export const ProductListingView = ({
   const [selectedBrand, setSelectedBrand] = useState('ALL');
   const [selectedPriceTier, setSelectedPriceTier] = useState('ALL'); // 'ALL', 'u500', '500_1000', 'a1000'
   const [showSortModal, setShowSortModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [selectedBrands, setSelectedBrands] = useState([]);
+  const [selectedPriceRange, setSelectedPriceRange] = useState('all');
 
   // Cart quantity map (Purplle-style keyed by cartKey)
   const cartQuantityMap = useMemo(() => {
@@ -111,7 +115,7 @@ export const ProductListingView = ({
     }
 
     return list;
-  }, [products, searchQuery, selectedBrand, selectedPriceTier, selectedSort, userRole, getRolePrice]);
+  }, [products, searchQuery, selectedBrand, selectedBrands, selectedPriceTier, selectedPriceRange, selectedSort, userRole, getRolePrice]);
 
   const handleProductPress = (product) => {
     if (setSelectedProduct) setSelectedProduct(product);
@@ -195,6 +199,22 @@ export const ProductListingView = ({
             >
               <Ionicons name="swap-vertical" size={13} color="#B64F7D" />
               <Text style={{ color: '#B64F7D' }} className="text-[11px] font-bold">Sort</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setShowFilterModal(true)}
+              activeOpacity={0.7}
+              style={{
+                backgroundColor: (selectedBrands.length > 0 || selectedPriceRange !== 'all') ? '#C2477A' : '#FFFFFF',
+                borderColor: (selectedBrands.length > 0 || selectedPriceRange !== 'all') ? '#C2477A' : '#F0E3EA',
+                borderWidth: 1,
+              }}
+              className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full shadow-2xs"
+            >
+              <Ionicons name="options-outline" size={13} color={(selectedBrands.length > 0 || selectedPriceRange !== 'all') ? '#FFFFFF' : '#B64F7D'} />
+              <Text style={{ color: (selectedBrands.length > 0 || selectedPriceRange !== 'all') ? '#FFFFFF' : '#B64F7D' }} className="text-[11px] font-bold">
+                Filter{(selectedBrands.length + (selectedPriceRange !== 'all' ? 1 : 0)) > 0 ? ` (${selectedBrands.length + (selectedPriceRange !== 'all' ? 1 : 0)})` : ''}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -460,6 +480,31 @@ export const ProductListingView = ({
           </View>
         )}
       </ScrollView>
+
+      {/* ── PREMIUM FILTER BOTTOM SHEET ───────────────────────────── */}
+      <PremiumFilterBottomSheet
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        brands={availableBrands.map(b => ({ name: b }))}
+        selectedBrands={selectedBrands}
+        onToggleBrand={(bName) => {
+          setSelectedBrands(prev =>
+            prev.includes(bName) ? prev.filter(x => x !== bName) : [...prev, bName]
+          );
+        }}
+        onClearBrands={() => setSelectedBrands([])}
+        selectedPriceRange={selectedPriceRange}
+        onSelectPriceRange={setSelectedPriceRange}
+        activeFilterCount={selectedBrands.length + (selectedPriceRange !== 'all' ? 1 : 0)}
+        onClearAll={() => {
+          setSelectedBrands([]);
+          setSelectedPriceRange('all');
+          setSelectedBrand('ALL');
+          setSelectedPriceTier('ALL');
+        }}
+        onApply={() => setShowFilterModal(false)}
+        totalMatchingCount={filteredProducts.length}
+      />
 
       {/* ── SORT MODAL ──────────────────────────────────────────────── */}
       <Modal visible={showSortModal} transparent animationType="fade">

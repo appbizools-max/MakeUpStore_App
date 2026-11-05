@@ -377,31 +377,22 @@ export const CategoryScreen = () => {
                 </View>
               </View>
 
-              {/* Right Side: Attractive Explore Now Pill Button */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => handleSelectCategory(cat)}
+              {/* Right Side: Simple, Elegant Arrow Indicator */}
+              <View
                 style={{
-                  backgroundColor: '#C2477A',
-                  paddingVertical: 8,
-                  paddingHorizontal: 13,
-                  borderRadius: 20,
-                  flexDirection: 'row',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: '#FFF0F5',
+                  borderColor: '#F8B4D9',
+                  borderWidth: 1.2,
                   alignItems: 'center',
-                  gap: 3,
-                  shadowColor: '#C2477A',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 4,
-                  elevation: 2,
+                  justifyContent: 'center',
                   flexShrink: 0
                 }}
               >
-                <Text style={{ color: '#FFFFFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>
-                  Explore Now
-                </Text>
-                <Ionicons name="chevron-forward" size={13} color="#FFFFFF" />
-              </TouchableOpacity>
+                <Ionicons name="chevron-forward" size={17} color="#C2477A" />
+              </View>
             </TouchableOpacity>
           ))}
         </View>

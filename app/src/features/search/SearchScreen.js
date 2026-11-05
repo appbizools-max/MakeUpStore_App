@@ -18,6 +18,7 @@ import { matchProductSearch } from '../../utils/productSearchEngine';
 import { trackCustomerSearch } from '../../utils/customerSearchService';
 import { storage } from '../../utils/storage';
 import { PurplleProductCard } from '../../components/PurplleProductCard';
+import { PremiumFilterBottomSheet } from '../../components/PremiumFilterBottomSheet';
 import { getCartQuantityMap } from '../../utils/cartKeyUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -89,6 +90,8 @@ export const SearchScreen = () => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
   const [brandFilterSearch, setBrandFilterSearch] = useState('');
   const [isRecentExpanded, setIsRecentExpanded] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -196,7 +199,15 @@ export const SearchScreen = () => {
   };
 
   useEffect(() => {
-    if (!isVoiceModalOpen) return;
+    if (!isVoiceModalOpen) {
+      setIsListening(false);
+      setVoiceError(null);
+      return;
+    }
+    setVoiceTranscript('');
+    setVoiceError(null);
+    setIsListening(false);
+
     if (typeof window !== 'undefined') {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
@@ -205,20 +216,52 @@ export const SearchScreen = () => {
           recognition.continuous = false;
           recognition.interimResults = true;
           recognition.lang = 'en-US';
+
+          recognition.onstart = () => {
+            setIsListening(true);
+            setVoiceError(null);
+          };
+
           recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             if (transcript) {
               setVoiceTranscript(transcript);
               if (event.results[0].isFinal) {
-                handleVoiceApply(transcript);
+                setTimeout(() => {
+                  handleVoiceApply(transcript);
+                }, 350);
               }
             }
           };
+
+          recognition.onerror = (event) => {
+            console.warn('[VoiceSearch] error:', event.error);
+            setIsListening(false);
+            if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+              setVoiceError('Microphone permission denied. Tap any suggestion below or enter your search.');
+            } else if (event.error === 'no-speech') {
+              setVoiceError('No speech detected. Tap any suggestion below or speak again.');
+            } else {
+              setVoiceError('Speech recognition unavailable. Choose a suggestion below or type your search.');
+            }
+          };
+
+          recognition.onend = () => {
+            setIsListening(false);
+          };
+
           recognition.start();
           return () => {
-            try { recognition.stop(); } catch (_) { }
+            try { recognition.abort(); } catch (_) { }
           };
-        } catch (_) { }
+        } catch (err) {
+          console.warn('[VoiceSearch] init error:', err);
+          setIsListening(false);
+          setVoiceError('Microphone unavailable. Choose a suggestion below or enter search text.');
+        }
+      } else {
+        setIsListening(false);
+        setVoiceError('Voice recognition ready. Tap any popular beauty query below or enter keywords.');
       }
     }
   }, [isVoiceModalOpen]);
@@ -984,303 +1027,34 @@ export const SearchScreen = () => {
         )}
       </ScrollView>
 
-      {/* ── 8. COMPREHENSIVE NYKAA-STYLE FILTER MODAL ────────────────── */}
-      <Modal
+      {/* ── 8. PREMIUM FILTER BOTTOM SHEET ───────────────────────────── */}
+      <PremiumFilterBottomSheet
         visible={isFilterModalOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsFilterModalOpen(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setIsFilterModalOpen(false)}>
-          <View style={{ backgroundColor: 'rgba(0, 0, 0, 0.45)' }} className="flex-1 justify-end">
-            <TouchableWithoutFeedback>
-              <View
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderTopLeftRadius: 24,
-                  borderTopRightRadius: 24,
-                  maxHeight: '85%',
-                  borderColor: '#F0E3EA',
-                  borderTopWidth: 1,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: -3 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 8,
-                  elevation: 10,
-                }}
-                className="p-5 pb-7"
-              >
-                {/* Drag Indicator */}
-                <View className="items-center mb-3">
-                  <View className="w-10 h-1 rounded-full bg-slate-300" />
-                </View>
-
-                {/* Modal Header */}
-                <View className="flex-row items-center justify-between pb-3 border-b border-[#F0E3EA] mb-3">
-                  <View className="flex-row items-center gap-2">
-                    <Ionicons name="options-outline" size={18} color="#C2477A" />
-                    <Text style={{ color: '#2B1A24' }} className="text-base font-extrabold">
-                      Filter Products
-                    </Text>
-                    {activeFilterCount > 0 && (
-                      <View className="bg-[#C2477A] px-2 py-0.5 rounded-full">
-                        <Text className="text-white text-[10px] font-black">{activeFilterCount}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <TouchableOpacity onPress={() => setIsFilterModalOpen(false)} className="p-1">
-                    <Ionicons name="close" size={20} color="#8A7B85" />
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView showsVerticalScrollIndicator={false} className="space-y-4">
-                  {/* Filter 1: Dynamic Categories (from Supabase) */}
-                  <View>
-                    <Text style={{ color: '#2B1A24' }} className="text-xs font-bold uppercase tracking-wider mb-2">
-                      Category
-                    </Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {['All', ...(categories && categories.length > 0 ? categories.filter(c => c.is_active !== false).map(c => c.name) : ['Skincare', 'Makeup', 'Haircare', 'Fragrance', 'Bath & Body', "Men's Grooming", 'Nail Care', 'Beauty Tools'])].map((catName) => {
-                        const isSelected = selectedCategory === catName;
-                        return (
-                          <TouchableOpacity
-                            key={catName}
-                            onPress={() => {
-                              setSelectedCategory(catName);
-                              setSelectedSubcategory('All');
-                            }}
-                            style={{
-                              backgroundColor: isSelected ? '#C2477A' : '#FFFFFF',
-                              borderColor: isSelected ? '#C2477A' : '#F0E3EA',
-                              borderWidth: 1,
-                              borderRadius: 16,
-                              paddingHorizontal: 12,
-                              paddingVertical: 6,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: isSelected ? '#FFFFFF' : '#352832',
-                                fontSize: 11,
-                                fontWeight: isSelected ? '700' : '500',
-                              }}
-                            >
-                              {catName}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    {/* Dependent Subcategories under Selected Category */}
-                    {selectedCategory !== 'All' && (() => {
-                      const parentCatObj = (categories || []).find(c => c.name?.toLowerCase() === selectedCategory.toLowerCase());
-                      const matchingSubs = (subcategories || []).filter(s =>
-                        (parentCatObj && (s.category_id === parentCatObj.id || s.categoryId === parentCatObj.id)) ||
-                        (s.categoryName && s.categoryName.toLowerCase() === selectedCategory.toLowerCase())
-                      );
-
-                      if (!matchingSubs || matchingSubs.length === 0) return null;
-
-                      return (
-                        <View className="mt-2.5 pt-2 border-t border-dashed border-[#F0E3EA]">
-                          <Text style={{ color: '#C2477A' }} className="text-[11px] font-bold mb-1.5">
-                            Subcategories in {selectedCategory}:
-                          </Text>
-                          <View className="flex-row flex-wrap gap-1.5">
-                            {['All', ...matchingSubs.map(s => s.name)].map((subName) => {
-                              const isSubSelected = selectedSubcategory === subName;
-                              return (
-                                <TouchableOpacity
-                                  key={subName}
-                                  onPress={() => setSelectedSubcategory(subName)}
-                                  style={{
-                                    backgroundColor: isSubSelected ? '#2B1A24' : '#FFFFFF',
-                                    borderColor: isSubSelected ? '#2B1A24' : '#E8E8E8',
-                                    borderWidth: 1,
-                                    borderRadius: 12,
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 4.5,
-                                  }}
-                                >
-                                  <Text
-                                    style={{
-                                      color: isSubSelected ? '#FFFFFF' : '#4A3B45',
-                                      fontSize: 10.5,
-                                      fontWeight: isSubSelected ? '700' : '500',
-                                    }}
-                                  >
-                                    {subName}
-                                  </Text>
-                                </TouchableOpacity>
-                              );
-                            })}
-                          </View>
-                        </View>
-                      );
-                    })()}
-                  </View>
-
-                  {/* Filter 2: Dedicated Brand Filter with In-Filter Search & Multi-Select */}
-                  <View className="mt-3">
-                    <View className="flex-row items-center justify-between mb-2">
-                      <Text style={{ color: '#2B1A24' }} className="text-xs font-bold uppercase tracking-wider">
-                        Brand Partner {selectedBrands.length > 0 ? `(${selectedBrands.length} selected)` : ''}
-                      </Text>
-                      {selectedBrands.length > 0 && (
-                        <TouchableOpacity onPress={() => setSelectedBrands([])}>
-                          <Text style={{ color: '#C2477A' }} className="text-[11px] font-bold">Clear Brands</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    {/* Brand Filter Search Box */}
-                    <View
-                      style={{
-                        borderColor: '#F0E3EA',
-                        borderWidth: 1,
-                        borderRadius: 14,
-                        backgroundColor: '#FFFFFF',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <Ionicons name="search-outline" size={14} color="#8A7B85" />
-                      <TextInput
-                        value={brandFilterSearch}
-                        onChangeText={setBrandFilterSearch}
-                        placeholder="Search brands (e.g. Maybelline, Lakme, Agaro)..."
-                        placeholderTextColor="#9CA3AF"
-                        style={{ flex: 1, fontSize: 11, color: '#1F2937', padding: 0, marginLeft: 6 }}
-                      />
-                      {brandFilterSearch.length > 0 && (
-                        <TouchableOpacity onPress={() => setBrandFilterSearch('')}>
-                          <Ionicons name="close-circle" size={14} color="#8A7B85" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    {/* Multi-Select Brand Chips */}
-                    <View className="flex-row flex-wrap gap-2 max-h-40 overflow-y-auto">
-                      {(displayBrands || [])
-                        .filter(b => !brandFilterSearch || (b.name || '').toLowerCase().includes(brandFilterSearch.toLowerCase()))
-                        .map((b) => {
-                          const isBrandSelected = selectedBrands.includes(b.name);
-                          return (
-                            <TouchableOpacity
-                              key={b.id || b.name}
-                              onPress={() => {
-                                setSelectedBrands(prev =>
-                                  prev.includes(b.name)
-                                    ? prev.filter(x => x !== b.name)
-                                    : [...prev, b.name]
-                                );
-                              }}
-                              style={{
-                                backgroundColor: isBrandSelected ? '#C2477A' : '#FFFFFF',
-                                borderColor: isBrandSelected ? '#C2477A' : '#F0E3EA',
-                                borderWidth: 1,
-                                borderRadius: 16,
-                                paddingHorizontal: 11,
-                                paddingVertical: 5.5,
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              {isBrandSelected && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
-                              <Text
-                                style={{
-                                  color: isBrandSelected ? '#FFFFFF' : '#352832',
-                                  fontSize: 11,
-                                  fontWeight: isBrandSelected ? '700' : '500',
-                                }}
-                              >
-                                {b.name}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                    </View>
-                  </View>
-
-                  {/* Filter 3: Price Range */}
-                  <View className="mt-3 mb-2">
-                    <Text style={{ color: '#2B1A24' }} className="text-xs font-bold uppercase tracking-wider mb-2">
-                      Price Range
-                    </Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {[
-                        { id: 'all', label: 'All Prices' },
-                        { id: 'u500', label: 'Under ₹500' },
-                        { id: '500_1000', label: '₹500 – ₹1,000' },
-                        { id: '1000_2000', label: '₹1,000 – ₹2,000' },
-                        { id: 'a2000', label: 'Above ₹2,000' },
-                      ].map((p) => {
-                        const isSelected = selectedPriceRange === p.id;
-                        return (
-                          <TouchableOpacity
-                            key={p.id}
-                            onPress={() => setSelectedPriceRange(p.id)}
-                            style={{
-                              backgroundColor: isSelected ? '#C2477A' : '#FFFFFF',
-                              borderColor: isSelected ? '#C2477A' : '#F0E3EA',
-                              borderWidth: 1,
-                              borderRadius: 16,
-                              paddingHorizontal: 12,
-                              paddingVertical: 6,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: isSelected ? '#FFFFFF' : '#352832',
-                                fontSize: 11,
-                                fontWeight: isSelected ? '700' : '500',
-                              }}
-                            >
-                              {p.label}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </View>
-                </ScrollView>
-
-                {/* Modal Footer Actions */}
-                <View className="pt-3 border-t border-[#F0E3EA] flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={resetAllFilters}
-                    style={{
-                      borderColor: '#F0E3EA',
-                      borderWidth: 1,
-                      backgroundColor: '#FFFFFF',
-                    }}
-                    className="flex-1 py-3 rounded-xl items-center justify-center cursor-pointer"
-                  >
-                    <Text style={{ color: '#8A7B85' }} className="text-xs font-bold">
-                      Clear All
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setIsFilterModalOpen(false)}
-                    style={{ backgroundColor: '#C2477A' }}
-                    className="flex-1 py-3 rounded-xl items-center justify-center shadow-xs cursor-pointer"
-                  >
-                    <Text className="text-xs font-bold text-white">
-                      Apply Filters ({activeFilterCount})
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+        onClose={() => setIsFilterModalOpen(false)}
+        categories={categories}
+        subcategories={subcategories}
+        brands={displayBrands}
+        selectedCategory={selectedCategory}
+        onSelectCategory={(cat) => {
+          setSelectedCategory(cat);
+          setSelectedSubcategory('All');
+        }}
+        selectedSubcategory={selectedSubcategory}
+        onSelectSubcategory={setSelectedSubcategory}
+        selectedBrands={selectedBrands}
+        onToggleBrand={(bName) => {
+          setSelectedBrands(prev =>
+            prev.includes(bName) ? prev.filter(x => x !== bName) : [...prev, bName]
+          );
+        }}
+        onClearBrands={() => setSelectedBrands([])}
+        selectedPriceRange={selectedPriceRange}
+        onSelectPriceRange={setSelectedPriceRange}
+        activeFilterCount={activeFilterCount}
+        onClearAll={resetAllFilters}
+        onApply={() => setIsFilterModalOpen(false)}
+        totalMatchingCount={filteredProducts.length}
+      />
 
       {/* ── 9. VOICE SEARCH MODAL ─────────────────────────────────────── */}
       <Modal
@@ -1359,9 +1133,32 @@ export const SearchScreen = () => {
                 </View>
 
                 {/* Listening Status */}
+                {/* Listening & Error Status Banner */}
                 <Text style={{ color: '#2B1A24', fontSize: 16, fontWeight: '800', marginBottom: 4 }}>
-                  Listening for Cosmetics...
+                  {isListening ? 'Listening for Cosmetics...' : 'Voice Search Ready'}
                 </Text>
+                {voiceError ? (
+                  <View
+                    style={{
+                      backgroundColor: '#FFF0F5',
+                      borderColor: '#F8B4D9',
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      marginBottom: 12,
+                      width: '100%'
+                    }}
+                  >
+                    <Text style={{ color: '#C2477A', fontSize: 11, fontWeight: '600', textAlign: 'center' }}>
+                      {voiceError}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={{ color: '#8A7B85', fontSize: 12, textAlign: 'center', marginBottom: 14 }}>
+                    Speak the name of any cosmetic product, brand, or shade
+                  </Text>
+                )}
                 <Text style={{ color: '#8A7B85', fontSize: 12, textAlign: 'center', marginBottom: 14 }}>
                   Speak the name of any cosmetic product, brand, or shade
                 </Text>
