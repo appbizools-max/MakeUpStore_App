@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getLeafCategoriesForSubcategory } from '../../config/categoriesHierarchy';
 import { CategoryHeader } from './components/CategoryHeader';
 import { ProductListingView } from './ProductListingView';
+import { getSafeImageSource } from '../../utils/imageUtils';
 
 export const SubcategoryView = ({
   category,
@@ -120,7 +121,7 @@ export const SubcategoryView = ({
           >
             {subcategory?.image ? (
               <Image
-                source={{ uri: subcategory.image }}
+                source={getSafeImageSource(subcategory.image)}
                 style={{ width: '84%', height: '84%' }}
                 resizeMode="contain"
               />

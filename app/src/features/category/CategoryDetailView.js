@@ -12,6 +12,7 @@ import {
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { getSubcategoriesForCategory } from '../../config/categoriesHierarchy';
 import { CategoryHeader } from './components/CategoryHeader';
+import { getSafeImageSource } from '../../utils/imageUtils';
 
 /**
  * Curated authentic cosmetic descriptions for all subcategories
@@ -246,7 +247,7 @@ export const CategoryDetailView = ({
           >
             {category?.image ? (
               <Image
-                source={{ uri: category.image }}
+                source={getSafeImageSource(category.image)}
                 style={{ width: '84%', height: '84%' }}
                 resizeMode="contain"
               />

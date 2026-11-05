@@ -1088,7 +1088,7 @@ export const HomeScreen = () => {
                       >
                         {cat.imageUrl ? (
                           <Image
-                            source={{ uri: cat.imageUrl }}
+                            source={getSafeImageSource(cat.imageUrl)}
                             style={{ width: '100%', height: '100%' }}
                             resizeMode="contain"
                           />

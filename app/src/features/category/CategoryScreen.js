@@ -18,6 +18,7 @@ import {
 } from '../../config/categoriesHierarchy';
 
 import { getCategoryFA5Icon } from '../../utils/categoryIcons';
+import { getSafeImageSource } from '../../utils/imageUtils';
 import { CategoryDetailView } from './CategoryDetailView';
 import { SubcategoryView } from './SubcategoryView';
 import { ProductListingView } from './ProductListingView';
@@ -357,7 +358,7 @@ export const CategoryScreen = () => {
                 >
                   {cat.image ? (
                     <Image
-                      source={{ uri: cat.image }}
+                      source={getSafeImageSource(cat.image)}
                       style={{ width: '100%', height: '100%' }}
                       resizeMode="contain"
                     />
