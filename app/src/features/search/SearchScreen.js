@@ -1053,7 +1053,7 @@ export const SearchScreen = () => {
         activeFilterCount={activeFilterCount}
         onClearAll={resetAllFilters}
         onApply={() => setIsFilterModalOpen(false)}
-        totalMatchingCount={filteredProducts.length}
+        totalMatchingCount={results?.length || 0}
       />
 
       {/* ── 9. VOICE SEARCH MODAL ─────────────────────────────────────── */}
