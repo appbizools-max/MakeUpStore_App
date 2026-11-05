@@ -867,8 +867,8 @@ export const createBlankProductRow = (customId = null, parent = null) => ({
   rgb: '',
   size: '',
   variantBarcode: '',
-  gst: '18',
-  netQty: '1 N',
+  gst: '',
+  netQty: '',
   mrp: parent ? (parent.mrp || '') : '',
   generalDiscount: parent ? (parent.generalDiscount || '') : '',
   salonDiscount: parent ? (parent.salonDiscount || '') : '',
@@ -1791,8 +1791,8 @@ export const BulkProductEntryModal = ({
             r.hexColor = matched.matchedStandardHex;
             r.rgb = hexToRgbString(matched.matchedStandardHex);
           } else {
-            r.hexColor = '#DE98AB';
-            r.rgb = hexToRgbString('#DE98AB');
+            r.hexColor = '';
+            r.rgb = '';
           }
         }
 
@@ -3136,8 +3136,8 @@ export const BulkProductEntryModal = ({
             code: shadeCode,
             sku: explicitVariantSku || fallbackVariantSku,
             barcode: r.variantBarcode || r.barcode || null,
-            hexColor: r.hexColor || '#CE4270',
-            hex: r.hexColor || '#CE4270',
+            hexColor: r.hexColor || '',
+            hex: r.hexColor || '',
             color_name: r.shade || r.variantName || 'Default',
             image: (r.images && r.images[0]) || r.productImageUrl || primaryRow.productImageUrl || null,
             images: r.images && r.images.length > 0 ? r.images : (r.productImageUrl ? [r.productImageUrl] : (primaryRow.productImageUrl ? [primaryRow.productImageUrl] : [])),
@@ -3725,7 +3725,7 @@ export const BulkProductEntryModal = ({
         {/* Global Notice Alert Banner */}
         {bulkNotice && (
           <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${bulkNotice.type === 'error'
-              ? 'bg-rose-50 text-rose-800 border-rose-200'
+              ? 'bg-white text-rose-800 border-rose-300'
               : bulkNotice.type === 'warning'
                 ? 'bg-amber-50 text-amber-800 border-amber-200'
                 : 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -3742,7 +3742,7 @@ export const BulkProductEntryModal = ({
 
         {/* Detailed Submission Validation Errors Box */}
         {submissionValidationErrors.length > 0 && (
-          <div className="mx-4 sm:mx-6 my-2.5 p-3.5 bg-rose-50 border border-rose-300 rounded-2xl animate-in fade-in">
+          <div className="mx-4 sm:mx-6 my-2.5 p-3.5 bg-white border border-rose-300 rounded-2xl shadow-sm animate-in fade-in">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 font-black text-rose-900 text-xs">
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -4629,7 +4629,7 @@ export const BulkProductEntryModal = ({
                               <input
                                 id={`cell_swatch_${row._id}`}
                                 type="color"
-                                value={row.hexColor && row.hexColor.startsWith('#') && row.hexColor.length === 7 ? row.hexColor : '#CE4270'}
+                                value={row.hexColor && row.hexColor.startsWith('#') && row.hexColor.length === 7 ? row.hexColor : '#FFFFFF'}
                                 onChange={(e) => handleCellChange(row._id, 'hexColor', e.target.value)}
                                 className="w-8 h-8 rounded-lg border border-slate-300 p-0.5 cursor-pointer bg-white"
                                 title="Pick HEX color swatch"
@@ -4639,7 +4639,7 @@ export const BulkProductEntryModal = ({
                                 value={row.hexColor || ''}
                                 onChange={(e) => handleCellChange(row._id, 'hexColor', e.target.value)}
                                 onKeyDown={(e) => handleCellKeyDown(e, row._id, 'hexColor')}
-                                placeholder="#CE4270"
+                                placeholder="e.g. #D4A373"
                                 className="w-24 h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 outline-none uppercase focus:border-pink-500"
                               />
                             </div>

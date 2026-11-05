@@ -283,7 +283,7 @@ export default function RoleQuantityTiersManager({
 
         {/* Validation Error Banner for active role */}
         {!validation.isValid && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2 animate-fade-in">
+          <div className="p-3 rounded-xl bg-white border border-red-300 text-red-800 text-xs font-semibold flex items-start gap-2 shadow-xs animate-fade-in">
             <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
             <div>
               <span className="font-extrabold text-rose-900">Configuration Error: </span>

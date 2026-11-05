@@ -19,15 +19,6 @@ import { getCartKey, getSafeProductShadesList } from '../utils/cartKeyUtils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Standard Curated Beauty Shades Palette matching prompt specifications
-const DEFAULT_BEAUTY_SHADES = [
-  { id: 'shade_peach_pop', name: 'Peach Pop', hexColor: '#F4A18D', undertone: 'Warm Peach', isBestseller: true },
-  { id: 'shade_rose_petal', name: 'Rose Petal', hexColor: '#E9869B', undertone: 'Soft Rose', isBestseller: true },
-  { id: 'shade_coral_crush', name: 'Coral Crush', hexColor: '#F0645C', undertone: 'Vibrant Coral', isBestseller: true },
-  { id: 'shade_berry_blush', name: 'Berry Blush', hexColor: '#B64B75', undertone: 'Deep Berry', isBestseller: true },
-  { id: 'shade_nude_pink', name: 'Nude Pink', hexColor: '#E5A6A0', undertone: 'Neutral Nude', isBestseller: false },
-];
-
 /**
  * Salbeau Product Shade Selection Bottom Sheet
  * 
@@ -75,18 +66,20 @@ export const SelectShadeBottomSheet = ({
     }
   }, [propOnClose, closeShadeSheet]);
 
-  // Extract valid shades with fallback to default curated beauty shades
+  // Extract valid shades directly from product without mock fallbacks
   const allShades = useMemo(() => {
     const list = getSafeProductShadesList(activeProduct);
     if (list && list.length > 0) {
       return list.map((s, idx) => ({
         ...s,
-        undertone: s.undertone || (DEFAULT_BEAUTY_SHADES[idx % DEFAULT_BEAUTY_SHADES.length]?.undertone) || 'Natural Luminous Finish',
-        isBestseller: s.isBestseller || s.bestseller || idx < 4,
-        hexColor: s.hexColor || s.hex_color || DEFAULT_BEAUTY_SHADES[idx % DEFAULT_BEAUTY_SHADES.length]?.hexColor || '#B8497D'
+        id: s.id || `var_${idx}`,
+        name: s.name || s.color_name || s.title || `Variant ${idx + 1}`,
+        undertone: s.undertone || '',
+        isBestseller: Boolean(s.isBestseller || s.bestseller),
+        hexColor: s.hexColor || s.hex_color || '#B8497D'
       }));
     }
-    return DEFAULT_BEAUTY_SHADES;
+    return [];
   }, [activeProduct]);
 
   // Active filter chip: 'all' | 'bestsellers'
@@ -106,58 +99,77 @@ export const SelectShadeBottomSheet = ({
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
-  // Initialize or restore shade when sheet opens or product changes
+  // Session refs to prevent animation stutter and unneeded state resets on swatch taps
+  const isOpenRef = useRef(false);
+  const activeProductIdRef = useRef(null);
+
+  // Initialize or restore shade strictly when sheet opens or product changes
   useEffect(() => {
     if (isVisible && activeProduct) {
-      setIsSuccessAdded(false);
-      setIsAdding(false);
-      setActiveFilter('all');
-      setSelectedQty(1);
+      const isNewOpen = !isOpenRef.current || activeProductIdRef.current !== activeProduct.id;
+      if (isNewOpen) {
+        isOpenRef.current = true;
+        activeProductIdRef.current = activeProduct.id;
+        setIsSuccessAdded(false);
+        setIsAdding(false);
+        setActiveFilter('all');
+        setSelectedQty(1);
 
-      if (allShades.length > 0) {
-        // Priority 1: passedInitialShade
-        if (passedInitialShade && allShades.some(s => (s.id || s.name) === (passedInitialShade.id || passedInitialShade.name))) {
-          setSelectedShade(passedInitialShade);
-        } else if (lastSelectedShades[activeProduct.id] && allShades.some(s => (s.id || s.name) === (lastSelectedShades[activeProduct.id].id || lastSelectedShades[activeProduct.id].name))) {
+        const list = getSafeProductShadesList(activeProduct);
+        if (list && list.length > 0) {
+          // Priority 1: passedInitialShade
+          const matchedInitial = passedInitialShade && list.find(s =>
+            (s.id && passedInitialShade.id && String(s.id) === String(passedInitialShade.id)) ||
+            (s.name && passedInitialShade.name && s.name.toLowerCase() === passedInitialShade.name.toLowerCase())
+          );
+
           // Priority 2: remembered shade for this product
-          setSelectedShade(lastSelectedShades[activeProduct.id]);
-        } else {
-          setSelectedShade(allShades[0]);
-        }
-      } else {
-        setSelectedShade(null);
-      }
+          const remembered = lastSelectedShades?.[activeProduct.id];
+          const matchedRemembered = remembered && list.find(s =>
+            (s.id && remembered.id && String(s.id) === String(remembered.id)) ||
+            (s.name && remembered.name && s.name.toLowerCase() === remembered.name.toLowerCase())
+          );
 
-      // Animate in
-      Animated.parallel([
-        Animated.timing(backdropAnim, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          damping: 24,
-          stiffness: 220,
-          useNativeDriver: true
-        })
-      ]).start();
+          setSelectedShade(matchedInitial || matchedRemembered || list[0]);
+        } else {
+          setSelectedShade(null);
+        }
+
+        // Animate in
+        Animated.parallel([
+          Animated.timing(backdropAnim, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: true
+          }),
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            damping: 24,
+            stiffness: 220,
+            useNativeDriver: true
+          })
+        ]).start();
+      }
     } else {
-      // Animate out
-      Animated.parallel([
-        Animated.timing(backdropAnim, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true
-        }),
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 200,
-          useNativeDriver: true
-        })
-      ]).start();
+      if (isOpenRef.current) {
+        isOpenRef.current = false;
+        activeProductIdRef.current = null;
+        // Animate out
+        Animated.parallel([
+          Animated.timing(backdropAnim, {
+            toValue: 0,
+            duration: 180,
+            useNativeDriver: true
+          }),
+          Animated.timing(slideAnim, {
+            toValue: SCREEN_HEIGHT,
+            duration: 200,
+            useNativeDriver: true
+          })
+        ]).start();
+      }
     }
-  }, [isVisible, activeProduct?.id, passedInitialShade, allShades, lastSelectedShades]);
+  }, [isVisible, activeProduct?.id]);
 
   // Bestseller shades identification
   const bestsellerShades = useMemo(() => {
@@ -218,39 +230,42 @@ export const SelectShadeBottomSheet = ({
 
   const totalCartBadgeCount = (cart || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
 
-  // Dynamic role pricing
+  // Dynamic role pricing strictly derived from product & variant rates
   const rolePrice = useMemo(() => {
     if (typeof getRolePrice === 'function' && activeProduct) {
       return getRolePrice(activeProduct, userRole, selectedShade, selectedQty);
     }
-    return activeProduct?.generalPrice || activeProduct?.mrp || 254.15;
+    return Number(activeProduct?.generalPrice || activeProduct?.mrp || 0);
   }, [activeProduct, userRole, selectedShade, selectedQty, getRolePrice]);
 
   const mrp = useMemo(() => {
     if (selectedShade?.priceOverride && Number(selectedShade.priceOverride) > rolePrice) {
       return Number(selectedShade.priceOverride);
     }
+    if (selectedShade?.mrp && Number(selectedShade.mrp) > rolePrice) {
+      return Number(selectedShade.mrp);
+    }
     if (activeProduct?.mrp && Number(activeProduct.mrp) > rolePrice) {
       return Number(activeProduct.mrp);
     }
-    return Math.round(rolePrice * 1.18);
-  }, [activeProduct?.mrp, selectedShade?.priceOverride, rolePrice]);
+    return rolePrice;
+  }, [activeProduct?.mrp, selectedShade?.priceOverride, selectedShade?.mrp, rolePrice]);
 
-  const discountPercent = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 15;
-  const savingsAmount = (mrp > rolePrice ? (mrp - rolePrice) * selectedQty : 44.85 * selectedQty).toFixed(2);
+  const discountPercent = mrp > rolePrice && mrp > 0 ? Math.round(((mrp - rolePrice) / mrp) * 100) : 0;
+  const savingsAmount = mrp > rolePrice ? ((mrp - rolePrice) * selectedQty).toFixed(2) : '0.00';
 
   const isSelectedShadeSoldOut = false;
   const isLiked = isFavorite ? isFavorite(activeProduct?.id) : false;
 
-  // Handle shade switch: update selected shade, remember it, and reset stepper
-  const handleSelectShade = (shade) => {
+  // Handle shade switch: update selected shade, remember it, and reset stepper without retriggering animations
+  const handleSelectShade = useCallback((shade) => {
     if (!shade) return;
     setSelectedShade(shade);
     setSelectedQty(1);
     if (rememberSelectedShade && activeProduct?.id) {
       rememberSelectedShade(activeProduct.id, shade);
     }
-  };
+  }, [rememberSelectedShade, activeProduct?.id]);
 
   // Add to Bag handler (STAYS OPEN so user can select more shades!)
   const handleAddToBag = () => {
@@ -258,7 +273,7 @@ export const SelectShadeBottomSheet = ({
 
     setIsAdding(true);
     if (addToCart) {
-      addToCart(activeProduct, selectedQty, selectedShade);
+      addToCart(activeProduct, selectedQty, selectedShade || null);
     }
 
     if (rememberSelectedShade && activeProduct?.id && selectedShade) {
@@ -429,111 +444,119 @@ export const SelectShadeBottomSheet = ({
             </View>
 
             {/* 3. SHADE FILTERS (Compact Segmented Controls) */}
-            <View
-              style={{
-                backgroundColor: '#FFFFFF',
-                borderBottomColor: '#F0E4EA',
-                borderBottomWidth: 1,
-              }}
-              className="px-4 py-2 flex-row items-center gap-2"
-            >
-              <TouchableOpacity
-                onPress={() => setActiveFilter('all')}
-                activeOpacity={0.75}
+            {allShades.length > 1 && bestsellerShades.length > 0 && (
+              <View
                 style={{
-                  backgroundColor: activeFilter === 'all' ? '#B8497D' : '#FFFFFF',
-                  borderColor: activeFilter === 'all' ? '#B8497D' : '#F0E4EA',
-                  borderWidth: 1,
+                  backgroundColor: '#FFFFFF',
+                  borderBottomColor: '#F0E4EA',
+                  borderBottomWidth: 1,
                 }}
-                className="px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-2xs"
+                className="px-4 py-2 flex-row items-center gap-2"
               >
-                <Text
-                  style={{ color: activeFilter === 'all' ? '#FFFFFF' : '#352832' }}
-                  className="text-[11px] font-bold"
+                <TouchableOpacity
+                  onPress={() => setActiveFilter('all')}
+                  activeOpacity={0.75}
+                  style={{
+                    backgroundColor: activeFilter === 'all' ? '#B8497D' : '#FFFFFF',
+                    borderColor: activeFilter === 'all' ? '#B8497D' : '#F0E4EA',
+                    borderWidth: 1,
+                  }}
+                  className="px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-2xs"
                 >
-                  All Shades ({allShades.length})
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={{ color: activeFilter === 'all' ? '#FFFFFF' : '#352832' }}
+                    className="text-[11px] font-bold"
+                  >
+                    All Shades ({allShades.length})
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => setActiveFilter('bestsellers')}
-                activeOpacity={0.75}
-                style={{
-                  backgroundColor: activeFilter === 'bestsellers' ? '#B8497D' : '#FFFFFF',
-                  borderColor: activeFilter === 'bestsellers' ? '#B8497D' : '#F0E4EA',
-                  borderWidth: 1,
-                }}
-                className="px-3.5 py-1.5 rounded-full flex-row items-center gap-1.5 shadow-2xs"
-              >
-                <Ionicons
-                  name="flame"
-                  size={12}
-                  color={activeFilter === 'bestsellers' ? '#FFFFFF' : '#B8497D'}
-                />
-                <Text
-                  style={{ color: activeFilter === 'bestsellers' ? '#FFFFFF' : '#352832' }}
-                  className="text-[11px] font-bold"
+                <TouchableOpacity
+                  onPress={() => setActiveFilter('bestsellers')}
+                  activeOpacity={0.75}
+                  style={{
+                    backgroundColor: activeFilter === 'bestsellers' ? '#B8497D' : '#FFFFFF',
+                    borderColor: activeFilter === 'bestsellers' ? '#B8497D' : '#F0E4EA',
+                    borderWidth: 1,
+                  }}
+                  className="px-3.5 py-1.5 rounded-full flex-row items-center gap-1.5 shadow-2xs"
                 >
-                  Bestsellers ({bestsellerShades.length})
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  <Ionicons
+                    name="flame"
+                    size={12}
+                    color={activeFilter === 'bestsellers' ? '#FFFFFF' : '#B8497D'}
+                  />
+                  <Text
+                    style={{ color: activeFilter === 'bestsellers' ? '#FFFFFF' : '#352832' }}
+                    className="text-[11px] font-bold"
+                  >
+                    Bestsellers ({bestsellerShades.length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* 4. SELECTED SHADE BANNER & UNDERTONE */}
-            <View className="px-4 pt-2.5 pb-1">
-              <View className="flex-row items-center justify-between mb-0.5">
-                <Text
-                  style={{ color: '#352832' }}
-                  className="text-xs font-bold uppercase tracking-wider"
-                >
-                  Select Shade
-                </Text>
-                {selectedShade && (
-                  <View className="flex-row items-center gap-1.5">
+            {allShades.length > 0 && (
+              <>
+                <View className="px-4 pt-2.5 pb-1">
+                  <View className="flex-row items-center justify-between mb-0.5">
                     <Text
-                      style={{ color: '#B8497D' }}
-                      className="text-xs font-black"
+                      style={{ color: '#352832' }}
+                      className="text-xs font-bold uppercase tracking-wider"
                     >
-                      {selectedShade.name || selectedShade.title || 'Selected'}
+                      Select Shade
                     </Text>
-                    {currentShadeInCartQty > 0 && (
-                      <View className="bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
-                        <Text className="text-[9.5px] font-black text-emerald-700">
-                          {currentShadeInCartQty} in bag
+                    {selectedShade && (
+                      <View className="flex-row items-center gap-1.5">
+                        <Text
+                          style={{ color: '#B8497D' }}
+                          className="text-xs font-black"
+                        >
+                          {selectedShade.name || selectedShade.title || 'Selected'}
                         </Text>
+                        {currentShadeInCartQty > 0 && (
+                          <View className="bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
+                            <Text className="text-[9.5px] font-black text-emerald-700">
+                              {currentShadeInCartQty} in bag
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     )}
                   </View>
-                )}
-              </View>
 
-              {selectedShade?.undertone ? (
-                <Text
-                  style={{ color: '#81747C' }}
-                  className="text-[11px] font-medium"
-                >
-                  {selectedShade.undertone}
-                </Text>
-              ) : null}
-            </View>
+                  {selectedShade?.undertone ? (
+                    <Text
+                      style={{ color: '#81747C' }}
+                      className="text-[11px] font-medium"
+                    >
+                      {selectedShade.undertone}
+                    </Text>
+                  ) : null}
+                </View>
 
-            {/* 5. ELEGANT CIRCULAR SHADE SWATCHES (With In-Bag Quantity Badges) */}
-            <View className="px-4 py-2">
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingVertical: 4 }}
-              >
-                {displayedShades.map((shade, idx) => {
-                  const isSelected = selectedShade && (
-                    (selectedShade.id && shade.id && selectedShade.id === shade.id) ||
-                    (selectedShade.name && shade.name && selectedShade.name === shade.name)
-                  );
+                {/* 5. ELEGANT CIRCULAR SHADE SWATCHES (With In-Bag Quantity Badges) */}
+                <View className="px-4 py-2">
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{ paddingVertical: 4 }}
+                  >
+                    {displayedShades.map((shade, idx) => {
+                      const isSelected = Boolean(
+                        selectedShade && (
+                          (selectedShade.id && shade.id && String(selectedShade.id) === String(shade.id)) ||
+                          (selectedShade.sku && shade.sku && selectedShade.sku === shade.sku) ||
+                          (selectedShade.code && shade.code && selectedShade.code === shade.code) ||
+                          (selectedShade.name && shade.name && selectedShade.name.toLowerCase() === shade.name.toLowerCase())
+                        )
+                      );
 
-                  const shadeKey = shade.id ? String(shade.id) : (shade.name ? String(shade.name).toLowerCase() : '');
-                  const qtyInBag = productShadesInCartMap.get(shadeKey) || 0;
-                  const colorHex = shade.hexColor || shade.hex_color || '#F4A18D';
+                      const shadeKey = shade.id ? String(shade.id) : (shade.name ? String(shade.name).toLowerCase() : '');
+                      const qtyInBag = productShadesInCartMap.get(shadeKey) || 0;
+                      const colorHex = shade.hexColor || shade.hex_color || '#B8497D';
 
                   return (
                     <TouchableOpacity
@@ -624,6 +647,8 @@ export const SelectShadeBottomSheet = ({
                 })}
               </ScrollView>
             </View>
+          </>
+        )}
 
             {/* 6. QUANTITY STEPPER FOR CURRENT SHADE */}
             <View
@@ -752,11 +777,11 @@ export const SelectShadeBottomSheet = ({
               {/* Add to Bag CTA (Does NOT close sheet so user can add more shades!) */}
               <TouchableOpacity
                 onPress={handleAddToBag}
-                disabled={!selectedShade || isSelectedShadeSoldOut || isAdding}
+                disabled={(allShades.length > 0 && !selectedShade) || isSelectedShadeSoldOut || isAdding}
                 activeOpacity={0.88}
                 style={{
                   height: 48,
-                  backgroundColor: (!selectedShade || isSelectedShadeSoldOut) ? '#CBD5E1' : '#B8497D',
+                  backgroundColor: ((allShades.length > 0 && !selectedShade) || isSelectedShadeSoldOut) ? '#CBD5E1' : '#B8497D',
                   shadowColor: '#B8497D',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.25,

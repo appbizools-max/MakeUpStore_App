@@ -171,14 +171,14 @@ export default function AddNewProductPage({
     image: '',
     images: [],
     status: editingProduct ? (editingProduct.status || editingProduct.additionalInfo?.status || 'published') : 'published',
-    isFeatured: editingProduct ? Boolean(editingProduct.isFeatured || editingProduct.additionalInfo?.isFeatured) : true,
+    isFeatured: editingProduct ? Boolean(editingProduct.isFeatured || editingProduct.additionalInfo?.isFeatured) : false,
     featuredPriority: editingProduct ? Number(editingProduct.featuredPriority || editingProduct.additionalInfo?.featuredPriority || 0) : 0,
     isTrending: editingProduct ? Boolean(editingProduct.isTrending || editingProduct.additionalInfo?.trendingPriority || 0) : false,
     trendingPriority: editingProduct ? Number(editingProduct.trendingPriority || editingProduct.additionalInfo?.trendingPriority || 0) : 0,
-    rating: editingProduct ? Number(editingProduct.rating || editingProduct.additionalInfo?.rating || 4.5) : 4.8,
-    reviewCount: editingProduct ? Number(editingProduct.reviewCount || editingProduct.additionalInfo?.reviewCount || 120) : 120,
-    showInNewArrivals: editingProduct ? (editingProduct.showInNewArrivals !== false && editingProduct.additionalInfo?.showInNewArrivals !== false) : true,
-    isRecommended: editingProduct ? Boolean(editingProduct.isRecommended || editingProduct.additionalInfo?.isRecommended) : true,
+    rating: editingProduct ? Number(editingProduct.rating || editingProduct.additionalInfo?.rating || 0) : 0,
+    reviewCount: editingProduct ? Number(editingProduct.reviewCount || editingProduct.additionalInfo?.reviewCount || 0) : 0,
+    showInNewArrivals: editingProduct ? (editingProduct.showInNewArrivals !== false && editingProduct.additionalInfo?.showInNewArrivals !== false) : false,
+    isRecommended: editingProduct ? Boolean(editingProduct.isRecommended || editingProduct.additionalInfo?.isRecommended) : false,
     publishedAt: editingProduct ? (editingProduct.publishedAt || editingProduct.additionalInfo?.publishedAt || null) : null,
     shades: [],
     quantityTiers: getDefaultQuantityTiers(),
@@ -206,9 +206,9 @@ export default function AddNewProductPage({
   // Role discount percentages for all 4 roles
   const [roleDiscounts, setRoleDiscounts] = useState({
     general: '0',
-    salon: '10',
-    artist: '15',
-    beautician: '20'
+    salon: '0',
+    artist: '0',
+    beautician: '0'
   });
 
   // Variant enable/disable state
@@ -265,13 +265,13 @@ export default function AddNewProductPage({
         sku: s.sku || '',
         image: s.image || '',
         images: Array.isArray(s.images) ? s.images : (s.image ? [s.image] : []),
-        hexColor: s.hexColor || '#CE4270',
+        hexColor: s.hexColor || '',
         mrp: s.mrp !== undefined ? String(s.mrp) : (editingProduct.mrp !== undefined ? String(editingProduct.mrp) : ''),
         generalPrice: s.generalPrice !== undefined ? String(s.generalPrice) : '',
         salonPrice: s.salonPrice !== undefined ? String(s.salonPrice) : '',
         artistPrice: s.artistPrice !== undefined ? String(s.artistPrice) : '',
         beauticianPrice: s.beauticianPrice !== undefined ? String(s.beauticianPrice) : '',
-        roleDiscounts: s.roleDiscounts || { general: '0', salon: '10', artist: '15', beautician: '20' },
+        roleDiscounts: s.roleDiscounts || { general: '0', salon: '0', artist: '0', beautician: '0' },
         quantityTiers: s.quantityTiers ? normalizeQuantityTiers(s.quantityTiers) : getDefaultQuantityTiers(),
         attributes: s.attributes || {},
         isExpanded: true,
@@ -1051,7 +1051,7 @@ export default function AddNewProductPage({
       sku: formData.sku ? `${formData.sku}-V${newIdx}` : '',
       image: formData.image || (formData.images && formData.images[0]) || '',
       images: formData.images && formData.images.length > 0 ? [...formData.images] : [],
-      hexColor: '#CE4270',
+      hexColor: '',
       mrp: parentMrp,
       generalPrice: parentGen,
       salonPrice: parentSal,
@@ -1237,6 +1237,12 @@ export default function AddNewProductPage({
     if (!formData.name || !formData.name.trim()) {
       errors.name = 'Product Name is required.';
     }
+    if (!formData.brandName || !formData.brandName.trim()) {
+      errors.brandName = 'Brand is required.';
+    }
+    if (!formData.category || !formData.category.trim()) {
+      errors.category = 'Category is required.';
+    }
     if (!formData.mrp || Number(formData.mrp) <= 0) {
       errors.mrp = 'Base MRP price must be greater than 0.';
     }
@@ -1346,7 +1352,7 @@ export default function AddNewProductPage({
       code: shade.code ? shade.code.trim() : undefined,
       sku: (shade.sku && shade.sku.trim()) || generateVariantInternalSku(autoSku, idx + 1, shade.color_name || shade.name),
       barcode: shade.barcode ? shade.barcode.trim() : undefined,
-      hexColor: shade.hexColor || '#CE4270',
+      hexColor: shade.hexColor || '',
       image: shade.image || primaryImage,
       images: shade.images && shade.images.length > 0 ? shade.images : (shade.image ? [shade.image] : (primaryImage ? [primaryImage] : [])),
       mrp: shade.mrp ? Number(shade.mrp) : mrpNum,
@@ -1683,7 +1689,7 @@ export default function AddNewProductPage({
         )}
 
         {formError && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-start gap-2.5 shadow-xs animate-fade-in">
+          <div className="mb-4 p-3.5 rounded-2xl bg-white border border-red-300 text-red-800 text-xs font-bold flex items-start gap-2.5 shadow-sm animate-fade-in">
             <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
             <div className="flex-1">{formError}</div>
             <button onClick={() => setFormError(null)} className="text-rose-400 hover:text-rose-700 p-0.5">
@@ -1957,7 +1963,7 @@ export default function AddNewProductPage({
                       <div className="flex items-center gap-2">
                         <input
                           type="color"
-                          value={formData.hexColor?.startsWith('#') ? formData.hexColor : '#CE4270'}
+                          value={formData.hexColor && formData.hexColor.startsWith('#') && formData.hexColor.length === 7 ? formData.hexColor : '#FFFFFF'}
                           onInput={(e) => {
                             let val = e.target.value.toUpperCase();
                             if (val && !val.startsWith('#')) val = '#' + val;
@@ -1984,7 +1990,7 @@ export default function AddNewProductPage({
                         />
                         <input
                           type="text"
-                          placeholder="#CE4270"
+                          placeholder="e.g. #D4A373 (Optional)"
                           value={formData.hexColor}
                           onChange={(e) => {
                             let val = e.target.value.trim().toUpperCase();
@@ -2162,7 +2168,7 @@ export default function AddNewProductPage({
 
                 {/* PRODUCT FOUND STATE: Rich Existing Product Banner */}
                 {barcodeStatus.exists && (
-                  <div className="p-3.5 rounded-2xl bg-rose-50/90 border border-rose-200 text-xs text-rose-900 space-y-2">
+                  <div className="p-3.5 rounded-2xl bg-white border border-red-300 text-xs text-slate-900 shadow-sm space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-black flex items-center gap-1.5 text-rose-800 text-xs">
                         <AlertCircle size={14} className="text-rose-600" /> Barcode Already Exists
@@ -2329,7 +2335,7 @@ export default function AddNewProductPage({
               />
 
               {imageError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-white border border-red-300 text-red-700 text-xs font-bold flex items-center justify-between shadow-xs">
                   <span>{imageError}</span>
                   <button onClick={() => setImageError(null)} className="p-0.5 text-rose-500 hover:text-rose-800">
                     <X size={14} />

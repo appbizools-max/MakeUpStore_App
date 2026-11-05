@@ -451,24 +451,24 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
   }
 
   const rawMrp = getNumCell('MRP');
-  const mrp = rawMrp !== null ? rawMrp : 0;
+  const mrp = rawMrp !== null ? rawMrp : '';
 
-  // Role Prices: Use client values as they are, only calculate if empty
+  // Role Prices: strictly fetch values from Excel sheet without forcing auto-calculated defaults
   const rawGenPrice = getNumCell('GENERAL_USER_PRICE');
   const rawSalonPrice = getNumCell('SALON_PRICE');
   const rawArtistPrice = getNumCell('MAKEUP_ARTIST_PRICE');
   const rawBeauticianPrice = getNumCell('BEAUTICIAN_PRICE');
 
-  const generalPrice = rawGenPrice !== null ? rawGenPrice : mrp;
-  const salonPrice = rawSalonPrice !== null ? rawSalonPrice : Math.round(generalPrice * 0.7);
-  const artistPrice = rawArtistPrice !== null ? rawArtistPrice : Math.round(generalPrice * 0.65);
-  const beauticianPrice = rawBeauticianPrice !== null ? rawBeauticianPrice : Math.round(generalPrice * 0.68);
+  const generalPrice = rawGenPrice !== null ? rawGenPrice : '';
+  const salonPrice = rawSalonPrice !== null ? rawSalonPrice : '';
+  const artistPrice = rawArtistPrice !== null ? rawArtistPrice : '';
+  const beauticianPrice = rawBeauticianPrice !== null ? rawBeauticianPrice : '';
 
   const productActive = getBoolCell('PRODUCT_ACTIVE', true);
   const statusStr = getCell('STATUS').toLowerCase();
   const status = ['published', 'active', 'ready'].includes(statusStr) ? 'published' : 'draft';
 
-  // Guarantee valid 6-digit hex color using beauty dictionary fallback
+  // Hex color extraction: only if explicitly provided in sheet or resolved from known shade name
   const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
   let hexColor = '';
   if (hexAndSwatch && hexPattern.test(hexAndSwatch.trim())) {
@@ -482,13 +482,13 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
     const matched = matchBeautyShade(shadeName.trim());
     if (matched && matched.matchedStandardHex) hexColor = matched.matchedStandardHex;
   }
-  if (!hexColor) hexColor = '#CE4270';
+  // No hardcoded fallback hexColor; non-shade products remain empty
 
   return {
     _id: 'row_' + Date.now() + '_' + rowIndex + '_' + Math.random().toString(36).substring(2, 6),
     barcode,
     barcodeStatus: barcode ? 'detected' : 'manual',
-    parentSku: resolvedParentSku || (brand && productName ? `${brand.slice(0, 3).toUpperCase()}-${productName.slice(0, 8).toUpperCase().replace(/\s+/g, '-')}` : ''),
+    parentSku: resolvedParentSku || '',
     name: productName,
     productType: subcategory || category || '',
     category,
@@ -502,21 +502,20 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
     shade: shadeName,
     shadeCode: resolvedShadeCode,
     hexColor,
-    rgb: hexToRgbString(hexColor),
+    rgb: hexColor ? hexToRgbString(hexColor) : '',
     size: sizeOrWeight,
     variantBarcode: barcode,
-    // Applied automatically: Confirm correct GST slab with accountant.
-    gst: String(DEFAULT_GST_SLAB),
-    netQty: '1 N',
-    mrp: mrp > 0 ? mrp : '',
-    generalPrice: generalPrice > 0 ? generalPrice : '',
-    salonPrice: salonPrice > 0 ? salonPrice : '',
-    artistPrice: artistPrice > 0 ? artistPrice : '',
-    beauticianPrice: beauticianPrice > 0 ? beauticianPrice : '',
-    generalDiscount: mrp > 0 && generalPrice < mrp ? Math.round(((mrp - generalPrice) / mrp) * 100) : '',
-    salonDiscount: mrp > 0 && salonPrice < mrp ? Math.round(((mrp - salonPrice) / mrp) * 100) : '',
-    artistDiscount: mrp > 0 && artistPrice < mrp ? Math.round(((mrp - artistPrice) / mrp) * 100) : '',
-    beauticianDiscount: mrp > 0 && beauticianPrice < mrp ? Math.round(((mrp - beauticianPrice) / mrp) * 100) : '',
+    gst: getCell('GST') || '',
+    netQty: sizeOrWeight || '',
+    mrp: mrp !== '' && mrp > 0 ? mrp : '',
+    generalPrice: generalPrice !== '' && generalPrice > 0 ? generalPrice : '',
+    salonPrice: salonPrice !== '' && salonPrice > 0 ? salonPrice : '',
+    artistPrice: artistPrice !== '' && artistPrice > 0 ? artistPrice : '',
+    beauticianPrice: beauticianPrice !== '' && beauticianPrice > 0 ? beauticianPrice : '',
+    generalDiscount: (mrp > 0 && generalPrice > 0 && generalPrice < mrp) ? Math.round(((mrp - generalPrice) / mrp) * 100) : '',
+    salonDiscount: (mrp > 0 && salonPrice > 0 && salonPrice < mrp) ? Math.round(((mrp - salonPrice) / mrp) * 100) : '',
+    artistDiscount: (mrp > 0 && artistPrice > 0 && artistPrice < mrp) ? Math.round(((mrp - artistPrice) / mrp) * 100) : '',
+    beauticianDiscount: (mrp > 0 && beauticianPrice > 0 && beauticianPrice < mrp) ? Math.round(((mrp - beauticianPrice) / mrp) * 100) : '',
     images: image ? [image] : [],
     productImageUrl: image || '',
     productActive,
