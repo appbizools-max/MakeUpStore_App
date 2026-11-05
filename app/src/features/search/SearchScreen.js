@@ -88,10 +88,7 @@ export const SearchScreen = () => {
   const [selectedBrands, setSelectedBrands] = useState([]); // Multi-select brands
   const [selectedPriceRange, setSelectedPriceRange] = useState('all'); // 'all' | 'u500' | '500_1000' | '1000_2000' | 'a2000'
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const [voiceTranscript, setVoiceTranscript] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const [voiceError, setVoiceError] = useState(null);
+
   const [brandFilterSearch, setBrandFilterSearch] = useState('');
   const [isRecentExpanded, setIsRecentExpanded] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -188,83 +185,7 @@ export const SearchScreen = () => {
     setBrandFilterSearch('');
   };
 
-  const handleVoiceApply = (spokenText) => {
-    const clean = (spokenText || '').trim();
-    if (clean) {
-      setQuery(clean);
-      addRecentSearch(clean);
-      setShowSuggestions(false);
-    }
-    setIsVoiceModalOpen(false);
-  };
 
-  useEffect(() => {
-    if (!isVoiceModalOpen) {
-      setIsListening(false);
-      setVoiceError(null);
-      return;
-    }
-    setVoiceTranscript('');
-    setVoiceError(null);
-    setIsListening(false);
-
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        try {
-          const recognition = new SpeechRecognition();
-          recognition.continuous = false;
-          recognition.interimResults = true;
-          recognition.lang = 'en-US';
-
-          recognition.onstart = () => {
-            setIsListening(true);
-            setVoiceError(null);
-          };
-
-          recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            if (transcript) {
-              setVoiceTranscript(transcript);
-              if (event.results[0].isFinal) {
-                setTimeout(() => {
-                  handleVoiceApply(transcript);
-                }, 350);
-              }
-            }
-          };
-
-          recognition.onerror = (event) => {
-            console.warn('[VoiceSearch] error:', event.error);
-            setIsListening(false);
-            if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-              setVoiceError('Microphone permission denied. Tap any suggestion below or enter your search.');
-            } else if (event.error === 'no-speech') {
-              setVoiceError('No speech detected. Tap any suggestion below or speak again.');
-            } else {
-              setVoiceError('Speech recognition unavailable. Choose a suggestion below or type your search.');
-            }
-          };
-
-          recognition.onend = () => {
-            setIsListening(false);
-          };
-
-          recognition.start();
-          return () => {
-            try { recognition.abort(); } catch (_) { }
-          };
-        } catch (err) {
-          console.warn('[VoiceSearch] init error:', err);
-          setIsListening(false);
-          setVoiceError('Microphone unavailable. Choose a suggestion below or enter search text.');
-        }
-      } else {
-        setIsListening(false);
-        setVoiceError('Voice recognition ready. Tap any popular beauty query below or enter keywords.');
-      }
-    }
-  }, [isVoiceModalOpen]);
 
   // Active / Available Brands computation (always fresh)
   const displayBrands = useMemo(() => {
@@ -446,7 +367,7 @@ export const SearchScreen = () => {
               className="flex-1 ml-2 text-xs font-semibold p-0"
               returnKeyType="search"
             />
-            {query.length > 0 ? (
+            {query.length > 0 && (
               <TouchableOpacity
                 onPress={() => {
                   setQuery('');
@@ -455,17 +376,6 @@ export const SearchScreen = () => {
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons name="close-circle" size={18} color="#8A7B85" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={() => {
-                  setVoiceTranscript('');
-                  setIsVoiceModalOpen(true);
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="mic-outline" size={18} color="#B34D7D" />
               </TouchableOpacity>
             )}
           </View>
@@ -1056,220 +966,9 @@ export const SearchScreen = () => {
         totalMatchingCount={results?.length || 0}
       />
 
-      {/* ── 9. VOICE SEARCH MODAL ─────────────────────────────────────── */}
-      <Modal
-        visible={isVoiceModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsVoiceModalOpen(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setIsVoiceModalOpen(false)}>
-          <View style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} className="flex-1 items-center justify-center p-5">
-            <TouchableWithoutFeedback>
-              <View
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 28,
-                  borderColor: '#F0E3EA',
-                  borderWidth: 1.5,
-                  maxWidth: 380,
-                  width: '100%',
-                  shadowColor: '#C2477A',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 16,
-                  elevation: 10,
-                }}
-                className="p-6 items-center"
-              >
-                {/* Header with Close */}
-                <View className="flex-row items-center justify-between w-full mb-4">
-                  <View className="flex-row items-center gap-2">
-                    <Ionicons name="mic" size={18} color="#C2477A" />
-                    <Text style={{ color: '#2B1A24' }} className="text-sm font-extrabold">
-                      Voice Search
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => setIsVoiceModalOpen(false)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    className="p-1"
-                  >
-                    <Ionicons name="close" size={20} color="#8A7B85" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Animated Pulsing Mic Avatar */}
-                <View
-                  style={{
-                    width: 88,
-                    height: 88,
-                    borderRadius: 44,
-                    backgroundColor: '#FFF0F5',
-                    borderColor: '#F8B4D9',
-                    borderWidth: 2,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: 14,
-                    shadowColor: '#C2477A',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 8,
-                    elevation: 3,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 32,
-                      backgroundColor: '#C2477A',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons name="mic" size={32} color="#FFFFFF" />
-                  </View>
-                </View>
-
-                {/* Listening Status */}
-                {/* Listening & Error Status Banner */}
-                <Text style={{ color: '#2B1A24', fontSize: 16, fontWeight: '800', marginBottom: 4 }}>
-                  {isListening ? 'Listening for Cosmetics...' : 'Voice Search Ready'}
-                </Text>
-                {voiceError ? (
-                  <View
-                    style={{
-                      backgroundColor: '#FFF0F5',
-                      borderColor: '#F8B4D9',
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      marginBottom: 12,
-                      width: '100%'
-                    }}
-                  >
-                    <Text style={{ color: '#C2477A', fontSize: 11, fontWeight: '600', textAlign: 'center' }}>
-                      {voiceError}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={{ color: '#8A7B85', fontSize: 12, textAlign: 'center', marginBottom: 14 }}>
-                    Speak the name of any cosmetic product, brand, or shade
-                  </Text>
-                )}
-                <Text style={{ color: '#8A7B85', fontSize: 12, textAlign: 'center', marginBottom: 14 }}>
-                  Speak the name of any cosmetic product, brand, or shade
-                </Text>
-
-                {/* Speech Input Field */}
-                <View
-                  style={{
-                    borderColor: '#F0E3EA',
-                    borderWidth: 1.5,
-                    borderRadius: 16,
-                    backgroundColor: '#FFFFFF',
-                    width: '100%',
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginBottom: 14,
-                  }}
-                >
-                  <TextInput
-                    value={voiceTranscript}
-                    onChangeText={setVoiceTranscript}
-                    placeholder="e.g. Maybelline Foundation, Matte Lipstick..."
-                    placeholderTextColor="#9CA3AF"
-                    style={{ flex: 1, fontSize: 13, fontWeight: '600', color: '#1F2937', padding: 0 }}
-                    onSubmitEditing={() => {
-                      if (voiceTranscript.trim()) {
-                        handleVoiceApply(voiceTranscript.trim());
-                      }
-                    }}
-                  />
-                  {voiceTranscript.length > 0 && (
-                    <TouchableOpacity onPress={() => handleVoiceApply(voiceTranscript.trim())}>
-                      <Ionicons name="arrow-forward-circle" size={24} color="#C2477A" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Quick Voice Suggestion Chips */}
-                <Text style={{ color: '#8A7B85', fontSize: 11, fontWeight: '700', alignSelf: 'flex-start', marginBottom: 8 }}>
-                  Try Saying:
-                </Text>
-                <View className="flex-row flex-wrap gap-2 w-full mb-4">
-                  {[
-                    'Matte Lipstick',
-                    'Vitamin C Serum',
-                    'Sunscreen SPF 50',
-                    'Foundation',
-                    'Face Wash',
-                    'Kajal',
-                    'Perfume',
-                  ].map((phrase) => (
-                    <TouchableOpacity
-                      key={phrase}
-                      onPress={() => handleVoiceApply(phrase)}
-                      activeOpacity={0.75}
-                      style={{
-                        backgroundColor: '#FFFFFF',
-                        borderColor: '#F0E3EA',
-                        borderWidth: 1,
-                        borderRadius: 14,
-                        paddingHorizontal: 11,
-                        paddingVertical: 5.5,
-                      }}
-                    >
-                      <Text style={{ color: '#C2477A', fontSize: 11, fontWeight: '700' }}>
-                        "{phrase}"
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Action Buttons */}
-                <View className="flex-row gap-2.5 w-full">
-                  <TouchableOpacity
-                    onPress={() => setIsVoiceModalOpen(false)}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 11,
-                      borderRadius: 14,
-                      backgroundColor: '#FFFFFF',
-                      borderColor: '#E5E7EB',
-                      borderWidth: 1,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '700' }}>Cancel</Text>
-                  </TouchableOpacity>
-
-                  {voiceTranscript.trim().length > 0 && (
-                    <TouchableOpacity
-                      onPress={() => handleVoiceApply(voiceTranscript.trim())}
-                      style={{
-                        flex: 1,
-                        paddingVertical: 11,
-                        borderRadius: 14,
-                        backgroundColor: '#C2477A',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>Search Now</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
           </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </View>
   );
 };
 
 export default SearchScreen;
+

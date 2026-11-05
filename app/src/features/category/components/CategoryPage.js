@@ -24,7 +24,7 @@ import { filterProductsByHierarchy } from '../../../config/categoriesHierarchy';
  * Complete UI/UX Redesign adhering to final layout hierarchy:
  * 1. Compact Banner
  * 2. Category Icon | Category Name | Explore Products
- * 3. Search Subcategories [Enter name or use microphone]
+ * 3. Search subcategories...
  * 4. All | Acne & Blemishes | Anti-Aging | Cleansers | Face Wash | Moisturizers | Serums | Sunscreen →
  * 5. Product Listing (2-column responsive grid)
  */
@@ -163,7 +163,7 @@ export const CategoryPage = ({
           value={searchQuery}
           onChangeText={setSearchQuery}
           onClear={() => setSearchQuery('')}
-          placeholder="Search Subcategories [Enter name or use microphone]"
+          placeholder="Search subcategories..."
           currentCategoryName={title}
         />
 
