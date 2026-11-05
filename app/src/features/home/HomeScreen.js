@@ -91,46 +91,177 @@ const SkeletonProductCard = () => (
   </View>
 );
 
-// Brand Card: Rounded rectangular container with brand name only (no logos, no numbers per specification)
-const BrandCard = ({ brand, onSelectBrand, screenWidth = 375 }) => {
+// Authentic Beauty Brands Theme Palette Engine
+const KNOWN_BRAND_COLORS = {
+  'lakme': '#1A1A1A',
+  'maybelline': '#D10024',
+  'loreal': '#C7102E',
+  "l'oreal": '#C7102E',
+  'mac': '#111111',
+  'nykaa': '#FC2779',
+  'faces': '#C2477A',
+  'faces canada': '#C2477A',
+  'sugar': '#D7266E',
+  'swiss beauty': '#BA2252',
+  'kay beauty': '#C9637A',
+  'colorbar': '#D6004C',
+  'mamaearth': '#4B8233',
+  'plum': '#5B2D6E',
+  'insight': '#A33368',
+  'insight cosmetics': '#A33368',
+  'renee': '#A52A56',
+  'wow': '#7B3828',
+  'wow skin science': '#7B3828',
+  'dot & key': '#E85D75',
+  'minimalist': '#212529',
+  'cetaphil': '#00639E',
+  'neutrogena': '#007AC2',
+  'the ordinary': '#333333',
+  'forest essentials': '#7B5C35',
+  'biotique': '#2E5F38',
+  'himalaya': '#246B46',
+  'kama ayurveda': '#4E3524',
+  'nivea': '#002D72',
+  'dove': '#004B87',
+  'tresemme': '#1C1C1C',
+  'matrix': '#D9222A',
+  'streax': '#961937',
+  'bblunt': '#E91E63',
+  'khadi': '#4B6636',
+  'olay': '#8C6D1F',
+  'garnier': '#568203',
+  'clinique': '#2B5838',
+  'estee lauder': '#0E2A47',
+  'huda beauty': '#9E2A5B',
+  'pac': '#111111',
+  'chambor': '#002A5C',
+  'revlon': '#C60020',
+  'bella vita': '#684B29',
+  'ahsan': '#6B2D5C',
+  'anoos': '#7A3E2D',
+  '2.0hi': '#6B21A8'
+};
+
+const LUXURY_BRAND_PALETTE = [
+  '#B8497D', '#9333EA', '#0F766E', '#1E40AF', '#BE185D',
+  '#0369A1', '#B91C1C', '#4338CA', '#854D0E', '#065F46',
+  '#9D174D', '#15803D', '#334155', '#6B21A8', '#831843'
+];
+
+export const getBrandThemeColor = (brand) => {
+  if (!brand) return '#B8497D';
+  if (brand.themeColor && brand.themeColor.startsWith('#')) return brand.themeColor;
+  if (brand.color && brand.color.startsWith('#')) return brand.color;
+  if (brand.brand_color && brand.brand_color.startsWith('#')) return brand.brand_color;
+  if (brand.bgColor && brand.bgColor.startsWith('#')) return brand.bgColor;
+
+  const raw = String(brand.name || '').trim().toLowerCase();
+  const cleanKey = raw.replace(/[^a-z0-9]/g, '');
+  if (KNOWN_BRAND_COLORS[raw]) return KNOWN_BRAND_COLORS[raw];
+  if (KNOWN_BRAND_COLORS[cleanKey]) return KNOWN_BRAND_COLORS[cleanKey];
+
+  for (const [k, c] of Object.entries(KNOWN_BRAND_COLORS)) {
+    if (raw.includes(k) || k.includes(raw)) return c;
+  }
+
+  // Deterministic luxury palette fallback
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = (hash << 5) - hash + raw.charCodeAt(i);
+    hash |= 0;
+  }
+  return LUXURY_BRAND_PALETTE[Math.abs(hash) % LUXURY_BRAND_PALETTE.length];
+};
+
+// Brand Card: Premium brand button with theme color background, white typography, subtle press animation
+const BrandCard = ({ brand, onSelectBrand, onInteractionStart, onInteractionEnd, screenWidth = 375 }) => {
   const isTablet = screenWidth >= 600;
   const brandName = (brand.name || '').trim();
+  const themeColor = getBrandThemeColor(brand);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    onInteractionStart?.();
+    Animated.spring(scaleAnim, {
+      toValue: 0.93,
+      useNativeDriver: true,
+      friction: 6,
+      tension: 100,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    onInteractionEnd?.();
+    Animated.spring(scaleAnim, {
+      toValue: 1.0,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 40,
+    }).start();
+  };
+
+  const hasLogo = Boolean(brand.logo && typeof brand.logo === 'string' && brand.logo.startsWith('http'));
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={() => onSelectBrand(brand)}
-      style={{
-        minWidth: isTablet ? 136 : 112,
-        height: isTablet ? 50 : 44,
-        paddingHorizontal: 16,
-        marginRight: 10,
-        backgroundColor: '#FFFFFF',
-        borderColor: '#F0E3EA',
-        borderWidth: 1.5,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#B64F7D',
-        shadowOffset: { width: 0, height: 1.5 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 1,
-      }}
-    >
-      <Text
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => onSelectBrand(brand)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         style={{
-          fontSize: isTablet ? 13.5 : 12,
-          fontWeight: '700',
-          color: '#3A2430',
-          textAlign: 'center',
-          letterSpacing: 0.2,
+          minWidth: isTablet ? 140 : 112,
+          height: isTablet ? 50 : 44,
+          paddingHorizontal: 16,
+          marginRight: 10,
+          backgroundColor: themeColor,
+          borderRadius: 14,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 7,
+          shadowColor: themeColor,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.28,
+          shadowRadius: 5,
+          elevation: 3,
         }}
-        numberOfLines={1}
       >
-        {brandName}
-      </Text>
-    </TouchableOpacity>
+        {hasLogo && (
+          <View
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 11,
+              backgroundColor: '#FFFFFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              padding: 1.5,
+            }}
+          >
+            <Image
+              source={getSafeImageSource(brand.logo)}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="contain"
+            />
+          </View>
+        )}
+        <Text
+          style={{
+            fontSize: isTablet ? 13 : 11.5,
+            fontWeight: '800',
+            color: '#FFFFFF',
+            textAlign: 'center',
+            letterSpacing: 0.4,
+            textTransform: 'uppercase',
+          }}
+          numberOfLines={1}
+        >
+          {brandName}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -588,26 +719,46 @@ export const HomeScreen = () => {
   }, [activeBrands, brands]);
   const topBrandsList = allBrandsList;
 
-  // Continuous auto-scroller for Shop by Brand
+  // Continuous auto-scroller for Shop by Brand with pause-on-touch & gentle resume
   const brandScrollRef = useRef(null);
   const brandScrollPos = useRef(0);
   const isBrandInteracting = useRef(false);
+  const resumeTimerRef = useRef(null);
+
+  const pauseBrandScroll = useCallback(() => {
+    isBrandInteracting.current = true;
+    if (resumeTimerRef.current) {
+      clearTimeout(resumeTimerRef.current);
+    }
+  }, []);
+
+  const resumeBrandScroll = useCallback((delay = 1800) => {
+    if (resumeTimerRef.current) {
+      clearTimeout(resumeTimerRef.current);
+    }
+    resumeTimerRef.current = setTimeout(() => {
+      isBrandInteracting.current = false;
+    }, delay);
+  }, []);
 
   useEffect(() => {
     if (!allBrandsList || allBrandsList.length <= 1) return;
-    const itemWidth = 86; // approximate per brand width + gap
+    const itemWidth = 120; // approximate brand button width + gap
     const totalLoopWidth = allBrandsList.length * itemWidth;
 
     const interval = setInterval(() => {
       if (isBrandInteracting.current || !brandScrollRef.current) return;
-      brandScrollPos.current += 1.2;
+      brandScrollPos.current += 1.0;
       if (brandScrollPos.current >= totalLoopWidth) {
         brandScrollPos.current = 0;
       }
       brandScrollRef.current.scrollTo({ x: brandScrollPos.current, animated: false });
-    }, 28);
+    }, 25);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    };
   }, [allBrandsList]);
 
   // 4. New Arrivals (Sorted by newest date)
@@ -993,10 +1144,12 @@ export const HomeScreen = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              onScrollBeginDrag={() => { isBrandInteracting.current = true; }}
-              onScrollEndDrag={() => { setTimeout(() => { isBrandInteracting.current = false; }, 2000); }}
-              onMomentumScrollBegin={() => { isBrandInteracting.current = true; }}
-              onMomentumScrollEnd={() => { setTimeout(() => { isBrandInteracting.current = false; }, 2000); }}
+              onTouchStart={pauseBrandScroll}
+              onTouchEnd={() => resumeBrandScroll(1800)}
+              onScrollBeginDrag={pauseBrandScroll}
+              onScrollEndDrag={() => resumeBrandScroll(1800)}
+              onMomentumScrollBegin={pauseBrandScroll}
+              onMomentumScrollEnd={() => resumeBrandScroll(1800)}
               contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
             >
               {allBrandsList.length > 0
@@ -1005,6 +1158,8 @@ export const HomeScreen = () => {
                       key={`${brand.id || brand.name}_${idx}`}
                       brand={brand}
                       screenWidth={SCREEN_WIDTH}
+                      onInteractionStart={pauseBrandScroll}
+                      onInteractionEnd={() => resumeBrandScroll(1800)}
                       onSelectBrand={(b) => {
                         const brandQuery = (b.name || '').replace('\n', ' ');
                         if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);

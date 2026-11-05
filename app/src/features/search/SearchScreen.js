@@ -20,6 +20,8 @@ import { storage } from '../../utils/storage';
 import { PurplleProductCard } from '../../components/PurplleProductCard';
 import { PremiumFilterBottomSheet } from '../../components/PremiumFilterBottomSheet';
 import { getCartQuantityMap } from '../../utils/cartKeyUtils';
+import { cleanProductDisplayName } from '../../utils/productDisplayNameUtils';
+import { getBrandThemeColor } from '../home/HomeScreen';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -65,6 +67,7 @@ export const SearchScreen = () => {
     brands = [],
     isCatalogLoading = false,
     categories = [],
+    setSelectedCategory,
     subcategories = [],
     userRole,
     userProfile,
@@ -198,28 +201,101 @@ export const SearchScreen = () => {
     return [];
   }, [activeBrands, brands]);
 
-  // Autocomplete Suggestions
+  // Real-Time Multi-Entity Suggestions (Brands, Categories, Subcategories, Products)
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (q.length < 1) return [];
+    if (q.length < 1) {
+      return { all: [], brands: [], categories: [], subcategories: [], products: [], totalCount: 0 };
+    }
 
+    // 1. Matching Brands
     const matchedBrands = (displayBrands || [])
       .filter(b => (b.name || '').toLowerCase().includes(q))
       .slice(0, 3)
-      .map(b => ({ type: 'brand', text: b.name }));
+      .map(b => {
+        const count = (activeProducts || []).filter(p => (p.brandName || '').toLowerCase() === (b.name || '').toLowerCase()).length;
+        return {
+          type: 'brand',
+          id: b.id || b.name,
+          title: b.name,
+          badge: 'Brand',
+          subtitle: `${count} ${count === 1 ? 'product' : 'products'} available`,
+          logo: b.logo || b.logo_url || '',
+          brand: b
+        };
+      });
 
+    // 2. Matching Categories
+    const matchedCategories = (categories || [])
+      .filter(c => (c.name || '').toLowerCase().includes(q))
+      .slice(0, 3)
+      .map(c => {
+        const count = (activeProducts || []).filter(p => (p.category || '').toLowerCase() === (c.name || '').toLowerCase()).length;
+        return {
+          type: 'category',
+          id: c.id || c.name,
+          title: c.name,
+          badge: 'Category',
+          subtitle: `Explore Department • ${count} items`,
+          image: c.image || c.icon || '',
+          category: c
+        };
+      });
+
+    // 3. Matching Subcategories
+    const matchedSubcategories = (subcategories || [])
+      .filter(s => (s.name || '').toLowerCase().includes(q))
+      .slice(0, 3)
+      .map(s => {
+        const parentCat = s.category || s.category_name || '';
+        return {
+          type: 'subcategory',
+          id: s.id || s.name,
+          title: s.name,
+          badge: 'Subcategory',
+          subtitle: parentCat ? `in ${parentCat}` : 'Subcategory department',
+          categoryName: parentCat,
+          subcategory: s
+        };
+      });
+
+    // 4. Matching Products
     const matchedProducts = (activeProducts || [])
-      .filter(p => (p.name || '').toLowerCase().includes(q))
+      .filter(p => {
+        const nMatch = (p.name || '').toLowerCase().includes(q);
+        const bMatch = (p.brandName || '').toLowerCase().includes(q);
+        const sMatch = Array.isArray(p.shades) && p.shades.some(sh => (sh.name || '').toLowerCase().includes(q));
+        return nMatch || bMatch || sMatch;
+      })
       .slice(0, 4)
-      .map(p => ({ type: 'product', text: p.name, product: p }));
+      .map(p => ({
+        type: 'product',
+        id: p.id,
+        title: cleanProductDisplayName(p.name),
+        brandName: p.brandName || p.brand || '',
+        price: p.generalPrice || p.mrp || 0,
+        mrp: p.mrp || 0,
+        image: p.image || (Array.isArray(p.images) ? p.images[0] : ''),
+        badge: 'Product',
+        product: p
+      }));
 
-    const matchedTrending = TRENDING_SEARCHES
-      .filter(t => t.text.toLowerCase().includes(q))
-      .slice(0, 2)
-      .map(t => ({ type: 'trending', text: t.text }));
+    const all = [
+      ...matchedBrands,
+      ...matchedCategories,
+      ...matchedSubcategories,
+      ...matchedProducts
+    ];
 
-    return [...matchedBrands, ...matchedTrending, ...matchedProducts].slice(0, 6);
-  }, [query, displayBrands, activeProducts]);
+    return {
+      all,
+      brands: matchedBrands,
+      categories: matchedCategories,
+      subcategories: matchedSubcategories,
+      products: matchedProducts,
+      totalCount: all.length
+    };
+  }, [query, displayBrands, categories, subcategories, activeProducts]);
 
   // Primary Filtered Results
   const results = useMemo(() => {
@@ -308,6 +384,36 @@ export const SearchScreen = () => {
     addRecentSearch(text);
     setShowSuggestions(false);
   };
+
+  const handleSelectSuggestion = useCallback((item) => {
+    setShowSuggestions(false);
+    if (!item) return;
+
+    if (item.type === 'brand') {
+      addRecentSearch(item.title);
+      setQuery(item.title);
+      setSelectedBrands([item.title]);
+      setSelectedCategory('All');
+      setSelectedSubcategory('All');
+    } else if (item.type === 'category') {
+      addRecentSearch(item.title);
+      if (setSelectedCategory) setSelectedCategory(item.title);
+      setCurrentScreen('category');
+    } else if (item.type === 'subcategory') {
+      addRecentSearch(item.title);
+      if (item.categoryName && setSelectedCategory) {
+        setSelectedCategory(item.categoryName);
+      }
+      setSelectedSubcategory(item.title);
+      setCurrentScreen('category');
+    } else if (item.type === 'product') {
+      addRecentSearch(item.title);
+      if (setSelectedProduct) setSelectedProduct(item.product);
+      setCurrentScreen('product_detail');
+    } else {
+      handleSelectQuery(item.title || item.text);
+    }
+  }, [addRecentSearch, setSelectedCategory, setSelectedProduct, setCurrentScreen]);
 
   const handleSearchSubmit = () => {
     if (query.trim()) {
@@ -476,58 +582,183 @@ export const SearchScreen = () => {
         </ScrollView>
       </View>
 
-      {/* ── AUTOCOMPLETE SUGGESTIONS POPUP ──────────────────────────── */}
-      {showSuggestions && suggestions.length > 0 && (
+      {/* ── AUTOCOMPLETE SUGGESTIONS POPUP (Real-Time Matching Brands, Categories, Subcategories & Products) ── */}
+      {showSuggestions && suggestions.totalCount > 0 && (
         <View
           style={{
             position: 'absolute',
             top: 104,
-            left: 16,
-            right: 16,
+            left: 14,
+            right: 14,
+            maxHeight: 420,
             backgroundColor: '#FFFFFF',
             borderColor: '#F0E3EA',
-            borderWidth: 1,
-            borderRadius: 18,
+            borderWidth: 1.5,
+            borderRadius: 20,
             shadowColor: '#B34D7D',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.12,
-            shadowRadius: 8,
-            elevation: 8,
-            zIndex: 50,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.16,
+            shadowRadius: 12,
+            elevation: 10,
+            zIndex: 60,
             overflow: 'hidden',
           }}
         >
-          {suggestions.map((item, idx) => (
-            <TouchableOpacity
-              key={`${item.type}_${idx}`}
-              onPress={() => handleSelectQuery(item.text)}
-              style={{
-                borderBottomWidth: idx !== suggestions.length - 1 ? 1 : 0,
-                borderBottomColor: '#F8F9FA',
-              }}
-              className="px-4 py-3 flex-row items-center justify-between active:bg-[#FFFFFF]"
-            >
-              <View className="flex-row items-center gap-2.5 flex-1 pr-2">
-                <Ionicons
-                  name={
-                    item.type === 'brand'
-                      ? 'business-outline'
-                      : item.type === 'trending'
-                        ? 'flame-outline'
-                        : 'search-outline'
-                  }
-                  size={15}
-                  color="#B34D7D"
-                />
-                <Text style={{ color: '#352832' }} className="text-xs font-semibold" numberOfLines={1}>
-                  {item.text}
-                </Text>
-              </View>
-              <Text style={{ color: '#8A7B85' }} className="text-[10px] font-bold uppercase">
-                {item.type}
+          {/* Header Bar */}
+          <View className="px-4 py-2.5 bg-[#FFF7FA] border-b border-[#F0E3EA] flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1.5">
+              <Ionicons name="sparkles" size={14} color="#B34D7D" />
+              <Text className="text-[11px] font-black text-[#352832] uppercase tracking-wider">
+                Instant Suggestions ({suggestions.totalCount})
               </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowSuggestions(false)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text className="text-[10px] font-bold text-[#8A7B85]">Close</Text>
             </TouchableOpacity>
-          ))}
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
+            style={{ maxHeight: 360 }}
+          >
+            {suggestions.all.map((item, idx) => {
+              const isBrand = item.type === 'brand';
+              const isCategory = item.type === 'category';
+              const isSubcategory = item.type === 'subcategory';
+              const isProduct = item.type === 'product';
+
+              return (
+                <TouchableOpacity
+                  key={`${item.type}_${item.id}_${idx}`}
+                  onPress={() => handleSelectSuggestion(item)}
+                  activeOpacity={0.7}
+                  style={{
+                    borderBottomWidth: idx !== suggestions.all.length - 1 ? 1 : 0,
+                    borderBottomColor: '#F5ECF0',
+                  }}
+                  className="px-3.5 py-2.5 flex-row items-center justify-between bg-white active:bg-[#FFF7FA]"
+                >
+                  <View className="flex-row items-center gap-3 flex-1 pr-2">
+                    {/* Visual Media Thumbnail */}
+                    {isProduct ? (
+                      <View className="w-10 h-10 rounded-xl bg-[#FAFAFA] border border-gray-100 items-center justify-center overflow-hidden p-0.5">
+                        <Image
+                          source={getSafeImageSource(item.image)}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    ) : isCategory ? (
+                      <View className="w-10 h-10 rounded-xl bg-[#EEF2FF] border border-indigo-100 items-center justify-center overflow-hidden p-0.5">
+                        {item.image ? (
+                          <Image
+                            source={getSafeImageSource(item.image)}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="contain"
+                          />
+                        ) : (
+                          <Ionicons name="grid" size={18} color="#4F46E5" />
+                        )}
+                      </View>
+                    ) : isBrand ? (
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: getBrandThemeColor(item.brand),
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {item.logo ? (
+                          <Image
+                            source={getSafeImageSource(item.logo)}
+                            style={{ width: 22, height: 22, borderRadius: 11 }}
+                            resizeMode="contain"
+                          />
+                        ) : (
+                          <Text className="text-white text-xs font-black">
+                            {(item.title || 'B').slice(0, 1).toUpperCase()}
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <View className="w-9 h-9 rounded-xl bg-[#ECFDF5] border border-emerald-100 items-center justify-center">
+                        <Ionicons name="pricetag" size={16} color="#059669" />
+                      </View>
+                    )}
+
+                    {/* Content Details */}
+                    <View className="flex-1">
+                      {isProduct && item.brandName ? (
+                        <Text className="text-[9.5px] font-bold text-[#B34D7D] uppercase tracking-wider mb-0.5" numberOfLines={1}>
+                          {item.brandName}
+                        </Text>
+                      ) : null}
+
+                      <Text style={{ color: '#352832' }} className="text-xs font-black leading-snug" numberOfLines={1}>
+                        {item.title}
+                      </Text>
+
+                      <View className="flex-row items-center gap-2 mt-0.5">
+                        <Text style={{ color: '#8A7B85' }} className="text-[10px] font-medium" numberOfLines={1}>
+                          {item.subtitle}
+                        </Text>
+                        {isProduct && item.price > 0 && (
+                          <Text style={{ color: '#352832' }} className="text-[11px] font-black">
+                            ₹{item.price}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Badge & Arrow Navigation Indicator */}
+                  <View className="flex-row items-center gap-1.5 shrink-0">
+                    <View
+                      style={{
+                        backgroundColor: isBrand
+                          ? '#FCE7F3'
+                          : isCategory
+                            ? '#EEF2FF'
+                            : isSubcategory
+                              ? '#ECFDF5'
+                              : '#FFF1F2',
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: isBrand
+                            ? '#BE185D'
+                            : isCategory
+                              ? '#4F46E5'
+                              : isSubcategory
+                                ? '#059669'
+                                : '#B34D7D',
+                          fontSize: 8.5,
+                          fontWeight: '800',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {item.badge}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color="#C4B5BD" />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
       )}
 
