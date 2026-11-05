@@ -23,7 +23,8 @@ import {
   CheckCircle2,
   Tag,
   SlidersHorizontal,
-  Package
+  Package,
+  Globe
 } from 'lucide-react';
 import { optimizeImage } from '../../utils/imageOptimizer';
 import {
@@ -950,6 +951,28 @@ export default function DynamicVariantBuilder({
                                     <Camera size={11} />
                                   </div>
                                 </label>
+
+                                {/* Google Image Search for Variant */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const queryParts = [
+                                      baseProduct.brandName || baseProduct.brand || '',
+                                      productName || baseProduct.name || '',
+                                      category || baseProduct.category || '',
+                                      subcategory || baseProduct.subcategory || '',
+                                      v.color_name || v.name || ''
+                                    ].filter(Boolean);
+                                    const query = queryParts.join(' ').trim();
+                                    const searchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+                                    window.open(searchUrl, '_blank', 'noopener,noreferrer');
+                                  }}
+                                  className="px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 text-[9.5px] font-extrabold flex items-center gap-1 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
+                                  title="Search Google Images with Product Name, Category, Subcategory, and Variant Color"
+                                >
+                                  <Globe size={10} className="text-amber-600" />
+                                  <span>Google ↗</span>
+                                </button>
 
                                 {/* Reset to main product fallback if custom variant image uploaded */}
                                 {hasCustomImage && (

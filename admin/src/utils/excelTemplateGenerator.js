@@ -24,8 +24,68 @@ export const CANONICAL_TEMPLATE_COLUMNS = [...REQUIRED_HEADERS];
 export const generateAndDownloadTemplate = (categories = [], brands = [], options = {}) => {
   const headers = [...REQUIRED_HEADERS];
 
-    const sampleRows = [
-    // Sample 1: Parent-Child Variant Row 1 (Lakmé Liquid Lipstick - Shade 01 Red Carpet)
+  const sampleRows = [
+    // Sample 1: FACES Compact Powder Variant 1 (Beige)
+    [
+      '8903380001297',                                                           // 1. BARCODE
+      'Faces Canada',                                                            // 2. BRAND
+      '',                                                                        // 3. IMAGE (Optional for variants)
+      'FAC-COMP-HYD01',                                                          // 4. SKU_NUMBER (Parent Group Code)
+      'FACES 3 IN 1 HYDRA MATTE COMPACT',                                        // 5. PRODUCT_NAME
+      'Makeup',                                                                  // 6. CATEGORY
+      'Compact',                                                                 // 7. SUBCATEGORY
+      'Beige',                                                                   // 8. SHADE_NAME
+      '#D4A373',                                                                 // 9. HEX & SWATCH
+      '9 g',                                                                     // 10. SIZE_OR_WEIGHT
+      485,                                                                       // 11. MRP
+      485,                                                                       // 12. GENERAL_USER_PRICE
+      339.5,                                                                     // 13. SALON_PRICE
+      315.25,                                                                    // 14. MAKEUP_ARTIST_PRICE
+      329.8,                                                                     // 15. BEAUTICIAN_PRICE
+      'TRUE',                                                                    // 16. PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // 17. STATUS
+    ],
+    // Sample 2: FACES Compact Powder Variant 2 (Natural)
+    [
+      '8903380002204',                                                           // 1. BARCODE
+      'Faces Canada',                                                            // 2. BRAND
+      '',                                                                        // 3. IMAGE (Optional for variants)
+      'FAC-COMP-HYD01',                                                          // 4. SKU_NUMBER (Shared Group Code)
+      'FACES 3 IN 1 HYDRA MATTE COMPACT',                                        // 5. PRODUCT_NAME
+      'Makeup',                                                                  // 6. CATEGORY
+      'Compact',                                                                 // 7. SUBCATEGORY
+      'Natural',                                                                 // 8. SHADE_NAME
+      '#E8C39E',                                                                 // 9. HEX & SWATCH
+      '9 g',                                                                     // 10. SIZE_OR_WEIGHT
+      485,                                                                       // 11. MRP
+      485,                                                                       // 12. GENERAL_USER_PRICE
+      339.5,                                                                     // 13. SALON_PRICE
+      315.25,                                                                    // 14. MAKEUP_ARTIST_PRICE
+      329.8,                                                                     // 15. BEAUTICIAN_PRICE
+      'TRUE',                                                                    // 16. PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // 17. STATUS
+    ],
+    // Sample 3: FACES Compact Powder Variant 3 (Tan)
+    [
+      '8903380002217',                                                           // 1. BARCODE
+      'Faces Canada',                                                            // 2. BRAND
+      '',                                                                        // 3. IMAGE (Optional for variants)
+      'FAC-COMP-HYD01',                                                          // 4. SKU_NUMBER (Shared Group Code)
+      'FACES 3 IN 1 HYDRA MATTE COMPACT',                                        // 5. PRODUCT_NAME
+      'Makeup',                                                                  // 6. CATEGORY
+      'Compact',                                                                 // 7. SUBCATEGORY
+      'Tan',                                                                     // 8. SHADE_NAME
+      '#A66B49',                                                                 // 9. HEX & SWATCH
+      '9 g',                                                                     // 10. SIZE_OR_WEIGHT
+      485,                                                                       // 11. MRP
+      485,                                                                       // 12. GENERAL_USER_PRICE
+      339.5,                                                                     // 13. SALON_PRICE
+      315.25,                                                                    // 14. MAKEUP_ARTIST_PRICE
+      329.8,                                                                     // 15. BEAUTICIAN_PRICE
+      'TRUE',                                                                    // 16. PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // 17. STATUS
+    ],
+    // Sample 4: Parent-Child Variant Row 1 (Lakmé Liquid Lipstick - Shade 01 Red Carpet)
     [
       '8901030383811',                                                           // 1. BARCODE
       'Lakmé',                                                                   // 2. BRAND
@@ -35,37 +95,17 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
       'Makeup',                                                                  // 6. CATEGORY
       'Lips',                                                                    // 7. SUBCATEGORY
       '01 Red Carpet',                                                           // 8. SHADE_NAME
-      '#C71585',                                                                 // 10. HEX & SWATCH
-      '5.6 ml',                                                                  // 11. SIZE_OR_WEIGHT
-      399,                                                                       // 12. MRP
-      349,                                                                       // 13. GENERAL_USER_PRICE
-      280,                                                                       // 14. SALON_PRICE
-      260,                                                                       // 15. MAKEUP_ARTIST_PRICE
-      245,                                                                       // 16. BEAUTICIAN_PRICE
-      'TRUE',                                                                    // 17. PRODUCT_ACTIVE
-      'ACTIVE'                                                                   // 18. STATUS
+      '#C71585',                                                                 // 9. HEX & SWATCH
+      '5.6 ml',                                                                  // 10. SIZE_OR_WEIGHT
+      399,                                                                       // 11. MRP
+      349,                                                                       // 12. GENERAL_USER_PRICE
+      280,                                                                       // 13. SALON_PRICE
+      260,                                                                       // 14. MAKEUP_ARTIST_PRICE
+      245,                                                                       // 15. BEAUTICIAN_PRICE
+      'TRUE',                                                                    // 16. PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // 17. STATUS
     ],
-    // Sample 2: Parent-Child Variant Row 2 (Lakmé Liquid Lipstick - Shade 02 Nude Myth)
-    [
-      '8901030383828',                                                           // 1. BARCODE
-      'Lakmé',                                                                   // 2. BRAND
-      '',                                                                        // 3. IMAGE
-      'LAK-LIP-MAT001',                                                          // 4. SKU_NUMBER
-      'Lakmé Forever Matte Liquid Lip Colour',                                   // 5. PRODUCT_NAME
-      'Makeup',                                                                  // 6. CATEGORY
-      'Lips',                                                                    // 7. SUBCATEGORY
-      '02 Nude Myth',                                                            // 8. SHADE_NAME
-      '#D2691E',                                                                 // 10. HEX & SWATCH
-      '5.6 ml',                                                                  // 11. SIZE_OR_WEIGHT
-      399,                                                                       // 12. MRP
-      349,                                                                       // 13. GENERAL_USER_PRICE
-      280,                                                                       // 14. SALON_PRICE
-      260,                                                                       // 15. MAKEUP_ARTIST_PRICE
-      245,                                                                       // 16. BEAUTICIAN_PRICE
-      'TRUE',                                                                    // 17. PRODUCT_ACTIVE
-      'ACTIVE'                                                                   // 18. STATUS
-    ],
-    // Sample 3: Standalone Single Product (Face Serum without shades)
+    // Sample 5: Standalone Single Product (Face Serum without shades)
     [
       '8901030492812',                                                           // 1. BARCODE
       "L'Oréal Paris",                                                           // 2. BRAND
@@ -75,15 +115,15 @@ export const generateAndDownloadTemplate = (categories = [], brands = [], option
       'Skincare',                                                                // 6. CATEGORY
       'Face Serums',                                                             // 7. SUBCATEGORY
       '',                                                                        // 8. SHADE_NAME
-      '',                                                                        // 10. HEX & SWATCH
-      '30 ml',                                                                   // 11. SIZE_OR_WEIGHT
-      999,                                                                       // 12. MRP
-      899,                                                                       // 13. GENERAL_USER_PRICE
-      720,                                                                       // 14. SALON_PRICE
-      680,                                                                       // 15. MAKEUP_ARTIST_PRICE
-      640,                                                                       // 16. BEAUTICIAN_PRICE
-      'TRUE',                                                                    // 17. PRODUCT_ACTIVE
-      'ACTIVE'                                                                   // 18. STATUS
+      '',                                                                        // 9. HEX & SWATCH
+      '30 ml',                                                                   // 10. SIZE_OR_WEIGHT
+      999,                                                                       // 11. MRP
+      899,                                                                       // 12. GENERAL_USER_PRICE
+      720,                                                                       // 13. SALON_PRICE
+      680,                                                                       // 14. MAKEUP_ARTIST_PRICE
+      640,                                                                       // 15. BEAUTICIAN_PRICE
+      'TRUE',                                                                    // 16. PRODUCT_ACTIVE
+      'ACTIVE'                                                                   // 17. STATUS
     ]
   ];
 
@@ -255,48 +295,89 @@ export const exportStagedProductsToExcel = (stagedRows = [], options = {}) => {
     throw new Error('No staged products available to export.');
   }
 
-  const exportData = stagedRows.map(r => {
-    // Determine MRP & calculated rupee prices
-    const numMrp = Number(r.mrp || 0);
-    const genP = r.generalPrice !== undefined && r.generalPrice !== null && r.generalPrice !== ''
-      ? Number(r.generalPrice)
-      : (r.generalDiscount ? Math.round(numMrp * (1 - Number(r.generalDiscount) / 100)) : numMrp);
+  const exportData = [];
 
-    const salonP = r.salonPrice !== undefined && r.salonPrice !== null && r.salonPrice !== ''
-      ? Number(r.salonPrice)
-      : (r.salonDiscount ? Math.round(numMrp * (1 - Number(r.salonDiscount) / 100)) : Math.round(numMrp * 0.70));
+  stagedRows.forEach(r => {
+    // If staged product has nested shades/variants, export each variant as an independent row
+    if (Array.isArray(r.shades) && r.shades.length > 0) {
+      r.shades.forEach(s => {
+        const numMrp = Number(s.mrp !== undefined && s.mrp !== '' ? s.mrp : (s.priceOverride || r.mrp || 0));
+        const genP = s.generalPrice !== undefined && s.generalPrice !== ''
+          ? Number(s.generalPrice)
+          : (r.generalPrice !== undefined && r.generalPrice !== '' ? Number(r.generalPrice) : numMrp);
+        const salonP = s.salonPrice !== undefined && s.salonPrice !== ''
+          ? Number(s.salonPrice)
+          : (r.salonPrice !== undefined && r.salonPrice !== '' ? Number(r.salonPrice) : Math.round(numMrp * 0.70));
+        const artistP = s.artistPrice !== undefined && s.artistPrice !== ''
+          ? Number(s.artistPrice)
+          : (r.artistPrice !== undefined && r.artistPrice !== '' ? Number(r.artistPrice) : Math.round(numMrp * 0.65));
+        const beauticianP = s.beauticianPrice !== undefined && s.beauticianPrice !== ''
+          ? Number(s.beauticianPrice)
+          : (r.beauticianPrice !== undefined && r.beauticianPrice !== '' ? Number(r.beauticianPrice) : Math.round(numMrp * 0.68));
 
-    const artistP = r.artistPrice !== undefined && r.artistPrice !== null && r.artistPrice !== ''
-      ? Number(r.artistPrice)
-      : (r.artistDiscount ? Math.round(numMrp * (1 - Number(r.artistDiscount) / 100)) : Math.round(numMrp * 0.65));
+        exportData.push({
+          'BARCODE': String(s.barcode || s.variantBarcode || r.barcode || '').trim(),
+          'BRAND': r.brand || r.brand_name || r.brandName || '',
+          'IMAGE': s.image || s.imageUrl || (Array.isArray(s.images) && s.images[0]) || (Array.isArray(r.images) && r.images[0]) || r.image || '',
+          'SKU_NUMBER': r.parentSku || r.sku || r.skuNumber || r.variantSku || '',
+          'PRODUCT_NAME': r.name || r.productName || r.title || '',
+          'CATEGORY': r.category || '',
+          'SUBCATEGORY': r.subcategory || '',
+          'SHADE_NAME': s.name || s.title || s.shade || s.color_name || '',
+          'HEX & SWATCH': s.hexColor || s.hex_color || '',
+          'SIZE_OR_WEIGHT': s.size || s.sizeOrWeight || r.size || r.sizeOrWeight || '',
+          'MRP': numMrp,
+          'GENERAL_USER_PRICE': genP,
+          'SALON_PRICE': salonP,
+          'MAKEUP_ARTIST_PRICE': artistP,
+          'BEAUTICIAN_PRICE': beauticianP,
+          'PRODUCT_ACTIVE': (r.status !== 'draft' && r.productActive !== false) ? 'TRUE' : 'FALSE',
+          'STATUS': (r.status || 'ACTIVE').toUpperCase()
+        });
+      });
+    } else {
+      // Standard single row or already-flat variant row
+      const numMrp = Number(r.mrp || 0);
+      const genP = r.generalPrice !== undefined && r.generalPrice !== null && r.generalPrice !== ''
+        ? Number(r.generalPrice)
+        : (r.generalDiscount ? Math.round(numMrp * (1 - Number(r.generalDiscount) / 100)) : numMrp);
 
-    const beauticianP = r.beauticianPrice !== undefined && r.beauticianPrice !== null && r.beauticianPrice !== ''
-      ? Number(r.beauticianPrice)
-      : (r.beauticianDiscount ? Math.round(numMrp * (1 - Number(r.beauticianDiscount) / 100)) : Math.round(numMrp * 0.68));
+      const salonP = r.salonPrice !== undefined && r.salonPrice !== null && r.salonPrice !== ''
+        ? Number(r.salonPrice)
+        : (r.salonDiscount ? Math.round(numMrp * (1 - Number(r.salonDiscount) / 100)) : Math.round(numMrp * 0.70));
 
-    const firstImage = Array.isArray(r.images) && r.images.length > 0
-      ? r.images[0]
-      : (r.image || r.productImageUrl || '');
+      const artistP = r.artistPrice !== undefined && r.artistPrice !== null && r.artistPrice !== ''
+        ? Number(r.artistPrice)
+        : (r.artistDiscount ? Math.round(numMrp * (1 - Number(r.artistDiscount) / 100)) : Math.round(numMrp * 0.65));
 
-        return {
-      'BARCODE': String(r.barcode || r.variantBarcode || '').trim(),
-      'BRAND': r.brand || r.brand_name || '',
-      'IMAGE': firstImage,
-      'SKU_NUMBER': r.variantSku || r.parentSku || r.parent_sku || r.sku || '',
-      'PRODUCT_NAME': r.name || r.productName || r.product_name || '',
-      'CATEGORY': r.category || '',
-      'SUBCATEGORY': r.subcategory || '',
-      'SHADE_NAME': r.shade || r.variantName || r.shadeName || '',
-      'HEX & SWATCH': r.hexColor || '',
-      'SIZE_OR_WEIGHT': r.size || r.sizeOrWeight || '',
-      'MRP': numMrp,
-      'GENERAL_USER_PRICE': genP,
-      'SALON_PRICE': salonP,
-      'MAKEUP_ARTIST_PRICE': artistP,
-      'BEAUTICIAN_PRICE': beauticianP,
-      'PRODUCT_ACTIVE': (r.status !== 'draft' && r.productActive !== false) ? 'TRUE' : 'FALSE',
-      'STATUS': (r.status || 'ACTIVE').toUpperCase()
-    };
+      const beauticianP = r.beauticianPrice !== undefined && r.beauticianPrice !== null && r.beauticianPrice !== ''
+        ? Number(r.beauticianPrice)
+        : (r.beauticianDiscount ? Math.round(numMrp * (1 - Number(r.beauticianDiscount) / 100)) : Math.round(numMrp * 0.68));
+
+      const firstImage = Array.isArray(r.images) && r.images.length > 0
+        ? r.images[0]
+        : (r.image || r.productImageUrl || '');
+
+      exportData.push({
+        'BARCODE': String(r.barcode || r.variantBarcode || '').trim(),
+        'BRAND': r.brand || r.brand_name || '',
+        'IMAGE': firstImage,
+        'SKU_NUMBER': r.variantSku || r.parentSku || r.parent_sku || r.sku || '',
+        'PRODUCT_NAME': r.name || r.productName || r.product_name || '',
+        'CATEGORY': r.category || '',
+        'SUBCATEGORY': r.subcategory || '',
+        'SHADE_NAME': r.shade || r.variantName || r.shadeName || '',
+        'HEX & SWATCH': r.hexColor || '',
+        'SIZE_OR_WEIGHT': r.size || r.sizeOrWeight || '',
+        'MRP': numMrp,
+        'GENERAL_USER_PRICE': genP,
+        'SALON_PRICE': salonP,
+        'MAKEUP_ARTIST_PRICE': artistP,
+        'BEAUTICIAN_PRICE': beauticianP,
+        'PRODUCT_ACTIVE': (r.status !== 'draft' && r.productActive !== false) ? 'TRUE' : 'FALSE',
+        'STATUS': (r.status || 'ACTIVE').toUpperCase()
+      });
+    }
   });
 
   const worksheet = XLSX.utils.json_to_sheet(exportData, { header: REQUIRED_HEADERS });

@@ -38,7 +38,9 @@ import {
   Maximize2,
   DollarSign,
   Building2,
-  Upload
+  Upload,
+  Globe,
+  Link as LinkIcon
 } from 'lucide-react';
 import SearchableSelect from '../common/SearchableSelect';
 import RoleQuantityTiersManager from './RoleQuantityTiersManager';
@@ -1788,54 +1790,104 @@ export default function ProductsCatalogMatrix({
                                                   />
                                                 </label>
                                               </div>
-                                              <div className="flex flex-col">
-                                                <label className="text-[9.5px] font-bold text-[#C2477A] hover:underline cursor-pointer">
-                                                  Upload
-                                                  <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={async (e) => {
-                                                      const file = e.target.files?.[0];
-                                                      if (!file) return;
-                                                      try {
-                                                        let uploadedUrl = null;
-                                                        if (adminCtx?.uploadImage) {
-                                                          uploadedUrl = await adminCtx.uploadImage(file, 'products', `var_${shade.sku || shade.id || Date.now()}`);
+                                              <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-1.5">
+                                                  <label className="px-1.5 py-0.5 rounded bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[9.5px] font-bold text-[#C2477A] hover:underline cursor-pointer flex items-center gap-1 shadow-2xs transition-all">
+                                                    <Upload size={10} />
+                                                    <span>Upload</span>
+                                                    <input
+                                                      type="file"
+                                                      accept="image/*"
+                                                      className="hidden"
+                                                      onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file) return;
+                                                        try {
+                                                          let uploadedUrl = null;
+                                                          if (adminCtx?.uploadImage) {
+                                                            uploadedUrl = await adminCtx.uploadImage(file, 'products', `var_${shade.sku || shade.id || Date.now()}`);
+                                                          }
+                                                          if (uploadedUrl) {
+                                                            setProductShadesLocal((prev) => prev.map((s, idx) => {
+                                                              if (idx !== sIdx) return s;
+                                                              const newImages = [uploadedUrl, ...(s.images || []).filter(u => u !== uploadedUrl)];
+                                                              return {
+                                                                ...s,
+                                                                image: uploadedUrl,
+                                                                imageUrl: uploadedUrl,
+                                                                images: newImages
+                                                              };
+                                                            }));
+                                                          }
+                                                        } catch (err) {
+                                                          console.error('Variant image upload failed:', err);
+                                                          alert('Failed to upload image. Please try again.');
                                                         }
-                                                        if (uploadedUrl) {
-                                                          setProductShadesLocal((prev) => prev.map((s, idx) => {
-                                                            if (idx !== sIdx) return s;
-                                                            const newImages = [uploadedUrl, ...(s.images || []).filter(u => u !== uploadedUrl)];
-                                                            return {
-                                                              ...s,
-                                                              image: uploadedUrl,
-                                                              imageUrl: uploadedUrl,
-                                                              images: newImages
-                                                            };
-                                                          }));
-                                                        }
-                                                      } catch (err) {
-                                                        console.error('Variant image upload failed:', err);
-                                                        alert('Failed to upload image. Please try again.');
-                                                      }
-                                                    }}
-                                                  />
-                                                </label>
-                                                {(shade.image || shade.imageUrl || (shade.images && shade.images.length > 0)) && (
+                                                      }}
+                                                    />
+                                                  </label>
+
                                                   <button
                                                     type="button"
                                                     onClick={() => {
-                                                      setProductShadesLocal((prev) => prev.map((s, idx) => {
-                                                        if (idx !== sIdx) return s;
-                                                        return { ...s, image: null, imageUrl: null, images: [] };
-                                                      }));
+                                                      const queryParts = [
+                                                        p.brandName || p.brand,
+                                                        p.name,
+                                                        p.category,
+                                                        p.subcategory,
+                                                        shade.name || shade.title || shade.color_name || ''
+                                                      ].filter(Boolean);
+                                                      const query = queryParts.join(' ').trim();
+                                                      const searchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+                                                      window.open(searchUrl, '_blank', 'noopener,noreferrer');
                                                     }}
-                                                    className="text-[8.5px] text-rose-500 hover:underline font-semibold text-left"
+                                                    className="px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 text-[9.5px] font-extrabold flex items-center gap-1 shadow-2xs cursor-pointer transition-all active:scale-95"
+                                                    title={`Search Google Images for "${p.name} ${shade.name}"`}
                                                   >
-                                                    Clear
+                                                    <Globe size={10} className="text-amber-600" />
+                                                    <span>Google ↗</span>
                                                   </button>
-                                                )}
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      const url = window.prompt(`Paste direct image URL for variant "${shade.name}":`, shade.image || shade.imageUrl || '');
+                                                      if (url !== null && url.trim()) {
+                                                        setProductShadesLocal((prev) => prev.map((s, idx) => {
+                                                          if (idx !== sIdx) return s;
+                                                          const newImages = [url.trim(), ...(s.images || []).filter(u => u !== url.trim())];
+                                                          return {
+                                                            ...s,
+                                                            image: url.trim(),
+                                                            imageUrl: url.trim(),
+                                                            images: newImages
+                                                          };
+                                                        }));
+                                                      }
+                                                    }}
+                                                    className="text-[9px] text-gray-500 hover:text-[#C2477A] font-semibold text-left flex items-center gap-0.5 cursor-pointer"
+                                                  >
+                                                    <LinkIcon size={9} />
+                                                    <span>Paste URL</span>
+                                                  </button>
+
+                                                  {(shade.image || shade.imageUrl || (shade.images && shade.images.length > 0)) && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setProductShadesLocal((prev) => prev.map((s, idx) => {
+                                                          if (idx !== sIdx) return s;
+                                                          return { ...s, image: null, imageUrl: null, images: [] };
+                                                        }));
+                                                      }}
+                                                      className="text-[9px] text-rose-500 hover:underline font-semibold text-left cursor-pointer"
+                                                    >
+                                                      Clear
+                                                    </button>
+                                                  )}
+                                                </div>
                                               </div>
                                             </div>
                                           </td>
