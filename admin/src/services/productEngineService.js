@@ -17,6 +17,7 @@ import { DEFAULT_GST_SLAB } from './excelHeaderValidator.js';
 import { resolveCategoryAttributes } from '../utils/attributeMasterData.js';
 import { generateProductSku, generateVariantInternalSku } from './skuService.js';
 import { findOrCreateBrand, buildBrandLookupMap, matchBrandMaster, normalizeBrandKey } from '../utils/brandUtils.js';
+import { APPROVED_BRAND_MASTER } from '../utils/brandMasterApprovedData.js';
 
 // ==============================================================================
 // 1. CANONICAL PRODUCT SCHEMA DEFINITION
@@ -1204,11 +1205,13 @@ export const chunkedBulkSave = async (products, options = {}) => {
   const errors = [];
   const savedProducts = [];
 
-  // Load existing Brand Master records upfront once for ultra-fast O(1) in-memory resolution (100,000+ items)
-  let allBrandsList = [];
+  // Load existing Brand Master records upfront (Authoritative 365 Approved Master + live database brands)
+  let allBrandsList = [...(APPROVED_BRAND_MASTER || [])];
   try {
     const { data: bData } = await supabase.from('brands').select('id, name, brand_name, brand_number, brandNumber');
-    if (Array.isArray(bData)) allBrandsList = bData;
+    if (Array.isArray(bData) && bData.length > 0) {
+      allBrandsList = [...allBrandsList, ...bData];
+    }
   } catch (_) {}
   const brandLookupCache = buildBrandLookupMap(allBrandsList);
 
@@ -1230,7 +1233,8 @@ export const chunkedBulkSave = async (products, options = {}) => {
 
     const payloads = chunk.map(toSupabaseProductPayload);
 
-    // Canonical Find-or-Create Brand normalization for all products in batch
+    // Canonical Brand Master normalization with direct Approved Brand Master resolution
+    const referencedBrandsToSync = new Map();
     for (const item of payloads) {
       const bName = (item.brand_name || '').trim();
       if (bName) {
@@ -1242,13 +1246,50 @@ export const chunkedBulkSave = async (products, options = {}) => {
             brandLookupCache.set(normalizeBrandKey(bName), matched);
           }
         }
+        if (!matched) {
+          const direct = (APPROVED_BRAND_MASTER || []).find(b => {
+            const canonicalName = (b.name || b.brand_name || '').trim().toLowerCase();
+            const cleanSearch = bName.toLowerCase();
+            return canonicalName === cleanSearch || canonicalName.includes(cleanSearch) || cleanSearch.includes(canonicalName);
+          });
+          if (direct) {
+            const canonicalName = direct.name || direct.brand_name;
+            const canonicalId = direct.id || direct.brand_number || direct.brandNumber || `BR_${Date.now()}`;
+            matched = {
+              id: canonicalId,
+              name: canonicalName,
+              brand_name: canonicalName,
+              brand_number: canonicalId
+            };
+            brandLookupCache.set(normalizeBrandKey(bName), matched);
+          }
+        }
+
         if (matched) {
-          item.brand_name = matched.name;
-          item.brand_id = matched.id;
+          item.brand_name = matched.name || matched.brand_name;
+          item.brand_id = matched.id || matched.brand_number || matched.brandNumber;
+          if (!referencedBrandsToSync.has(item.brand_name)) {
+            referencedBrandsToSync.set(item.brand_name, {
+              id: String(item.brand_id),
+              name: item.brand_name,
+              brand_name: item.brand_name,
+              brand_number: String(item.brand_id)
+            });
+          }
         } else {
           // Master Data Rule: Do not automatically create new brands during bulk import or product saving.
           throw new Error(`Master Data Restriction: Brand "${bName}" does not exist in Brand Master. Only authorized administrators can create new brands.`);
         }
+      }
+    }
+
+    // Ensure all referenced Approved Brands exist in the database 'brands' table
+    if (referencedBrandsToSync.size > 0) {
+      try {
+        const syncArray = Array.from(referencedBrandsToSync.values());
+        await supabase.from('brands').upsert(syncArray, { onConflict: 'id', ignoreDuplicates: true });
+      } catch (brandSyncErr) {
+        console.warn('[chunkedBulkSave] Brand sync notice (non-fatal):', brandSyncErr);
       }
     }
 
