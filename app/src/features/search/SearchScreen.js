@@ -67,7 +67,7 @@ export const SearchScreen = () => {
     brands = [],
     isCatalogLoading = false,
     categories = [],
-    setSelectedCategory,
+    setSelectedCategory: setGlobalSelectedCategory,
     subcategories = [],
     userRole,
     userProfile,
@@ -397,12 +397,12 @@ export const SearchScreen = () => {
       setSelectedSubcategory('All');
     } else if (item.type === 'category') {
       addRecentSearch(item.title);
-      if (setSelectedCategory) setSelectedCategory(item.title);
+      if (setGlobalSelectedCategory) setGlobalSelectedCategory(item.title);
       setCurrentScreen('category');
     } else if (item.type === 'subcategory') {
       addRecentSearch(item.title);
-      if (item.categoryName && setSelectedCategory) {
-        setSelectedCategory(item.categoryName);
+      if (item.categoryName && setGlobalSelectedCategory) {
+        setGlobalSelectedCategory(item.categoryName);
       }
       setSelectedSubcategory(item.title);
       setCurrentScreen('category');
@@ -413,7 +413,7 @@ export const SearchScreen = () => {
     } else {
       handleSelectQuery(item.title || item.text);
     }
-  }, [addRecentSearch, setSelectedCategory, setSelectedProduct, setCurrentScreen]);
+  }, [addRecentSearch, setGlobalSelectedCategory, setSelectedProduct, setCurrentScreen]);
 
   const handleSearchSubmit = () => {
     if (query.trim()) {

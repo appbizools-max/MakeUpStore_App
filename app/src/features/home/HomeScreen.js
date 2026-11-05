@@ -8,7 +8,8 @@ import {
   Platform,
   RefreshControl,
   Dimensions,
-  StatusBar
+  StatusBar,
+  Animated
 } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useApp, DEFAULT_HOME_BANNERS } from '../../context/AppContext';

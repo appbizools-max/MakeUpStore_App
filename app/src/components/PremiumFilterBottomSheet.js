@@ -72,10 +72,11 @@ export const PremiumFilterBottomSheet = ({
     return list;
   }, [categories]);
 
-  // 2. Dependent Subcategories for currently selected category
+  // 2. Dependent Subcategories for currently selected category (Deduplicated)
   const activeSubs = useMemo(() => {
     if (!selectedCategory || selectedCategory === 'All') {
-      return (subcategories || []).filter(s => s && s.enabled !== false).map(s => s.name || s);
+      const raw = (subcategories || []).filter(s => s && s.enabled !== false).map(s => (typeof s === 'string' ? s : s.name || ''));
+      return Array.from(new Set(raw.filter(Boolean)));
     }
     const catLower = selectedCategory.trim().toLowerCase();
     const parentCat = (categories || []).find(
@@ -90,8 +91,8 @@ export const PremiumFilterBottomSheet = ({
       return (parentId && sCatId === parentId) || (sCatName && sCatName === catLower);
     });
 
-    const names = matched.map(s => s.name || s);
-    return names.length > 0 ? names : [];
+    const names = matched.map(s => (typeof s === 'string' ? s : s.name || ''));
+    return Array.from(new Set(names.filter(Boolean)));
   }, [selectedCategory, categories, subcategories]);
 
   // 3. Dynamic Category-Specific Top Brands (Nykaa Specification)
@@ -307,11 +308,11 @@ export const PremiumFilterBottomSheet = ({
                         keyboardShouldPersistTaps="handled"
                         contentContainerStyle={styles.optionsList}
                       >
-                        {visibleBrands.map(b => {
+                        {visibleBrands.map((b, idx) => {
                           const isSelected = selectedBrands.includes(b.name);
                           return (
                             <TouchableOpacity
-                              key={b.name}
+                              key={`brand_${b.name}_${idx}`}
                               activeOpacity={0.7}
                               onPress={() => onToggleBrand && onToggleBrand(b.name)}
                               style={[
@@ -369,11 +370,11 @@ export const PremiumFilterBottomSheet = ({
                       contentContainerStyle={styles.optionsList}
                     >
                       <Text style={styles.sectionHeaderLabel}>Select Category</Text>
-                      {categoryList.map(catName => {
+                      {categoryList.map((catName, idx) => {
                         const isSelected = (selectedCategory || 'All').toLowerCase() === catName.toLowerCase();
                         return (
                           <TouchableOpacity
-                            key={catName}
+                            key={`cat_${catName}_${idx}`}
                             activeOpacity={0.7}
                             onPress={() => {
                               if (onSelectCategory) onSelectCategory(catName);
@@ -414,11 +415,11 @@ export const PremiumFilterBottomSheet = ({
                         </Text>
                       </View>
 
-                      {['All', ...activeSubs].map(subName => {
+                      {['All', ...activeSubs].map((subName, idx) => {
                         const isSelected = (selectedSubcategory || 'All').toLowerCase() === subName.toLowerCase();
                         return (
                           <TouchableOpacity
-                            key={subName}
+                            key={`sub_${subName}_${idx}`}
                             activeOpacity={0.7}
                             onPress={() => onSelectSubcategory && onSelectSubcategory(subName)}
                             style={[
