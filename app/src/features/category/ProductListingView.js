@@ -14,6 +14,7 @@ import { useApp } from '../../context/AppContext';
 import { getSafeImageSource } from '../../utils/imageUtils';
 import { PurplleProductCard } from '../../components/PurplleProductCard';
 import { PremiumFilterBottomSheet } from '../../components/PremiumFilterBottomSheet';
+import { CategoryHeader } from './components/CategoryHeader';
 import { getCartQuantityMap } from '../../utils/cartKeyUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -196,100 +197,28 @@ export const ProductListingView = ({
 
   return (
     <View className="flex-1 bg-white">
-      {/* ── TOP FIXED HEADER ─────────────────────────────────────────── */}
+      {/* ── TOP FIXED STANDARDIZED HEADER ───────────────────────────── */}
+      <CategoryHeader
+        parentTitle="Back"
+        onBack={onBack}
+        onSort={() => setShowSortModal(true)}
+        onFilter={() => setShowFilterModal(true)}
+        activeFilterCount={activeFilterCount}
+      />
+
+      {/* Dynamic Search Bar (Height 52px, Rounded, Light Pink #FFF0F5) */}
       <View
         style={{
           borderBottomWidth: 1,
           borderBottomColor: '#F0E3EA',
           backgroundColor: '#FFFFFF',
-          elevation: 2,
-          shadowColor: '#B64F7D',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.05,
-          shadowRadius: 3,
+          paddingHorizontal: 16,
+          paddingVertical: 8,
         }}
-        className="px-4 pt-3 pb-3"
       >
-        <View className="flex-row items-center justify-between mb-2.5">
-          <TouchableOpacity
-            onPress={onBack}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            className="flex-row items-center gap-1 -ml-1 py-1 px-1.5 rounded-lg active:bg-pink-50"
-          >
-            <Ionicons name="chevron-back" size={20} color="#B64F7D" />
-            <Text style={{ color: '#B64F7D' }} className="text-xs font-bold">Back</Text>
-          </TouchableOpacity>
-
-          <View className="flex-1 items-center px-2">
-            <Text style={{ color: '#33252F' }} className="text-sm font-extrabold" numberOfLines={1}>
-              {leafCategory?.name || subcategory?.name || category?.name || 'Products'}
-            </Text>
-            <Text style={{ color: '#82727C' }} className="text-[10.5px] font-medium" numberOfLines={1}>
-              {category?.name || 'Catalog'} {subcategory ? `› ${subcategory.name}` : ''}
-            </Text>
-          </View>
-
-          <View className="flex-row items-center gap-2">
-            <TouchableOpacity
-              onPress={() => setShowSortModal(true)}
-              activeOpacity={0.7}
-              style={{
-                backgroundColor: '#FFFFFF',
-                borderColor: '#F0E3EA',
-                borderWidth: 1,
-              }}
-              className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full shadow-2xs"
-            >
-              <Ionicons name="swap-vertical" size={13} color="#B64F7D" />
-              <Text style={{ color: '#B64F7D' }} className="text-[11px] font-bold">Sort</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setShowFilterModal(true)}
-              activeOpacity={0.7}
-              style={{
-                backgroundColor: activeFilterCount > 0 ? '#C2477A' : '#FFFFFF',
-                borderColor: activeFilterCount > 0 ? '#C2477A' : '#F0E3EA',
-                borderWidth: 1,
-              }}
-              className="flex-row items-center gap-1 px-2.5 py-1.5 rounded-full shadow-2xs"
-            >
-              <Ionicons name="options-outline" size={13} color={activeFilterCount > 0 ? '#FFFFFF' : '#B64F7D'} />
-              <Text style={{ color: activeFilterCount > 0 ? '#FFFFFF' : '#B64F7D' }} className="text-[11px] font-bold">
-                Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setCurrentScreen('cart')}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{ borderColor: '#F0E3EA', borderWidth: 1 }}
-              className="w-8 h-8 rounded-full bg-white items-center justify-center shadow-2xs relative"
-              accessibilityLabel="Cart"
-            >
-              <Ionicons name="bag-handle-outline" size={15} color="#B64F7D" />
-              {cart.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0) > 0 && (
-                <View
-                  style={{ minWidth: 15, height: 15, paddingHorizontal: 2 }}
-                  className="absolute -top-1 -right-1 bg-[#C2477A] rounded-full items-center justify-center border border-white"
-                >
-                  <Text className="text-[9px] font-black text-white leading-none">
-                    {cart.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0) > 99
-                      ? '99+'
-                      : cart.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0)}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Dynamic Search Bar (Height 52px, Rounded, Light Pink #FFF0F5) */}
         <View
           style={{
-            height: 52,
+            height: 48,
             backgroundColor: '#FFFFFF',
             borderColor: '#F0E3EA',
             borderWidth: 1,
@@ -392,86 +321,10 @@ export const ProductListingView = ({
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingHorizontal: 14,
-          paddingTop: 14,
+          paddingTop: 12,
           paddingBottom: 110, // Safe-area bottom padding to prevent bottom navigation overlap
         }}
       >
-        {/* Subcategory Clean Header Card with 3D Icon & Explore CTA */}
-        {subcategory ? (
-          <View
-            style={{
-              borderRadius: 20,
-              backgroundColor: '#FFFFFF',
-              borderColor: '#F0E3EA',
-              borderWidth: 1,
-              paddingVertical: 14,
-              paddingHorizontal: 16,
-              marginBottom: 14,
-              shadowColor: '#C2477A',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.08,
-              shadowRadius: 8,
-              elevation: 3,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            {subcategory.image ? (
-              <View
-                style={{
-                  width: 58,
-                  height: 58,
-                  borderRadius: 29,
-                  backgroundColor: '#FFFFFF',
-                  borderColor: '#F8B4D9',
-                  borderWidth: 1.5,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 14,
-                  overflow: 'hidden',
-                  elevation: 2,
-                }}
-              >
-                <Image
-                  source={getSafeImageSource(subcategory.image)}
-                  style={{ width: '100%', height: '100%' }}
-                  resizeMode="cover"
-                />
-              </View>
-            ) : null}
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{ color: '#1F2937' }}
-                className="text-base font-black leading-tight mb-1"
-                numberOfLines={1}
-              >
-                {subcategory.name}
-              </Text>
-              <Text style={{ color: '#C2477A' }} className="text-xs font-bold">
-                {filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products Available'}
-              </Text>
-            </View>
-          </View>
-        ) : (
-          <View
-            style={{
-              borderRadius: 20,
-              backgroundColor: '#FFFFFF',
-              borderColor: '#F0E3EA',
-              borderWidth: 1,
-              padding: 16,
-              marginBottom: 14,
-            }}
-          >
-            <Text style={{ color: '#1F2937' }} className="text-base font-black leading-tight mb-1">
-              {category?.name || 'Products'}
-            </Text>
-            <Text style={{ color: '#C2477A' }} className="text-xs font-bold">
-              {filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products Available'}
-            </Text>
-          </View>
-        )}
-
         {filteredProducts.length === 0 ? (
           <View className="items-center justify-center py-16 px-6">
             <View
