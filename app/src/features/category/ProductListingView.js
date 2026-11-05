@@ -26,6 +26,7 @@ export const ProductListingView = ({
   onBack,
   products = []
 }) => {
+  const appCtx = useApp() || {};
   const {
     userRole,
     getRolePrice,
@@ -38,8 +39,10 @@ export const ProductListingView = ({
     updateCartQuantity,
     removeFromCart,
     isFavorite,
-    toggleFavorite
-  } = useApp();
+    toggleFavorite,
+    categories = [],
+    subcategories = []
+  } = appCtx;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState('featured'); // 'featured', 'price_asc', 'price_desc', 'rating'
