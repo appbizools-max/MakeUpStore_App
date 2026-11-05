@@ -468,7 +468,7 @@ export const CartScreen = () => {
 
               {/* Shades Horizontal List */}
               <Text className="text-[10px] font-black text-[#8C7078] uppercase tracking-wider mb-2">
-                Available Options ({getSafeProductShades(quickShadeModalItem).length})
+                Available Options
               </Text>
               <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
                 {getSafeProductShades(quickShadeModalItem).map((shade, idx) => {

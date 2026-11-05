@@ -340,13 +340,6 @@ export const PremiumFilterBottomSheet = ({
                               >
                                 {b.name}
                               </Text>
-
-                              {/* Product Count Pill */}
-                              {b.count > 0 && (
-                                <Text style={styles.brandCountText}>
-                                  ({b.count})
-                                </Text>
-                              )}
                             </TouchableOpacity>
                           );
                         })}
@@ -549,7 +542,7 @@ export const PremiumFilterBottomSheet = ({
                 >
                   <Text style={styles.applyButtonText}>
                     Apply Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
-                    {totalMatchingCount !== null ? ` • ${totalMatchingCount} Items` : ''}
+                    
                   </Text>
                 </TouchableOpacity>
               </View>

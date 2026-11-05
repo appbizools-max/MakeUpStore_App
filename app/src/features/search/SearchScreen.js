@@ -212,35 +212,29 @@ export const SearchScreen = () => {
     const matchedBrands = (displayBrands || [])
       .filter(b => (b.name || '').toLowerCase().includes(q))
       .slice(0, 3)
-      .map(b => {
-        const count = (activeProducts || []).filter(p => (p.brandName || '').toLowerCase() === (b.name || '').toLowerCase()).length;
-        return {
-          type: 'brand',
-          id: b.id || b.name,
-          title: b.name,
-          badge: 'Brand',
-          subtitle: `${count} ${count === 1 ? 'product' : 'products'} available`,
-          logo: b.logo || b.logo_url || '',
-          brand: b
-        };
-      });
+      .map(b => ({
+        type: 'brand',
+        id: b.id || b.name,
+        title: b.name,
+        badge: 'Brand',
+        subtitle: 'Official Brand Collection',
+        logo: b.logo || b.logo_url || '',
+        brand: b
+      }));
 
     // 2. Matching Categories
     const matchedCategories = (categories || [])
       .filter(c => (c.name || '').toLowerCase().includes(q))
       .slice(0, 3)
-      .map(c => {
-        const count = (activeProducts || []).filter(p => (p.category || '').toLowerCase() === (c.name || '').toLowerCase()).length;
-        return {
-          type: 'category',
-          id: c.id || c.name,
-          title: c.name,
-          badge: 'Category',
-          subtitle: `Explore Department • ${count} items`,
-          image: c.image || c.icon || '',
-          category: c
-        };
-      });
+      .map(c => ({
+        type: 'category',
+        id: c.id || c.name,
+        title: c.name,
+        badge: 'Category',
+        subtitle: 'Explore Category Department',
+        image: c.image || c.icon || '',
+        category: c
+      }));
 
     // 3. Matching Subcategories
     const matchedSubcategories = (subcategories || [])
@@ -609,7 +603,7 @@ export const SearchScreen = () => {
             <View className="flex-row items-center gap-1.5">
               <Ionicons name="sparkles" size={14} color="#B34D7D" />
               <Text className="text-[11px] font-black text-[#352832] uppercase tracking-wider">
-                Instant Suggestions ({suggestions.totalCount})
+                Instant Suggestions
               </Text>
             </View>
             <TouchableOpacity
@@ -1105,8 +1099,7 @@ export const SearchScreen = () => {
           <View>
             <View className="flex-row justify-between items-center mb-3">
               <Text style={{ color: '#8A7B85' }} className="text-xs font-bold">
-                {results.length} product{results.length !== 1 ? 's' : ''} found
-                {query ? ` for "${query}"` : ''}
+                Search Results{query ? ` for "${query}"` : ''}
               </Text>
               {activeFilterCount > 0 && (
                 <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">

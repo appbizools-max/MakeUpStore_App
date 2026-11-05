@@ -188,7 +188,7 @@ export const PurplleProductCard = ({
           >
             <View className="flex-row items-center gap-1">
               <Text className="text-[8.5px] font-extrabold text-[#C2477A]" numberOfLines={1}>
-                {shades.length} Shades
+                {shades.length > 1 ? 'Shades' : 'Shade'}
               </Text>
               <Ionicons name="chevron-down" size={9} color="#C2477A" />
             </View>

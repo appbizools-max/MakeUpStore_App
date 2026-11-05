@@ -467,7 +467,7 @@ export const SelectShadeBottomSheet = ({
                     style={{ color: activeFilter === 'all' ? '#FFFFFF' : '#352832' }}
                     className="text-[11px] font-bold"
                   >
-                    All Shades ({allShades.length})
+                    All Shades
                   </Text>
                 </TouchableOpacity>
 
@@ -490,7 +490,7 @@ export const SelectShadeBottomSheet = ({
                     style={{ color: activeFilter === 'bestsellers' ? '#FFFFFF' : '#352832' }}
                     className="text-[11px] font-bold"
                   >
-                    Bestsellers ({bestsellerShades.length})
+                    Bestsellers
                   </Text>
                 </TouchableOpacity>
               </View>

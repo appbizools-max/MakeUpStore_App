@@ -92,86 +92,9 @@ const SkeletonProductCard = () => (
   </View>
 );
 
-// Authentic Beauty Brands Theme Palette Engine
-const KNOWN_BRAND_COLORS = {
-  'lakme': '#1A1A1A',
-  'maybelline': '#D10024',
-  'loreal': '#C7102E',
-  "l'oreal": '#C7102E',
-  'mac': '#111111',
-  'nykaa': '#FC2779',
-  'faces': '#C2477A',
-  'faces canada': '#C2477A',
-  'sugar': '#D7266E',
-  'swiss beauty': '#BA2252',
-  'kay beauty': '#C9637A',
-  'colorbar': '#D6004C',
-  'mamaearth': '#4B8233',
-  'plum': '#5B2D6E',
-  'insight': '#A33368',
-  'insight cosmetics': '#A33368',
-  'renee': '#A52A56',
-  'wow': '#7B3828',
-  'wow skin science': '#7B3828',
-  'dot & key': '#E85D75',
-  'minimalist': '#212529',
-  'cetaphil': '#00639E',
-  'neutrogena': '#007AC2',
-  'the ordinary': '#333333',
-  'forest essentials': '#7B5C35',
-  'biotique': '#2E5F38',
-  'himalaya': '#246B46',
-  'kama ayurveda': '#4E3524',
-  'nivea': '#002D72',
-  'dove': '#004B87',
-  'tresemme': '#1C1C1C',
-  'matrix': '#D9222A',
-  'streax': '#961937',
-  'bblunt': '#E91E63',
-  'khadi': '#4B6636',
-  'olay': '#8C6D1F',
-  'garnier': '#568203',
-  'clinique': '#2B5838',
-  'estee lauder': '#0E2A47',
-  'huda beauty': '#9E2A5B',
-  'pac': '#111111',
-  'chambor': '#002A5C',
-  'revlon': '#C60020',
-  'bella vita': '#684B29',
-  'ahsan': '#6B2D5C',
-  'anoos': '#7A3E2D',
-  '2.0hi': '#6B21A8'
-};
-
-const LUXURY_BRAND_PALETTE = [
-  '#B8497D', '#9333EA', '#0F766E', '#1E40AF', '#BE185D',
-  '#0369A1', '#B91C1C', '#4338CA', '#854D0E', '#065F46',
-  '#9D174D', '#15803D', '#334155', '#6B21A8', '#831843'
-];
-
+// Exact Logo Color Engine: Uniform Brand Pink Theme (#C2477A) with Crisp White Typography
 export const getBrandThemeColor = (brand) => {
-  if (!brand) return '#B8497D';
-  if (brand.themeColor && brand.themeColor.startsWith('#')) return brand.themeColor;
-  if (brand.color && brand.color.startsWith('#')) return brand.color;
-  if (brand.brand_color && brand.brand_color.startsWith('#')) return brand.brand_color;
-  if (brand.bgColor && brand.bgColor.startsWith('#')) return brand.bgColor;
-
-  const raw = String(brand.name || '').trim().toLowerCase();
-  const cleanKey = raw.replace(/[^a-z0-9]/g, '');
-  if (KNOWN_BRAND_COLORS[raw]) return KNOWN_BRAND_COLORS[raw];
-  if (KNOWN_BRAND_COLORS[cleanKey]) return KNOWN_BRAND_COLORS[cleanKey];
-
-  for (const [k, c] of Object.entries(KNOWN_BRAND_COLORS)) {
-    if (raw.includes(k) || k.includes(raw)) return c;
-  }
-
-  // Deterministic luxury palette fallback
-  let hash = 0;
-  for (let i = 0; i < raw.length; i++) {
-    hash = (hash << 5) - hash + raw.charCodeAt(i);
-    hash |= 0;
-  }
-  return LUXURY_BRAND_PALETTE[Math.abs(hash) % LUXURY_BRAND_PALETTE.length];
+  return '#C2477A';
 };
 
 // Brand Card: Premium brand button with theme color background, white typography, subtle press animation
@@ -454,7 +377,7 @@ const HomeProductCard = React.memo(({
         </View>
       )}
 
-      
+
 
       {/* 6. Pricing Row */}
       <View className="flex-row items-baseline gap-1.5 mb-2.5 flex-wrap">
@@ -624,7 +547,7 @@ export const HomeScreen = () => {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) setRecentlyViewedIds(parsed);
         }
-      } catch (e) {}
+      } catch (e) { }
     };
     loadRecentlyViewed();
     return () => { isMounted = false; };
@@ -634,7 +557,7 @@ export const HomeScreen = () => {
     if (product?.id) {
       setRecentlyViewedIds(prev => {
         const updated = [product.id, ...prev.filter(id => id !== product.id)].slice(0, 10);
-        storage.setItem('salbeau_recently_viewed_ids', JSON.stringify(updated)).catch(() => {});
+        storage.setItem('salbeau_recently_viewed_ids', JSON.stringify(updated)).catch(() => { });
         return updated;
       });
     }
@@ -938,110 +861,109 @@ export const HomeScreen = () => {
         {/* 3. PROMOTIONAL BANNER CAROUSEL (COMPLETE IMAGE DISPLAY WITHOUT CROPPING)   */}
         {/* ========================================================================= */}
         {displayBanners.length > 0 && (
-        <View className="mb-5">
-          <ScrollView
-            ref={bannerScrollRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            onMomentumScrollEnd={(e) => {
-              const offsetX = e.nativeEvent.contentOffset.x;
-              const newIndex = Math.round(offsetX / (BANNER_WIDTH + 12));
-              setActiveSlide(Math.max(0, Math.min(newIndex, displayBanners.length - 1)));
-            }}
-            contentContainerStyle={{ paddingHorizontal: 16 }}
-            decelerationRate="fast"
-            snapToInterval={BANNER_WIDTH + 12}
-            snapToAlignment="start"
-          >
-            {displayBanners.map((banner, idx) => {
-              const rawUrl = (banner.imageUrl && typeof banner.imageUrl === 'string' && banner.imageUrl.trim().length > 0)
-                ? banner.imageUrl.trim()
-                : '';
-              const imageSource = rawUrl ? getSafeImageSource(rawUrl) : null;
+          <View className="mb-5">
+            <ScrollView
+              ref={bannerScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              onMomentumScrollEnd={(e) => {
+                const offsetX = e.nativeEvent.contentOffset.x;
+                const newIndex = Math.round(offsetX / (BANNER_WIDTH + 12));
+                setActiveSlide(Math.max(0, Math.min(newIndex, displayBanners.length - 1)));
+              }}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+              decelerationRate="fast"
+              snapToInterval={BANNER_WIDTH + 12}
+              snapToAlignment="start"
+            >
+              {displayBanners.map((banner, idx) => {
+                const rawUrl = (banner.imageUrl && typeof banner.imageUrl === 'string' && banner.imageUrl.trim().length > 0)
+                  ? banner.imageUrl.trim()
+                  : '';
+                const imageSource = rawUrl ? getSafeImageSource(rawUrl) : null;
 
-              return (
-                <View
-                  key={banner.id || idx}
-                  style={{
-                    width: BANNER_WIDTH,
-                    height: BANNER_HEIGHT,
-                    marginRight: idx < displayBanners.length - 1 ? 12 : 0,
-                    borderRadius: 22,
-                    overflow: 'hidden',
-                    backgroundColor: '#FFFFFF',
-                    borderColor: '#F0E3EA',
-                    borderWidth: 1,
-                    elevation: 3,
-                    shadowColor: '#B64F7D',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 6,
-                  }}
-                >
-                  <TouchableOpacity
-                    activeOpacity={0.92}
-                    onPress={() => handleBannerClick(banner)}
-                    style={{ width: '100%', height: '100%' }}
+                return (
+                  <View
+                    key={banner.id || idx}
+                    style={{
+                      width: BANNER_WIDTH,
+                      height: BANNER_HEIGHT,
+                      marginRight: idx < displayBanners.length - 1 ? 12 : 0,
+                      borderRadius: 22,
+                      overflow: 'hidden',
+                      backgroundColor: '#FFFFFF',
+                      borderColor: '#F0E3EA',
+                      borderWidth: 1,
+                      elevation: 3,
+                      shadowColor: '#B64F7D',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.08,
+                      shadowRadius: 6,
+                    }}
                   >
-                    {imageSource ? (
-                      /* Display complete banner image across container with crisp proportion and zero distortion */
-                      <View style={{ width: '100%', height: '100%', position: 'relative' }}>
-                        <Image
-                          source={imageSource}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    ) : (
-                      /* Styled editorial fallback card */
-                      <View className="flex-1 flex-row items-center justify-between p-4 relative bg-white">
-                        <View className="flex-1 pr-3 justify-center z-10">
-                          <Text
-                            className="text-lg font-black text-[#3A2430] leading-tight mb-1"
-                            numberOfLines={2}
-                          >
-                            {banner.title || 'Healthy Hair Starts Here'}
-                          </Text>
-                          <Text
-                            className="text-xs font-semibold text-[#8C7078] mb-3"
-                            numberOfLines={1}
-                          >
-                            {banner.subtitle || 'Nourish • Repair • Shine'}
-                          </Text>
-                          <View className="bg-[#C2477A] px-3.5 py-1.5 rounded-full self-start flex-row items-center gap-1 shadow-xs">
-                            <Text className="text-white text-[11px] font-bold">
-                              {banner.ctaLabel || 'Shop Hair Care →'}
+                    <TouchableOpacity
+                      activeOpacity={0.92}
+                      onPress={() => handleBannerClick(banner)}
+                      style={{ width: '100%', height: '100%' }}
+                    >
+                      {imageSource ? (
+                        /* Display complete banner image across container with crisp proportion and zero distortion */
+                        <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                          <Image
+                            source={imageSource}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="cover"
+                          />
+                        </View>
+                      ) : (
+                        /* Styled editorial fallback card */
+                        <View className="flex-1 flex-row items-center justify-between p-4 relative bg-white">
+                          <View className="flex-1 pr-3 justify-center z-10">
+                            <Text
+                              className="text-lg font-black text-[#3A2430] leading-tight mb-1"
+                              numberOfLines={2}
+                            >
+                              {banner.title || 'Healthy Hair Starts Here'}
                             </Text>
+                            <Text
+                              className="text-xs font-semibold text-[#8C7078] mb-3"
+                              numberOfLines={1}
+                            >
+                              {banner.subtitle || 'Nourish • Repair • Shine'}
+                            </Text>
+                            <View className="bg-[#C2477A] px-3.5 py-1.5 rounded-full self-start flex-row items-center gap-1 shadow-xs">
+                              <Text className="text-white text-[11px] font-bold">
+                                {banner.ctaLabel || 'Shop Hair Care →'}
+                              </Text>
+                            </View>
                           </View>
                         </View>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-          </ScrollView>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
 
-          {/* Carousel Pagination Dots */}
-          {displayBanners.length > 1 && (
-            <View className="flex-row items-center justify-center gap-1.5 mt-2.5">
-              {displayBanners.map((banner, idx) => (
-                <TouchableOpacity
-                  key={`dot-${banner.id || idx}`}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    setActiveSlide(idx);
-                    bannerScrollRef.current?.scrollTo({ x: idx * (BANNER_WIDTH + 12), animated: true });
-                  }}
-                  className={`h-1.5 rounded-full ${
-                    activeSlide === idx ? 'w-5 bg-[#B64F7D]' : 'w-1.5 bg-[#B64F7D]/30'
-                  }`}
-                />
-              ))}
-            </View>
-          )}
-        </View>
+            {/* Carousel Pagination Dots */}
+            {displayBanners.length > 1 && (
+              <View className="flex-row items-center justify-center gap-1.5 mt-2.5">
+                {displayBanners.map((banner, idx) => (
+                  <TouchableOpacity
+                    key={`dot-${banner.id || idx}`}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setActiveSlide(idx);
+                      bannerScrollRef.current?.scrollTo({ x: idx * (BANNER_WIDTH + 12), animated: true });
+                    }}
+                    className={`h-1.5 rounded-full ${activeSlide === idx ? 'w-5 bg-[#B64F7D]' : 'w-1.5 bg-[#B64F7D]/30'
+                      }`}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         )}
 
         {/* ========================================================================= */}
@@ -1062,49 +984,49 @@ export const HomeScreen = () => {
             >
               {displayCategories.length > 0
                 ? displayCategories.map((cat) => (
-                    <TouchableOpacity
-                      key={cat.id || cat.name}
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        if (setSelectedCategory) setSelectedCategory(cat.name);
-                        setCurrentScreen('category');
+                  <TouchableOpacity
+                    key={cat.id || cat.name}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      if (setSelectedCategory) setSelectedCategory(cat.name);
+                      setCurrentScreen('category');
+                    }}
+                    style={{ width: 84, borderColor: '#FCE4EC', borderWidth: 1 }}
+                    className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs"
+                  >
+                    <View
+                      style={{
+                        width: 68, height: 68, borderRadius: 34, backgroundColor: '#FFFFFF',
+                        borderColor: '#F8B4D9', borderWidth: 1.5,
+                        marginBottom: 6,
+                        overflow: 'hidden',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        elevation: 3,
+                        shadowColor: '#C2477A',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.18,
+                        shadowRadius: 4,
                       }}
-                      style={{ width: 84, borderColor: '#FCE4EC', borderWidth: 1 }}
-                      className="bg-white rounded-2xl p-2 items-center mr-3 shadow-xs"
                     >
-                      <View
-                        style={{
-                          width: 68, height: 68, borderRadius: 34, backgroundColor: '#FFFFFF',
-                          borderColor: '#F8B4D9', borderWidth: 1.5,
-                          marginBottom: 6,
-                          overflow: 'hidden',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          elevation: 3,
-                          shadowColor: '#C2477A',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.18,
-                          shadowRadius: 4,
-                        }}
-                      >
-                        {cat.imageUrl ? (
-                          <Image
-                            source={getSafeImageSource(cat.imageUrl)}
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode="contain"
-                          />
-                        ) : (
-                          <FontAwesome5 name={cat.icon || 'sparkles'} size={24} color={cat.color || '#C2477A'} />
-                        )}
-                      </View>
-                      <Text
-                        className="text-[11px] font-bold text-[#3A2430] text-center min-h-[28px] leading-tight"
-                        numberOfLines={2}
-                      >
-                        {cat.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
+                      {cat.imageUrl ? (
+                        <Image
+                          source={getSafeImageSource(cat.imageUrl)}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <FontAwesome5 name={cat.icon || 'sparkles'} size={24} color={cat.color || '#C2477A'} />
+                      )}
+                    </View>
+                    <Text
+                      className="text-[11px] font-bold text-[#3A2430] text-center min-h-[28px] leading-tight"
+                      numberOfLines={2}
+                    >
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))
                 : [1, 2, 3, 4, 5].map((k) => <SkeletonCategoryCard key={`sk_cat_${k}`} />)}
             </ScrollView>
           </View>
@@ -1123,9 +1045,9 @@ export const HomeScreen = () => {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
               {trendingProducts.length > 0
                 ? trendingProducts.map((item) => (
-                    <HomeProductCard key={`trend_${item.id}`} product={item} badgeText="NEW" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
-                  ))
-                : [1,2,3].map((k) => <SkeletonProductCard key={`sk_trend_${k}`} />)}
+                  <HomeProductCard key={`trend_${item.id}`} product={item} badgeText="NEW" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
+                ))
+                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_trend_${k}`} />)}
             </ScrollView>
           </View>
         )}
@@ -1155,23 +1077,23 @@ export const HomeScreen = () => {
             >
               {allBrandsList.length > 0
                 ? (allBrandsList.length > 3 ? [...allBrandsList, ...allBrandsList] : allBrandsList).map((brand, idx) => (
-                    <BrandCard
-                      key={`${brand.id || brand.name}_${idx}`}
-                      brand={brand}
-                      screenWidth={SCREEN_WIDTH}
-                      onInteractionStart={pauseBrandScroll}
-                      onInteractionEnd={() => resumeBrandScroll(1800)}
-                      onSelectBrand={(b) => {
-                        const brandQuery = (b.name || '').replace('\n', ' ');
-                        if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
-                        setSearchQuery(brandQuery);
-                        setCurrentScreen('search');
-                      }}
-                    />
-                  ))
+                  <BrandCard
+                    key={`${brand.id || brand.name}_${idx}`}
+                    brand={brand}
+                    screenWidth={SCREEN_WIDTH}
+                    onInteractionStart={pauseBrandScroll}
+                    onInteractionEnd={() => resumeBrandScroll(1800)}
+                    onSelectBrand={(b) => {
+                      const brandQuery = (b.name || '').replace('\n', ' ');
+                      if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
+                      setSearchQuery(brandQuery);
+                      setCurrentScreen('search');
+                    }}
+                  />
+                ))
                 : [1, 2, 3, 4, 5].map((k) => (
-                    <SkeletonBrandCard key={`sk_brand_${k}`} />
-                  ))}
+                  <SkeletonBrandCard key={`sk_brand_${k}`} />
+                ))}
             </ScrollView>
           </View>
         )}
@@ -1190,9 +1112,9 @@ export const HomeScreen = () => {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
               {newArrivals.length > 0
                 ? newArrivals.map((item) => (
-                    <HomeProductCard key={`na_${item.id}`} product={item} badgeText="NEW" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
-                  ))
-                : [1,2,3].map((k) => <SkeletonProductCard key={`sk_na_${k}`} />)}
+                  <HomeProductCard key={`na_${item.id}`} product={item} badgeText="NEW" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
+                ))
+                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_na_${k}`} />)}
             </ScrollView>
           </View>
         )}
@@ -1211,9 +1133,9 @@ export const HomeScreen = () => {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
               {bestSellers.length > 0
                 ? bestSellers.map((item) => (
-                    <HomeProductCard key={`bs_${item.id}`} product={item} badgeText="BESTSELLER" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
-                  ))
-                : [1,2,3].map((k) => <SkeletonProductCard key={`sk_bs_${k}`} />)}
+                  <HomeProductCard key={`bs_${item.id}`} product={item} badgeText="BESTSELLER" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
+                ))
+                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_bs_${k}`} />)}
             </ScrollView>
           </View>
         )}
@@ -1251,9 +1173,9 @@ export const HomeScreen = () => {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
               {beautyStaples.length > 0
                 ? beautyStaples.map((item) => (
-                    <HomeProductCard key={`staple_${item.id}`} product={item} badgeText="STAPLE" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
-                  ))
-                : [1,2,3].map((k) => <SkeletonProductCard key={`sk_staple_${k}`} />)}
+                  <HomeProductCard key={`staple_${item.id}`} product={item} badgeText="STAPLE" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
+                ))
+                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_staple_${k}`} />)}
             </ScrollView>
           </View>
         )}
