@@ -124,6 +124,10 @@ export const CategoryScreen = () => {
         setNavLevel(2);
         setOpenedFromHome(true);
       }
+    } else if (displayCategories.length > 0 && !activeCategory) {
+      setActiveCategory(displayCategories[0]);
+      setNavLevel(2);
+      setOpenedFromHome(false);
     }
   }, [selectedCategory, displayCategories]);
 
@@ -166,16 +170,8 @@ export const CategoryScreen = () => {
   const handleBack = () => {
     if (navLevel === 3 || navLevel === 4) {
       setNavLevel(2);
-    } else if (navLevel === 2) {
-      if (openedFromHome) {
-        setOpenedFromHome(false);
-        if (setSelectedCategory) setSelectedCategory(null);
-        setCurrentScreen('home');
-      } else {
-        if (setSelectedCategory) setSelectedCategory(null);
-        setNavLevel(1);
-      }
     } else {
+      if (setSelectedCategory) setSelectedCategory(null);
       setCurrentScreen('home');
     }
   };
@@ -202,11 +198,16 @@ export const CategoryScreen = () => {
     );
   }
 
-  // ── LEVEL 2: CATEGORY DETAIL ────────────────────────────────────
+  // ── LEVEL 2: CATEGORY DETAIL (WITH ACTIVE SLIDING TABS) ──────────
   if (navLevel === 2 && activeCategory) {
     return (
       <CategoryDetailView
         category={activeCategory}
+        allCategories={displayCategories}
+        onSelectCategory={(cat) => {
+          setActiveCategory(cat);
+          if (setSelectedCategory) setSelectedCategory(cat.name);
+        }}
         onSelectSubcategory={handleSelectSubcategory}
         onViewAllProducts={handleViewAllProducts}
         onBack={handleBack}
@@ -359,8 +360,8 @@ export const CategoryScreen = () => {
                   {cat.image ? (
                     <Image
                       source={getSafeImageSource(cat.image)}
-                      style={{ width: '100%', height: '100%' }}
-                      resizeMode="contain"
+                      style={{ width: '100%', height: '100%', borderRadius: 33 }}
+                      resizeMode="cover"
                     />
                   ) : (
                     <FontAwesome5 name={cat.icon || 'sparkles'} size={24} color={cat.iconColor || '#C2477A'} />

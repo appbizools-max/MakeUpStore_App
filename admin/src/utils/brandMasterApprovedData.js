@@ -1465,6 +1465,23 @@ export const APPROVED_BRAND_MASTER = [
   }
 ];
 
+function deriveMnemonic(name) {
+  if (!name) return 'BRD';
+  const clean = name.toString().replace(/[^a-zA-Z0-9\s]/g, ' ').trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length >= 3) {
+    return (words[0][0] + words[1][0] + words[2][0]).toUpperCase();
+  } else if (words.length === 2) {
+    if (words[0].length >= 2) return (words[0].slice(0, 2) + words[1][0]).toUpperCase();
+    return (words[0][0] + words[1].slice(0, 2)).toUpperCase();
+  } else if (words.length === 1) {
+    const single = words[0];
+    if (single.length >= 3) return single.slice(0, 3).toUpperCase();
+    return (single + 'XX').slice(0, 3).toUpperCase();
+  }
+  return 'BRD';
+}
+
 export const LOOKUP_BY_NAME = {};
 export const LOOKUP_BY_CODE = {};
 export const LOOKUP_BY_NUMBER = {};
@@ -1472,7 +1489,13 @@ export const LOOKUP_BY_NUMBER = {};
 for (const b of APPROVED_BRAND_MASTER) {
   b.brand_number = b.brandNumber;
   b.brand_name = b.name;
-    const normalized = b.name ? b.name.toUpperCase().trim() : '';
+  if (!b.brandCode) {
+    const numPart = (b.brandNumber || '').replace('BR', '').padStart(3, '0');
+    b.brandCode = `${deriveMnemonic(b.name)}-${numPart}`;
+  }
+  b.brand_code = b.brandCode;
+  const normalized = b.name ? b.name.toUpperCase().trim() : '';
   if (normalized) LOOKUP_BY_NAME[normalized] = b;
-    if (b.brandNumber) LOOKUP_BY_NUMBER[b.brandNumber] = b;
+  if (b.brandNumber) LOOKUP_BY_NUMBER[b.brandNumber] = b;
+  if (b.brandCode) LOOKUP_BY_CODE[b.brandCode] = b;
 }

@@ -15,12 +15,30 @@ import {
   Tag,
   DollarSign,
   Package,
-  Layers
+  Layers,
+  Trash2,
+  X
 } from 'lucide-react';
 
-export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders }) => {
+export const AbandonedCartsManager = ({
+  abandonedCarts = [],
+  onNavigateToOrders,
+  deleteAbandonedCart,
+  bulkDeleteAbandonedCarts,
+  clearAllAbandonedCarts,
+  currentAuthUser
+}) => {
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'abandoned' | 'converted' | 'cleared'
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Multi-selection state
+  const [selectedCartIds, setSelectedCartIds] = useState([]);
+  const [clearModal, setClearModal] = useState({
+    isOpen: false,
+    type: 'single', // 'single' | 'batch' | 'all'
+    carts: []
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Stats calculation from real database records
   const stats = useMemo(() => {
@@ -75,6 +93,73 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
       return name.includes(q) || phone.includes(q) || role.includes(q) || orderId.includes(q) || hasMatchingProduct;
     });
   }, [abandonedCarts, filterStatus, searchQuery]);
+
+  // Eligible carts for clearing (only abandoned or cleared, not converted)
+  const eligibleCartsToClear = useMemo(() => {
+    return abandonedCarts.filter(c => c.status === 'abandoned' || c.status === 'cleared');
+  }, [abandonedCarts]);
+
+  const handleToggleSelectAll = () => {
+    if (selectedCartIds.length === filteredCarts.length) {
+      setSelectedCartIds([]);
+    } else {
+      setSelectedCartIds(filteredCarts.map(c => c.id));
+    }
+  };
+
+  const handleToggleSelectCart = (cartId) => {
+    setSelectedCartIds(prev =>
+      prev.includes(cartId) ? prev.filter(id => id !== cartId) : [...prev, cartId]
+    );
+  };
+
+  const openDeleteSingle = (cart) => {
+    setClearModal({
+      isOpen: true,
+      type: 'single',
+      carts: [cart]
+    });
+  };
+
+  const openDeleteSelected = () => {
+    const selected = abandonedCarts.filter(c => selectedCartIds.includes(c.id));
+    setClearModal({
+      isOpen: true,
+      type: 'batch',
+      carts: selected
+    });
+  };
+
+  const openClearAll = () => {
+    setClearModal({
+      isOpen: true,
+      type: 'all',
+      carts: eligibleCartsToClear
+    });
+  };
+
+  const handleExecuteDeletion = async () => {
+    if (!clearModal.carts.length) return;
+    setIsDeleting(true);
+    try {
+      const idsToDelete = clearModal.carts.map(c => c.id);
+      if (clearModal.type === 'all' && typeof clearAllAbandonedCarts === 'function') {
+        await clearAllAbandonedCarts();
+      } else if (typeof bulkDeleteAbandonedCarts === 'function') {
+        await bulkDeleteAbandonedCarts(idsToDelete);
+      } else if (typeof deleteAbandonedCart === 'function') {
+        for (const id of idsToDelete) {
+          await deleteAbandonedCart(id);
+        }
+      }
+      setSelectedCartIds(prev => prev.filter(id => !idsToDelete.includes(id)));
+      setClearModal({ isOpen: false, type: 'single', carts: [] });
+    } catch (e) {
+      alert('Error deleting carts: ' + e.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const formatISTDate = (isoString) => {
     if (!isoString) return 'Just now';
@@ -207,9 +292,19 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
       </div>
 
       {/* 2. Filter & Search Controls Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-pink-100/80 shadow-2xs flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-        {/* Status Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+      <div className="bg-white p-4 rounded-2xl border border-pink-100/80 shadow-2xs flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3 flex-wrap">
+        {/* Status Filter Tabs & Selection Controls */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="flex items-center gap-2 text-xs font-bold text-gray-700 bg-gray-50 px-3 py-1.5 rounded-xl border border-pink-100 cursor-pointer mr-1">
+            <input
+              type="checkbox"
+              checked={filteredCarts.length > 0 && selectedCartIds.length === filteredCarts.length}
+              onChange={handleToggleSelectAll}
+              className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+            />
+            <span>Select All</span>
+          </label>
+
           {[
             { id: 'all', label: `All (${abandonedCarts.length})` },
             { id: 'abandoned', label: `Abandoned (${stats.abandonedCount})` },
@@ -230,16 +325,44 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
           ))}
         </div>
 
-        {/* Search Input */}
-        <div className="relative w-full sm:w-64">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search customer, phone, item..."
-            className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-pink-100 focus:border-[#C2477A] outline-none bg-white"
-          />
+        {/* Action Controls & Search Input */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Delete Selected Button */}
+          {selectedCartIds.length > 0 && (
+            <button
+              type="button"
+              onClick={openDeleteSelected}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 font-bold text-xs transition-all cursor-pointer shadow-2xs animate-fade-in"
+            >
+              <Trash2 size={13} className="text-rose-600" />
+              <span>Delete Selected ({selectedCartIds.length})</span>
+            </button>
+          )}
+
+          {/* Clear All Abandoned Carts Button */}
+          {eligibleCartsToClear.length > 0 && (
+            <button
+              type="button"
+              onClick={openClearAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 font-bold text-xs transition-all cursor-pointer shadow-2xs"
+              title="Clear all inactive abandoned carts"
+            >
+              <Trash2 size={13} />
+              <span>Clear Abandoned Carts ({eligibleCartsToClear.length})</span>
+            </button>
+          )}
+
+          {/* Search Input */}
+          <div className="relative w-full sm:w-60">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search customer, phone, item..."
+              className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-pink-100 focus:border-[#C2477A] outline-none bg-white font-medium"
+            />
+          </div>
         </div>
       </div>
 
@@ -270,6 +393,12 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
                 {/* Header: Customer Info + Status Badge + Time */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-pink-100/60 gap-3">
                   <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedCartIds.includes(cart.id)}
+                      onChange={() => handleToggleSelectCart(cart.id)}
+                      className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                    />
                     <div className="w-10 h-10 rounded-full bg-white border border-pink-200 text-[#C2477A] flex items-center justify-center font-black text-sm shrink-0">
                       {(cart.user_name || 'C').charAt(0).toUpperCase()}
                     </div>
@@ -292,8 +421,16 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {getStatusBadge(cart.status, cart.order_id)}
+                    <button
+                      type="button"
+                      onClick={() => openDeleteSingle(cart)}
+                      className="w-8 h-8 rounded-xl border border-pink-100 bg-white hover:bg-rose-50 text-gray-400 hover:text-rose-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                      title="Delete this abandoned cart record"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
 
@@ -409,6 +546,77 @@ export const AbandonedCartsManager = ({ abandonedCarts = [], onNavigateToOrders 
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── ABANDONED CARTS CLEAR CONFIRMATION MODAL ────────────────────── */}
+      {clearModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full border border-pink-100 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-gray-900">
+                  {clearModal.type === 'all'
+                    ? `Clear All Abandoned Carts (${clearModal.carts.length})`
+                    : `Delete ${clearModal.carts.length} Cart Record${clearModal.carts.length > 1 ? 's' : ''}`}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Admin Cart Cleanup & Optimization
+                </p>
+              </div>
+            </div>
+
+            {/* Safety protection note */}
+            <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-xs text-emerald-900 flex items-start gap-2">
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <strong>Active Order Protection:</strong> Completed customer orders and converted checkouts will <strong>not</strong> be deleted. Only unpurchased abandoned bags are eligible for cleanup.
+              </div>
+            </div>
+
+            {/* Carts Breakdown list */}
+            <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 max-h-56 overflow-y-auto space-y-2.5 text-xs">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                Carts to Remove:
+              </span>
+              {clearModal.carts.map((c) => {
+                const cItems = Array.isArray(c.items) ? c.items : [];
+                return (
+                  <div key={c.id} className="p-2.5 bg-white rounded-xl border border-gray-200/70 space-y-1">
+                    <div className="flex items-center justify-between font-bold text-gray-900">
+                      <span>{c.user_name || 'Customer'} <span className="text-gray-400 font-normal">({c.phone || 'No phone'})</span></span>
+                      <span className="text-[#C2477A] font-black">₹{Number(c.cart_value || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="text-[11px] text-gray-500">
+                      Products: {cItems.length > 0 ? cItems.map(i => `${i.name || 'Item'} (Qty: ${i.quantity || 1})`).join(', ') : 'Empty Bag'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setClearModal({ isOpen: false, type: 'single', carts: [] })}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleExecuteDeletion}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                <span>{isDeleting ? 'Deleting...' : `Confirm Delete (${clearModal.carts.length})`}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -107,10 +107,10 @@ export const SubcategoryView = ({
         >
           <View
             style={{
-              width: 46,
-              height: 46,
-              borderRadius: 14,
-              backgroundColor: '#FFFFFF',
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: '#FFF0F5',
               borderColor: '#F8B4D9',
               borderWidth: 1,
               alignItems: 'center',
@@ -119,15 +119,7 @@ export const SubcategoryView = ({
               flexShrink: 0
             }}
           >
-            {subcategory?.image ? (
-              <Image
-                source={getSafeImageSource(subcategory.image)}
-                style={{ width: '84%', height: '84%' }}
-                resizeMode="contain"
-              />
-            ) : (
-              <Ionicons name="sparkles" size={20} color="#C2477A" />
-            )}
+            <Ionicons name="sparkles" size={20} color="#C2477A" />
           </View>
 
           <View style={{ flex: 1, paddingRight: 8 }}>

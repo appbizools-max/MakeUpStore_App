@@ -332,12 +332,56 @@ export const deriveBrandMnemonic = (brandName) => {
  * 2. Checks uniqueness against existing brands.
  * 3. In case of collision, resolves with deterministic alternative mnemonic.
  */
-export const generateProposedBrandCode = () => '';
+export const generateProposedBrandCode = (brandName, existingBrands = [], brandNumber = null) => {
+  if (!brandName) return '';
+  const mnemonic = deriveBrandMnemonic(brandName);
+  const numPart = brandNumber ? brandNumber.replace(/[^0-9]/g, '').padStart(3, '0') : '001';
+  const baseCode = `${mnemonic}-${numPart}`;
+
+  const existingCodes = new Set(
+    (existingBrands || []).map(b => (b.brand_code || b.brandCode || '').toUpperCase().trim()).filter(Boolean)
+  );
+
+  if (!existingCodes.has(baseCode)) return baseCode;
+
+  // Collision resolution: generate deterministic alternate mnemonic ending with same number
+  const clean = brandName.toString().replace(/[^a-zA-Z0-9\s]/g, ' ').trim();
+  const letters = clean.replace(/\s+/g, '').toUpperCase();
+
+  // Try different letter combinations from the name
+  for (let i = 0; i < letters.length - 2; i++) {
+    const candidate = `${letters[i]}${letters[i + 1]}${letters[letters.length - 1]}-${numPart}`;
+    if (!existingCodes.has(candidate)) return candidate;
+  }
+
+  // Try alphabet variants
+  for (let c = 65; c <= 90; c++) {
+    const altCode = `${mnemonic.slice(0, 2)}${String.fromCharCode(c)}-${numPart}`;
+    if (!existingCodes.has(altCode)) return altCode;
+  }
+
+  return `${mnemonic.slice(0, 2)}X-${numPart}`;
+};
 
 /**
  * Validates Brand Code format and uniqueness
  */
-export const validateBrandCode = () => ({ valid: true });
+export const validateBrandCode = (code, existingBrands = [], excludeBrandId = null) => {
+  if (!code || typeof code !== 'string') return { valid: false, error: 'Brand Code is required.' };
+  const clean = code.trim().toUpperCase();
+  if (!/^[A-Z0-9]{3}-\d{3,4}(-[A-Z0-9]+)?$/.test(clean)) {
+    return { valid: false, error: 'Brand Code must follow standard format (e.g. LAK-167).' };
+  }
+  const duplicate = (existingBrands || []).find(b => {
+    if (excludeBrandId && (b.id === excludeBrandId || b._id === excludeBrandId)) return false;
+    const bCode = (b.brand_code || b.brandCode || '').trim().toUpperCase();
+    return bCode === clean;
+  });
+  if (duplicate) {
+    return { valid: false, error: `Brand Code "${clean}" is already assigned to another brand.` };
+  }
+  return { valid: true };
+};
 
 /**
  * Validates Brand Name uniqueness

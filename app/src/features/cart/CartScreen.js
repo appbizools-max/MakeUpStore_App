@@ -144,7 +144,8 @@ export const CartScreen = () => {
           const rolePrice = getRolePrice(product, userRole, shade, quantity);
           const shadeMrp = shade?.mrp || shade?.priceOverride || product.mrp;
           const originalMrp = shadeMrp > rolePrice ? shadeMrp : Math.round(shadeMrp * 1.25);
-          const shadeText = shade ? `Shade: ${shade.name}` : (product.category ? `Category: ${product.category}` : '');
+          const isRealShade = shade && shade.name && !['default', 'default shade', 'standard', 'standard formulation', 'n/a', 'non-shade', 'n/a (non-shade)', 'default variant'].includes(String(shade.name).trim().toLowerCase());
+          const shadeText = isRealShade ? `Shade: ${shade.name}` : (product.category ? `Category: ${product.category}` : '');
 
           return (
             <View
@@ -293,19 +294,28 @@ export const CartScreen = () => {
                         {p.name}
                       </Text>
 
-                      {subItems.length > 1 ? (
-                        <Text className="text-[9px] font-semibold text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100 mb-1.5 self-start">
-                          {subItems.length} shades
-                        </Text>
-                      ) : subItems.length === 1 ? (
-                        <Text className="text-[9px] font-medium text-[#8C7078] mb-1.5" numberOfLines={1}>
-                          Shade: {subItems[0].name}
-                        </Text>
-                      ) : (
-                        <Text className="text-[9px] font-medium text-[#8C7078] mb-1.5" numberOfLines={1}>
-                          {p.category || 'Standard'}
-                        </Text>
-                      )}
+                      {(() => {
+                        const genuineSubItems = (subItems || []).filter(s => s && s.name && !['default', 'default shade', 'standard', 'standard formulation', 'n/a', 'non-shade', 'n/a (non-shade)', 'default variant'].includes(String(s.name).trim().toLowerCase()));
+                        if (genuineSubItems.length > 1) {
+                          return (
+                            <Text className="text-[9px] font-semibold text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100 mb-1.5 self-start">
+                              Shades Available
+                            </Text>
+                          );
+                        } else if (genuineSubItems.length === 1) {
+                          return (
+                            <Text className="text-[9px] font-medium text-[#8C7078] mb-1.5" numberOfLines={1}>
+                              Shade: {genuineSubItems[0].name}
+                            </Text>
+                          );
+                        } else {
+                          return (
+                            <Text className="text-[9px] font-medium text-[#8C7078] mb-1.5" numberOfLines={1}>
+                              {p.category || 'Standard formulation'}
+                            </Text>
+                          );
+                        }
+                      })()}
 
                       <View className="flex-row items-baseline gap-1 mb-2">
                         <Text className="text-xs font-black text-[#C2477A]">₹{pPrice}</Text>

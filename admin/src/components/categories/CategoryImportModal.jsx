@@ -196,7 +196,7 @@ export default function CategoryImportModal({
       });
     } catch (err) {
       console.error('Category import error:', err);
-      setGeneralError('Failed to save categories to Supabase: ' + (err.message || String(err)));
+      setGeneralError('Failed to save categories to database: ' + (err.message || String(err)));
     } finally {
       setIsProcessing(false);
     }
@@ -250,7 +250,7 @@ export default function CategoryImportModal({
               <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2">
                 <div className="flex items-center gap-2.5 font-black text-sm">
                   <CheckCircle size={20} className="text-emerald-600 shrink-0" />
-                  <span>Categories Saved Successfully to Supabase!</span>
+                  <span>Categories Saved Successfully!</span>
                 </div>
                 <p className="text-xs text-emerald-700 leading-relaxed">
                   All category levels have been saved permanently in the database. Parent-child relationships are linked, and changes reflect immediately in product creation dropdowns.
@@ -783,7 +783,7 @@ export default function CategoryImportModal({
               {isProcessing ? (
                 <>
                   <Loader2 size={15} className="animate-spin" />
-                  <span>Saving to Supabase Database...</span>
+                  <span>Saving to Database...</span>
                 </>
               ) : (
                 <>

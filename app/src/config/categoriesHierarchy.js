@@ -1004,74 +1004,71 @@ export const getLeafCategoriesForSubcategory = (subIdOrName, catIdOrName = null)
   return [];
 };
 
-// Helper: Filter products dynamically based on hierarchy
+// Strict category matching (e.g. "Skincare" vs "Skin Care", "Hair Care" vs "Haircare")
+const isMatchCategory = (pCat, targetCat) => {
+  if (!pCat || !targetCat) return false;
+  const n1 = normalizeStr(pCat);
+  const n2 = normalizeStr(targetCat);
+  if (n1 === n2) return true;
+  const c1 = n1.replace(/and|care|s$/g, '');
+  const c2 = n2.replace(/and|care|s$/g, '');
+  return c1 === c2 || n1.replace('and', '') === n2.replace('and', '');
+};
+
+// Strict subcategory matching (e.g. "Acne & Blemish Care" vs "Acne & Blemishes", "Face Cleansers" vs "Cleansers")
+const isMatchSubcategory = (pSub, targetSub) => {
+  if (!pSub || !targetSub) return false;
+  const n1 = normalizeStr(pSub);
+  const n2 = normalizeStr(targetSub);
+  if (n1 === n2) return true;
+  if (n1 + 's' === n2 || n2 + 's' === n1) return true;
+  const s1 = n1.replace(/and|care|products|essentials/g, '');
+  const s2 = n2.replace(/and|care|products|essentials/g, '');
+  if (s1 && s2) {
+    if (s1 === s2) return true;
+    if (s1.length >= 4 && s2.length >= 4 && (s1.includes(s2) || s2.includes(s1))) return true;
+  }
+  return false;
+};
+
+// Helper: Filter products strictly based on database category and subcategory mapping
 export const filterProductsByHierarchy = (allProducts, categoryName, subcategoryName, leafCategory) => {
   if (!allProducts || allProducts.length === 0) return [];
 
-  const normCat = normalizeStr(categoryName);
-  const normSub = normalizeStr(subcategoryName);
-  const normLeaf = normalizeStr(leafCategory?.name || (typeof leafCategory === 'string' ? leafCategory : ''));
-  const keywords = Array.isArray(leafCategory?.keywords) ? leafCategory.keywords.map(k => normalizeStr(k)) : [];
+  const hasCat = Boolean(categoryName && String(categoryName).trim());
+  const hasSub = Boolean(subcategoryName && String(subcategoryName).trim());
+  const hasLeaf = Boolean(leafCategory && (typeof leafCategory === 'string' ? leafCategory.trim() : leafCategory.name));
 
-  // Step 1: Filter by leaf keywords or exact leaf name / product_type if provided
-  if (keywords.length > 0 || normLeaf) {
-    const leafMatches = allProducts.filter(p => {
-      const pCat = normalizeStr(p.category);
-      const pSub = normalizeStr(p.subcategory || p.sub_category);
-      const pType = normalizeStr(p.product_type || p.productType);
-      const pFamily = normalizeStr(p.product_family || p.productFamily);
-      const pName = normalizeStr(p.name);
-      const pBrand = normalizeStr(p.brandName || p.brand_name || p.brand);
-      const pKeywords = Array.isArray(p.search_keywords || p.searchKeywords)
-        ? (p.search_keywords || p.searchKeywords).map(k => normalizeStr(k)).join(' ')
-        : normalizeStr(p.search_keywords || p.searchKeywords);
-      const fullText = `${pCat} ${pSub} ${pType} ${pFamily} ${pName} ${pBrand} ${pKeywords}`;
+  if (!hasCat && !hasSub && !hasLeaf) return allProducts;
 
-      if (normLeaf) {
-        if (pType && (pType === normLeaf || pType.includes(normLeaf) || normLeaf.includes(pType))) return true;
-        if (pCat.includes(normLeaf) || pName.includes(normLeaf) || pFamily.includes(normLeaf)) return true;
-      }
-      return keywords.some(k => fullText.includes(k));
-    });
+  return allProducts.filter(p => {
+    // 1. If category is specified, product MUST match category
+    if (hasCat) {
+      const catMatches = isMatchCategory(p.category, categoryName) ||
+        (p.categoryId && String(p.categoryId).toLowerCase() === String(categoryName).toLowerCase());
+      if (!catMatches) return false;
+    }
 
-    if (leafMatches.length > 0) return leafMatches;
-  }
+    // 2. If subcategory is specified, product MUST match subcategory
+    if (hasSub) {
+      const pSub = p.subcategory || p.sub_category;
+      const subMatches = isMatchSubcategory(pSub, subcategoryName) ||
+        (p.subcategoryId && String(p.subcategoryId).toLowerCase() === String(subcategoryName).toLowerCase());
+      if (!subMatches) return false;
+    }
 
-  // Step 2: Filter by subcategory name
-  if (normSub) {
-    const subWords = normSub.split(/\s+/).filter(w => w.length > 2 && w !== 'and' && w !== '&');
-    const subMatches = allProducts.filter(p => {
-      const pCat = normalizeStr(p.category);
-      const pSub = normalizeStr(p.subcategory || p.sub_category);
-      const pType = normalizeStr(p.product_type || p.productType);
-      const pName = normalizeStr(p.name);
-      const fullText = `${pCat} ${pSub} ${pType} ${pName}`;
-      if (pSub && (pSub === normSub || pSub.includes(normSub) || normSub.includes(pSub))) return true;
-      if (fullText.includes(normSub)) return true;
-      return subWords.some(w => fullText.includes(w));
-    });
+    // 3. If leaf category is specified, product MUST match leaf
+    if (hasLeaf) {
+      const leafName = typeof leafCategory === 'string' ? leafCategory : leafCategory.name;
+      const normL = normalizeStr(leafName);
+      const pType = normalizeStr(p.product_type || p.productType || p.leafCategory || '');
+      const keywords = Array.isArray(leafCategory?.keywords) ? leafCategory.keywords.map(k => normalizeStr(k)) : [];
+      
+      const typeMatches = pType && (pType === normL || pType.includes(normL) || normL.includes(pType));
+      const keywordMatches = keywords.length > 0 && keywords.some(k => normalizeStr(p.name).includes(k));
+      if (!typeMatches && !keywordMatches) return false;
+    }
 
-    if (subMatches.length > 0) return subMatches;
-  }
-
-  // Step 3: Filter by main category name
-  if (normCat) {
-    const catWords = normCat.split(/\s+/).filter(w => w.length > 2 && w !== 'and' && w !== '&');
-    const catMatches = allProducts.filter(p => {
-      const pCat = normalizeStr(p.category);
-      const pName = normalizeStr(p.name);
-      if (pCat === normCat || pCat.includes(normCat) || normCat.includes(pCat)) return true;
-      return catWords.some(w => pCat.includes(w) || pName.includes(w));
-    });
-
-    if (catMatches.length > 0) return catMatches;
-  }
-
-  // If specific category/subcategory/leaf filter was requested but nothing matched, return empty array
-  if (normCat || normSub || normLeaf) {
-    return [];
-  }
-
-  // Fallback: return all products if no filter was specified
-  return allProducts;
+    return true;
+  });
 };

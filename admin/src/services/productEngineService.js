@@ -849,16 +849,23 @@ export const toSupabaseProductPayload = (p) => {
   const mainImage = p.image || (Array.isArray(p.images) && p.images[0] ? p.images[0] : '') || null;
   const mainImagesList = Array.isArray(p.images) && p.images.length > 0 ? p.images : (mainImage ? [mainImage] : []);
 
-  const shadesJson = (Array.isArray(p.shades) && p.shades.length > 0)
-    ? p.shades.map((s, idx) => ({
+  const PLACEHOLDER_NAMES_SET = new Set(['default', 'default shade', 'standard', 'standard formulation', 'n/a', 'non-shade', 'n/a (non-shade)', 'default variant']);
+  const validExplicitShades = (Array.isArray(p.shades) ? p.shades : []).filter(s => {
+    if (!s || typeof s !== 'object') return false;
+    const n = String(s.color_name || s.name || s.title || s.shade || '').trim().toLowerCase();
+    return n && !PLACEHOLDER_NAMES_SET.has(n);
+  });
+
+  const shadesJson = validExplicitShades.length > 0
+    ? validExplicitShades.map((s, idx) => ({
         id: s.id || `var_${Date.now()}_${idx + 1}`,
         name: s.color_name || s.name || s.shadeName || `Variant ${idx + 1}`,
-        color_name: s.color_name || s.name || s.shadeName || 'Default',
+        color_name: s.color_name || s.name || s.shadeName || '',
         code: s.code || s.shadeCode || String(idx + 1).padStart(2, '0'),
         sku: s.sku || s.variantSku || generateVariantInternalSku(mainSku, idx + 1, s.color_name || s.name),
         barcode: s.barcode || s.variantBarcode || null,
-        hexColor: s.hexColor || s.hex || '#CE4270',
-        hex: s.hex || s.hexColor || '#CE4270',
+        hexColor: s.hexColor || s.hex || '',
+        hex: s.hex || s.hexColor || '',
         // Reuses main product image by default if variant has no custom image
         image: s.image || s.variantImageUrl || mainImage,
         images: Array.isArray(s.images) && s.images.length > 0 ? s.images : (s.image ? [s.image] : mainImagesList),
@@ -874,14 +881,14 @@ export const toSupabaseProductPayload = (p) => {
         active: s.active !== false,
         attributes: s.attributes || {}
       }))
-    : (shadeApplies && (p.hasMultipleShades || p.shade) ? [{
+    : (shadeApplies && p.shade && String(p.shade).trim() && !PLACEHOLDER_NAMES_SET.has(String(p.shade).trim().toLowerCase()) ? [{
         id: p.id + '_shade_1',
-        name: p.shade || 'Default Shade',
+        name: String(p.shade).trim(),
         code: '01',
         sku: p.sku ? `${p.sku}-V1` : `SKU-${Date.now()}-V1`,
-        hexColor: p.hexColor || '#C2182B',
-        hex: p.hexColor || '#C2182B',
-        color_name: p.shade || 'Default',
+        hexColor: p.hexColor || '',
+        hex: p.hexColor || '',
+        color_name: String(p.shade).trim(),
         barcode: p.barcode || null,
         image: p.image || null,
         images: p.image ? [p.image] : [],
@@ -1071,7 +1078,9 @@ export const safeProductDbWrite = async (operation, payload, onConflict = 'id') 
     'general_price', 'status', 'enabled', 'parent_id', 'highlights', 'specifications',
     'how_to_use', 'description', 'product_type', 'product_family', 'images', 'subcategory',
     'variant_type', 'quantity_tiers', 'search_keywords', 'search_aliases', 'key_points',
-    'benefits', 'ingredients', 'seo_title', 'meta_description', 'url_slug'
+    'benefits', 'ingredients', 'seo_title', 'meta_description', 'url_slug',
+    'is_bestseller', 'bestseller_priority', 'is_recent', 'recent_priority',
+    'is_top_recommendation', 'recommendation_priority', 'sort_order', 'display_order', 'priority'
   ];
 
   // Guarantee all extra fields are backed up in additional_info JSONB

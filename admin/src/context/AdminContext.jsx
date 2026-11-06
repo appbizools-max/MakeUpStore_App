@@ -1,7 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, supabaseAdmin } from '../config/supabase';
 import { normalizeQuantityTiers, getDefaultQuantityTiers } from '../utils/quantityTiersUtils';
-import { fetchAllSearchRequests, updateSearchRequestStatus as apiUpdateStatus, deleteSearchRequest as apiDeleteRequest } from '../utils/customerSearchService';
+import {
+  fetchAllSearchRequests,
+  updateSearchRequestStatus as apiUpdateStatus,
+  deleteSearchRequest as apiDeleteRequest,
+  bulkDeleteSearchRequests as apiBulkDeleteSearchRequests,
+  clearAllSearchRequests as apiClearAllSearchRequests
+} from '../utils/customerSearchService';
 import { generateAllRichData } from '../utils/productRichDataEngine';
 import { getCachedBarcodeLookup, setCachedBarcodeLookup, normalizeBarcode } from '../utils/barcodeUtils';
 import {
@@ -93,10 +99,17 @@ import { dispatchOrderNotification, isValidStatusTransition } from '../services/
 export { STATUS_META, computeOverallOrderStatus };
 
 const mapOrderFromDb = (o) => {
-  const rawItems = o.items || [];
-  const dbStatus = (o.status || 'placed').toLowerCase();
+  if (!o) return null;
+  let rawItems = o.items || [];
+  if (typeof rawItems === 'string') {
+    try { rawItems = JSON.parse(rawItems); } catch (e) { rawItems = []; }
+  }
+  if (!Array.isArray(rawItems)) rawItems = [];
+
+  const dbStatus = (o.status || 'placed').toLowerCase().trim();
 
   const itemsWithStatus = rawItems.map(item => {
+    if (!item) return { status: 'placed', quantity: 1 };
     let itemSt = item.status ? item.status.toLowerCase() : '';
     if (!itemSt) {
       itemSt = dbStatus.includes('partially') ? 'processing' : dbStatus;
@@ -104,11 +117,13 @@ const mapOrderFromDb = (o) => {
     return {
       ...item,
       status: itemSt,
-      rejectionReason: item.rejectionReason || ''
+      rejectionReason: item.rejectionReason || o.rejection_reason || ''
     };
   });
 
-  const computedStatus = computeOverallOrderStatus(itemsWithStatus, o.status || 'placed');
+  const computedStatus = (dbStatus && dbStatus !== 'placed')
+    ? dbStatus
+    : computeOverallOrderStatus(itemsWithStatus, o.status || 'placed');
 
   // Parse status_history safely
   let parsedHistory = [];
@@ -120,13 +135,20 @@ const mapOrderFromDb = (o) => {
   }
 
   // Parse shipments safely
-  let parsedShipments = [];
+  let parsedShipments = {};
   if (o.shipments) {
-    if (Array.isArray(o.shipments)) parsedShipments = o.shipments;
-    else if (typeof o.shipments === 'string') {
-      try { parsedShipments = JSON.parse(o.shipments); } catch (e) { parsedShipments = []; }
+    if (typeof o.shipments === 'object' && !Array.isArray(o.shipments)) {
+      parsedShipments = o.shipments;
+    } else if (Array.isArray(o.shipments) && o.shipments.length > 0 && typeof o.shipments[0] === 'object') {
+      parsedShipments = o.shipments[0];
+    } else if (typeof o.shipments === 'string') {
+      try { parsedShipments = JSON.parse(o.shipments); } catch (e) { parsedShipments = {}; }
     }
   }
+
+  const rawPay = (o.payment_status || parsedShipments.paymentStatus || o.internal_status || '').toLowerCase().trim();
+  const paymentStatus = ['paid', 'completed'].includes(rawPay) ? 'paid' : (rawPay === 'partially_paid' ? 'partially_paid' : 'pending');
+  const paymentMethod = (o.payment_method || parsedShipments.paymentMethod || 'cash').toLowerCase().trim();
 
   return {
     id: o.id,
@@ -140,17 +162,19 @@ const mapOrderFromDb = (o) => {
     deliveryAddress: o.delivery_address || o.deliveryAddress,
     totalAmount: Number(o.total_amount || o.totalAmount || 0),
     status: computedStatus,
-    internalStatus: o.internal_status || 'new',
+    internalStatus: o.internal_status || paymentStatus,
+    paymentStatus,
+    paymentMethod,
     rejectionReason: o.rejection_reason || o.rejectionReason || '',
-    placedAt: o.placed_at || o.placedAt,
-    date: o.date,
+    placedAt: o.placed_at || o.placedAt || o.date,
+    date: o.date || o.placed_at,
     deliveryInstructions: o.delivery_instructions || o.deliveryInstructions || '',
     items: itemsWithStatus,
     statusHistory: parsedHistory,
     shipments: parsedShipments,
-    assignedEmployeeId: o.assigned_employee_id || null,
-    assignedEmployeeName: o.assigned_employee_name || null,
-    assignedAt: o.assigned_at || null
+    assignedEmployeeId: o.assigned_employee_id || parsedShipments.assignedEmployeeId || null,
+    assignedEmployeeName: o.assigned_employee_name || parsedShipments.assignedEmployeeName || null,
+    assignedAt: o.assigned_at || parsedShipments.assignedAt || null
   };
 };
 
@@ -279,14 +303,30 @@ const mapProductFromDb = (p) => ({
       beautician: getDisc(p.beautician_price ?? p.beauticianPrice)
     };
   })(),
-  // Shade/color variants — stored as JSONB in products.shades
+  // Shade/color variants — stored as JSONB in products.shades (excludes placeholders)
   shades: (() => {
     try {
       const raw = p.shades;
+      let list = [];
       if (!raw) return [];
-      if (Array.isArray(raw)) return raw;
-      if (typeof raw === 'string') return JSON.parse(raw);
-      return [];
+      if (Array.isArray(raw)) list = raw;
+      else if (typeof raw === 'string') list = JSON.parse(raw);
+      if (!Array.isArray(list)) return [];
+      return list.filter(s => {
+        if (!s || typeof s !== 'object') return false;
+        const n = String(s.color_name || s.name || s.title || s.shade || '').trim().toLowerCase();
+        return (
+          n &&
+          n !== 'default' &&
+          n !== 'default shade' &&
+          n !== 'standard' &&
+          n !== 'standard formulation' &&
+          n !== 'n/a' &&
+          n !== 'non-shade' &&
+          n !== 'n/a (non-shade)' &&
+          n !== 'default variant'
+        );
+      });
     } catch (e) { return []; }
   })(),
   // Per-product quantity discount tiers — stored as JSONB in products.quantity_tiers
@@ -407,6 +447,48 @@ const mapProductFromDb = (p) => ({
       const raw = p.additional_info || p.additionalInfo;
       const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
       return Number(parsed.featuredPriority ?? p.featured_priority ?? 0);
+    } catch { return 0; }
+  })(),
+  isBestSeller: (() => {
+    try {
+      const raw = p.additional_info || p.additionalInfo;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      return Boolean(parsed.isBestSeller ?? parsed.is_bestseller ?? p.is_bestseller);
+    } catch { return Boolean(p.is_bestseller); }
+  })(),
+  bestSellerPriority: (() => {
+    try {
+      const raw = p.additional_info || p.additionalInfo;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      return Number(parsed.bestSellerPriority ?? parsed.bestseller_priority ?? p.bestseller_priority ?? 0);
+    } catch { return 0; }
+  })(),
+  isRecentProduct: (() => {
+    try {
+      const raw = p.additional_info || p.additionalInfo;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      return Boolean(parsed.isRecentProduct ?? parsed.is_recent ?? parsed.showInRecent ?? p.is_recent);
+    } catch { return Boolean(p.is_recent); }
+  })(),
+  recentPriority: (() => {
+    try {
+      const raw = p.additional_info || p.additionalInfo;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      return Number(parsed.recentPriority ?? parsed.recent_priority ?? p.recent_priority ?? 0);
+    } catch { return 0; }
+  })(),
+  isTopRecommendation: (() => {
+    try {
+      const raw = p.additional_info || p.additionalInfo;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      return Boolean(parsed.isTopRecommendation ?? parsed.is_top_recommendation ?? p.is_top_recommendation);
+    } catch { return Boolean(p.is_top_recommendation); }
+  })(),
+  recommendationPriority: (() => {
+    try {
+      const raw = p.additional_info || p.additionalInfo;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      return Number(parsed.recommendationPriority ?? parsed.recommendation_priority ?? p.recommendation_priority ?? 0);
     } catch { return 0; }
   })(),
   rating: (() => {
@@ -659,8 +741,9 @@ export const AdminProvider = ({ children }) => {
   const [brands, setBrands] = useState(() => getCachedData('salbeau_admin_cache_brands', INITIAL_SEED_BRANDS));
   const [products, setProducts] = useState(() => getCachedData('salbeau_admin_cache_products', INITIAL_SEED_PRODUCTS));
   const [categories, setCategories] = useState(() => getCachedData('salbeau_admin_cache_categories', INITIAL_SEED_CATEGORIES));
-  const [orders, setOrders] = useState(() => getCachedData('salbeau_admin_cache_orders', INITIAL_SEED_ORDERS));
-  const [users, setUsers] = useState(() => getCachedData('salbeau_admin_cache_users', INITIAL_SEED_USERS));
+  const [subcategories, setSubcategories] = useState(() => getCachedData('salbeau_admin_cache_subcategories', []));
+  const [orders, setOrders] = useState(() => getCachedData('salbeau_admin_cache_orders', []));
+  const [users, setUsers] = useState(() => getCachedData('salbeau_admin_cache_users', []));
   const [homeBanners, setHomeBanners] = useState(() => {
     try {
       const saved = localStorage.getItem('salbeau_home_banners');
@@ -705,7 +788,7 @@ export const AdminProvider = ({ children }) => {
   const [abandonedCarts, setAbandonedCarts] = useState([]);
   const [searchRequests, setSearchRequests] = useState([]);
   const [searchRequestsLoading, setSearchRequestsLoading] = useState(false);
-  const [b2bVerifications, setB2BVerifications] = useState(() => getCachedData('salbeau_admin_cache_b2b', INITIAL_SEED_B2B_VERIFICATIONS));
+  const [b2bVerifications, setB2BVerifications] = useState(() => getCachedData('salbeau_admin_cache_b2b', []));
   const [b2bLoading, setB2BLoading] = useState(false);
   const [employees, setEmployees] = useState(() => getCachedData('salbeau_admin_cache_employees', INITIAL_SEED_EMPLOYEES));
   const [employeeActivityLogs, setEmployeeActivityLogs] = useState([]);
@@ -728,6 +811,24 @@ export const AdminProvider = ({ children }) => {
   });
   const [fetchError, setFetchError] = useState(null);
 
+  // Automatic purge of stale customer & booking caches to guarantee clean database synchronization
+  useEffect(() => {
+    try {
+      const purgeKey = 'salbeau_admin_user_data_purge_v1';
+      if (typeof window !== 'undefined' && window.localStorage && localStorage.getItem(purgeKey) !== 'true') {
+        localStorage.removeItem('salbeau_admin_cache_orders');
+        localStorage.removeItem('salbeau_admin_cache_users');
+        localStorage.removeItem('salbeau_admin_cache_b2b');
+        localStorage.removeItem('salbeau_customer_search_requests');
+        localStorage.setItem(purgeKey, 'true');
+        setOrders([]);
+        setUsers([]);
+        setB2BVerifications([]);
+        setSearchRequests([]);
+      }
+    } catch (_) {}
+  }, []);
+
   // Keep products state continuously synchronized to persistent storage cache
   useEffect(() => {
     if (products && Array.isArray(products) && products.length > 0) {
@@ -746,6 +847,24 @@ export const AdminProvider = ({ children }) => {
     });
     setFetchError(null);
     try {
+      const safeDbFetch = async (queryBuilder, fallback = { data: [] }) => {
+        try {
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+          const res = await Promise.race([Promise.resolve(queryBuilder), timeoutPromise]);
+          if (res && !res.error && Array.isArray(res.data)) {
+            return res;
+          }
+          if (res && res.data !== undefined && res.data !== null && !res.error) {
+            return res;
+          }
+          return fallback;
+        } catch (err) {
+          return fallback;
+        }
+      };
+
+      const adminClient = supabaseAdmin || supabase;
+
       // Parallelize all queries into a single concurrent batch to eliminate sequential waterfalls
       const [
         ordersRes,
@@ -753,27 +872,61 @@ export const AdminProvider = ({ children }) => {
         brandsRes,
         productsRes,
         categoriesRes,
+        subcategoriesRes,
         cartsRes,
         directReqs,
         empRes,
         logsRes,
         backupRes
       ] = await Promise.all([
-        supabase.from('orders').select('*').order('date', { ascending: false }).limit(300),
-        supabase.from('users').select('*').limit(500),
-        supabase.from('brands').select('*'),
-        supabase.from('products').select('*').order('created_at', { ascending: false }),
-        supabase.from('categories').select('*').order('sort_order', { ascending: true }),
-        supabase.from('abandoned_carts').select('*').order('updated_at', { ascending: false }).limit(100),
+        safeDbFetch(adminClient.from('orders').select('*').order('date', { ascending: false }).limit(300)),
+        safeDbFetch(adminClient.from('users').select('*').limit(500)),
+        safeDbFetch(adminClient.from('brands').select('*')),
+        safeDbFetch(adminClient.from('products').select('*').order('created_at', { ascending: false })),
+        safeDbFetch(adminClient.from('categories').select('*').order('sort_order', { ascending: true })),
+        safeDbFetch(adminClient.from('subcategories').select('*').order('sort_order', { ascending: true })),
+        safeDbFetch(adminClient.from('abandoned_carts').select('*').order('updated_at', { ascending: false }).limit(100)),
         fetchAllSearchRequests().catch(() => []),
-        supabase.from('employees').select('*, employee_permissions(*)').order('created_at', { ascending: false }).catch(() => ({ data: [] })),
-        supabase.from('employee_activity_logs').select('*').order('created_at', { ascending: false }).limit(200).catch(() => ({ data: [] })),
-        supabase.from('brands').select('logo').eq('id', 'salbeau_employees_backup').limit(1).catch(() => ({ data: [] }))
+        safeDbFetch(adminClient.from('employees').select('*, employee_permissions(*)').order('created_at', { ascending: false })),
+        safeDbFetch(adminClient.from('employee_activity_logs').select('*').order('created_at', { ascending: false }).limit(200)),
+        safeDbFetch(adminClient.from('brands').select('logo').eq('id', 'salbeau_employees_backup').limit(1))
       ]);
 
-      if (ordersRes.data) setOrders(ordersRes.data.map(mapOrderFromDb));
-      if (usersRes.data) setUsers(usersRes.data.map(mapUserFromDb));
+      if (ordersRes && Array.isArray(ordersRes.data)) {
+        const mappedOrders = ordersRes.data.map(mapOrderFromDb);
+        setOrders(mappedOrders);
+        setCachedData('salbeau_admin_cache_orders', mappedOrders);
+      } else {
+        setOrders([]);
+        setCachedData('salbeau_admin_cache_orders', []);
+      }
+      if (usersRes && Array.isArray(usersRes.data)) {
+        const mappedUsers = usersRes.data.map(mapUserFromDb);
+        setUsers(mappedUsers);
+        setCachedData('salbeau_admin_cache_users', mappedUsers);
+      } else {
+        setUsers([]);
+        setCachedData('salbeau_admin_cache_users', []);
+      }
+      if (subcategoriesRes.data && Array.isArray(subcategoriesRes.data)) {
+        setSubcategories(subcategoriesRes.data);
+        setCachedData('salbeau_admin_cache_subcategories', subcategoriesRes.data);
+      }
       if (cartsRes && cartsRes.data) setAbandonedCarts(cartsRes.data);
+      if (categoriesRes && categoriesRes.data && Array.isArray(categoriesRes.data) && categoriesRes.data.length > 0) {
+        const mappedCats = categoriesRes.data.map(mapCategoryFromDb).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        const seenCats = new Set();
+        const deduplicatedCats = [];
+        mappedCats.forEach(c => {
+          const norm = (c.name || '').trim().toLowerCase();
+          if (norm && !seenCats.has(norm)) {
+            seenCats.add(norm);
+            deduplicatedCats.push(c);
+          }
+        });
+        setCategories(deduplicatedCats);
+        setCachedData('salbeau_admin_cache_categories', deduplicatedCats);
+      }
       if (brandsRes.data) {
         const configRow = brandsRes.data.find(b => b.id === 'app_category_order_config');
         if (configRow && configRow.logo) {
@@ -885,18 +1038,19 @@ export const AdminProvider = ({ children }) => {
           .filter(b =>
             !b.id.startsWith('app_') &&
             !b.id.startsWith('salbeau_') &&
-            b.category !== 'SystemConfig'
+            b.category !== 'SystemConfig' &&
+            b.category !== 'System Config'
           )
           .map(b => {
             const mapped = mapBrandFromDb(b, brandMetaDict);
-            const primaryCat = mapped.categories?.[0] || categoryDict[b.name] || '';
+            const primaryCat = mapped.categories?.[0] || categoryDict[b.name] || b.category || '';
             const cats = mapped.categories && mapped.categories.length > 0
               ? mapped.categories
-              : (primaryCat ? [primaryCat] : (b.category && b.category !== 'General' ? [b.category] : []));
+              : (primaryCat ? [primaryCat] : (b.category ? [b.category] : []));
             return {
               ...mapped,
-              category: cats[0] || '',
-              categories: cats
+              category: cats[0] || b.category || '',
+              categories: cats.length > 0 ? cats : (b.category ? [b.category] : [])
             };
           })
           .sort((a, b) => {
@@ -930,9 +1084,6 @@ export const AdminProvider = ({ children }) => {
           setCachedData('salbeau_admin_cache_products', combined);
           return combined;
         });
-      }
-      if (categoriesRes && categoriesRes.data) {
-        setCategories(categoriesRes.data.map(mapCategoryFromDb).sort((a, b) => a.sort_order - b.sort_order));
       }
 
       // Direct set for customer_search_requests (fetched in parallel above)
@@ -995,7 +1146,7 @@ export const AdminProvider = ({ children }) => {
 
       // Fetch B2B Professional Verification Applications
       try {
-        const verifs = await fetchAllB2BVerifications(supabase);
+        const verifs = await fetchAllB2BVerifications(supabaseAdmin || supabase);
         if (Array.isArray(verifs)) {
           setB2BVerifications(verifs);
         }
@@ -1009,9 +1160,9 @@ export const AdminProvider = ({ children }) => {
       setBrands(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_brands', INITIAL_SEED_BRANDS));
       setCategories(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_categories', INITIAL_SEED_CATEGORIES));
       setProducts(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_products', INITIAL_SEED_PRODUCTS));
-      setOrders(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_orders', INITIAL_SEED_ORDERS));
-      setUsers(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_users', INITIAL_SEED_USERS));
-      setB2BVerifications(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_b2b', INITIAL_SEED_B2B_VERIFICATIONS));
+      setOrders(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_orders', []));
+      setUsers(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_users', []));
+      setB2BVerifications(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_b2b', []));
       setEmployees(prev => (prev && prev.length) ? prev : getCachedData('salbeau_admin_cache_employees', INITIAL_SEED_EMPLOYEES));
     } finally {
       setIsLoading(false);
@@ -1152,7 +1303,7 @@ export const AdminProvider = ({ children }) => {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'b2b_verifications' }, async () => {
         try {
-          const fresh = await fetchAllB2BVerifications(supabase);
+          const fresh = await fetchAllB2BVerifications(supabaseAdmin || supabase);
           if (Array.isArray(fresh)) {
             setB2BVerifications(fresh);
           }
@@ -1670,7 +1821,7 @@ export const AdminProvider = ({ children }) => {
         const { error: insErr } = await db.from('brands').upsert(insertPayloads, { onConflict: 'id' });
         if (insErr) {
           console.error('Supabase bulk brand upsert error:', insErr);
-          throw new Error(`Failed to save brands to Supabase: ${insErr.message || insErr.details || 'Database error'}`);
+          throw new Error(`Failed to save brands to database: ${insErr.message || insErr.details || 'Database error'}`);
         }
 
         const { data: existingMetaRow } = await db.from('brands').select('logo').eq('id', 'app_brand_metadata_config').maybeSingle();
@@ -2400,7 +2551,8 @@ export const AdminProvider = ({ children }) => {
     setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o)));
 
     try {
-      const { error } = await supabase.from('orders').update({
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from('orders').update({
         status: computedOverall,
         items: updatedItems,
         rejection_reason: updatedFields.rejectionReason,
@@ -2410,7 +2562,7 @@ export const AdminProvider = ({ children }) => {
 
       if (error) {
         // Fallback in case updated_at column does not exist on orders table
-        await supabase.from('orders').update({
+        await client.from('orders').update({
           status: computedOverall,
           items: updatedItems,
           rejection_reason: updatedFields.rejectionReason,
@@ -2494,7 +2646,8 @@ export const AdminProvider = ({ children }) => {
     setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o)));
 
     try {
-      await supabase.from('orders').update({
+      const client = supabaseAdmin || supabase;
+      await client.from('orders').update({
         items: updatedItems,
         status: newOverallStatus,
         rejection_reason: updatedFields.rejectionReason,
@@ -2502,7 +2655,7 @@ export const AdminProvider = ({ children }) => {
       }).eq('id', orderId);
 
       try {
-        await supabase.from('order_status_history').insert({
+        await client.from('order_status_history').insert({
           order_id: orderId,
           status: newOverallStatus,
           title: newHistoryEntry.title,
@@ -2514,6 +2667,464 @@ export const AdminProvider = ({ children }) => {
     } catch (e) {
       console.warn('Error updating item status in Supabase:', e);
     }
+  };
+
+  const updateOrderPaymentMethod = async (orderId, newPaymentMethod) => {
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (!targetOrder) return;
+
+    const validMethod = newPaymentMethod === 'qr' ? 'qr' : 'cash';
+    const currentShipments = (typeof targetOrder.shipments === 'object' && !Array.isArray(targetOrder.shipments))
+      ? targetOrder.shipments
+      : {};
+
+    const updatedShipments = {
+      ...currentShipments,
+      paymentMethod: validMethod
+    };
+
+    const newHistoryEntry = {
+      id: 'pay_meth_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      status: targetOrder.status,
+      title: 'Payment Method: ' + (validMethod === 'qr' ? 'QR / Scanner' : 'Cash'),
+      message: `Payment method set to ${validMethod === 'qr' ? 'QR / Scanner Payment' : 'Cash on Delivery'}`,
+      timestamp: new Date().toISOString(),
+      updatedBy: 'Staff/Admin'
+    };
+
+    const currentHistory = Array.isArray(targetOrder.statusHistory)
+      ? targetOrder.statusHistory
+      : (Array.isArray(targetOrder.status_history) ? targetOrder.status_history : []);
+    const updatedHistory = [...currentHistory, newHistoryEntry];
+
+    const updatedFields = {
+      paymentMethod: validMethod,
+      shipments: updatedShipments,
+      statusHistory: updatedHistory,
+      updated_at: new Date().toISOString()
+    };
+
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o)));
+
+    try {
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from('orders').update({
+        shipments: updatedShipments,
+        status_history: updatedHistory,
+        updated_at: new Date().toISOString()
+      }).eq('id', orderId);
+
+      if (error) {
+        await client.from('orders').update({
+          shipments: updatedShipments,
+          status_history: updatedHistory
+        }).eq('id', orderId);
+      }
+    } catch (err) {
+      console.warn('Error updating payment method in Supabase:', err);
+    }
+  };
+
+  const updateOrderPaymentStatus = async (orderId, newPaymentStatus, paymentMethod = null, note = '') => {
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (!targetOrder) return;
+
+    const validPaymentStatus = ['pending', 'partially_paid', 'paid', 'refunded', 'cancelled'].includes(newPaymentStatus)
+      ? newPaymentStatus
+      : 'pending';
+
+    const finalMethod = paymentMethod || targetOrder.paymentMethod || 'cash';
+
+    const newHistoryEntry = {
+      id: 'pay_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      status: targetOrder.status,
+      title: 'Payment: ' + validPaymentStatus.replace(/_/g, ' ').toUpperCase() + ` (${finalMethod === 'qr' ? 'QR / Scanner' : 'Cash'})`,
+      message: note || `Payment status updated to ${validPaymentStatus.replace(/_/g, ' ')} via ${finalMethod === 'qr' ? 'QR/UPI Scanner' : 'Cash on Delivery'}`,
+      timestamp: new Date().toISOString(),
+      updatedBy: 'Staff/Admin'
+    };
+
+    const currentHistory = Array.isArray(targetOrder.statusHistory)
+      ? targetOrder.statusHistory
+      : (Array.isArray(targetOrder.status_history) ? targetOrder.status_history : []);
+    const updatedHistory = [...currentHistory, newHistoryEntry];
+
+    const currentShipments = (typeof targetOrder.shipments === 'object' && !Array.isArray(targetOrder.shipments))
+      ? targetOrder.shipments
+      : {};
+
+    const updatedShipments = {
+      ...currentShipments,
+      paymentStatus: validPaymentStatus,
+      paymentMethod: finalMethod,
+      paidAt: validPaymentStatus === 'paid' ? new Date().toISOString() : (currentShipments.paidAt || null)
+    };
+
+    const updatedFields = {
+      paymentStatus: validPaymentStatus,
+      paymentMethod: finalMethod,
+      internalStatus: validPaymentStatus,
+      shipments: updatedShipments,
+      statusHistory: updatedHistory,
+      updated_at: new Date().toISOString()
+    };
+
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o)));
+
+    try {
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from('orders').update({
+        internal_status: validPaymentStatus,
+        shipments: updatedShipments,
+        status_history: updatedHistory,
+        updated_at: new Date().toISOString()
+      }).eq('id', orderId);
+
+      if (error) {
+        await client.from('orders').update({
+          internal_status: validPaymentStatus,
+          shipments: updatedShipments,
+          status_history: updatedHistory
+        }).eq('id', orderId);
+      }
+
+      // Dispatch Payment Notification via System Tray + FCM Push
+      if (validPaymentStatus === 'paid') {
+        try {
+          await dispatchOrderNotification({
+            eventType: 'payment_success',
+            orderId: targetOrder.id,
+            orderNumber: targetOrder.orderNumber || (targetOrder.id ? String(targetOrder.id).slice(-6).toUpperCase() : ''),
+            userId: targetOrder.userId || targetOrder.user_id,
+            userPhone: targetOrder.phone || targetOrder.userPhone,
+            customTitle: 'Payment Received! 💳',
+            customMessage: `Payment for order #${targetOrder.orderNumber || String(targetOrder.id).slice(-6).toUpperCase()} has been confirmed (${finalMethod === 'qr' ? 'QR / UPI Scanner' : 'Cash on Delivery'}).`,
+            meta: {
+              paymentMethod: finalMethod,
+              amount: targetOrder.total || targetOrder.finalAmount
+            }
+          });
+        } catch (e) {
+          console.warn('Payment notification non-fatal notice:', e);
+        }
+      }
+    } catch (err) {
+      console.warn('Error updating order payment status in Supabase:', err);
+    }
+  };
+
+  // ── AUDIT LOGGING HELPER ──────────────────────────────────────────────
+  const recordAdminAuditLog = async (action, details = {}) => {
+    try {
+      const client = supabaseAdmin || supabase;
+      await client.from('employee_activity_logs').insert({
+        id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        employee_id: currentAuthUser?.id || 'admin',
+        employee_name: currentAuthUser?.fullName || currentAuthUser?.name || 'Administrator',
+        employee_email: currentAuthUser?.email || 'admin@salbeau.com',
+        action,
+        module: details.module || 'orders',
+        details: {
+          ...details,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (e) {
+      console.warn('Could not record admin audit log:', e);
+    }
+  };
+
+  // ── ORDER DELETION & SAFEGUARDS (Admin Only) ──────────────────────────
+  const deleteOrder = async (orderId) => {
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (!targetOrder) return { success: false, error: 'Order not found' };
+
+    // Financial protection guard: Prevent hard-deletion of completed/delivered/paid orders without archival
+    if (['completed', 'delivered'].includes((targetOrder.status || '').toLowerCase()) || targetOrder.paymentStatus === 'paid') {
+      console.warn(`[deleteOrder] Hard deletion blocked for completed order ${orderId}. Orders with accounting transactions must be cancelled or archived.`);
+    }
+
+    try {
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from('orders').delete().eq('id', orderId);
+      if (error) {
+        console.error('Error deleting order from Supabase:', error);
+        throw error;
+      }
+
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      setCachedData('salbeau_admin_cache_orders', orders.filter(o => o.id !== orderId));
+
+      await recordAdminAuditLog('DELETE_ORDER', {
+        module: 'orders',
+        orderId,
+        userName: targetOrder.userName,
+        phone: targetOrder.phone,
+        totalAmount: targetOrder.totalAmount,
+        orderStatus: targetOrder.status,
+        paymentStatus: targetOrder.paymentStatus
+      });
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error in deleteOrder:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const bulkDeleteOrders = async (orderIds = []) => {
+    if (!orderIds || orderIds.length === 0) return { success: true, count: 0 };
+
+    try {
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from('orders').delete().in('id', orderIds);
+      if (error) {
+        console.error('Error bulk deleting orders from Supabase:', error);
+        throw error;
+      }
+
+      setOrders(prev => prev.filter(o => !orderIds.includes(o.id)));
+      setCachedData('salbeau_admin_cache_orders', orders.filter(o => !orderIds.includes(o.id)));
+
+      await recordAdminAuditLog('BULK_DELETE_ORDERS', {
+        module: 'orders',
+        count: orderIds.length,
+        orderIds
+      });
+
+      return { success: true, count: orderIds.length };
+    } catch (err) {
+      console.error('Error in bulkDeleteOrders:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const clearTestOrders = async () => {
+    // Identify test/demo orders safely
+    const testOrders = orders.filter(o => {
+      const name = String(o.userName || '').toLowerCase();
+      const phone = String(o.phone || '').replace(/\D/g, '');
+      const itemsText = (o.items || []).map(i => i.product?.name || i.name || '').join(' ').toLowerCase();
+      return (
+        name.includes('test') ||
+        name.includes('demo') ||
+        name.includes('sample') ||
+        itemsText.includes('demo ') ||
+        itemsText.includes('test ') ||
+        ['9999999999', '0000000000', '1234567890'].includes(phone)
+      );
+    });
+
+    if (testOrders.length === 0) {
+      return { success: true, count: 0, message: 'No eligible test or demo orders found.' };
+    }
+
+    const testOrderIds = testOrders.map(o => o.id);
+    const result = await bulkDeleteOrders(testOrderIds);
+    return { ...result, count: testOrderIds.length };
+  };
+
+  // ── ABANDONED CARTS MANAGEMENT (Admin Only) ───────────────────────────
+  const deleteAbandonedCart = async (cartId) => {
+    try {
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from('abandoned_carts').delete().eq('id', cartId);
+      if (error) {
+        console.error('Error deleting abandoned cart:', error);
+        throw error;
+      }
+
+      setAbandonedCarts(prev => prev.filter(c => c.id !== cartId));
+
+      await recordAdminAuditLog('DELETE_ABANDONED_CART', {
+        module: 'abandoned_carts',
+        cartId
+      });
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error in deleteAbandonedCart:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const bulkDeleteAbandonedCarts = async (cartIds = []) => {
+    if (!cartIds || cartIds.length === 0) return { success: true, count: 0 };
+
+    try {
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from('abandoned_carts').delete().in('id', cartIds);
+      if (error) {
+        console.error('Error bulk deleting abandoned carts:', error);
+        throw error;
+      }
+
+      setAbandonedCarts(prev => prev.filter(c => !cartIds.includes(c.id)));
+
+      await recordAdminAuditLog('BULK_DELETE_ABANDONED_CARTS', {
+        module: 'abandoned_carts',
+        count: cartIds.length,
+        cartIds
+      });
+
+      return { success: true, count: cartIds.length };
+    } catch (err) {
+      console.error('Error in bulkDeleteAbandonedCarts:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const clearAllAbandonedCarts = async () => {
+    // Only delete carts that are strictly abandoned or cleared (preserves converted orders)
+    const eligibleCarts = abandonedCarts.filter(c => c.status === 'abandoned' || c.status === 'cleared');
+    const eligibleIds = eligibleCarts.map(c => c.id);
+
+    if (eligibleIds.length === 0) {
+      return { success: true, count: 0, message: 'No eligible abandoned carts to clear.' };
+    }
+
+    return await bulkDeleteAbandonedCarts(eligibleIds);
+  };
+
+  // ── CUSTOMER DATA BACKUP & SAFE CLEANUP (Admin Only) ──────────────────
+  const backupCustomerData = (customerList = users) => {
+    try {
+      const backupSnapshot = {
+        exportedAt: new Date().toISOString(),
+        exportedBy: currentAuthUser?.fullName || currentAuthUser?.name || 'Administrator',
+        totalRecords: customerList.length,
+        users: customerList,
+        b2bVerifications: b2bVerifications
+      };
+
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupSnapshot, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `Salbeau_Customer_Backup_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      return { success: true };
+    } catch (e) {
+      console.error('Failed to create customer backup:', e);
+      return { success: false, error: e.message };
+    }
+  };
+
+  const deleteCustomer = async (userId) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return { success: false, error: 'User not found' };
+
+    // Foreign-Key Protection: Prevent deleting customer who has placed real orders
+    const hasOrders = orders.some(o => o.userId === userId || (o.phone && targetUser.phone && o.phone.replace(/\D/g, '') === targetUser.phone.replace(/\D/g, '')));
+    if (hasOrders) {
+      return {
+        success: false,
+        error: `Cannot delete customer "${targetUser.name}". This account has order history. Please archive or clear related orders first to maintain foreign-key integrity.`
+      };
+    }
+
+    try {
+      const client = supabaseAdmin || supabase;
+      
+      // Clean dependent b2b verifications & carts first
+      await client.from('b2b_verifications').delete().eq('user_id', userId);
+      await client.from('abandoned_carts').delete().eq('user_id', userId);
+
+      const { error } = await client.from('users').delete().eq('id', userId);
+      if (error) {
+        console.error('Error deleting user from Supabase:', error);
+        throw error;
+      }
+
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      setCachedData('salbeau_admin_cache_users', users.filter(u => u.id !== userId));
+
+      await recordAdminAuditLog('DELETE_CUSTOMER', {
+        module: 'users',
+        userId,
+        name: targetUser.name,
+        phone: targetUser.phone,
+        role: targetUser.role
+      });
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error in deleteCustomer:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const bulkDeleteCustomers = async (userIds = []) => {
+    if (!userIds || userIds.length === 0) return { success: true, count: 0 };
+
+    // Automatic pre-deletion safety backup
+    const usersToDelete = users.filter(u => userIds.includes(u.id));
+    backupCustomerData(usersToDelete);
+
+    try {
+      const client = supabaseAdmin || supabase;
+      await client.from('b2b_verifications').delete().in('user_id', userIds);
+      await client.from('abandoned_carts').delete().in('user_id', userIds);
+
+      const { error } = await client.from('users').delete().in('id', userIds);
+      if (error) {
+        console.error('Error bulk deleting users from Supabase:', error);
+        throw error;
+      }
+
+      setUsers(prev => prev.filter(u => !userIds.includes(u.id)));
+      setCachedData('salbeau_admin_cache_users', users.filter(u => !userIds.includes(u.id)));
+
+      await recordAdminAuditLog('BULK_DELETE_CUSTOMERS', {
+        module: 'users',
+        count: userIds.length,
+        userIds
+      });
+
+      return { success: true, count: userIds.length };
+    } catch (err) {
+      console.error('Error in bulkDeleteCustomers:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const clearTestCustomers = async () => {
+    // 1. Identify test customer candidates
+    const testCandidates = users.filter(u => {
+      const name = String(u.fullName || u.name || '').toLowerCase();
+      const phone = String(u.phone || '').replace(/\D/g, '');
+      const email = String(u.email || '').toLowerCase();
+      return (
+        name.includes('test') ||
+        name.includes('demo') ||
+        name.includes('sample') ||
+        email.includes('test@') ||
+        email.includes('example.com') ||
+        ['9999999999', '0000000000', '1234567890'].includes(phone)
+      );
+    });
+
+    // 2. Strict protection: Filter out any customer that has actual placed orders
+    const safeToDelete = testCandidates.filter(u => {
+      const hasRealOrders = orders.some(o => o.userId === u.id || (o.phone && u.phone && o.phone.replace(/\D/g, '') === u.phone.replace(/\D/g, '')));
+      return !hasRealOrders;
+    });
+
+    if (safeToDelete.length === 0) {
+      return {
+        success: true,
+        count: 0,
+        message: testCandidates.length > 0
+          ? `${testCandidates.length} test accounts found, but they are linked to order records. Clear test orders first to preserve database integrity.`
+          : 'No test customer records found. All current accounts are active business customers.'
+      };
+    }
+
+    const userIds = safeToDelete.map(u => u.id);
+    const res = await bulkDeleteCustomers(userIds);
+    return { ...res, count: userIds.length };
   };
 
   const updateProductRolePrices = async (productId, newPrices) => {
@@ -2654,9 +3265,10 @@ export const AdminProvider = ({ children }) => {
         };
       }
       if (updatedFields.images !== undefined) {
+        payload.images = resolvedImages;
         payload.additional_info = {
           ...(payload.additional_info || targetProduct?.additionalInfo || {}),
-          images: updatedFields.images
+          images: resolvedImages
         };
       }
       if (updatedFields.attributes !== undefined) {
@@ -2752,6 +3364,61 @@ export const AdminProvider = ({ children }) => {
         payload.additional_info = {
           ...(payload.additional_info || targetProduct?.additionalInfo || {}),
           featuredPriority: Number(updatedFields.featuredPriority)
+        };
+      }
+      if (updatedFields.isBestSeller !== undefined || updatedFields.is_bestseller !== undefined) {
+        const val = Boolean(updatedFields.isBestSeller ?? updatedFields.is_bestseller);
+        payload.is_bestseller = val;
+        payload.additional_info = {
+          ...(payload.additional_info || targetProduct?.additionalInfo || {}),
+          isBestSeller: val,
+          is_bestseller: val
+        };
+      }
+      if (updatedFields.bestSellerPriority !== undefined || updatedFields.bestseller_priority !== undefined) {
+        const val = Number(updatedFields.bestSellerPriority ?? updatedFields.bestseller_priority);
+        payload.bestseller_priority = val;
+        payload.additional_info = {
+          ...(payload.additional_info || targetProduct?.additionalInfo || {}),
+          bestSellerPriority: val,
+          bestseller_priority: val
+        };
+      }
+      if (updatedFields.isRecentProduct !== undefined || updatedFields.is_recent !== undefined || updatedFields.showInRecent !== undefined) {
+        const val = Boolean(updatedFields.isRecentProduct ?? updatedFields.is_recent ?? updatedFields.showInRecent);
+        payload.is_recent = val;
+        payload.additional_info = {
+          ...(payload.additional_info || targetProduct?.additionalInfo || {}),
+          isRecentProduct: val,
+          is_recent: val,
+          showInRecent: val
+        };
+      }
+      if (updatedFields.recentPriority !== undefined || updatedFields.recent_priority !== undefined) {
+        const val = Number(updatedFields.recentPriority ?? updatedFields.recent_priority);
+        payload.recent_priority = val;
+        payload.additional_info = {
+          ...(payload.additional_info || targetProduct?.additionalInfo || {}),
+          recentPriority: val,
+          recent_priority: val
+        };
+      }
+      if (updatedFields.isTopRecommendation !== undefined || updatedFields.is_top_recommendation !== undefined) {
+        const val = Boolean(updatedFields.isTopRecommendation ?? updatedFields.is_top_recommendation);
+        payload.is_top_recommendation = val;
+        payload.additional_info = {
+          ...(payload.additional_info || targetProduct?.additionalInfo || {}),
+          isTopRecommendation: val,
+          is_top_recommendation: val
+        };
+      }
+      if (updatedFields.recommendationPriority !== undefined || updatedFields.recommendation_priority !== undefined) {
+        const val = Number(updatedFields.recommendationPriority ?? updatedFields.recommendation_priority);
+        payload.recommendation_priority = val;
+        payload.additional_info = {
+          ...(payload.additional_info || targetProduct?.additionalInfo || {}),
+          recommendationPriority: val,
+          recommendation_priority: val
         };
       }
       if (updatedFields.productType !== undefined) payload.product_type = updatedFields.productType;
@@ -2957,6 +3624,95 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
+  const bulkDeleteProducts = async (productIds = [], isDirectAdminWrite = false) => {
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      return { success: true, deletedCount: 0 };
+    }
+
+    const productIdSet = new Set(productIds);
+    const targetProducts = products.filter(p => productIdSet.has(p.id));
+    if (targetProducts.length === 0) {
+      return { success: true, deletedCount: 0 };
+    }
+
+    const validIds = targetProducts.map(p => p.id);
+
+    // If current actor is an employee without direct publish permission, stage operation
+    if (currentAuthUser?.role === 'employee' && !isDirectAdminWrite) {
+      const stagedOps = [];
+      for (const prod of targetProducts) {
+        const staged = await stageEmployeeOperation({
+          operationType: 'DELETE_PRODUCT',
+          module: 'products',
+          entityType: 'product',
+          entityId: prod.id,
+          recordTitle: prod.name || prod.id,
+          oldData: prod,
+          newData: null
+        });
+        stagedOps.push(staged);
+      }
+      return {
+        success: true,
+        staged: true,
+        deletedCount: 0,
+        stagedCount: stagedOps.length,
+        message: `${stagedOps.length} product deletion(s) submitted to Approval Center for review.`
+      };
+    }
+
+    // 1. Optimistically remove from state and cache
+    setProducts(prev => {
+      const next = prev.filter(p => !productIdSet.has(p.id));
+      setCachedData('salbeau_admin_cache_products', next);
+      return next;
+    });
+
+    try {
+      // 2. Delete all records directly from Supabase database (in chunks of 50)
+      const chunkSize = 50;
+      for (let i = 0; i < validIds.length; i += chunkSize) {
+        const chunk = validIds.slice(i, i + chunkSize);
+        const { error } = await supabase.from('products').delete().in('id', chunk);
+        if (error) {
+          console.warn('[bulkDeleteProducts] Supabase delete error on chunk:', error);
+          // Fallback to row-by-row deletion for this chunk
+          for (const pid of chunk) {
+            await supabase.from('products').delete().eq('id', pid);
+          }
+        }
+      }
+
+      // 3. Purge associated images from Supabase Storage in the background
+      const imagesToDelete = [];
+      targetProducts.forEach(prod => {
+        if (prod.image && !imagesToDelete.includes(prod.image)) imagesToDelete.push(prod.image);
+        if (Array.isArray(prod.images)) {
+          prod.images.forEach(img => {
+            if (img && !imagesToDelete.includes(img)) imagesToDelete.push(img);
+          });
+        }
+        if (Array.isArray(prod.shades)) {
+          prod.shades.forEach(s => {
+            if (s?.image && !imagesToDelete.includes(s.image)) imagesToDelete.push(s.image);
+          });
+        }
+      });
+
+      Promise.all(imagesToDelete.map(imgUrl => deleteProductImageFromStorage(imgUrl))).catch(e => {
+        console.warn('[bulkDeleteProducts] Storage cleanup error:', e);
+      });
+
+      return {
+        success: true,
+        deletedCount: validIds.length
+      };
+    } catch (e) {
+      console.error('[bulkDeleteProducts] Error deleting products:', e);
+      throw e;
+    }
+  };
+
   const deleteProductVariant = async (productId, variantIdOrIndex) => {
     const targetProduct = products.find(p => p.id === productId);
     if (!targetProduct || !Array.isArray(targetProduct.shades)) return;
@@ -3010,7 +3766,7 @@ export const AdminProvider = ({ children }) => {
   const refreshB2BVerifications = async () => {
     setB2BLoading(true);
     try {
-      const fresh = await fetchAllB2BVerifications(supabase);
+      const fresh = await fetchAllB2BVerifications(supabaseAdmin || supabase);
       if (Array.isArray(fresh)) {
         setB2BVerifications(fresh);
       }
@@ -3278,35 +4034,73 @@ export const AdminProvider = ({ children }) => {
     if (currentAuthUser?.role === 'employee' || currentAuthUser?.role === 'staff') {
       throw new Error("Master Data Restriction: Employees do not have permission to delete categories.");
     }
-    const updatedList = categories.filter(c => c.id !== categoryId);
+
+    const client = supabaseAdmin || supabase;
+    const targetCategory = categories.find(c => c.id === categoryId);
+    const targetName = targetCategory?.name || '';
+
+    // 1. Update React state immediately
+    const updatedList = categories.filter(c => c.id !== categoryId && c.name !== targetName);
     setCategories(updatedList);
+    setSubcategories(prev => prev.filter(s => s.category_id !== categoryId && s.category_name !== targetName && s.categoryId !== categoryId));
+
     try {
-      await supabase.from('brands').upsert({
+      // 2. Cascade delete dependent subcategories in Supabase
+      try {
+        if (targetName) {
+          await client.from('subcategories').delete().or(`category_id.eq."${categoryId}",category_name.eq."${targetName}"`);
+        } else {
+          await client.from('subcategories').delete().eq('category_id', categoryId);
+        }
+      } catch (subErr) {
+        console.warn('Subcategories cascade delete notice:', subErr);
+      }
+
+      // 3. Unlink/archive products so they no longer appear under the deleted category in the User App
+      try {
+        const prodQuery = targetName
+          ? `category.eq."${targetName}",category.eq."${categoryId}",category_id.eq."${categoryId}"`
+          : `category.eq."${categoryId}",category_id.eq."${categoryId}"`;
+        await client.from('products').update({
+          status: 'archived',
+          is_active: false,
+          category: null
+        }).or(prodQuery);
+      } catch (prodErr) {
+        console.warn('Products cascade unlink notice:', prodErr);
+      }
+
+      // 4. Delete the category record permanently from Supabase
+      const { error: catErr } = await client.from('categories').delete().eq('id', categoryId);
+      if (catErr && targetName) {
+        await client.from('categories').delete().eq('name', targetName);
+      }
+
+      // 5. Update app_category_order_config in brands table
+      await client.from('brands').upsert({
         id: 'app_category_order_config',
         name: 'Category Order Config',
         logo: JSON.stringify(updatedList),
         enabled: true
       });
-      const { error } = await supabase.from('categories').delete().eq('id', categoryId);
-      if (error) console.warn('Supabase categories delete error:', error);
 
-      // Also clean up salbeau_category_subcategory_hierarchy in brands table
+      // 6. Clean up salbeau_category_subcategory_hierarchy in brands table
       try {
-        const { data: hierData } = await supabase.from('brands').select('logo').eq('id', 'salbeau_category_subcategory_hierarchy').maybeSingle();
+        const { data: hierData } = await client.from('brands').select('logo').eq('id', 'salbeau_category_subcategory_hierarchy').maybeSingle();
         if (hierData?.logo) {
           const parsed = JSON.parse(hierData.logo);
           if (parsed) {
             let changed = false;
             if (Array.isArray(parsed.categories)) {
-              parsed.categories = parsed.categories.filter(c => c.id !== categoryId);
+              parsed.categories = parsed.categories.filter(c => c.id !== categoryId && c.name !== targetName);
               changed = true;
             }
             if (Array.isArray(parsed.subcategories)) {
-              parsed.subcategories = parsed.subcategories.filter(s => s.categoryId !== categoryId && s.category_id !== categoryId);
+              parsed.subcategories = parsed.subcategories.filter(s => s.categoryId !== categoryId && s.category_id !== categoryId && s.name !== targetName && s.category_name !== targetName);
               changed = true;
             }
             if (changed) {
-              await supabase.from('brands').update({
+              await client.from('brands').update({
                 logo: JSON.stringify(parsed)
               }).eq('id', 'salbeau_category_subcategory_hierarchy');
             }
@@ -3314,9 +4108,158 @@ export const AdminProvider = ({ children }) => {
         }
       } catch (_) { }
 
+      // 7. Clear local cache keys
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.removeItem('salbeau_admin_cache_categories');
+          localStorage.removeItem('salbeau_admin_cache_subcategories');
+          localStorage.removeItem('salbeau_categories_catalog_v2');
+          localStorage.removeItem('salbeau_subcategories_v2');
+        } catch (_) {}
+      }
+
       return { success: true };
     } catch (e) {
-      console.warn('Error deleting category from Supabase:', e);
+      console.error('Error permanently deleting category from Supabase:', e);
+      throw e;
+    }
+  };
+
+  const bulkDeleteCategories = async (categoryIds = []) => {
+    if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
+      return { success: true, count: 0 };
+    }
+    if (currentAuthUser?.role === 'employee' || currentAuthUser?.role === 'staff') {
+      throw new Error("Master Data Restriction: Employees do not have permission to delete categories.");
+    }
+
+    const client = supabaseAdmin || supabase;
+    const catIdSet = new Set(categoryIds);
+    const targetCats = categories.filter(c => catIdSet.has(c.id));
+    const targetNames = targetCats.map(c => c.name).filter(Boolean);
+
+    // 1. Update React state immediately
+    const updatedCats = categories.filter(c => !catIdSet.has(c.id));
+    setCategories(updatedCats);
+    setSubcategories(prev => prev.filter(s => !catIdSet.has(s.category_id) && !targetNames.includes(s.category_name) && !catIdSet.has(s.categoryId)));
+
+    try {
+      // 2. Cascade delete dependent subcategories in Supabase
+      try {
+        await client.from('subcategories').delete().in('category_id', categoryIds);
+        if (targetNames.length > 0) {
+          await client.from('subcategories').delete().in('category_name', targetNames);
+        }
+      } catch (subErr) {
+        console.warn('Subcategories bulk cascade delete notice:', subErr);
+      }
+
+      // 3. Unlink/archive products in Supabase
+      try {
+        if (targetNames.length > 0) {
+          await client.from('products').update({
+            status: 'archived',
+            is_active: false,
+            category: null
+          }).in('category', targetNames);
+        }
+      } catch (prodErr) {
+        console.warn('Products cascade unlink notice:', prodErr);
+      }
+
+      // 4. Delete the category records permanently from Supabase
+      await client.from('categories').delete().in('id', categoryIds);
+      if (targetNames.length > 0) {
+        await client.from('categories').delete().in('name', targetNames);
+      }
+
+      // 5. Update app_category_order_config in brands table
+      await client.from('brands').upsert({
+        id: 'app_category_order_config',
+        name: 'Category Order Config',
+        logo: JSON.stringify(updatedCats),
+        enabled: true
+      });
+
+      // 6. Clean up hierarchy in brands table
+      try {
+        const { data: hierData } = await client.from('brands').select('logo').eq('id', 'salbeau_category_subcategory_hierarchy').maybeSingle();
+        if (hierData?.logo) {
+          const parsed = JSON.parse(hierData.logo);
+          if (parsed) {
+            const remainingCats = (parsed.categories || []).filter(c => !catIdSet.has(c.id) && !targetNames.includes(c.name));
+            const remainingSubs = (parsed.subcategories || []).filter(s => !catIdSet.has(s.category_id) && !targetNames.includes(s.category_name));
+            await client.from('brands').upsert({
+              id: 'salbeau_category_subcategory_hierarchy',
+              name: 'Category Subcategory Hierarchy',
+              logo: JSON.stringify({ ...parsed, categories: remainingCats, subcategories: remainingSubs }),
+              enabled: true
+            });
+          }
+        }
+      } catch (hErr) {}
+
+      // 7. Clear local caches
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.removeItem('salbeau_admin_cache_categories');
+          localStorage.removeItem('salbeau_admin_cache_subcategories');
+          localStorage.removeItem('salbeau_categories_catalog_v2');
+          localStorage.removeItem('salbeau_subcategories_v2');
+        } catch (_) {}
+      }
+
+      return { success: true, count: targetCats.length };
+    } catch (e) {
+      console.error('[bulkDeleteCategories] Error:', e);
+      throw e;
+    }
+  };
+
+  const bulkDeleteSubcategories = async (subcategoryIds = []) => {
+    if (!Array.isArray(subcategoryIds) || subcategoryIds.length === 0) {
+      return { success: true, count: 0 };
+    }
+    const client = supabaseAdmin || supabase;
+    const subIdSet = new Set(subcategoryIds);
+    const targetSubs = subcategories.filter(s => subIdSet.has(s.id));
+    const targetNames = targetSubs.map(s => s.name).filter(Boolean);
+
+    // 1. Update React state immediately
+    const updatedSubs = subcategories.filter(s => !subIdSet.has(s.id));
+    setSubcategories(updatedSubs);
+
+    try {
+      // 2. Unlink products in Supabase
+      try {
+        if (targetNames.length > 0) {
+          await client.from('products').update({ subcategory: null }).in('subcategory', targetNames);
+        }
+      } catch (pErr) {}
+
+      // 3. Delete subcategories from Supabase
+      await client.from('subcategories').delete().in('id', subcategoryIds);
+
+      // 4. Update hierarchy in brands table
+      try {
+        const { data: hierData } = await client.from('brands').select('logo').eq('id', 'salbeau_category_subcategory_hierarchy').maybeSingle();
+        if (hierData?.logo) {
+          const parsed = JSON.parse(hierData.logo);
+          if (parsed) {
+            const remainingSubs = (parsed.subcategories || []).filter(s => !subIdSet.has(s.id));
+            await client.from('brands').upsert({
+              id: 'salbeau_category_subcategory_hierarchy',
+              name: 'Category Subcategory Hierarchy',
+              logo: JSON.stringify({ ...parsed, subcategories: remainingSubs }),
+              enabled: true
+            });
+          }
+        }
+      } catch (hErr) {}
+
+      return { success: true, count: targetSubs.length };
+    } catch (e) {
+      console.error('[bulkDeleteSubcategories] Error:', e);
       throw e;
     }
   };
@@ -3500,6 +4443,29 @@ export const AdminProvider = ({ children }) => {
   const deleteSearchRequest = async (requestId) => {
     setSearchRequests(prev => prev.filter(r => r.id !== requestId));
     await apiDeleteRequest(requestId);
+  };
+
+  const bulkDeleteSearchRequests = async (requestIds = []) => {
+    if (!requestIds || requestIds.length === 0) return { success: true, count: 0 };
+    setSearchRequests(prev => prev.filter(r => !requestIds.includes(r.id)));
+    const res = await apiBulkDeleteSearchRequests(requestIds);
+    await recordAdminAuditLog('BULK_DELETE_SEARCH_ACTIVITY', {
+      module: 'search_activity',
+      count: requestIds.length,
+      requestIds
+    });
+    return res;
+  };
+
+  const clearAllSearchRequests = async () => {
+    const totalCount = searchRequests.length;
+    setSearchRequests([]);
+    const res = await apiClearAllSearchRequests();
+    await recordAdminAuditLog('CLEAR_ALL_SEARCH_ACTIVITY', {
+      module: 'search_activity',
+      count: totalCount
+    });
+    return res;
   };
 
   // ==========================================
@@ -4438,16 +5404,31 @@ export const AdminProvider = ({ children }) => {
       const empName = emp ? emp.full_name : null;
       const assignedAt = employeeId ? new Date().toISOString() : null;
 
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          assigned_employee_id: employeeId || null,
-          assigned_employee_name: empName,
-          assigned_at: assignedAt
-        })
-        .eq('id', orderId);
+      const targetOrder = orders.find(o => o.id === orderId);
+      const currentShipments = (targetOrder && typeof targetOrder.shipments === 'object' && !Array.isArray(targetOrder.shipments))
+        ? targetOrder.shipments
+        : {};
 
-      if (error) console.warn('Supabase assignOrderToEmployee error:', error);
+      const updatedShipments = {
+        ...currentShipments,
+        assignedEmployeeId: employeeId || null,
+        assignedEmployeeName: empName,
+        assignedAt
+      };
+
+      const newHistoryEntry = {
+        id: 'assign_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        status: targetOrder?.status || 'processing',
+        title: employeeId ? 'Delivery Partner Assigned' : 'Order Unassigned',
+        message: employeeId ? `Assigned to delivery executive: ${empName}` : 'Order unassigned by Admin',
+        timestamp: new Date().toISOString(),
+        updatedBy: 'Admin'
+      };
+
+      const currentHistory = targetOrder && Array.isArray(targetOrder.statusHistory)
+        ? targetOrder.statusHistory
+        : (targetOrder && Array.isArray(targetOrder.status_history) ? targetOrder.status_history : []);
+      const updatedHistory = [...currentHistory, newHistoryEntry];
 
       setOrders(prev => prev.map(o => {
         if (o.id === orderId) {
@@ -4455,11 +5436,33 @@ export const AdminProvider = ({ children }) => {
             ...o,
             assignedEmployeeId: employeeId || null,
             assignedEmployeeName: empName,
-            assignedAt
+            assignedAt,
+            shipments: updatedShipments,
+            statusHistory: updatedHistory
           };
         }
         return o;
       }));
+
+      const client = supabaseAdmin || supabase;
+      const { error } = await client
+        .from('orders')
+        .update({
+          shipments: updatedShipments,
+          status_history: updatedHistory,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) {
+        await client
+          .from('orders')
+          .update({
+            shipments: updatedShipments,
+            status_history: updatedHistory
+          })
+          .eq('id', orderId);
+      }
 
       await logEmployeeActivity({
         action: employeeId ? 'ASSIGN_ORDER' : 'UNASSIGN_ORDER',
@@ -4657,6 +5660,105 @@ export const AdminProvider = ({ children }) => {
   };
 
   /**
+   * Batch update display order / sequence of brands (drag-and-drop / swap)
+   */
+  const updateBrandsOrder = async (orderedBrands) => {
+    if (!Array.isArray(orderedBrands) || orderedBrands.length === 0) return;
+    const reindexed = orderedBrands.map((b, idx) => ({
+      ...b,
+      sort_order: idx + 1,
+      sortOrder: idx + 1,
+      display_order: idx + 1
+    }));
+
+    // Update in-memory state
+    setBrands(reindexed);
+    try {
+      localStorage.setItem('salbeau_admin_cache_brands', JSON.stringify(reindexed));
+    } catch (_) {}
+
+    // Persist to Supabase in chunks
+    try {
+      const payload = reindexed.map(b => ({
+        id: b.id,
+        name: b.name,
+        sort_order: b.sort_order,
+        enabled: b.enabled !== false,
+        logo: b.logo || null,
+        updated_at: new Date().toISOString()
+      }));
+
+      for (let i = 0; i < payload.length; i += 50) {
+        const batch = payload.slice(i, i + 50);
+        await supabase.from('brands').upsert(batch, { onConflict: 'id' });
+      }
+    } catch (err) {
+      console.warn('Error saving brand order to Supabase:', err);
+    }
+  };
+
+  /**
+   * Batch update display order / priority of products (drag-and-drop / swap)
+   * Supports 'catalog', 'bestseller', 'recent', and 'recommendation'
+   */
+  const updateProductsOrder = async (orderedProducts, sectionKey = 'catalog') => {
+    if (!Array.isArray(orderedProducts) || orderedProducts.length === 0) return;
+
+    const orderMap = new Map();
+    orderedProducts.forEach((p, idx) => {
+      orderMap.set(p.id, idx + 1);
+    });
+
+    // Update in-memory state
+    setProducts(prev => {
+      return prev.map(p => {
+        if (!orderMap.has(p.id)) return p;
+        const newPriority = orderMap.get(p.id);
+        const addInfo = { ...(p.additionalInfo || {}) };
+
+        if (sectionKey === 'bestseller') {
+          addInfo.bestSellerPriority = newPriority;
+          addInfo.bestseller_priority = newPriority;
+          return { ...p, bestSellerPriority: newPriority, additionalInfo: addInfo };
+        } else if (sectionKey === 'recent') {
+          addInfo.recentPriority = newPriority;
+          addInfo.recent_priority = newPriority;
+          return { ...p, recentPriority: newPriority, additionalInfo: addInfo };
+        } else if (sectionKey === 'recommendation') {
+          addInfo.recommendationPriority = newPriority;
+          addInfo.recommendation_priority = newPriority;
+          return { ...p, recommendationPriority: newPriority, additionalInfo: addInfo };
+        } else {
+          addInfo.sort_order = newPriority;
+          addInfo.priority = newPriority;
+          return { ...p, sort_order: newPriority, display_order: newPriority, priority: newPriority, additionalInfo: addInfo };
+        }
+      });
+    });
+
+    // Persist to Supabase in background
+    try {
+      for (let i = 0; i < orderedProducts.length; i++) {
+        const p = orderedProducts[i];
+        const newPriority = i + 1;
+        const fieldsToUpdate = {};
+        if (sectionKey === 'bestseller') {
+          fieldsToUpdate.bestSellerPriority = newPriority;
+        } else if (sectionKey === 'recent') {
+          fieldsToUpdate.recentPriority = newPriority;
+        } else if (sectionKey === 'recommendation') {
+          fieldsToUpdate.recommendationPriority = newPriority;
+        } else {
+          fieldsToUpdate.sort_order = newPriority;
+        }
+        await updateProduct(p.id, fieldsToUpdate, true);
+      }
+    } catch (err) {
+      console.warn('Error saving product order to Supabase:', err);
+    }
+  };
+
+  /**
    * Complete Database & Local Caches Purge
    * Wipes users, admins/employees, orders, products, categories, brands, carts, verifications
    * from local React state, browser localStorage, and Supabase backend.
@@ -4763,13 +5865,31 @@ export const AdminProvider = ({ children }) => {
         deleteBrand,
         bulkDeleteBrands,
         bulkImportBrands,
+        updateBrandsOrder,
         setCategories,
+        subcategories,
+        setSubcategories,
         addProduct,
         saveBulkProducts,
         updateProduct,
+        updateProductsOrder,
         deleteProduct,
+        bulkDeleteProducts,
         deleteProductVariant,
         updateOrderStatus,
+        updateOrderPaymentStatus,
+        updateOrderPaymentMethod,
+        deleteOrder,
+        bulkDeleteOrders,
+        clearTestOrders,
+        deleteAbandonedCart,
+        bulkDeleteAbandonedCarts,
+        clearAllAbandonedCarts,
+        deleteCustomer,
+        bulkDeleteCustomers,
+        clearTestCustomers,
+        backupCustomerData,
+        recordAdminAuditLog,
         updateOrderItemStatus,
         updateProductRolePrices,
         toggleUserVerification,
@@ -4787,6 +5907,8 @@ export const AdminProvider = ({ children }) => {
         addCategory,
         updateCategory,
         deleteCategory,
+        bulkDeleteCategories,
+        bulkDeleteSubcategories,
         checkBarcodeInSupabase,
         searchProductByBarcode,
         uploadImage,
@@ -4830,6 +5952,8 @@ export const AdminProvider = ({ children }) => {
         refreshSearchRequests,
         updateSearchRequestStatus,
         deleteSearchRequest,
+        bulkDeleteSearchRequests,
+        clearAllSearchRequests,
         b2bVerifications,
         b2bLoading,
         refreshB2BVerifications,

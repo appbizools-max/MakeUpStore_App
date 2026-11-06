@@ -27,6 +27,7 @@ import {
   Globe
 } from 'lucide-react';
 import { optimizeImage } from '../../utils/imageOptimizer';
+import { uploadOptimizedImage } from '../../services/imageStorageService';
 import {
   ATTRIBUTE_GROUPS,
   loadAttributeMasterFromDb,
@@ -77,7 +78,7 @@ export default function DynamicVariantBuilder({
   // [{ id, name, group, inputType, selectedValues: [{ id, name, hexColor, code }], availableValues: [...] }]
   const [selectedAttributes, setSelectedAttributes] = useState([]);
 
-  // Draft inputs for adding new values inline: { [attrId]: { name: '', hexColor: '#CE4270', code: '' } }
+  // Draft inputs for adding new values inline: { [attrId]: { name: '', hexColor: '', code: '' } }
   const [newValueDrafts, setNewValueDrafts] = useState({});
 
   // Modals
@@ -365,7 +366,7 @@ export default function DynamicVariantBuilder({
 
     setNewValueDrafts(prev => ({
       ...prev,
-      [attrId]: { name: '', hexColor: '#CE4270', code: '' }
+      [attrId]: { name: '', hexColor: '', code: '' }
     }));
   };
 
@@ -435,7 +436,7 @@ export default function DynamicVariantBuilder({
       id: `var_${Date.now()}_${nextNum}`,
       name: '',
       color_name: '',
-      hexColor: '#CE4270',
+      hexColor: '',
       sku: baseProduct.sku ? generateVariantInternalSku(baseProduct.sku, nextNum) : '',
       barcode: '',
       image: defaultImg || '',
@@ -489,20 +490,26 @@ export default function DynamicVariantBuilder({
     onChangeVariants(variants.filter(v => v.id !== varId));
   };
 
-  // Handle Variant Image Upload (uploads via uploadProductImage if provided, compresses to HD WebP on fallback)
+  // Handle Variant Image Upload (uploads via uploadOptimizedImage to Supabase Storage, compresses to HD WebP)
   const handleVariantImageUpload = async (varId, file) => {
     if (!file) return;
     setUploadingVariantId(varId);
     try {
-      if (typeof uploadProductImage === 'function') {
-        const uploadedUrl = await uploadProductImage(file);
-        if (uploadedUrl) {
-          handleUpdateVariantField(varId, 'image', uploadedUrl);
-          setUploadingVariantId(null);
-          return;
-        }
+      const res = await uploadOptimizedImage(file, 'PRODUCT', {
+        folder: 'products/variants',
+        filenamePrefix: `var_${varId}`,
+        generateVariants: false
+      });
+      if (res && res.url) {
+        handleUpdateVariantField(varId, 'image', res.url);
+        const targetVar = variants.find(v => v.id === varId);
+        const currentImages = Array.isArray(targetVar?.images) ? [...targetVar.images] : [];
+        if (!currentImages.includes(res.url)) currentImages.unshift(res.url);
+        handleUpdateVariantField(varId, 'images', currentImages);
+        setUploadingVariantId(null);
+        return;
       }
-      // HD compression fallback: compress image with PRODUCT profile (1200x1200, WebP HD 0.88)
+      // Direct HD compression fallback
       const opt = await optimizeImage(file, 'PRODUCT', { filename: `var_${varId}.webp` });
       handleUpdateVariantField(varId, 'image', opt.dataUrl);
     } catch (err) {
@@ -692,7 +699,7 @@ export default function DynamicVariantBuilder({
                     (attr.selectedValues || []).map(v => (typeof v === 'object' ? v.name : v))
                   );
 
-                  const draft = newValueDrafts[attr.id] || { name: '', hexColor: '#CE4270', code: '' };
+                  const draft = newValueDrafts[attr.id] || { name: '', hexColor: '', code: '' };
 
                   return (
                     <div
@@ -766,7 +773,7 @@ export default function DynamicVariantBuilder({
                           <div className="flex items-center gap-1.5 shrink-0">
                             <input
                               type="color"
-                              value={draft.hexColor || '#CE4270'}
+                              value={draft.hexColor && draft.hexColor.startsWith('#') && draft.hexColor.length === 7 ? draft.hexColor : '#FFFFFF'}
                               onChange={(e) => setNewValueDrafts({
                                 ...newValueDrafts,
                                 [attr.id]: { ...draft, hexColor: e.target.value }
@@ -774,7 +781,7 @@ export default function DynamicVariantBuilder({
                               className="w-7 h-7 rounded border border-gray-300 p-0 cursor-pointer"
                               title="Pick shade color"
                             />
-                            <span className="text-[10px] font-mono text-gray-500">{draft.hexColor || '#CE4270'}</span>
+                            <span className="text-[10px] font-mono text-gray-500">{draft.hexColor || ''}</span>
                           </div>
                         )}
 
@@ -1019,7 +1026,7 @@ export default function DynamicVariantBuilder({
                           <div className="flex items-center gap-1.5">
                             <input
                               type="color"
-                              value={v.hexColor || '#CE4270'}
+                              value={v.hexColor && v.hexColor.startsWith('#') && v.hexColor.length === 7 ? v.hexColor : '#FFFFFF'}
                               onChange={(e) => handleUpdateVariantField(v.id, 'hexColor', e.target.value)}
                               className="w-7 h-8 rounded-lg border border-pink-200 p-0.5 cursor-pointer shrink-0 bg-white"
                               title="Choose variant color swatch"

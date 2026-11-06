@@ -1,33 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, StatusBar, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
-import { isB2BRole } from '../../utils/b2bVerificationService';
-import { B2BRegistrationForm } from './B2BRegistrationForm';
 
 export const MobileLoginScreen = () => {
-  const { userRole, userProfile, setUserProfile, setCurrentScreen, prefetchUserProfile } = useApp();
+  const { setUserProfile, setCurrentScreen, prefetchUserProfile } = useApp();
   const [mobileNumber, setMobileNumber] = useState('');
 
-  // Before OTP verification: If user is B2B (Salon, Makeup Artist, Beautician),
-  // render the dedicated professional business registration form.
-  if (isB2BRole(userRole)) {
-    return <B2BRegistrationForm />;
-  }
-
-  // ── UNCHANGED B2C (GENERAL USER) REGISTRATION FLOW ─────────────────────
+  // ── UNIVERSAL INITIAL LOGIN ENTRY POINT ──────────────────────────────
   const cleanDigits = mobileNumber.replace(/\D/g, '');
   const isValid = cleanDigits.length === 10;
-
-  const getRoleTitle = () => {
-    switch (userRole) {
-      case 'salon': return 'Salon';
-      case 'artist': return 'Makeup Artist';
-      case 'beautician': return 'Beautician';
-      case 'general':
-      default: return 'General User';
-    }
-  };
 
   const handleTextChange = (text) => {
     const raw = text.replace(/\D/g, '').slice(0, 10);
@@ -38,7 +20,7 @@ export const MobileLoginScreen = () => {
     }
   };
 
-  const handleSendOtp = () => {
+  const handleContinue = () => {
     if (!isValid) return;
     const fullPhone = `+91 ${cleanDigits.slice(0, 5)} ${cleanDigits.slice(5)}`;
     setUserProfile(prev => ({
@@ -53,35 +35,33 @@ export const MobileLoginScreen = () => {
 
   return (
     <ScrollView keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ padding: 20, paddingBottom: 40, flexGrow: 1, justifyContent: 'space-between' }}
+      contentContainerStyle={{ padding: 24, paddingBottom: 40, flexGrow: 1, justifyContent: 'space-between' }}
       className="flex-1 bg-white"
     >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <View>
-        {/* Top Header: Back Arrow & Selected Role Pill Badge */}
-        <View className="flex-row justify-between items-center mt-2 mb-6">
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setCurrentScreen('onboarding')}
-            className="w-10 h-10 rounded-full bg-white border border-[#FCE4EC] items-center justify-center shadow-2xs"
-          >
-            <Ionicons name="arrow-back" size={20} color="#C2477A" />
-          </TouchableOpacity>
-
-          <View className="bg-white border border-[#F5A8C0] px-3.5 py-1.5 rounded-full">
-            <Text className="text-xs font-black text-[#C2477A]">
-              {getRoleTitle()}
+        {/* Top Branding Logo */}
+        <View className="items-center mt-6 mb-8">
+          <Image
+            source={require('../../../Assets/Logo_transparent.png')}
+            style={{ width: 170, height: 65 }}
+            resizeMode="contain"
+          />
+          <View className="flex-row items-center gap-1.5 mt-2 bg-pink-50 border border-pink-100 px-3 py-1 rounded-full">
+            <Ionicons name="sparkles" size={12} color="#C2477A" />
+            <Text className="text-[11px] font-bold text-[#C2477A] tracking-wider uppercase">
+              Beauty & Professional Store
             </Text>
           </View>
         </View>
 
-        {/* Heading Title & Subtitle matching Reference UI */}
+        {/* Heading Title & Subtitle */}
         <Text className="text-2xl font-black text-[#3A2430] mb-1.5">
           Enter your mobile number
         </Text>
         <Text className="text-xs font-medium text-[#8C7078] mb-8 leading-relaxed">
-          We'll send you a 4-digit verification code.
+          We'll send you a 4-digit verification code to sign in or create an account.
         </Text>
 
         {/* Mobile Input Field Box */}
@@ -116,18 +96,22 @@ export const MobileLoginScreen = () => {
             placeholderTextColor="#8C7078"
             autoFocus
           />
+
+          {isValid && (
+            <Ionicons name="checkmark-circle" size={18} color="#059669" />
+          )}
         </View>
 
-        {/* Send OTP Primary Action Button */}
+        {/* Continue Primary Action Button */}
         <TouchableOpacity
           activeOpacity={0.9}
           disabled={!isValid}
-          onPress={handleSendOtp}
+          onPress={handleContinue}
           style={{ backgroundColor: isValid ? '#C2477A' : '#E5E7EB' }}
           className="w-full py-4 rounded-full items-center justify-center shadow-lg active:opacity-90 mb-4"
         >
           <Text style={{ color: isValid ? '#FFFFFF' : '#9CA3AF' }} className="font-black text-base tracking-wide">
-            Send OTP
+            Continue
           </Text>
         </TouchableOpacity>
       </View>

@@ -102,7 +102,7 @@ export const EXTENDED_BEAUTY_SHADES = [
  * Validates and formats a hex color string (e.g. 'ce4270' -> '#CE4270')
  */
 export function normalizeHex(input) {
-  if (!input) return '#CE4270';
+  if (!input) return '';
   let clean = input.trim();
   if (!clean.startsWith('#')) {
     clean = '#' + clean;

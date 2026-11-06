@@ -20,7 +20,7 @@ export const SplashScreen = () => {
       if (userProfile?.isProfileComplete) {
         setCurrentScreen('home');
       } else {
-        setCurrentScreen('onboarding');
+        setCurrentScreen('login');
       }
     }
   }, [minTimeElapsed, isRestoringSession, userProfile?.isProfileComplete, setCurrentScreen]);
@@ -30,7 +30,7 @@ export const SplashScreen = () => {
       if (userProfile?.isProfileComplete) {
         setCurrentScreen('home');
       } else {
-        setCurrentScreen('onboarding');
+        setCurrentScreen('login');
       }
     }
   };

@@ -75,13 +75,16 @@ export const PurplleProductCard = ({
     if (selectedShade?.priceOverride && Number(selectedShade.priceOverride) > rolePrice) {
       return Number(selectedShade.priceOverride);
     }
+    if (selectedShade?.mrp && Number(selectedShade.mrp) > rolePrice) {
+      return Number(selectedShade.mrp);
+    }
     if (product?.mrp && Number(product.mrp) > rolePrice) {
       return Number(product.mrp);
     }
-    return Math.round(rolePrice * 1.25);
-  }, [product?.mrp, selectedShade?.priceOverride, rolePrice]);
+    return rolePrice;
+  }, [product?.mrp, selectedShade?.priceOverride, selectedShade?.mrp, rolePrice]);
 
-  const discountPercent = mrp > rolePrice ? Math.round(((mrp - rolePrice) / mrp) * 100) : 0;
+  const discountPercent = (mrp > rolePrice && mrp > 0) ? Math.round(((mrp - rolePrice) / mrp) * 100) : 0;
 
   // Active image: updates if selected shade has an image or variant has its own image
   const displayImage = product?.isVariantChild
@@ -138,7 +141,7 @@ export const PurplleProductCard = ({
         activeOpacity={0.85}
         onPress={() => onPressProduct?.(product, selectedShade)}
       >
-        <View className="relative w-full aspect-square rounded-xl overflow-hidden mb-2 bg-[#FAFAFA] border border-gray-100 items-center justify-center p-2">
+        <View className="relative w-full aspect-square rounded-xl overflow-hidden mb-2 bg-white border border-gray-100 items-center justify-center p-2">
           <Image
             source={getSafeImageSource(displayImage, '')}
             style={{ width: '92%', height: '92%' }}
@@ -261,68 +264,41 @@ export const PurplleProductCard = ({
         </View>
 
         <View>
-          {hasShades ? (
-            <View className="flex-row items-center gap-1">
-              <TouchableOpacity
-                onPress={handleOpenShades}
-                activeOpacity={0.85}
-                className="flex-row items-center gap-1 px-2 py-1 rounded-lg border border-[#C2477A] bg-white shadow-2xs active:bg-[#FCE4EC]"
-              >
-                <Text className="text-[#C2477A] text-[9.5px] font-black uppercase tracking-wider">
-                  Select Shade
-                </Text>
-                <Ionicons name="chevron-down" size={10} color="#C2477A" />
-              </TouchableOpacity>
-
-              {currentQty > 0 && (
-                <View className="bg-[#C2477A] rounded-lg px-1.5 py-0.5 flex-row items-center gap-0.5 shadow-2xs">
-                  <TouchableOpacity
-                    onPress={handleDecrement}
-                    className="w-3.5 h-3.5 items-center justify-center"
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Text className="text-white text-xs font-black">-</Text>
-                  </TouchableOpacity>
-                  <Text className="text-white text-[10px] font-extrabold px-0.5 min-w-[10px] text-center">
-                    {currentQty}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={handleIncrement}
-                    className="w-3.5 h-3.5 items-center justify-center"
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Text className="text-white text-xs font-black">+</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          ) : currentQty > 0 ? (
-            <View className="bg-[#C2477A] rounded-lg px-1.5 py-0.5 flex-row items-center gap-1 shadow-2xs">
+          {currentQty > 0 ? (
+            <View className="bg-[#C2477A] rounded-lg px-2 py-1 flex-row items-center gap-1.5 shadow-2xs">
               <TouchableOpacity
                 onPress={handleDecrement}
                 className="w-4 h-4 items-center justify-center"
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text className="text-white text-xs font-black">-</Text>
+                <Ionicons name="remove" size={12} color="#FFFFFF" />
               </TouchableOpacity>
-              <Text className="text-white text-[10px] font-extrabold px-0.5 min-w-[12px] text-center">
+              <Text className="text-white text-[10.5px] font-black px-1 min-w-[12px] text-center">
                 {currentQty}
               </Text>
               <TouchableOpacity
                 onPress={handleIncrement}
                 className="w-4 h-4 items-center justify-center"
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text className="text-white text-xs font-black">+</Text>
+                <Ionicons name="add" size={12} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
-              onPress={handleAdd}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                if (hasShades && !selectedShade && (onOpenShadeSheet || openShadeSheet)) {
+                  handleOpenShades(e);
+                } else {
+                  handleAdd(e);
+                }
+              }}
               activeOpacity={0.85}
-              className="px-2.5 py-1 rounded-lg border border-[#C2477A] bg-white shadow-2xs active:bg-[#FFF0F5]"
+              className="flex-row items-center justify-center gap-1 px-3 py-1.5 rounded-lg border border-[#C2477A] bg-white shadow-2xs active:bg-[#FFF0F5]"
             >
-              <Text className="text-[#C2477A] text-[9.5px] font-extrabold">+ ADD</Text>
+              <Ionicons name="bag-handle-outline" size={12} color="#C2477A" />
+              <Text className="text-[#C2477A] text-[10px] font-black uppercase tracking-wider">+ ADD</Text>
             </TouchableOpacity>
           )}
         </View>

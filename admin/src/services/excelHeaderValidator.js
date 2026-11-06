@@ -469,16 +469,17 @@ export const normalizeStrictImportRow = (rawRow, headerIndexMap, rowIndex = 0) =
   const status = ['published', 'active', 'ready'].includes(statusStr) ? 'published' : 'draft';
 
   // Hex color extraction: only if explicitly provided in sheet or resolved from known shade name
+  const isNonShadeText = (t) => !t || /^(n\/?a|non[-\s]?shade|none|standard|default|null|undefined)$/i.test(String(t).trim());
   const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
   let hexColor = '';
-  if (hexAndSwatch && hexPattern.test(hexAndSwatch.trim())) {
+  if (hexAndSwatch && !isNonShadeText(hexAndSwatch) && hexPattern.test(hexAndSwatch.trim())) {
     hexColor = hexAndSwatch.trim();
-  } else if (hexAndSwatch) {
+  } else if (hexAndSwatch && !isNonShadeText(hexAndSwatch)) {
     const matched = matchBeautyShade(hexAndSwatch.trim());
     if (matched && matched.matchedStandardHex) hexColor = matched.matchedStandardHex;
   }
   
-  if (!hexColor && shadeName) {
+  if (!hexColor && shadeName && !isNonShadeText(shadeName)) {
     const matched = matchBeautyShade(shadeName.trim());
     if (matched && matched.matchedStandardHex) hexColor = matched.matchedStandardHex;
   }

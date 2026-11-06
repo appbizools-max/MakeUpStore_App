@@ -1,12 +1,7 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 
 export const BANNER_TYPES = [
-  { id: 'home', label: 'Home Page Banner', description: 'Hero carousel banner on main store page', recommendedSize: '1200 × 510 px (2.35:1)' },
-  { id: 'category', label: 'Category Banner', description: 'Header banner for Main Categories (Level 1)', recommendedSize: '1200 × 450 px (16:6)' },
-  { id: 'subcategory', label: 'Subcategory Banner', description: 'Hero banner for Subcategories (Level 2)', recommendedSize: '1000 × 400 px (16:9)' },
-  { id: 'selection', label: 'Selection Banner', description: 'Banner for Product Type / Select Categories (Level 3)', recommendedSize: '900 × 350 px' },
-  { id: 'promotional', label: 'Promotional Banner', description: 'In-app sale & seasonal campaign banner', recommendedSize: '1200 × 600 px (2:1)' },
-  { id: 'custom', label: 'Custom Marketing', description: 'Brand collaborations & special offers', recommendedSize: 'Widescreen HD' },
+  { id: 'home', label: 'Home Page Banner', description: 'Hero carousel banner on main store page', recommendedSize: '1200 × 510 px (2.35:1)' }
 ];
 
 const LOCAL_STORAGE_KEY = 'salbeau_central_banners';
@@ -196,16 +191,24 @@ export async function fetchAllCentralBanners() {
       saveCentralBannersMaster(banners).catch(e => console.warn('Banner seed notice:', e));
     }
 
+    // Keep ONLY home banners across the entire system
+    const homeBannersOnly = (banners || [])
+      .filter(b => !b.bannerType || b.bannerType === 'home' || b.type === 'home')
+      .map(b => ({
+        ...b,
+        bannerType: 'home',
+        type: 'home'
+      }));
+
     // Update local cache
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(banners));
-        const homeOnly = banners.filter(b => b.bannerType === 'home' || !b.bannerType);
-        localStorage.setItem('salbeau_home_banners', JSON.stringify(homeOnly));
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(homeBannersOnly));
+        localStorage.setItem('salbeau_home_banners', JSON.stringify(homeBannersOnly));
       } catch (_) {}
     }
 
-    return banners.sort((a, b) => (Number(a.displayOrder) || 0) - (Number(b.displayOrder) || 0));
+    return homeBannersOnly.sort((a, b) => (Number(a.displayOrder) || 0) - (Number(b.displayOrder) || 0));
   } catch (err) {
     console.error('Error in fetchAllCentralBanners:', err);
     return [...DEFAULT_CENTRAL_BANNERS];
@@ -217,7 +220,14 @@ export async function fetchAllCentralBanners() {
  */
 export async function saveCentralBannersMaster(bannersList) {
   const client = supabaseAdmin || supabase;
-  const cleanList = Array.isArray(bannersList) ? bannersList : [];
+  const rawList = Array.isArray(bannersList) ? bannersList : [];
+  const cleanList = rawList
+    .filter(b => !b.bannerType || b.bannerType === 'home' || b.type === 'home')
+    .map(b => ({
+      ...b,
+      bannerType: 'home',
+      type: 'home'
+    }));
 
   // 1. Create a safety backup in Supabase before overwriting
   try {

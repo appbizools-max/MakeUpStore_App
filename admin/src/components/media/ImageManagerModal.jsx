@@ -803,7 +803,7 @@ export default function ImageManagerModal({
         {/* Footer */}
         {!stagedImage && (
           <div className="px-6 py-3.5 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-500">
-            <span>Supabase Storage: <code className="font-mono text-gray-700">gc-home-assets/{folder}/</code></span>
+            <span>Cloud Storage: <code className="font-mono text-gray-700">gc-home-assets/{folder}/</code></span>
             <button
               type="button"
               onClick={onClose}

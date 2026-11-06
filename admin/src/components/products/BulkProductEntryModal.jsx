@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Package,
   ScanBarcode,
@@ -87,7 +88,7 @@ import {
   normalizeStrictImportRow
 } from '../../services/excelHeaderValidator';
 import * as XLSX from 'xlsx';
-import { supabase } from '../../config/supabase';
+import { supabase, supabaseAdmin } from '../../config/supabase';
 
 // ============================================================================
 // COLOR & NORMALIZATION HELPERS
@@ -231,6 +232,31 @@ export const SearchableCombobox = ({
     }
   };
 
+  // Keep coordinates updated during window/table scroll or resize
+  useEffect(() => {
+    if (!isOpen) return;
+    const updateCoords = () => {
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        const dropdownHeight = 310;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const openUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+        setCoords({
+          top: openUp ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
+          left: Math.max(10, Math.min(rect.left, window.innerWidth - 300)),
+          width: Math.max(rect.width, 240),
+          openUp
+        });
+      }
+    };
+    window.addEventListener('resize', updateCoords);
+    window.addEventListener('scroll', updateCoords, true);
+    return () => {
+      window.removeEventListener('resize', updateCoords);
+      window.removeEventListener('scroll', updateCoords, true);
+    };
+  }, [isOpen]);
+
   // Handle outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -347,17 +373,18 @@ export const SearchableCombobox = ({
         <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0 ml-1 transition-transform" />
       </button>
 
-      {/* Floating Dropdown - Fixed positioning so table overflow:hidden/auto NEVER clips it */}
-      {isOpen && (
+      {/* Floating Dropdown - Portal to document.body so table overflow/scroll/transform NEVER clips it or shifts coordinates */}
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <div
           ref={dropdownRef}
+          onMouseDown={(e) => e.stopPropagation()}
           style={{
             position: 'fixed',
             top: coords.openUp ? 'auto' : `${coords.top}px`,
             bottom: coords.openUp ? `${window.innerHeight - coords.top}px` : 'auto',
             left: `${coords.left}px`,
             width: `${coords.width}px`,
-            zIndex: 9999
+            zIndex: 999999
           }}
           className="bg-white rounded-2xl shadow-2xl border-2 border-slate-300 p-2.5 animate-in fade-in zoom-in-95 duration-100"
         >
@@ -400,7 +427,16 @@ export const SearchableCombobox = ({
               </p>
               <button
                 type="button"
-                onClick={() => handleSelect(existingMatchWarning.value)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSelect(existingMatchWarning.value);
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSelect(existingMatchWarning.value);
+                }}
                 className="w-full py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer"
               >
                 Select Existing "{existingMatchWarning.label}"
@@ -413,14 +449,23 @@ export const SearchableCombobox = ({
             {filteredOptions.length === 0 ? (
               <div className="p-3 text-center text-xs text-slate-500">
                 <p className="font-bold text-slate-800">No matching results found.</p>
-                {query.trim() && allowManual && (
+                {query.trim() && (
                   <button
                     type="button"
-                    onClick={() => handleManualSubmit(query.trim())}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleManualSubmit(query.trim());
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleManualSubmit(query.trim());
+                    }}
                     className="mt-2 w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Create & Use "{query.trim()}"</span>
+                    <span>Select & Use "{query.trim()}"</span>
                   </button>
                 )}
               </div>
@@ -432,7 +477,16 @@ export const SearchableCombobox = ({
                   <button
                     key={opt.value + '_' + idx}
                     type="button"
-                    onClick={() => handleSelect(opt.value)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelect(opt.value);
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelect(opt.value);
+                    }}
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     className={`w-full px-3 py-2.5 rounded-xl text-left text-[13.5px] flex items-center justify-between transition-colors cursor-pointer ${isSelected
                         ? 'bg-indigo-100 text-indigo-950 font-black border border-indigo-200'
@@ -521,7 +575,8 @@ export const SearchableCombobox = ({
               </div>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -1144,7 +1199,8 @@ export const BulkProductEntryModal = ({
     }).catch(() => {});
     const fetchHierarchy = async () => {
       try {
-        const { data } = await supabase
+        const client = supabaseAdmin || supabase;
+        const { data } = await client
           .from('brands')
           .select('logo')
           .eq('id', 'salbeau_category_subcategory_hierarchy')
@@ -1278,7 +1334,7 @@ export const BulkProductEntryModal = ({
     if (addBrand) {
       try {
         await addBrand({ name: clean, active: true });
-        setBulkNotice({ type: 'success', text: `Brand "${clean}" added to Supabase catalog.` });
+        setBulkNotice({ type: 'success', text: `Brand "${clean}" added to catalog.` });
       } catch (err) {
         console.warn('Could not save brand:', err);
       }
@@ -1294,7 +1350,7 @@ export const BulkProductEntryModal = ({
     if (addCategory) {
       try {
         await addCategory({ name: clean, subcategories: ['General'], active: true });
-        setBulkNotice({ type: 'success', text: `Category "${clean}" added to Supabase catalog.` });
+        setBulkNotice({ type: 'success', text: `Category "${clean}" added to catalog.` });
       } catch (err) {
         console.warn('Could not save category:', err);
       }
@@ -1480,46 +1536,87 @@ export const BulkProductEntryModal = ({
     ]
   }), []);
 
-  const getSubcategoriesForCategory = useCallback((catName) => {
-    if (!catName) return [];
-    const list = [];
-
-    // 1. Look up from the fetched master hierarchy (salbeau_category_subcategory_hierarchy)
-    const cleanCat = (catName || '').trim();
-    const hData = masterHierarchy.byCategory[cleanCat] || masterHierarchy.byCategory[cleanCat.toLowerCase()];
-    if (hData && Array.isArray(hData.subcategories)) {
-      hData.subcategories.forEach(sub => {
-        if (sub && !list.includes(sub)) list.push(sub);
-      });
+  const inferCategoryFromSubcategory = useCallback((subName) => {
+    if (!subName) return '';
+    const cleanSub = normalizeText(subName);
+    for (const [k, defaults] of Object.entries(STANDARD_BEAUTY_SUBCATS)) {
+      if (defaults.some(d => {
+        const normD = normalizeText(d);
+        return normD === cleanSub || normD.includes(cleanSub) || cleanSub.includes(normD);
+      })) {
+        if (k === 'makeup') return 'Makeup';
+        if (k === 'skincare') return 'Skincare';
+        if (k === 'haircare') return 'Haircare';
+        if (k === 'fragrance') return 'Fragrance';
+      }
     }
+    for (const [cat, data] of Object.entries(masterHierarchy.byCategory || {})) {
+      if (Array.isArray(data.subcategories) && data.subcategories.some(s => {
+        const normS = normalizeText(s);
+        return normS === cleanSub || normS.includes(cleanSub) || cleanSub.includes(normS);
+      })) {
+        return cat;
+      }
+    }
+    return '';
+  }, [STANDARD_BEAUTY_SUBCATS, masterHierarchy]);
 
-    // 2. Also check AdminContext categories (some may have subcategories field)
-    if (list.length === 0) {
-      const foundCat = categories.find(c => normalizeText(c.name) === normalizeText(catName));
+  const getSubcategoriesForCategory = useCallback((catName) => {
+    const list = [];
+    const cleanCat = (catName || '').trim();
+
+    if (cleanCat) {
+      // 1. Look up from the fetched master hierarchy (salbeau_category_subcategory_hierarchy)
+      const hData = masterHierarchy.byCategory[cleanCat] || masterHierarchy.byCategory[cleanCat.toLowerCase()];
+      if (hData && Array.isArray(hData.subcategories)) {
+        hData.subcategories.forEach(sub => {
+          if (sub && !list.includes(sub)) list.push(sub);
+        });
+      }
+
+      // 2. Also check AdminContext categories (some may have subcategories field)
+      const foundCat = (categories || []).find(c => normalizeText(c.name) === normalizeText(cleanCat));
       if (foundCat && Array.isArray(foundCat.subcategories) && foundCat.subcategories.length > 0) {
         foundCat.subcategories.forEach(s => {
           const val = typeof s === 'string' ? s : s?.name;
           if (val && !list.includes(val)) list.push(val);
         });
       }
-    }
 
-    // 3. Merge standard beauty subcategories for standard categories
-    const catKey = cleanCat.toLowerCase().replace(/[^a-z]/g, '');
-    for (const [k, defaults] of Object.entries(STANDARD_BEAUTY_SUBCATS)) {
-      if (catKey.includes(k) || k.includes(catKey)) {
-        defaults.forEach(d => {
-          if (!list.some(s => normalizeText(s) === normalizeText(d))) list.push(d);
+      // 3. Merge standard beauty subcategories for standard categories
+      const catKey = cleanCat.toLowerCase().replace(/[^a-z]/g, '');
+      for (const [k, defaults] of Object.entries(STANDARD_BEAUTY_SUBCATS)) {
+        if (catKey.includes(k) || k.includes(catKey)) {
+          defaults.forEach(d => {
+            if (!list.some(s => normalizeText(s) === normalizeText(d))) list.push(d);
+          });
+        }
+      }
+
+      // 4. Merge manually created subcategories added during this session
+      if (customSubcategories[cleanCat]) {
+        customSubcategories[cleanCat].forEach(sub => {
+          if (!list.includes(sub)) list.push(sub);
         });
       }
     }
 
-    // 4. Merge manually created subcategories added during this session
-    if (customSubcategories[catName]) {
-      customSubcategories[catName].forEach(sub => {
-        if (!list.includes(sub)) list.push(sub);
+    // If no category specified or list empty, return all known subcategories so dropdown is always populated
+    if (list.length === 0) {
+      Object.values(STANDARD_BEAUTY_SUBCATS).forEach(defaults => {
+        defaults.forEach(d => {
+          if (!list.some(s => normalizeText(s) === normalizeText(d))) list.push(d);
+        });
+      });
+      Object.values(masterHierarchy.byCategory || {}).forEach(cat => {
+        if (Array.isArray(cat.subcategories)) {
+          cat.subcategories.forEach(sub => {
+            if (sub && !list.some(s => normalizeText(s) === normalizeText(sub))) list.push(sub);
+          });
+        }
       });
     }
+
     return list;
   }, [masterHierarchy, categories, customSubcategories, STANDARD_BEAUTY_SUBCATS]);
 
@@ -1540,17 +1637,24 @@ export const BulkProductEntryModal = ({
     return list;
   }, [brands, customBrands]);
 
-  // Available categories — purely from DB + session-created categories (no hardcoded list)
+  // Available categories — purely from DB + master hierarchy + standard beauty master + session-created categories
   const availableCategories = useMemo(() => {
     const list = [];
-    categories.forEach(c => {
-      if (c.name && !findNormalizedMatch(list, c.name)) list.push(c.name);
+    (categories || []).forEach(c => {
+      const name = typeof c === 'string' ? c : c?.name;
+      if (name && !findNormalizedMatch(list, name)) list.push(name);
     });
-    customCategories.forEach(c => {
-      if (!findNormalizedMatch(list, c)) list.push(c);
+    Object.keys(masterHierarchy.byCategory || {}).forEach(cat => {
+      if (cat && !findNormalizedMatch(list, cat)) list.push(cat);
+    });
+    ['Makeup', 'Skincare', 'Haircare', 'Fragrance', 'Bath & Body', 'Personal Care', 'Salon Products', 'Beauty Kits'].forEach(stdCat => {
+      if (!findNormalizedMatch(list, stdCat)) list.push(stdCat);
+    });
+    (customCategories || []).forEach(c => {
+      if (c && !findNormalizedMatch(list, c)) list.push(c);
     });
     return list;
-  }, [categories, customCategories]);
+  }, [categories, customCategories, masterHierarchy]);
 
   // Variant types — aggregated from all categories in the master hierarchy + session-created types
   const availableVariantTypes = useMemo(() => {
@@ -1608,10 +1712,46 @@ export const BulkProductEntryModal = ({
       if (b) barcodeCounts[b] = (barcodeCounts[b] || 0) + 1;
     });
 
+    // Build lookup maps to resolve parent product for child variants so variants can inherit parent details (MRP, Brand, etc.)
+    const rowById = new Map();
+    const familyKeyToFirstRow = new Map();
+    rows.forEach(r => {
+      if (r._id) rowById.set(r._id, r);
+      const gKey = getProductFamilyGroupingKey(r);
+      if (gKey && !familyKeyToFirstRow.has(gKey)) {
+        familyKeyToFirstRow.set(gKey, r);
+      }
+    });
+
     return rows.map((r, idx) => {
       const fieldErrors = {};
       const errors = [];
       const warnings = [];
+
+      // Find parent row if this is a child or shares family key
+      let parentRow = r.parentId ? rowById.get(r.parentId) : null;
+      if (!parentRow) {
+        const gKey = getProductFamilyGroupingKey(r);
+        const groupParent = familyKeyToFirstRow.get(gKey);
+        if (groupParent && groupParent._id !== r._id) {
+          parentRow = groupParent;
+        }
+      }
+
+      // Inherit missing fields from parent if this is a variant/child
+      if (parentRow) {
+        if (!r.name && parentRow.name) r.name = parentRow.name;
+        if (!r.brand && parentRow.brand) r.brand = parentRow.brand;
+        if (!r.category && parentRow.category) r.category = parentRow.category;
+        if (!r.subcategory && parentRow.subcategory) r.subcategory = parentRow.subcategory;
+        if ((!r.mrp || Number(r.mrp) <= 0) && Number(parentRow.mrp) > 0) {
+          r.mrp = parentRow.mrp;
+        }
+        if (r.generalDiscount === undefined && parentRow.generalDiscount !== undefined) r.generalDiscount = parentRow.generalDiscount;
+        if (r.salonDiscount === undefined && parentRow.salonDiscount !== undefined) r.salonDiscount = parentRow.salonDiscount;
+        if (r.artistDiscount === undefined && parentRow.artistDiscount !== undefined) r.artistDiscount = parentRow.artistDiscount;
+        if (r.beauticianDiscount === undefined && parentRow.beauticianDiscount !== undefined) r.beauticianDiscount = parentRow.beauticianDiscount;
+      }
 
       const name = (r.name || '').trim();
       const brand = (r.brand || '').trim();
@@ -1645,7 +1785,18 @@ export const BulkProductEntryModal = ({
 
         // 2. Centralized Master Data Validation (Strict Database-backed Verification)
         if (category && availableCategories.length > 0) {
-          const matchedCategory = findNormalizedMatch(availableCategories, category);
+          let matchedCategory = findNormalizedMatch(availableCategories, category);
+          if (!matchedCategory) {
+            matchedCategory = availableCategories.find(c => 
+              normalizeText(c) === normalizeText(category) ||
+              normalizeText(c).includes(normalizeText(category)) ||
+              normalizeText(category).includes(normalizeText(c))
+            );
+          }
+          if (!matchedCategory && subcategory) {
+            const inferred = inferCategoryFromSubcategory(subcategory);
+            if (inferred) matchedCategory = inferred;
+          }
           if (!matchedCategory) {
             errors.push(`Row ${idx + 1} (Column CATEGORY): Category "${category}" not found in Master Categories`);
             fieldErrors.category = 'Category not in Master Data';
@@ -1771,28 +1922,34 @@ export const BulkProductEntryModal = ({
           }
         }
 
-        // Color variant validation: Only explicit variant child rows demand a Shade Name
+        // Color variant handling: If child variant has no explicit shade name, gracefully assign fallback
         const isVariantRow = Boolean(r.parentId || (r.hasMultipleShades && !r.isParent));
         if (isVariantRow) {
           const colorName = (r.shade || r.variantName || '').trim();
           if (!colorName) {
-            errors.push('Color Name is required for color variant');
-            fieldErrors.shade = 'Color Name required';
+            const fallbackShade = r.size ? `Size ${r.size}` : `Variant ${idx + 1}`;
+            r.shade = fallbackShade;
+            r.variantName = fallbackShade;
           }
         }
 
         // 6. Hex color auto-resolution (never fail rows for descriptive shade names)
         const rowHasShades = isShadeApplicable(category, subcategory);
-        const hexVal = (r.hexColor || '').trim();
-        const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-        if (rowHasShades && hexVal && !hexPattern.test(hexVal)) {
-          const matched = matchBeautyShade(hexVal) || matchBeautyShade(r.shade || r.name);
-          if (matched && matched.matchedStandardHex) {
-            r.hexColor = matched.matchedStandardHex;
-            r.rgb = hexToRgbString(matched.matchedStandardHex);
-          } else {
-            r.hexColor = '';
-            r.rgb = '';
+        if (!rowHasShades) {
+          r.hexColor = '';
+          r.rgb = '';
+        } else {
+          const hexVal = (r.hexColor || '').trim();
+          const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+          if (hexVal && !hexPattern.test(hexVal)) {
+            const matched = matchBeautyShade(hexVal) || matchBeautyShade(r.shade || r.name);
+            if (matched && matched.matchedStandardHex) {
+              r.hexColor = matched.matchedStandardHex;
+              r.rgb = hexToRgbString(matched.matchedStandardHex);
+            } else {
+              r.hexColor = '';
+              r.rgb = '';
+            }
           }
         }
 
@@ -1832,7 +1989,7 @@ export const BulkProductEntryModal = ({
         status
       };
     });
-  }, [rows, existingProducts, availableCategories, availableBrands, availableVariantTypes, getSubcategoriesForCategory, calculateSellingPrices, submissionValidationErrors, brandLookupMap]);
+  }, [rows, existingProducts, availableCategories, availableBrands, availableVariantTypes, getSubcategoriesForCategory, inferCategoryFromSubcategory, calculateSellingPrices, submissionValidationErrors, brandLookupMap]);
 
   // Status counters for Header Badges
   const summaryCounters = useMemo(() => {
@@ -2036,20 +2193,34 @@ export const BulkProductEntryModal = ({
       }
 
       if (field === 'category') {
-        // Reset all dependent fields to empty when category changes
-        updated.subcategory = '';
-        updated.productType = '';
-        updated.variantType = '';
-        updated.shade = '';
-        updated.hexColor = '';
-        updated.rgb = '';
-        updated.attributes = {};
+        // When category changes, keep shades, swatches, and attributes intact.
+        // If current subcategory does not belong to new category, reset subcategory.
+        const validSubs = getSubcategoriesForCategory(value);
+        if (updated.subcategory && validSubs.length > 0 && !validSubs.some(s => normalizeText(s) === normalizeText(updated.subcategory))) {
+          updated.subcategory = '';
+        }
       }
 
       if (field === 'subcategory') {
-        // Reset dependent select category & variant type to empty when subcategory changes
-        updated.productType = '';
-        updated.variantType = '';
+        // If category is not set, infer it from the newly selected subcategory
+        if (!updated.category) {
+          const inferred = inferCategoryFromSubcategory(value);
+          if (inferred) updated.category = inferred;
+        }
+      }
+
+      // Automatic SKU Generation when brand, category, subcategory, or name is set and parentSku is blank
+      if (['name', 'brand', 'category', 'subcategory'].includes(field)) {
+        if (!updated.parentSku && (updated.name || updated.brand)) {
+          const existingCatalogSkus = (existingProducts || []).map(p => p.sku).filter(Boolean);
+          const stagedSkus = rows.map(r => r.parentSku).filter(Boolean);
+          updated.parentSku = generateProductSku({
+            brand: updated.brand || 'GEN',
+            category: updated.category || updated.subcategory || 'PRD',
+            name: updated.name || 'Product',
+            existingSkus: [...existingCatalogSkus, ...stagedSkus]
+          });
+        }
       }
 
       if (field === 'hexColor') {
@@ -2895,24 +3066,42 @@ export const BulkProductEntryModal = ({
           familyGroups[groupKey].push(r);
         });
 
+        const existingCatalogSkus = (existingProducts || []).map(p => p.sku).filter(Boolean);
+        const usedSkus = new Set(existingCatalogSkus.map(s => String(s).trim().toUpperCase()));
+        rows.forEach(r => {
+          if (r.parentSku) usedSkus.add(String(r.parentSku).trim().toUpperCase());
+        });
+
         Object.values(familyGroups).forEach(group => {
           const parent = group[0];
-          const baseSku = extractBaseSku(parent.parentSku || parent.sku || '');
-          if (baseSku) {
-            parent.parentSku = baseSku;
+          let baseSku = extractBaseSku(parent.parentSku || parent.sku || '');
+          if (!baseSku) {
+            baseSku = generateProductSku({
+              brand: parent.brand || 'GEN',
+              category: parent.category || parent.subcategory || 'PRD',
+              name: parent.name || 'Product',
+              existingSkus: Array.from(usedSkus)
+            });
           }
-          if (group.length > 1) {
-            parent.isParent = true;
-            parent.hasMultipleShades = true;
-            parent.parentId = null;
-            for (let i = 1; i < group.length; i++) {
-              const child = group[i];
-              child.parentId = parent._id;
-              child.isParent = false;
-              child.hasMultipleShades = false;
-              child.parentSku = parent.parentSku;
-              if (!child.variantSku) {
-                child.variantSku = `${parent.parentSku || 'SKU'}-V${String(i + 1).padStart(2, '0')}`;
+          usedSkus.add(baseSku.toUpperCase());
+          parent.parentSku = baseSku;
+
+          for (let i = 0; i < group.length; i++) {
+            const member = group[i];
+            member.parentSku = baseSku;
+            if (i > 0) {
+              member.parentId = parent._id;
+              member.isParent = false;
+              member.hasMultipleShades = false;
+              if (!member.variantSku) {
+                member.variantSku = generateVariantInternalSku(baseSku, i + 1, member.shade || member.variantName);
+              }
+            } else if (group.length > 1) {
+              parent.isParent = true;
+              parent.hasMultipleShades = true;
+              parent.parentId = null;
+              if (!parent.variantSku && (parent.shade || parent.variantName)) {
+                parent.variantSku = generateVariantInternalSku(baseSku, 1, parent.shade || parent.variantName);
               }
             }
           }
@@ -3122,23 +3311,31 @@ export const BulkProductEntryModal = ({
           primaryRow.beauticianDiscount
         );
 
-        const childShades = rowsInGroup.map((r, sIdx) => {
+        const PLACEHOLDER_SHADE_NAMES = new Set(['default', 'default shade', 'standard', 'standard formulation', 'n/a', 'non-shade', 'n/a (non-shade)', 'default variant']);
+        const hasExplicitVariants = rowsInGroup.length > 1 || rowsInGroup.some(r => {
+          const s = (r.shade || '').trim().toLowerCase();
+          const v = (r.variantName || '').trim().toLowerCase();
+          return (s && !PLACEHOLDER_SHADE_NAMES.has(s)) || (v && !PLACEHOLDER_SHADE_NAMES.has(v));
+        });
+
+        const childShades = hasExplicitVariants ? rowsInGroup.map((r, sIdx) => {
           const varPrices = calculateSellingPrices(r.mrp, r.generalDiscount, r.salonDiscount, r.artistDiscount, r.beauticianDiscount);
           const explicitVariantSku = (r.variantSku || '').trim();
           const fallbackVariantSku = r.parentSku && r.parentSku.toUpperCase() !== resolvedSku.toUpperCase()
             ? r.parentSku.trim()
             : generateVariantInternalSku(resolvedSku, sIdx + 1, r.variantName || r.shade);
           const shadeCode = r.shadeCode || String(sIdx + 1).padStart(2, '0');
+          const cleanName = (r.variantName || r.shade || '').trim();
 
           return {
             id: `var_${Date.now()}_${sIdx + 1}_${Math.random().toString(36).substring(2, 5)}`,
-            name: r.variantName || r.shade || `Variant ${sIdx + 1}`,
+            name: cleanName || `Variant ${sIdx + 1}`,
             code: shadeCode,
             sku: explicitVariantSku || fallbackVariantSku,
             barcode: r.variantBarcode || r.barcode || null,
             hexColor: r.hexColor || '',
             hex: r.hexColor || '',
-            color_name: r.shade || r.variantName || 'Default',
+            color_name: cleanName,
             image: (r.images && r.images[0]) || r.productImageUrl || primaryRow.productImageUrl || null,
             images: r.images && r.images.length > 0 ? r.images : (r.productImageUrl ? [r.productImageUrl] : (primaryRow.productImageUrl ? [primaryRow.productImageUrl] : [])),
             mrp: Number(r.mrp || primaryRow.mrp || 0),
@@ -3155,7 +3352,7 @@ export const BulkProductEntryModal = ({
               ...(r.attributes || {})
             }
           };
-        });
+        }).filter(s => s.name && !PLACEHOLDER_SHADE_NAMES.has(s.name.toLowerCase())) : [];
 
         const brandMatch = matchBrandMaster(primaryRow.brand, brandLookupMap);
         const canonicalBrandName = (brandMatch.matched && brandMatch.brand) ? brandMatch.brand.name : primaryRow.brand;
@@ -3170,8 +3367,8 @@ export const BulkProductEntryModal = ({
           brand_id: canonicalBrandId,
           sku: resolvedSku,
           parentSku: resolvedSku,
-          isParent: rowsInGroup.length > 1,
-          hasMultipleShades: rowsInGroup.length > 1 || Boolean(primaryRow.shade),
+          isParent: childShades.length > 1,
+          hasMultipleShades: childShades.length > 1,
           shades: childShades,
           generalPrice: prices.genP,
           salonPrice: prices.salonP,
@@ -3181,12 +3378,13 @@ export const BulkProductEntryModal = ({
       });
 
       // 3. Save to database
+      let saveRes = null;
       if (onSubmitBulk) {
-        await onSubmitBulk(consolidatedProducts, (p) => setSubmissionProgress(p));
+        saveRes = await onSubmitBulk(consolidatedProducts, (p) => setSubmissionProgress(p));
       } else if (ctxSaveBulk) {
-        await ctxSaveBulk(consolidatedProducts, (p) => setSubmissionProgress(p));
+        saveRes = await ctxSaveBulk(consolidatedProducts, (p) => setSubmissionProgress(p));
       } else {
-        await chunkedBulkSave(consolidatedProducts, {
+        saveRes = await chunkedBulkSave(consolidatedProducts, {
           onProgress: (p) => setSubmissionProgress(p),
           updateExisting: true,
           allowBlankOverwrite: false,
@@ -3217,32 +3415,55 @@ export const BulkProductEntryModal = ({
           localStorage.removeItem('salbeau_bulk_draft_saved_at');
         }
         localStorage.removeItem('salbeau_bulk_draft_rows_v9');
-    localStorage.removeItem('salbeau_bulk_draft_rows_v8');
+        localStorage.removeItem('salbeau_bulk_draft_rows_v8');
         localStorage.removeItem('salbeau_bulk_draft_rows_v7');
       } catch (e) { }
 
+      const failedCount = saveRes?.failed || 0;
+      const insertedCount = saveRes?.inserted ?? (saveRes?.count ?? consolidatedProducts.length);
+      const failedRows = saveRes?.failedRows || [];
+
       setBulkNotice({
-        type: 'success',
-        text: `Successfully saved ${consolidatedProducts.length} product(s) (${readyRows.length} variant rows) to store catalog. All items are now active on the Products page.`
+        type: failedCount > 0 ? 'warning' : 'success',
+        text: `Successfully saved ${insertedCount} product(s) (${readyRows.length} variant rows) to store catalog. All items are now active on the Products page.`
       });
 
-      // If all rows submitted, navigate immediately to the live Products page
-      if (remainingRows.length === 0) {
-        if (onNavigateToProducts) {
-          onNavigateToProducts();
-        } else if (onClose) {
-          onClose();
-        }
-      } else {
-        setFilterMode('ERRORS');
-      }
+      // Update submission progress to 100% finished state for premium circular loader
+      setSubmissionProgress({
+        current: readyRows.length,
+        total: readyRows.length,
+        percent: 100,
+        isFinished: true,
+        success: failedCount === 0,
+        insertedCount,
+        failedCount,
+        failedRows,
+        remainingRowsCount: remainingRows.length
+      });
     } catch (err) {
       setBulkNotice({ type: 'error', text: `Submission failed: ${err.message}` });
+      setSubmissionProgress({
+        current: 0,
+        total: readyRows.length,
+        percent: 0,
+        isFinished: true,
+        isError: true,
+        errorMessage: err.message || 'Import failed due to a server error.'
+      });
     } finally {
       setIsSubmitting(false);
-      setTimeout(() => {
-        setSubmissionProgress(null);
-      }, 1500);
+    }
+  };
+
+  const handleFinishImportProgress = () => {
+    const remainingCount = submissionProgress?.remainingRowsCount || 0;
+    setSubmissionProgress(null);
+    if (remainingCount > 0) {
+      setFilterMode('ERRORS');
+    } else if (onNavigateToProducts) {
+      onNavigateToProducts();
+    } else if (onClose) {
+      onClose();
     }
   };
 
@@ -3787,7 +4008,7 @@ export const BulkProductEntryModal = ({
                   Import Products into Store Catalog
                 </h2>
                 <p className="text-sm text-slate-500 max-w-xl mx-auto font-medium">
-                  Upload bulk product files (Excel / CSV) or enter rows manually. System verifies required fields, master categories, brands, variants, and pricing before saving to Supabase.
+                  Upload bulk product files (Excel / CSV) or enter rows manually. System verifies required fields, master categories, brands, variants, and pricing before saving to store catalog.
                 </p>
               </div>
 
@@ -3886,7 +4107,7 @@ export const BulkProductEntryModal = ({
 
               {/* Disclaimer / Notice */}
               <div className="text-center text-[11.5px] text-slate-400 font-medium">
-                Bulk Product Entry is an import-only preparation workbench. Once data is submitted, products are saved to Supabase and become available in the live <strong className="text-slate-600">Products catalog</strong>.
+                Bulk Product Entry is an import-only preparation workbench. Once data is submitted, products are saved to the database and become available in the live <strong className="text-slate-600">Products catalog</strong>.
               </div>
             </div>
           </div>
@@ -4250,6 +4471,13 @@ export const BulkProductEntryModal = ({
                                 {childCount + 1}sh
                               </div>
                             )}
+                            {row._isError && (
+                              <div className="mt-1" title={row._errors?.join('; ') || 'Row has validation errors'}>
+                                <span className="inline-flex items-center justify-center px-1 py-0.5 rounded bg-rose-600 text-white text-[9px] font-black shadow-xs">
+                                  ERR
+                                </span>
+                              </div>
+                            )}
                           </td>
                         )}
 
@@ -4528,6 +4756,19 @@ export const BulkProductEntryModal = ({
                                 <span>{row._fieldErrors.name}</span>
                               </div>
                             )}
+                            {row._errors && row._errors.length > 0 && (
+                              <div className="mt-1.5 flex flex-col gap-1">
+                                {row._errors.map((err, i) => (
+                                  <div
+                                    key={i}
+                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-[10.5px] font-bold shadow-2xs"
+                                  >
+                                    <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                                    <span className="truncate max-w-[280px]" title={err}>{err}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </td>
                         )}
 
@@ -4542,7 +4783,7 @@ export const BulkProductEntryModal = ({
                               options={availableCategories}
                               placeholder="Select Category"
                               searchPlaceholder="Search category..."
-                              allowManual={false}
+                              allowManual={true}
                               externalNotice={{
                                 entityName: 'Category',
                                 pageName: 'Categories Manager',
@@ -4566,13 +4807,21 @@ export const BulkProductEntryModal = ({
                             <SearchableCombobox
                               id={`cell_subcategory_${row._id}`}
                               value={row.subcategory || ''}
-                              onChange={(val) => handleCellChange(row._id, 'subcategory', val)}
+                              onChange={(val) => {
+                                handleCellChange(row._id, 'subcategory', val);
+                                if (!row.category || row._fieldErrors?.category) {
+                                  const inferred = inferCategoryFromSubcategory(val);
+                                  if (inferred) {
+                                    handleCellChange(row._id, 'category', inferred);
+                                  }
+                                }
+                              }}
                               onNextFocus={() => focusField(row._id, 'shade')}
                               options={getSubcategoriesForCategory(row.category)}
-                              placeholder={row.category ? "Select Subcategory" : "Select Category First"}
+                              placeholder="Select Subcategory"
                               searchPlaceholder="Search subcategory..."
-                              disabled={!row.category}
-                              allowManual={false}
+                              disabled={false}
+                              allowManual={true}
                               externalNotice={{
                                 entityName: 'Subcategory',
                                 pageName: 'Categories Manager',
@@ -4581,6 +4830,12 @@ export const BulkProductEntryModal = ({
                               }}
                               isAdmin={isAdmin}
                             />
+                            {row._fieldErrors?.subcategory && (
+                              <div className="text-[10.5px] font-bold text-rose-600 flex items-center gap-1 mt-1 leading-tight">
+                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                <span>{row._fieldErrors.subcategory}</span>
+                              </div>
+                            )}
                           </td>
                         )}
 
@@ -4625,24 +4880,30 @@ export const BulkProductEntryModal = ({
                         {/* Column 10: Swatch & HEX Helper */}
                         {isColVisible('swatch') && (
                           <td className="min-w-[180px] px-3 py-2 bg-white">
-                            <div className="flex items-center gap-2">
-                              <input
-                                id={`cell_swatch_${row._id}`}
-                                type="color"
-                                value={row.hexColor && row.hexColor.startsWith('#') && row.hexColor.length === 7 ? row.hexColor : '#FFFFFF'}
-                                onChange={(e) => handleCellChange(row._id, 'hexColor', e.target.value)}
-                                className="w-8 h-8 rounded-lg border border-slate-300 p-0.5 cursor-pointer bg-white"
-                                title="Pick HEX color swatch"
-                              />
-                              <input
-                                type="text"
-                                value={row.hexColor || ''}
-                                onChange={(e) => handleCellChange(row._id, 'hexColor', e.target.value)}
-                                onKeyDown={(e) => handleCellKeyDown(e, row._id, 'hexColor')}
-                                placeholder="e.g. #D4A373"
-                                className="w-24 h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 outline-none uppercase focus:border-pink-500"
-                              />
-                            </div>
+                            {rowHasShades ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  id={`cell_swatch_${row._id}`}
+                                  type="color"
+                                  value={row.hexColor && row.hexColor.startsWith('#') && row.hexColor.length === 7 ? row.hexColor : '#FFFFFF'}
+                                  onChange={(e) => handleCellChange(row._id, 'hexColor', e.target.value)}
+                                  className="w-8 h-8 rounded-lg border border-slate-300 p-0.5 cursor-pointer bg-white"
+                                  title="Pick HEX color swatch"
+                                />
+                                <input
+                                  type="text"
+                                  value={row.hexColor || ''}
+                                  onChange={(e) => handleCellChange(row._id, 'hexColor', e.target.value)}
+                                  onKeyDown={(e) => handleCellKeyDown(e, row._id, 'hexColor')}
+                                  placeholder="e.g. #D4A373"
+                                  className="w-24 h-8 px-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 outline-none uppercase focus:border-pink-500"
+                                />
+                              </div>
+                            ) : (
+                              <div className="h-9 px-2.5 py-1.5 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold text-slate-400 flex items-center justify-center italic">
+                                N/A (Non-Shade)
+                              </div>
+                            )}
                           </td>
                         )}
 
@@ -6241,41 +6502,190 @@ export const BulkProductEntryModal = ({
         )}
 
         {/* =====================================================================
-            7. HIGH-PERFORMANCE BATCH IMPORT PROGRESS MODAL (Real Chunks)
+            7. PREMIUM CIRCULAR IMPORT PROGRESS (Animated Ring Loader)
             ===================================================================== */}
-        {submissionProgress && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 p-8 w-full max-w-md text-center space-y-5">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto shadow-inner">
-                <Loader2 className="w-7 h-7 animate-spin" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900 tracking-tight">Importing Products to Supabase</h3>
-                <p className="text-xs text-slate-500 font-medium mt-1">
-                  High-speed chunked database processing in progress...
-                </p>
-              </div>
+        {submissionProgress && (() => {
+          const isFinished = !!submissionProgress.isFinished;
+          const isError = !!submissionProgress.isError;
+          const currentCount = submissionProgress.current || 0;
+          const totalCount = submissionProgress.total || 0;
 
-              {/* Progress Numbers */}
-              <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-700 px-1">
-                <span>{submissionProgress.current.toLocaleString()} / {submissionProgress.total.toLocaleString()}</span>
-                <span className="text-indigo-600 text-sm font-black">{submissionProgress.percent}%</span>
-              </div>
+          // Never display 100% before the actual import operation finishes
+          const rawPercent = submissionProgress.percent !== undefined && submissionProgress.percent !== null
+            ? submissionProgress.percent
+            : (totalCount > 0 ? Math.round((currentCount / totalCount) * 100) : 0);
+          const livePercent = isFinished ? 100 : Math.min(99, Math.max(0, rawPercent));
 
-              {/* Live Progress Bar */}
-              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200 p-0.5">
-                <div
-                  className="bg-gradient-to-r from-indigo-500 to-emerald-500 h-full rounded-full transition-all duration-300 shadow-sm"
-                  style={{ width: `${Math.min(100, Math.max(3, submissionProgress.percent))}%` }}
-                />
-              </div>
+          // SVG Ring dimensions & math (Circumference: 2 * PI * 78 ≈ 490.09)
+          const radius = 78;
+          const circumference = 2 * Math.PI * radius;
+          const strokeDashoffset = circumference - (livePercent / 100) * circumference;
 
-              <p className="text-[11px] font-mono text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                {submissionProgress.text}
-              </p>
+          return (
+            <div
+              className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 backdrop-blur-md p-4 animate-in fade-in duration-200 select-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="bg-white rounded-3xl shadow-2xl border border-pink-100/90 p-8 sm:p-10 w-full max-w-md text-center space-y-6 animate-in zoom-in-95 duration-200 relative overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Soft ambient background glow effects matching beauty theme */}
+                <div className="absolute -top-14 -right-14 w-36 h-36 bg-pink-100/60 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-14 -left-14 w-36 h-36 bg-rose-100/60 rounded-full blur-2xl pointer-events-none" />
+
+                {/* Centered Circular Progress Ring */}
+                <div className="relative w-48 h-48 sm:w-52 sm:h-52 mx-auto flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 192 192">
+                    <defs>
+                      <linearGradient id="premiumPinkRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#FB7185" />
+                        <stop offset="50%" stopColor="#EC4899" />
+                        <stop offset="100%" stopColor="#BE185D" />
+                      </linearGradient>
+                      <linearGradient id="emeraldSuccessGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#34D399" />
+                        <stop offset="100%" stopColor="#059669" />
+                      </linearGradient>
+                      <filter id="premiumPinkGlow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="5" floodColor="#EC4899" floodOpacity="0.35" />
+                      </filter>
+                    </defs>
+
+                    {/* Clean background track */}
+                    <circle
+                      cx="96"
+                      cy="96"
+                      r={radius}
+                      stroke="#FCE7F3"
+                      strokeWidth="10"
+                      fill="transparent"
+                    />
+
+                    {/* Smooth animated circular stroke */}
+                    <circle
+                      cx="96"
+                      cy="96"
+                      r={radius}
+                      stroke={isFinished && !isError ? "url(#emeraldSuccessGradient)" : "url(#premiumPinkRingGradient)"}
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                      fill="transparent"
+                      filter={isFinished && !isError ? undefined : "url(#premiumPinkGlow)"}
+                      strokeDasharray={circumference}
+                      strokeDashoffset={strokeDashoffset}
+                      style={{
+                        transition: "stroke-dashoffset 0.4s ease-out, stroke 0.3s ease"
+                      }}
+                    />
+                  </svg>
+
+                  {/* Prominent Inside Circle Element */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    {isFinished && !isError ? (
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center shadow-lg shadow-emerald-200/80 animate-in zoom-in-75 duration-300">
+                        <Check className="w-9 h-9 stroke-[3]" />
+                      </div>
+                    ) : isError ? (
+                      <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shadow-inner animate-in zoom-in-75 duration-300">
+                        <AlertCircle className="w-9 h-9 stroke-[2.5]" />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-center select-none">
+                        <span className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight animate-pulse">
+                          {livePercent}<span className="text-2xl sm:text-3xl font-extrabold text-pink-600 ml-0.5">%</span>
+                        </span>
+                        <span className="text-[11px] font-bold text-pink-500 tracking-wider uppercase mt-1">
+                          Uploading
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Text and Status Section */}
+                <div className="space-y-2 relative z-10">
+                  {isFinished && !isError ? (
+                    <>
+                      <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        Products Imported Successfully!
+                      </h3>
+                      <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-xs mx-auto">
+                        {submissionProgress.failedCount > 0
+                          ? `${submissionProgress.insertedCount} products imported successfully, with ${submissionProgress.failedCount} failed rows.`
+                          : `All ${submissionProgress.insertedCount || totalCount} products have been added to your store.`}
+                      </p>
+                    </>
+                  ) : isError ? (
+                    <>
+                      <h3 className="text-xl sm:text-2xl font-black text-rose-600 tracking-tight">
+                        Import Interrupted
+                      </h3>
+                      <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-xs mx-auto">
+                        {submissionProgress.errorMessage || "An error occurred while saving products to the database."}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        Importing Your Products
+                      </h3>
+                      <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-xs mx-auto">
+                        Please wait while we add your products to the store.
+                      </p>
+                      <div className="pt-2">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pink-50/90 border border-pink-100 text-pink-700 text-xs sm:text-sm font-semibold shadow-xs">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-500"></span>
+                          </span>
+                          <span>
+                            Importing products... {currentCount.toLocaleString()} of {totalCount.toLocaleString()} completed.
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Completion & Error Actions */}
+                {(isFinished || isError) && (
+                  <div className="space-y-2.5 pt-2 relative z-10">
+                    {submissionProgress.failedCount > 0 && submissionProgress.failedRows?.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => downloadFailedRowsExcel(submissionProgress.failedRows)}
+                        className="w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Download Error Report ({submissionProgress.failedCount} rows)</span>
+                      </button>
+                    )}
+
+                    {!isError ? (
+                      <button
+                        type="button"
+                        onClick={handleFinishImportProgress}
+                        className="w-full py-3.5 px-6 bg-gradient-to-r from-pink-600 via-pink-700 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white rounded-2xl text-sm font-black shadow-lg shadow-pink-200 flex items-center justify-center gap-2.5 transition-all cursor-pointer"
+                      >
+                        <Package className="w-4 h-4" />
+                        <span>View Products Catalog</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSubmissionProgress(null)}
+                        className="w-full py-3 px-6 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer"
+                      >
+                        Dismiss & Review Staged Data
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* =====================================================================
             8. IMPORT RESULT SUMMARY DIALOG (Prompt Section 17)

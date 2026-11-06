@@ -21,7 +21,14 @@ import {
   fetchUserVerificationRecord,
   submitB2BVerification as apiSubmitB2BVerification
 } from '../utils/b2bVerificationService';
-import { requestFCMToken, setupFCMForegroundListener, displayLocalNotification } from '../utils/fcmService';
+import {
+  requestFCMToken,
+  setupFCMForegroundListener,
+  displayLocalNotification,
+  getInitialNotification,
+  setupNotificationTapListener,
+  clearFCMToken
+} from '../utils/fcmService';
 
 const AppContext = createContext();
 
@@ -41,7 +48,21 @@ export const parseShades = (raw) => {
 
 export const mapProductFromDb = (p) => {
   if (!p) return null;
-  const rawShades = parseShades(p.shades);
+  const rawShades = parseShades(p.shades).filter(s => {
+    if (!s || typeof s !== 'object') return false;
+    const n = String(s.color_name || s.name || s.title || s.shade || '').trim().toLowerCase();
+    return (
+      n &&
+      n !== 'default' &&
+      n !== 'default shade' &&
+      n !== 'standard' &&
+      n !== 'standard formulation' &&
+      n !== 'n/a' &&
+      n !== 'non-shade' &&
+      n !== 'n/a (non-shade)' &&
+      n !== 'default variant'
+    );
+  });
   const normalizedTiers = normalizeQuantityTiers(p.quantity_tiers || p.quantityTiers);
   const mrp = Number(p.mrp || 0);
   const addInfo = (p.additional_info && typeof p.additional_info === 'object') ? p.additional_info : ((p.additionalInfo && typeof p.additionalInfo === 'object') ? p.additionalInfo : {});
@@ -109,6 +130,12 @@ export const mapProductFromDb = (p) => {
     trendingPriority: Number(p.trending_priority ?? p.trendingPriority ?? addInfo.trendingPriority ?? addInfo.trending_priority ?? 0),
     isFeatured: Boolean(p.is_featured ?? p.isFeatured ?? addInfo.isFeatured ?? addInfo.is_featured ?? false),
     featuredPriority: Number(p.featured_priority ?? p.featuredPriority ?? addInfo.featuredPriority ?? addInfo.featured_priority ?? 0),
+    isBestSeller: Boolean(p.is_bestseller ?? p.isBestSeller ?? addInfo.isBestSeller ?? addInfo.is_bestseller ?? false),
+    bestSellerPriority: Number(p.bestseller_priority ?? p.bestSellerPriority ?? addInfo.bestSellerPriority ?? addInfo.bestseller_priority ?? 0),
+    isRecentProduct: Boolean(p.is_recent ?? p.isRecentProduct ?? addInfo.isRecentProduct ?? addInfo.is_recent ?? addInfo.showInRecent ?? false),
+    recentPriority: Number(p.recent_priority ?? p.recentPriority ?? addInfo.recentPriority ?? addInfo.recent_priority ?? 0),
+    isTopRecommendation: Boolean(p.is_top_recommendation ?? p.isTopRecommendation ?? addInfo.isTopRecommendation ?? addInfo.is_top_recommendation ?? false),
+    recommendationPriority: Number(p.recommendation_priority ?? p.recommendationPriority ?? addInfo.recommendationPriority ?? addInfo.recommendation_priority ?? 0),
     publishedAt: p.published_at || p.publishedAt || addInfo.publishedAt || addInfo.published_at || p.created_at || null,
     showInNewArrivals: Boolean(p.show_in_new_arrivals ?? p.showInNewArrivals ?? addInfo.showInNewArrivals ?? true),
     sort_order: Number(p.sort_order ?? p.sortOrder ?? p.display_order ?? addInfo.sort_order ?? addInfo.priority ?? 99999),
@@ -136,12 +163,14 @@ const mapCategoryFromDb = (c) => ({
 });
 
 export const computeOverallOrderStatus = (items, currentOrderStatus = 'placed') => {
-  if (!items || items.length === 0) return currentOrderStatus;
+  const normCurrent = (currentOrderStatus || '').toLowerCase().trim();
+  // Preserve explicit order status set by Admin or database
+  if (normCurrent && normCurrent !== 'placed') {
+    return normCurrent;
+  }
+  if (!items || items.length === 0) return normCurrent || 'placed';
 
   const statuses = items.map(i => (i.status || '').toLowerCase() || 'placed');
-
-  const allPlaced = statuses.every(s => s === 'placed');
-  if (allPlaced) return 'placed';
 
   const allDelivered = statuses.every(s => s === 'delivered' || s === 'completed');
   if (allDelivered) return 'delivered';
@@ -167,8 +196,8 @@ export const computeOverallOrderStatus = (items, currentOrderStatus = 'placed') 
   }
 
   // Preserve explicit standard lifecycle stages set by Admin
-  if (['confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery', 'placed', 'delivered', 'completed'].includes(currentOrderStatus)) {
-    return currentOrderStatus;
+  if (['confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery', 'placed', 'delivered', 'completed'].includes(normCurrent)) {
+    return normCurrent;
   }
 
   if (processingCount > 0) {
@@ -180,26 +209,61 @@ export const computeOverallOrderStatus = (items, currentOrderStatus = 'placed') 
     return 'cancelled';
   }
 
-  return currentOrderStatus;
+  return normCurrent || 'placed';
 };
 
 const mapOrderFromDb = (o) => {
-  const rawItems = o.items || [];
-  const dbStatus = (o.status || 'placed').toLowerCase();
+  if (!o) return null;
+  let rawItems = o.items || [];
+  if (typeof rawItems === 'string') {
+    try { rawItems = JSON.parse(rawItems); } catch { rawItems = []; }
+  }
+  if (!Array.isArray(rawItems)) rawItems = [];
+
+  const dbStatus = (o.status || 'placed').toLowerCase().trim();
 
   const itemsWithStatus = rawItems.map(item => {
+    if (!item) return { status: 'placed', quantity: 1 };
     let itemSt = item.status ? item.status.toLowerCase() : '';
-    if (!itemSt) {
+    if (!itemSt || itemSt === 'placed') {
       itemSt = dbStatus.includes('partially') ? 'processing' : dbStatus;
     }
     return {
       ...item,
       status: itemSt,
-      rejectionReason: item.rejectionReason || ''
+      rejectionReason: item.rejectionReason || o.rejection_reason || ''
     };
   });
 
-  const computedStatus = computeOverallOrderStatus(itemsWithStatus, o.status || 'placed');
+  const computedStatus = (dbStatus && dbStatus !== 'placed')
+    ? dbStatus
+    : computeOverallOrderStatus(itemsWithStatus, dbStatus);
+
+  // Safe shipments parser
+  let shipmentsMeta = {};
+  if (o.shipments) {
+    if (typeof o.shipments === 'object' && !Array.isArray(o.shipments)) {
+      shipmentsMeta = o.shipments;
+    } else if (Array.isArray(o.shipments) && o.shipments.length > 0 && typeof o.shipments[0] === 'object') {
+      shipmentsMeta = o.shipments[0];
+    } else if (typeof o.shipments === 'string') {
+      try { shipmentsMeta = JSON.parse(o.shipments); } catch {}
+    }
+  }
+
+  // Safe payment status and payment method mapping
+  const rawPayStatus = (o.payment_status || shipmentsMeta.paymentStatus || o.internal_status || '').toLowerCase().trim();
+  const paymentStatus = ['paid', 'completed'].includes(rawPayStatus) ? 'paid' : (rawPayStatus === 'partially_paid' ? 'partially_paid' : 'pending');
+  const paymentMethod = (o.payment_method || shipmentsMeta.paymentMethod || 'cash').toLowerCase().trim();
+
+  // Parse status_history safely
+  let parsedHistory = [];
+  if (o.status_history) {
+    if (Array.isArray(o.status_history)) parsedHistory = o.status_history;
+    else if (typeof o.status_history === 'string') {
+      try { parsedHistory = JSON.parse(o.status_history); } catch { parsedHistory = []; }
+    }
+  }
 
   return {
     id: o.id,
@@ -211,12 +275,19 @@ const mapOrderFromDb = (o) => {
     branch: o.branch,
     deliveryType: o.delivery_type || o.deliveryType,
     deliveryAddress: o.delivery_address || o.deliveryAddress,
+    deliveryInstructions: o.delivery_instructions || o.deliveryInstructions || '',
     totalAmount: Number(o.total_amount || o.totalAmount || 0),
     status: computedStatus,
+    paymentStatus,
+    paymentMethod,
+    assignedEmployeeId: o.assigned_employee_id || shipmentsMeta.assignedEmployeeId || null,
+    assignedEmployeeName: o.assigned_employee_name || shipmentsMeta.assignedEmployeeName || null,
+    statusHistory: parsedHistory,
     rejectionReason: o.rejection_reason || o.rejectionReason || '',
-    placedAt: o.placed_at || o.placedAt,
-    date: o.date,
-    items: itemsWithStatus
+    placedAt: o.placed_at || o.placedAt || o.date,
+    date: o.date || o.placed_at,
+    items: itemsWithStatus,
+    shipments: shipmentsMeta
   };
 };
 
@@ -379,7 +450,18 @@ export const DEFAULT_HOME_BANNERS = [
 export const AppProvider = ({ children }) => {
   const initialSession = useMemo(() => getInitialAuthSession(), []);
 
-  const [currentScreen, setCurrentScreen] = useState('splash');
+  const [currentScreen, _setCurrentScreen] = useState('splash');
+  const [previousScreen, setPreviousScreen] = useState('home');
+
+  const setCurrentScreen = useCallback((newScr) => {
+    _setCurrentScreen(prev => {
+      if (prev !== newScr && prev !== 'splash') {
+        setPreviousScreen(prev);
+      }
+      return newScr;
+    });
+  }, []);
+
   const [userRole, setUserRole] = useState(() => {
     return initialSession?.role || initialSession?.profile?.role || 'general';
   });
@@ -475,17 +557,34 @@ export const AppProvider = ({ children }) => {
     let isMounted = true;
     const restoreSession = async () => {
       try {
-        // Automatic global cache reset for mobile app
-        const cacheVer = await storage.getItem('salbeau_mobile_cache_v11');
+        // Automatic global user data & cache reset for mobile app
+        const cacheVer = await storage.getItem('salbeau_mobile_cache_v12');
         if (cacheVer !== 'true') {
           await Promise.all([
+            storage.removeItem(AUTH_SESSION_KEY),
+            storage.removeItem('salbeau_user_profile'),
+            storage.removeItem('salbeau_cache_orders'),
+            storage.removeItem('salbeau_cache_cart'),
+            storage.removeItem('salbeau_cart'),
+            storage.removeItem('salbeau_favorites'),
+            storage.removeItem('salbeau_addresses'),
+            storage.removeItem('salbeau_user_role'),
+            storage.removeItem('salbeau_b2b_verification_record'),
+            storage.removeItem('salbeau_search_history'),
+            storage.removeItem('salbeau_recent_searches'),
             storage.removeItem('salbeau_cache_products'),
             storage.removeItem('salbeau_cache_categories'),
             storage.removeItem('salbeau_cache_brands'),
             storage.removeItem('salbeau_cache_subcategories'),
             storage.removeItem('salbeau_recently_viewed_ids'),
-            storage.setItem('salbeau_mobile_cache_v11', 'true')
+            storage.setItem('salbeau_mobile_cache_v12', 'true')
           ]).catch(() => {});
+          setUserProfile(EMPTY_USER_PROFILE);
+          setUserRole('general');
+          setOrders([]);
+          setCart([]);
+          setFavorites([]);
+          setAddresses([]);
         }
 
         const [savedAuth, savedProds, savedCats, savedBrands, savedSubs] = await Promise.all([
@@ -781,7 +880,7 @@ export const AppProvider = ({ children }) => {
           : supabase.from('orders').select('id, items, status').order('date', { ascending: false }).limit(200);
 
         const [brandsRes, productsRes, categoriesRes, subcategoriesRes, storeOrdersRes] = await Promise.all([
-          supabase.from('brands').select('id, name, enabled, logo'),
+          supabase.from('brands').select('*'),
           supabase.from('products').select('*').order('created_at', { ascending: false }),
           supabase.from('categories').select('*').order('sort_order', { ascending: true }),
           supabase.from('subcategories').select('*').order('sort_order', { ascending: true }),
@@ -877,14 +976,17 @@ export const AppProvider = ({ children }) => {
         }
 
         const mappedBrands = brandsData
-          .filter(b => !b.id.startsWith('app_') && !b.id.startsWith('salbeau_') && b.category !== 'SystemConfig')
+          .filter(b => !b.id.startsWith('app_') && !b.id.startsWith('salbeau_') && b.category !== 'SystemConfig' && b.category !== 'System Config')
           .map(b => ({
             id: b.id,
             name: b.name,
+            category: b.category || '',
+            categories: b.category ? [b.category] : [],
             enabled: b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0 && b.status !== 'hidden' && b.status !== 'disabled',
-            logo: b.logo
+            logo: b.logo,
+            sort_order: Number(b.sort_order ?? b.sortOrder ?? 99999)
           }))
-          .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
+          .sort((a, b) => ((Number(a.sort_order) || 99999) - (Number(b.sort_order) || 99999)) || (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
 
         setBrands(mappedBrands);
         setCachedData('salbeau_cache_brands', mappedBrands);
@@ -944,11 +1046,6 @@ export const AppProvider = ({ children }) => {
               leafCategories: leaves
             };
           });
-          hierSubs.forEach(hs => {
-            if (!mergedSubs.some(ms => ms.id === hs.id || (ms.name && hs.name && ms.name.toLowerCase() === hs.name.toLowerCase()))) {
-              mergedSubs.push(hs);
-            }
-          });
           mergedSubs.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
           setSubcategories(mergedSubs);
           setCachedData('salbeau_cache_subcategories', mergedSubs);
@@ -965,22 +1062,18 @@ export const AppProvider = ({ children }) => {
         }
       }
 
-      // Merge categories from DB table and hierarchy config cleanly
+      // Merge categories from DB table (Ground Truth) and hierarchy config
       let dbCats = (categoriesRes && categoriesRes.data && categoriesRes.data.length > 0) ? categoriesRes.data.map(mapCategoryFromDb) : [];
       let finalCategories = [];
 
       if (dbCats.length > 0) {
+        // Ground truth: Only active categories present in the database
         finalCategories = dbCats.map(dc => {
           const hMatch = hierarchyCategories.find(hc => hc.id === dc.id || (hc.name && dc.name && hc.name.toLowerCase() === dc.name.toLowerCase()));
           return {
             ...dc,
             image: dc.image || hMatch?.image || ''
           };
-        });
-        hierarchyCategories.forEach(hc => {
-          if (!finalCategories.some(fc => fc.id === hc.id || (fc.name && hc.name && fc.name.toLowerCase() === hc.name.toLowerCase()))) {
-            finalCategories.push(hc);
-          }
         });
       } else if (hierarchyCategories.length > 0) {
         finalCategories = hierarchyCategories;
@@ -1027,46 +1120,49 @@ export const AppProvider = ({ children }) => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const updatedOrder = mapOrderFromDb(payload.new);
+          if (!updatedOrder) return;
           const curProfile = userProfileRef.current;
           const cleanPhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
           const p1 = cleanPhone(curProfile?.phone);
           const p2 = cleanPhone(updatedOrder.phone);
           const cleanName = (curProfile?.name || '').trim().toLowerCase();
-          const isMyOrder = Boolean(
-            !curProfile ||
-            (curProfile?.id && (payload.new.user_id === curProfile.id || payload.new.userId === curProfile.id || String(payload.new.user_id) === String(curProfile.id))) ||
-            (p1 && p2 && p1 === p2) ||
-            (cleanName && updatedOrder.userName && updatedOrder.userName.trim().toLowerCase() === cleanName) ||
-            !updatedOrder.phone
-          );
-          if (isMyOrder) {
-            setOrders(prev => {
-              const idx = prev.findIndex(o => o.id === updatedOrder.id);
-              if (idx >= 0) {
-                const copy = [...prev];
-                const oldOrder = copy[idx];
-                if (oldOrder && oldOrder.status !== updatedOrder.status) {
-                  const statusTitle = `Order Status: ${updatedOrder.status.toUpperCase().replace(/_/g, ' ')}`;
-                  const statusMsg = `Your order #${updatedOrder.id.slice(-6)} is now ${updatedOrder.status.replace(/_/g, ' ')}.`;
-                  setOrderStatusNotification({
-                    id: 'ord_upd_' + Date.now(),
-                    orderId: updatedOrder.id,
-                    status: updatedOrder.status,
-                    title: statusTitle,
-                    message: statusMsg,
-                    time: new Date().toISOString()
-                  });
-                  displayLocalNotification(statusTitle, statusMsg, {
-                    orderId: String(updatedOrder.id),
-                    status: String(updatedOrder.status)
-                  }).catch(() => {});
+
+          setOrders(prev => {
+            const idx = prev.findIndex(o => o.id === updatedOrder.id);
+            const isAlreadyInList = idx >= 0;
+            const isMyOrder = Boolean(
+              isAlreadyInList ||
+              !curProfile ||
+              (curProfile?.id && (payload.new.user_id === curProfile.id || payload.new.userId === curProfile.id || String(payload.new.user_id) === String(curProfile.id))) ||
+              (p1 && p2 && p1 === p2) ||
+              (cleanName && updatedOrder.userName && updatedOrder.userName.trim().toLowerCase() === cleanName) ||
+              !updatedOrder.phone
+            );
+
+            if (!isMyOrder) return prev;
+
+            if (idx >= 0) {
+              const copy = [...prev];
+              const oldOrder = copy[idx];
+              if (oldOrder && (oldOrder.status !== updatedOrder.status || oldOrder.paymentStatus !== updatedOrder.paymentStatus)) {
+                let statusTitle = `Order Status: ${updatedOrder.status.toUpperCase().replace(/_/g, ' ')}`;
+                let statusMsg = `Your order #${updatedOrder.id.slice(-6)} is now ${updatedOrder.status.replace(/_/g, ' ')}.`;
+                if (oldOrder.paymentStatus !== updatedOrder.paymentStatus && updatedOrder.paymentStatus === 'paid') {
+                  statusTitle = 'Payment Received!';
+                  statusMsg = `Payment for order #${updatedOrder.id.slice(-6)} has been confirmed (Paid).`;
                 }
-                copy[idx] = updatedOrder;
-                return copy;
+                // Send directly to Mobile System Notification Drawer
+                displayLocalNotification(statusTitle, statusMsg, {
+                  orderId: String(updatedOrder.id),
+                  status: String(updatedOrder.status),
+                  screen: 'order_details'
+                }).catch(() => {});
               }
-              return [updatedOrder, ...prev];
-            });
-          }
+              copy[idx] = updatedOrder;
+              return copy;
+            }
+            return [updatedOrder, ...prev];
+          });
         } else if (payload.eventType === 'DELETE') {
           const deletedId = payload.old?.id;
           if (deletedId) {
@@ -1139,22 +1235,14 @@ export const AppProvider = ({ children }) => {
         if (payload.eventType === 'INSERT') {
           setNotifications(prev => [notif, ...prev.filter(n => n.id !== notif.id)]);
           if (!notif.is_read) {
-            setOrderStatusNotification({
-              id: notif.id,
-              orderId: notif.data?.orderId,
-              status: notif.data?.eventType || notif.type,
-              title: notif.title || 'Notification',
-              message: notif.message || '',
-              time: notif.created_at || new Date().toISOString()
-            });
-
-            // Post to Android System Notification Bar & Lock Screen
+            // Post directly to Android / iOS System Notification Tray & Lock Screen
             displayLocalNotification(
               notif.title || 'Salbeau Notification',
               notif.message || '',
               {
                 orderId: String(notif.data?.orderId || notif.data?.orderNumber || ''),
                 type: String(notif.type || notif.data?.eventType || 'general'),
+                screen: String(notif.data?.screen || (notif.data?.orderId ? 'order_details' : 'home')),
                 id: String(notif.id || '')
               }
             ).catch(() => {});
@@ -1469,32 +1557,51 @@ export const AppProvider = ({ children }) => {
     };
   }, [fetchCatalog]);
 
-  // Load user orders in background on demand or user change
-  useEffect(() => {
-    const cleanPhone = (userProfile?.phone || '').trim();
-    if (!cleanPhone) {
+  // Load user orders in background on demand or user change with robust phone normalization
+  const fetchUserOrders = useCallback(async () => {
+    const rawPhone = (userProfile?.phone || '').trim();
+    const rawId = (userProfile?.id || '').trim();
+    const digits10 = rawPhone.replace(/\D/g, '').slice(-10);
+
+    if (!rawPhone && !rawId) {
       setOrders([]);
-      return;
+      return [];
     }
 
-    let isMounted = true;
-    const fetchUserOrders = async () => {
-      try {
-        const { data } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('phone', cleanPhone)
-          .order('date', { ascending: false });
+    try {
+      let query = supabase.from('orders').select('*').order('date', { ascending: false });
+      const conds = [];
+      if (rawPhone) conds.push(`phone.eq.${rawPhone}`);
+      if (digits10 && digits10.length >= 10) {
+        conds.push(`phone.eq.${digits10}`);
+        conds.push(`phone.eq.+91${digits10}`);
+        conds.push(`phone.eq.+91 ${digits10}`);
+        conds.push(`phone.eq.+91 ${digits10.slice(0, 5)} ${digits10.slice(5)}`);
+      }
+      if (rawId) {
+        conds.push(`user_id.eq.${rawId}`);
+        conds.push(`userId.eq.${rawId}`);
+      }
 
-        if (isMounted && data) {
-          setOrders(data.map(mapOrderFromDb));
-        }
-      } catch (err) { }
-    };
+      if (conds.length > 0) {
+        query = query.or(conds.join(','));
+      }
 
+      const { data, error } = await query;
+      if (!error && Array.isArray(data)) {
+        const mapped = data.map(mapOrderFromDb);
+        setOrders(mapped);
+        return mapped;
+      }
+    } catch (err) {
+      console.warn('fetchUserOrders error:', err);
+    }
+    return [];
+  }, [userProfile?.phone, userProfile?.id]);
+
+  useEffect(() => {
     fetchUserOrders();
-    return () => { isMounted = false; };
-  }, [userProfile?.phone]);
+  }, [fetchUserOrders]);
 
   // In-App Notification Center helpers & Supabase queries
   const fetchNotifications = useCallback(async () => {
@@ -1544,8 +1651,26 @@ export const AppProvider = ({ children }) => {
     }
   }, [userProfile?.phone, userProfile?.id]);
 
-  const dismissOrderStatusNotification = useCallback(() => {
-    setOrderStatusNotification(null);
+  const dismissOrderStatusNotification = useCallback(() => {}, []);
+
+  // Handle System Tray Notification Clicks & Deep-Linking (Cold & Warm)
+  const handleSystemNotificationTap = useCallback((data) => {
+    if (!data) return;
+    const orderId = data.orderId || data.order_id || data.orderNumber;
+    const targetScreen = data.screen || data.targetScreen;
+    
+    if (orderId) {
+      setSelectedOrderIdForDetails(orderId);
+      setCurrentScreen('order_details');
+    } else if (targetScreen) {
+      setCurrentScreen(targetScreen);
+    } else if (data.type === 'order_status' || (data.eventType && String(data.eventType).startsWith('order_'))) {
+      setCurrentScreen('orders');
+    } else if (data.type === 'b2b_approved' || data.type === 'b2b_update') {
+      setCurrentScreen('profile');
+    } else {
+      setCurrentScreen('home');
+    }
   }, []);
 
   // Native Android FCM & Notifications synchronization
@@ -1555,20 +1680,36 @@ export const AppProvider = ({ children }) => {
     const cleanId = (userProfile?.id || '').trim();
     // Always request FCM token & Android 13+ runtime permission on mount
     requestFCMToken(cleanId, cleanPhone);
+
+    // 1. Cold Launch: Check if app was opened by clicking a system notification in tray
+    getInitialNotification().then((initial) => {
+      if (initial) {
+        console.log('[System Tray Cold Launch]:', initial);
+        handleSystemNotificationTap(initial);
+      }
+    }).catch(() => {});
+
+    // 2. Warm Launch: Listen for system notification clicks while app is open / backgrounded
+    const unsubTap = setupNotificationTapListener((tapPayload) => {
+      console.log('[System Tray Warm Tap]:', tapPayload);
+      handleSystemNotificationTap(tapPayload);
+    });
+
+    // 3. Foreground Push: Deliver directly to OS System Notification Drawer
     const unsubFCM = setupFCMForegroundListener((pushData) => {
       fetchNotifications();
-      setOrderStatusNotification({
-        id: 'fcm_' + Date.now(),
+      displayLocalNotification(pushData.title, pushData.message, {
+        ...(pushData.data || {}),
         orderId: pushData.data?.orderId,
-        title: pushData.title,
-        message: pushData.message,
-        timestamp: Date.now()
-      });
+        screen: pushData.data?.screen || (pushData.data?.orderId ? 'order_details' : 'home')
+      }).catch(() => {});
     });
+
     return () => {
+      if (typeof unsubTap === 'function') unsubTap();
       if (typeof unsubFCM === 'function') unsubFCM();
     };
-  }, [userProfile?.phone, userProfile?.id, fetchNotifications]);
+  }, [userProfile?.phone, userProfile?.id, fetchNotifications, handleSystemNotificationTap]);
 
   // Personalized Real-time & In-App Welcome Notification on User Login
   const triggerLoginWelcomeNotification = useCallback(async (profileOverride = null) => {
@@ -1601,19 +1742,11 @@ export const AppProvider = ({ children }) => {
       message = 'Direct B2B distribution rates, bulk purchase discounts, and GST invoice billing unlocked.';
     }
 
-    // 2. Immediate floating celebration in-app toast banner
-    setOrderStatusNotification({
-      id: `welcome_toast_${Date.now()}`,
-      title,
-      message,
-      type: 'welcome',
-      time: new Date().toISOString()
-    });
-
-    // Post to Android System Notification Bar
+    // Deliver directly to Android / iOS System Notification Tray
     displayLocalNotification(title, message, {
       type: 'welcome',
-      eventType: 'login_welcome'
+      eventType: 'login_welcome',
+      screen: 'home'
     }).catch(() => {});
 
     // 3. Persistent Notification Center item in local state
@@ -1946,34 +2079,197 @@ export const AppProvider = ({ children }) => {
     return false;
   };
 
-  // Save completed user profile to Supabase and context, with persistent session
-  const saveUserProfile = async ({ fullName, email, pincode, city, state }) => {
-    const cleanPhone = (userProfile?.phone || '').trim();
-    const cleanDigits = cleanPhone.replace(/\D/g, '');
-    const userId = userProfile?.id || 'u_' + cleanDigits;
-    const fullAddress = `${city}, ${state} - ${pincode}`;
+  // Lookup all registered user accounts by phone number
+  const lookupUserAccountsByPhone = async (phoneNumber) => {
+    const raw = (phoneNumber || userProfile?.phone || '').trim();
+    if (!raw) return { isRegistered: false, accounts: [] };
+    const cleanDigits = raw.replace(/\D/g, '');
+    const last10Digits = cleanDigits.slice(-10);
+    if (last10Digits.length !== 10) return { isRegistered: false, accounts: [] };
 
-    const isB2B = isB2BRole(userRole);
+    const formattedPhone = `+91 ${last10Digits.slice(0, 5)} ${last10Digits.slice(5)}`;
+
+    try {
+      const candidateIds = [`u_${cleanDigits}`, `u_91${last10Digits}`, `u_${last10Digits}`];
+
+      // Query database for all user rows matching this phone
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .or(`phone.eq.${formattedPhone},phone.ilike.%${last10Digits}%,id.in.(${candidateIds.map(id => `"${id}"`).join(',')})`);
+
+      if (error) {
+        console.warn('lookupUserAccountsByPhone db note:', error.message);
+      }
+
+      const rows = Array.isArray(data) ? data : [];
+      const validAccountsMap = new Map();
+
+      rows.forEach(r => {
+        if (!r) return;
+        const role = (r.role || 'general').toLowerCase().trim();
+        const hasName = r.name && r.name.trim().length >= 2;
+        const isComplete = Boolean(r.is_profile_complete || r.isProfileComplete || hasName);
+
+        if (isComplete || hasName || r.b2b_verified || r.business_name) {
+          const profile = {
+            id: r.id || `u_${last10Digits}`,
+            name: r.name || 'User',
+            phone: r.phone || formattedPhone,
+            email: r.email || '',
+            pincode: r.pincode || '',
+            city: r.city || '',
+            state: r.state || '',
+            role: role,
+            businessName: r.business_name || (role !== 'general' ? `${r.name || 'Professional'} Studio` : ''),
+            address: r.address || `${r.city || ''}, ${r.state || ''} - ${r.pincode || ''}`.trim(),
+            isProfileComplete: true,
+            verificationStatus: (r.verification_status || (role === 'general' ? 'approved' : 'not_submitted')).toLowerCase().trim(),
+            b2bVerified: Boolean(r.b2b_verified === true || r.b2b_verified === 'true')
+          };
+
+          if (!validAccountsMap.has(role)) {
+            validAccountsMap.set(role, profile);
+          }
+        }
+      });
+
+      const accounts = Array.from(validAccountsMap.values());
+      return {
+        isRegistered: accounts.length > 0,
+        accounts
+      };
+    } catch (e) {
+      console.warn('lookupUserAccountsByPhone exception:', e);
+      return { isRegistered: false, accounts: [] };
+    }
+  };
+
+  // Sign in directly with a verified user account and navigate to dashboard
+  const loginWithAccount = async (account) => {
+    if (!account) return;
+    const cleanDigits = (account.phone || '').replace(/\D/g, '').slice(-10);
+    const formattedPhone = `+91 ${cleanDigits.slice(0, 5)} ${cleanDigits.slice(5)}`;
+
+    const fullProfile = {
+      ...account,
+      phone: formattedPhone,
+      isProfileComplete: true
+    };
+
+    setUserProfile(fullProfile);
+    if (account.role) {
+      setUserRole(account.role);
+    }
+
+    const primaryAddress = {
+      id: `addr_${account.id || cleanDigits}`,
+      label: 'Home',
+      name: account.name || 'User',
+      phone: formattedPhone,
+      text: account.address || `${account.city || ''}, ${account.state || ''} - ${account.pincode || ''}`.trim() || 'Home Address',
+      isDefault: true,
+    };
+    setAddresses([primaryAddress]);
+
+    const sessionData = {
+      userId: account.id || `u_${cleanDigits}`,
+      phone: formattedPhone,
+      role: account.role || 'general',
+      isProfileComplete: true,
+      profile: fullProfile,
+      addresses: [primaryAddress],
+      token: `sess_${Date.now()}_${cleanDigits}`,
+      authenticatedAt: new Date().toISOString()
+    };
+
+    try {
+      await storage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
+      await storage.setItem('salbeau_user_profile', JSON.stringify(fullProfile));
+    } catch (_) {}
+
+    if (triggerLoginWelcomeNotification) {
+      triggerLoginWelcomeNotification(fullProfile);
+    }
+
+    // Direct dashboard navigation based on role
+    const effectiveRole = (account.role || 'general').toLowerCase();
+    if (isB2BRole(effectiveRole)) {
+      if (account.b2bVerified || account.verificationStatus === 'approved') {
+        setCurrentScreen('home');
+      } else {
+        setCurrentScreen('b2b_verification');
+      }
+    } else {
+      setCurrentScreen('home');
+    }
+
+    return fullProfile;
+  };
+
+  // Set verified phone for brand new user registration
+  const setVerifiedPhoneForRegistration = (phoneNumber) => {
+    const cleanDigits = (phoneNumber || '').replace(/\D/g, '').slice(-10);
+    const formattedPhone = `+91 ${cleanDigits.slice(0, 5)} ${cleanDigits.slice(5)}`;
+
+    setUserProfile(prev => ({
+      ...prev,
+      phone: formattedPhone,
+      isPhoneVerified: true,
+      isProfileComplete: false
+    }));
+  };
+
+  // Save completed user profile to Supabase and context, with persistent session
+  const saveUserProfile = async (profileInput = {}) => {
+    const fullName = (profileInput.fullName || profileInput.name || profileInput.ownerName || userProfile?.name || '').trim();
+    const email = (profileInput.email ?? userProfile?.email ?? '').trim();
+    const pincode = (profileInput.pincode ?? userProfile?.pincode ?? '').trim();
+    const city = (profileInput.city ?? userProfile?.city ?? '').trim();
+    const state = (profileInput.state ?? userProfile?.state ?? '').trim();
+    const address = (profileInput.address ?? userProfile?.address ?? '').trim();
+    const businessName = (profileInput.businessName ?? profileInput.business_name ?? userProfile?.businessName ?? '').trim();
+    const businessType = profileInput.businessType ?? userProfile?.businessType ?? '';
+    const specializations = Array.isArray(profileInput.specializations) ? profileInput.specializations : (userProfile?.specializations || []);
+    const experience = profileInput.experience ?? userProfile?.experience ?? '';
+    const gstNumber = (profileInput.gstNumber ?? profileInput.gstin ?? userProfile?.gstNumber ?? '').trim();
+    const effectiveRole = profileInput.role || userRole || 'general';
+
+    const cleanPhone = (profileInput.phone || userProfile?.phone || '').trim();
+    const cleanDigits = cleanPhone.replace(/\D/g, '');
+    const userId = userProfile?.id || (cleanDigits ? `u_${cleanDigits}` : `u_${Date.now()}`);
+    const fullAddress = address || (city ? `${city}, ${state}${pincode ? ` - ${pincode}` : ''}` : '');
+
+    const isB2B = isB2BRole(effectiveRole);
     const initialStatus = isB2B ? (userProfile?.verificationStatus || 'not_submitted') : 'approved';
     const isB2BVer = isB2B ? Boolean(userProfile?.b2bVerified) : false;
 
     const updatedProfile = {
       ...userProfile,
+      ...profileInput,
       id: userId,
-      name: fullName.trim(),
+      name: fullName,
       phone: cleanPhone,
-      email: (email || '').trim(),
-      pincode: pincode.trim(),
-      city: city.trim(),
-      state: state.trim(),
+      email: email,
+      pincode: pincode,
+      city: city,
+      state: state,
       address: fullAddress,
-      role: userRole || 'general',
+      businessName: businessName,
+      business_name: businessName,
+      businessType: businessType,
+      specializations: specializations,
+      experience: experience,
+      gstNumber: gstNumber,
+      role: effectiveRole,
+      isPhoneVerified: true,
       isProfileComplete: true,
       verificationStatus: initialStatus,
       b2bVerified: isB2BVer
     };
 
     setUserProfile(updatedProfile);
+    setUserRole(effectiveRole);
 
     // Warm cache immediately so any subsequent checks are 0ms
     if (cleanDigits) {
@@ -1984,7 +2280,7 @@ export const AppProvider = ({ children }) => {
     const primaryAddress = {
       id: `addr_${userId}`,
       label: 'Home',
-      name: fullName.trim(),
+      name: fullName,
       phone: cleanPhone,
       text: fullAddress,
       isDefault: true,
@@ -1995,7 +2291,7 @@ export const AppProvider = ({ children }) => {
     const sessionData = {
       userId,
       phone: cleanPhone,
-      role: userRole || 'general',
+      role: effectiveRole,
       isProfileComplete: true,
       profile: updatedProfile,
       addresses: [primaryAddress],
@@ -2007,20 +2303,20 @@ export const AppProvider = ({ children }) => {
 
     // Sync to Supabase cleanly without stuffing JSON into business_name
     try {
-      const cleanBizName = userRole !== 'general' ? ((userProfile?.businessName || userProfile?.business_name) || `${fullName.trim()} Studio`) : null;
+      const cleanBizName = effectiveRole !== 'general' ? (businessName || `${fullName} Studio`) : null;
 
       const userPayload = {
         id: userId,
-        name: fullName.trim(),
-        full_name: fullName.trim(),
+        name: fullName,
+        full_name: fullName,
         phone: cleanPhone,
-        email: (email || '').trim(),
-        pincode: pincode.trim(),
-        city: city.trim(),
-        state: state.trim(),
-        role: userRole || 'general',
+        email: email,
+        pincode: pincode,
+        city: city,
+        state: state,
+        role: effectiveRole,
         business_name: cleanBizName,
-        branch: `${city.trim()} Branch`,
+        branch: `${city || 'MG Road'} Branch`,
         verification_status: initialStatus,
         b2b_verified: isB2BVer,
         cancellation_count: consecutiveCancels || 0,
@@ -2032,11 +2328,11 @@ export const AppProvider = ({ children }) => {
         // Fallback for legacy DB schema before migration is applied
         const { error: fallbackErr } = await supabase.from('users').upsert({
           id: userId,
-          name: fullName.trim(),
+          name: fullName,
           phone: cleanPhone,
-          role: userRole || 'general',
+          role: effectiveRole,
           business_name: cleanBizName,
-          branch: `${city.trim()} Branch`,
+          branch: `${city || 'MG Road'} Branch`,
           verification_status: initialStatus,
           cancellation_count: consecutiveCancels || 0,
           last_active: new Date().toISOString()
@@ -2055,6 +2351,8 @@ export const AppProvider = ({ children }) => {
   // Complete logout: clears all stored session, state, and caches
   const logout = async () => {
     try {
+      // Clear FCM Token from device and Supabase user record to prevent notification bleed
+      await clearFCMToken(userProfile?.id, userProfile?.phone);
       await storage.removeItem(AUTH_SESSION_KEY);
       await storage.removeItem('salbeau_user_profile');
       await storage.removeItem('salbeau_cart');
@@ -2079,7 +2377,7 @@ export const AppProvider = ({ children }) => {
     setCart([]);
     setOrders([]);
     setFavorites([]);
-    setCurrentScreen('onboarding');
+    setCurrentScreen('login');
   };
 
   const isB2BVerified = useMemo(() => {
@@ -2170,13 +2468,23 @@ export const AppProvider = ({ children }) => {
   }, [brands]);
 
   const activeProductFamilies = useMemo(() => {
+    const enabledBrandNames = new Set();
     const disabledBrandIds = new Set();
-    const disabledBrandNames = new Set();
     if (brands && brands.length > 0) {
       for (const b of brands) {
-        if (!b.enabled) {
-          if (b.id) disabledBrandIds.add(b.id);
-          if (b.name) disabledBrandNames.add(b.name.trim().toLowerCase());
+        const isEn = b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0;
+        const normName = (b.name || '').trim().toLowerCase();
+        if (isEn && normName) {
+          enabledBrandNames.add(normName);
+        }
+      }
+      for (const b of brands) {
+        const isEn = b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0;
+        if (!isEn && b.id) {
+          const normName = (b.name || '').trim().toLowerCase();
+          if (!enabledBrandNames.has(normName)) {
+            disabledBrandIds.add(b.id);
+          }
         }
       }
     }
@@ -2185,7 +2493,6 @@ export const AppProvider = ({ children }) => {
       const st = (p.status || p.additionalInfo?.status || '').toLowerCase();
       if (['draft', 'unpublished', 'archived', 'inactive', 'disabled', 'hidden'].includes(st)) return false;
       if (p.brandId && disabledBrandIds.has(p.brandId)) return false;
-      if (p.brandName && disabledBrandNames.has(p.brandName.trim().toLowerCase())) return false;
       return true;
     });
   }, [products, brands]);
@@ -2449,6 +2756,27 @@ export const AppProvider = ({ children }) => {
     }
 
     clearCart();
+
+    // Trigger Mobile System Tray Notification for Order Placed
+    displayLocalNotification(
+      'Order Placed Successfully! 🎉',
+      `Your makeup order #${newOrderId} for ₹${Number(formattedOrder.totalAmount || 0).toLocaleString('en-IN')} has been placed. We are preparing your beauty essentials!`,
+      { orderId: newOrderId, screen: 'order_details', eventType: 'order_placed' }
+    ).catch(() => {});
+
+    // Save notification to backend database for auditing & delivery logs
+    supabase.from('notifications').insert({
+      id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      user_id: userId,
+      target: 'customer',
+      title: 'Order Placed Successfully! 🎉',
+      message: `Your makeup order #${newOrderId} for ₹${Number(formattedOrder.totalAmount || 0).toLocaleString('en-IN')} has been placed.`,
+      type: 'order_status',
+      data: { orderId: newOrderId, orderNumber: newOrderId, eventType: 'order_placed' },
+      is_read: false,
+      created_at: now.toISOString()
+    }).catch(() => {});
+
     return formattedOrder;
   };
 
@@ -2547,6 +2875,13 @@ export const AppProvider = ({ children }) => {
     try {
       const { error: dbError } = await supabase.from('orders').update({ status: 'cancelled', items: updatedItems }).eq('id', orderId);
       if (dbError) throw dbError;
+
+      // Deliver directly to Android / iOS System Notification Tray
+      displayLocalNotification(
+        'Order Cancelled',
+        `Your makeup order #${String(orderId).slice(-6)} has been cancelled.`,
+        { orderId, screen: 'orders', eventType: 'cancelled' }
+      ).catch(() => {});
     } catch (e) {
       console.warn('Error cancelling order in Supabase:', e);
       return { success: false, reason: e.message || 'Database error while cancelling order' };
@@ -2631,6 +2966,7 @@ export const AppProvider = ({ children }) => {
 
   const contextValue = {
         currentScreen,
+        previousScreen,
         setCurrentScreen: setProtectedScreen,
         userRole,
         setUserRole,
@@ -2699,6 +3035,9 @@ export const AppProvider = ({ children }) => {
         setRecommendationConfig,
         prefetchUserProfile,
         checkUserExistingProfile,
+        lookupUserAccountsByPhone,
+        loginWithAccount,
+        setVerifiedPhoneForRegistration,
         saveUserProfile,
         refreshCatalog: fetchCatalog,
         logout,
@@ -2723,6 +3062,8 @@ export const AppProvider = ({ children }) => {
         refreshNotifications: fetchNotifications,
         selectedOrderIdForDetails,
         setSelectedOrderIdForDetails,
+        fetchUserOrders,
+        refreshOrders: fetchUserOrders,
         shadeSheetState,
         openShadeSheet,
         closeShadeSheet,

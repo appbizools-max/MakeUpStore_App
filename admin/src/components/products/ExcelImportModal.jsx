@@ -243,7 +243,7 @@ export const ExcelImportModal = ({
                 {step === 3 && 'Configure parent product and child variant relationships'}
                 {step === 4 && 'Audit validation results, prices, and relational grouping'}
                 {step === 5 && 'Select update policies and confirm persistence'}
-                {step === 6 && 'Processing and synchronizing catalog with Supabase'}
+                {step === 6 && 'Processing and synchronizing catalog with database'}
               </p>
             </div>
           </div>

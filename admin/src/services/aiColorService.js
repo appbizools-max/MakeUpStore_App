@@ -97,15 +97,21 @@ export const colorDistance = (rgb1, rgb2) => {
  */
 export const matchBeautyShade = (hexColor) => {
   if (!hexColor || typeof hexColor !== 'string') {
-    return { name: 'Natural', hex: '#C9828F', matchedStandardHex: '#C9828F', family: 'Pink', confidence: 0 };
+    return null;
   }
   const clean = hexColor.trim();
+  if (!clean || /^(n\/?a|non[-\s]?shade|none|standard|default|null|undefined)$/i.test(clean)) {
+    return null;
+  }
   const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
   
   // 1. If it's a shade NAME or descriptive text (e.g. "Passionate Pink", "Ivory Beige", "#PASSIONATE", "Natural")
   const isDirectHex = hexPattern.test(clean) || (!clean.startsWith('#') && hexPattern.test('#' + clean));
   if (!isDirectHex) {
     const textLower = clean.toLowerCase().replace(/[^a-z0-9]/g, ' ');
+    if (textLower.includes('non shade') || textLower.includes('not applicable')) {
+      return null;
+    }
     // Match against BEAUTY_SHADE_DICTIONARY names or shade keywords
     for (const shade of BEAUTY_SHADE_DICTIONARY) {
       const shadeWords = shade.name.toLowerCase().split(/\s+/);
@@ -138,7 +144,7 @@ export const matchBeautyShade = (hexColor) => {
     if (textLower.includes('nude') || textLower.includes('taupe') || textLower.includes('caramel')) {
       return { name: 'Caramel Nude', hex: '#AF6E4D', matchedStandardHex: '#AF6E4D', family: 'Nude', confidence: 90 };
     }
-    return { name: 'Dusty Rose', hex: '#C9828F', matchedStandardHex: '#C9828F', family: 'Pink', confidence: 80 };
+    return null;
   }
 
   // 2. Direct Hex conversion

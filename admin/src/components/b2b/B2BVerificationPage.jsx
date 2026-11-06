@@ -37,7 +37,11 @@ import {
   CheckSquare,
   Square,
   PhoneCall,
-  HelpCircle
+  HelpCircle,
+  Plus,
+  Trash2,
+  Edit2,
+  Tag
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 import {
@@ -46,9 +50,15 @@ import {
   ROLE_SHORT_TITLES,
   VERIFICATION_STATUSES,
   STANDARD_DOCUMENT_SLOTS,
-  getVerificationDocumentSignedUrl
+  getVerificationDocumentSignedUrl,
+  B2B_EXPERIENCE_OPTIONS,
+  DEFAULT_SPECIALIZATIONS_MASTER,
+  fetchSpecializationsMaster,
+  adminAddSpecialization,
+  adminUpdateSpecialization,
+  adminDeleteSpecialization
 } from '../../utils/b2bVerificationService';
-import { supabase } from '../../config/supabase';
+import { supabase, supabaseAdmin } from '../../config/supabase';
 
 export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset = 'all' }) {
   const {
@@ -90,6 +100,43 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const contactContainerRef = useRef(null);
   const [contactPlacement, setContactPlacement] = useState({ opensUpward: false });
+
+  // Specializations Master Management State
+  const [manageSpecsModalOpen, setManageSpecsModalOpen] = useState(false);
+  const [specsList, setSpecsList] = useState([]);
+  const [specsLoading, setSpecsLoading] = useState(false);
+  const [specRoleFilter, setSpecRoleFilter] = useState('all');
+  const [specStatusFilter, setSpecStatusFilter] = useState('all');
+  const [specSearchQuery, setSpecSearchQuery] = useState('');
+  const [addSpecModalOpen, setAddSpecModalOpen] = useState(false);
+  const [editingSpecItem, setEditingSpecItem] = useState(null);
+  const [newSpecName, setNewSpecName] = useState('');
+  const [newSpecRole, setNewSpecRole] = useState('salon');
+  const [specActionNotice, setSpecActionNotice] = useState({ text: '', type: 'info' });
+  const [isSavingSpec, setIsSavingSpec] = useState(false);
+
+  const dbClient = supabaseAdmin || supabase;
+
+  // Load Specializations Master
+  const loadSpecializations = useCallback(async () => {
+    setSpecsLoading(true);
+    try {
+      const data = await fetchSpecializationsMaster(dbClient);
+      setSpecsList(data || []);
+    } catch (err) {
+      console.warn('Error loading specializations master:', err);
+    } finally {
+      setSpecsLoading(false);
+    }
+  }, [dbClient]);
+
+  useEffect(() => {
+    loadSpecializations();
+  }, [loadSpecializations]);
+
+  const pendingSpecsCount = useMemo(() => {
+    return specsList.filter(s => s.isApproved === false).length;
+  }, [specsList]);
 
   const updateContactPlacement = useCallback(() => {
     if (!contactContainerRef.current) return;
@@ -459,6 +506,18 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
 
         <div className="flex items-center gap-3 self-end sm:self-auto">
           <button
+            onClick={() => setManageSpecsModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[#C2477A] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+          >
+            <Sparkles size={14} />
+            <span>Specializations Master</span>
+            {pendingSpecsCount > 0 && (
+              <span className="bg-[#C2477A] text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">
+                {pendingSpecsCount} new
+              </span>
+            )}
+          </button>
+          <button
             onClick={refreshB2BVerifications}
             disabled={b2bLoading}
             className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
@@ -475,8 +534,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         <div
           onClick={() => setActiveSubTab('all')}
           className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'all'
-              ? 'bg-[#3A2430] text-white border-[#3A2430] shadow-md'
-              : 'bg-white text-gray-800 border-gray-200/80 hover:border-gray-300 shadow-2xs'
+            ? 'bg-[#3A2430] text-white border-[#3A2430] shadow-md'
+            : 'bg-white text-gray-800 border-gray-200/80 hover:border-gray-300 shadow-2xs'
             }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
@@ -490,8 +549,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         <div
           onClick={() => setActiveSubTab('submitted')}
           className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'submitted'
-              ? 'bg-amber-600 text-white border-amber-600 shadow-md'
-              : 'bg-white text-gray-800 border-gray-200/80 hover:border-amber-300 shadow-2xs'
+            ? 'bg-amber-600 text-white border-amber-600 shadow-md'
+            : 'bg-white text-gray-800 border-gray-200/80 hover:border-amber-300 shadow-2xs'
             }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
@@ -507,8 +566,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         <div
           onClick={() => setActiveSubTab('under_review')}
           className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'under_review'
-              ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-              : 'bg-white text-gray-800 border-gray-200/80 hover:border-blue-300 shadow-2xs'
+            ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+            : 'bg-white text-gray-800 border-gray-200/80 hover:border-blue-300 shadow-2xs'
             }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
@@ -524,8 +583,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         <div
           onClick={() => setActiveSubTab('approved')}
           className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'approved'
-              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-              : 'bg-white text-gray-800 border-gray-200/80 hover:border-emerald-300 shadow-2xs'
+            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+            : 'bg-white text-gray-800 border-gray-200/80 hover:border-emerald-300 shadow-2xs'
             }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
@@ -541,8 +600,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         <div
           onClick={() => setActiveSubTab('resubmission_required')}
           className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'resubmission_required'
-              ? 'bg-orange-600 text-white border-orange-600 shadow-md'
-              : 'bg-white text-gray-800 border-gray-200/80 hover:border-orange-300 shadow-2xs'
+            ? 'bg-orange-600 text-white border-orange-600 shadow-md'
+            : 'bg-white text-gray-800 border-gray-200/80 hover:border-orange-300 shadow-2xs'
             }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
@@ -558,8 +617,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         <div
           onClick={() => setActiveSubTab('rejected')}
           className={`p-4 rounded-xl border transition-all cursor-pointer ${activeSubTab === 'rejected' || activeSubTab === 'suspended'
-              ? 'bg-rose-700 text-white border-rose-700 shadow-md'
-              : 'bg-white text-gray-800 border-gray-200/80 hover:border-rose-300 shadow-2xs'
+            ? 'bg-rose-700 text-white border-rose-700 shadow-md'
+            : 'bg-white text-gray-800 border-gray-200/80 hover:border-rose-300 shadow-2xs'
             }`}
         >
           <div className="flex items-center justify-between text-xs font-semibold opacity-80 mb-1">
@@ -589,8 +648,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
               key={tab.key}
               onClick={() => setActiveSubTab(tab.key)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${activeSubTab === tab.key
-                  ? 'bg-[#C2477A] text-white shadow-xs'
-                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                ? 'bg-[#C2477A] text-white shadow-xs'
+                : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
             >
               <span>{tab.label}</span>
@@ -1086,8 +1145,34 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                     <div>
                       <span className="text-gray-400 block text-[11px] font-semibold">Experience</span>
                       <span className="font-bold text-gray-800">
-                        {reviewApplication.experience ? `${reviewApplication.experience} Years` : 'Not specified'}
+                        {reviewApplication.experience ? (reviewApplication.experience.includes('Year') || reviewApplication.experience.includes('Fresher') ? reviewApplication.experience : `${reviewApplication.experience} Years`) : 'Not specified'}
                       </span>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <span className="text-gray-400 block text-[11px] font-semibold mb-1.5">Category Specializations</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(() => {
+                          let rawSpecs = reviewApplication.specializations;
+                          if (!rawSpecs && reviewApplication.business_type) {
+                            rawSpecs = reviewApplication.business_type.split(',').map(s => s.trim());
+                          }
+                          if (!rawSpecs && reviewApplication.registration_details) {
+                            try {
+                              const parsed = JSON.parse(reviewApplication.registration_details);
+                              if (Array.isArray(parsed?.specializations)) rawSpecs = parsed.specializations;
+                            } catch (_) { }
+                          }
+                          const specs = Array.isArray(rawSpecs) ? rawSpecs.filter(Boolean) : (rawSpecs ? [rawSpecs] : []);
+                          if (specs.length === 0) {
+                            return <span className="text-gray-400 text-xs italic">No specific specialization recorded</span>;
+                          }
+                          return specs.map(s => (
+                            <span key={s} className="px-2.5 py-0.5 rounded-full bg-pink-50 border border-pink-200 text-[#C2477A] text-xs font-bold">
+                              {s}
+                            </span>
+                          ));
+                        })()}
+                      </div>
                     </div>
                     <div>
                       <span className="text-gray-400 block text-[11px] font-semibold">GSTIN</span>
@@ -1440,11 +1525,11 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                   )}
                 </div>
 
-                {/* SECTION 5: Verification History & Audit Trail */}
+                {/* SECTION 5: Verification History */}
                 <div className="bg-gray-50/70 p-5 rounded-2xl border border-gray-200/70">
                   <h3 className="text-xs font-black uppercase text-[#C2477A] tracking-wider mb-3.5 flex items-center gap-2">
                     <Clock size={14} />
-                    5. Verification History & Audit Trail
+                    5. Verification History
                   </h3>
 
                   {Array.isArray(reviewApplication.history) && reviewApplication.history.length > 0 ? (
@@ -1603,14 +1688,14 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
               <div className="flex items-center gap-2.5">
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white ${actionModal.type === 'approve'
-                      ? 'bg-emerald-600'
-                      : actionModal.type === 'reject'
-                        ? 'bg-rose-600'
-                        : actionModal.type === 'request_documents'
-                          ? 'bg-amber-600'
-                          : actionModal.type === 'request_info'
-                            ? 'bg-blue-600'
-                            : 'bg-gray-800'
+                    ? 'bg-emerald-600'
+                    : actionModal.type === 'reject'
+                      ? 'bg-rose-600'
+                      : actionModal.type === 'request_documents'
+                        ? 'bg-amber-600'
+                        : actionModal.type === 'request_info'
+                          ? 'bg-blue-600'
+                          : 'bg-gray-800'
                     }`}
                 >
                   {actionModal.type === 'approve' && <CheckCircle2 size={18} />}
@@ -1691,8 +1776,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                         key={slot.key}
                         onClick={() => toggleDocSelection(slot.key)}
                         className={`p-2.5 rounded-lg border text-xs flex items-center justify-between cursor-pointer transition-all ${isSelected
-                            ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-2xs'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                          ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-2xs'
+                          : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
                           }`}
                       >
                         <div className="flex items-center gap-2">
@@ -1785,14 +1870,14 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                 disabled={isProcessingAction}
                 onClick={handleConfirmAction}
                 className={`px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${actionModal.type === 'approve'
-                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : actionModal.type === 'reject'
-                      ? 'bg-rose-600 hover:bg-rose-700'
-                      : actionModal.type === 'request_documents'
-                        ? 'bg-amber-600 hover:bg-amber-700'
-                        : actionModal.type === 'request_info'
-                          ? 'bg-blue-600 hover:bg-blue-700'
-                          : 'bg-gray-900 hover:bg-black'
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : actionModal.type === 'reject'
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : actionModal.type === 'request_documents'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : actionModal.type === 'request_info'
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-gray-900 hover:bg-black'
                   }`}
               >
                 {isProcessingAction && <RefreshCw size={13} className="animate-spin" />}
@@ -1801,6 +1886,397 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                 {actionModal.type === 'request_documents' && 'Send Document Request'}
                 {actionModal.type === 'request_info' && 'Send Information Request'}
                 {actionModal.type === 'suspend' && 'Confirm Suspension'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── B2B SPECIALIZATIONS MASTER MANAGEMENT MODAL ── */}
+      {manageSpecsModalOpen && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="p-5 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-pink-50/50 via-white to-purple-50/30 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#C2477A] text-white flex items-center justify-center shadow-md">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                    B2B Specializations Master
+                    {pendingSpecsCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-700 border border-rose-200">
+                        {pendingSpecsCount} Suggestions Pending
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Manage multi-select professional specializations for Salon, Makeup Artist, and Beautician partners.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingSpecItem(null);
+                    setNewSpecName('');
+                    setNewSpecRole('salon');
+                    setAddSpecModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-[#C2477A] hover:bg-[#9E2D5B] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                >
+                  <Plus size={14} />
+                  <span>Add Specialization</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setManageSpecsModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Notice Bar */}
+            {specActionNotice.text && (
+              <div className={`px-6 py-2.5 text-xs font-bold flex items-center justify-between border-b ${specActionNotice.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                  specActionNotice.type === 'error' ? 'bg-rose-50 text-rose-800 border-rose-200' :
+                    'bg-blue-50 text-blue-800 border-blue-200'
+                }`}>
+                <span>{specActionNotice.text}</span>
+                <button type="button" onClick={() => setSpecActionNotice({ text: '', type: 'info' })}>
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
+            {/* Filter Bar */}
+            <div className="p-4 bg-gray-50/80 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-gray-500 mr-1">Role:</span>
+                {['all', 'salon', 'artist', 'beautician'].map(r => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setSpecRoleFilter(r)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${specRoleFilter === r
+                        ? 'bg-gray-900 text-white shadow-xs'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                      }`}
+                  >
+                    {r === 'all' ? 'All Roles' : ROLE_SHORT_TITLES[r] || r}
+                  </button>
+                ))}
+
+                <span className="text-xs font-bold text-gray-500 mx-1">|</span>
+
+                <span className="text-xs font-bold text-gray-500 mr-1">Status:</span>
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'pending', label: 'Pending Approval' },
+                  { key: 'active', label: 'Active' },
+                  { key: 'inactive', label: 'Inactive' }
+                ].map(st => (
+                  <button
+                    key={st.key}
+                    type="button"
+                    onClick={() => setSpecStatusFilter(st.key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${specStatusFilter === st.key
+                        ? 'bg-[#C2477A] text-white shadow-xs'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                      }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search */}
+              <div className="relative min-w-[200px]">
+                <Search size={14} className="absolute left-3 top-2.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={specSearchQuery}
+                  onChange={(e) => setSpecSearchQuery(e.target.value)}
+                  placeholder="Filter specializations..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-hidden focus:border-[#C2477A]"
+                />
+              </div>
+            </div>
+
+            {/* List Table */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+              {specsLoading ? (
+                <div className="py-16 text-center">
+                  <RefreshCw size={24} className="animate-spin text-[#C2477A] mx-auto mb-2" />
+                  <p className="text-xs text-gray-500 font-semibold">Loading specializations master...</p>
+                </div>
+              ) : (
+                (() => {
+                  const filtered = specsList.filter(s => {
+                    if (specRoleFilter !== 'all' && s.role !== specRoleFilter) return false;
+                    if (specStatusFilter === 'pending' && s.isApproved !== false) return false;
+                    if (specStatusFilter === 'active' && s.isActive === false) return false;
+                    if (specStatusFilter === 'inactive' && s.isActive !== false) return false;
+                    if (specSearchQuery.trim() && !(s.name || '').toLowerCase().includes(specSearchQuery.trim().toLowerCase())) return false;
+                    return true;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="py-12 text-center text-gray-400">
+                        <Tag size={32} className="mx-auto mb-2 opacity-40 text-[#C2477A]" />
+                        <p className="text-sm font-bold text-gray-600">No specializations match the selected filter</p>
+                        <p className="text-xs text-gray-400 mt-1">Try resetting filters or click "+ Add Specialization".</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {filtered.map(spec => (
+                        <div
+                          key={spec.id}
+                          className={`p-3.5 rounded-2xl border transition-all ${spec.isApproved === false
+                              ? 'bg-amber-50/60 border-amber-200 shadow-2xs'
+                              : spec.isActive === false
+                                ? 'bg-gray-50 border-gray-200 opacity-60'
+                                : 'bg-white border-gray-200/80 hover:border-pink-200 shadow-2xs'
+                            }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${spec.role === 'salon' ? 'bg-pink-100 text-pink-700' :
+                                    spec.role === 'artist' ? 'bg-purple-100 text-purple-700' :
+                                      'bg-emerald-100 text-emerald-700'
+                                  }`}>
+                                  {ROLE_SHORT_TITLES[spec.role] || spec.role}
+                                </span>
+                                {spec.isApproved === false && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                                    Pending Approval
+                                  </span>
+                                )}
+                                {spec.isCustom && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-600">
+                                    Suggested by {spec.suggestedBy || 'User'}
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="font-extrabold text-sm text-gray-900 truncate">
+                                {spec.name}
+                              </h4>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {spec.isApproved === false && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      const updated = await adminUpdateSpecialization(dbClient, spec.id, {
+                                        isApproved: true,
+                                        isActive: true
+                                      });
+                                      setSpecsList(updated);
+                                      setSpecActionNotice({ text: `Approved "${spec.name}" successfully!`, type: 'success' });
+                                      setTimeout(() => setSpecActionNotice({ text: '', type: 'info' }), 3000);
+                                    } catch (err) {
+                                      setSpecActionNotice({ text: err.message, type: 'error' });
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                                  title="Approve suggested specialization"
+                                >
+                                  <Check size={12} />
+                                  Approve
+                                </button>
+                              )}
+
+                              {/* Toggle Active */}
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const updated = await adminUpdateSpecialization(dbClient, spec.id, {
+                                      isActive: !spec.isActive
+                                    });
+                                    setSpecsList(updated);
+                                    setSpecActionNotice({
+                                      text: `"${spec.name}" is now ${!spec.isActive ? 'Active' : 'Inactive'}.`,
+                                      type: 'info'
+                                    });
+                                    setTimeout(() => setSpecActionNotice({ text: '', type: 'info' }), 2500);
+                                  } catch (err) {
+                                    setSpecActionNotice({ text: err.message, type: 'error' });
+                                  }
+                                }}
+                                className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${spec.isActive !== false
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                  }`}
+                                title="Toggle active / inactive"
+                              >
+                                {spec.isActive !== false ? 'Active' : 'Inactive'}
+                              </button>
+
+                              {/* Edit */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSpecItem(spec);
+                                  setNewSpecName(spec.name);
+                                  setNewSpecRole(spec.role);
+                                  setAddSpecModalOpen(true);
+                                }}
+                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-pink-100 text-gray-600 hover:text-[#C2477A] flex items-center justify-center cursor-pointer transition-colors"
+                                title="Edit name or role"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!window.confirm(`Are you sure you want to permanently delete "${spec.name}"?`)) return;
+                                  try {
+                                    const updated = await adminDeleteSpecialization(dbClient, spec.id);
+                                    setSpecsList(updated);
+                                    setSpecActionNotice({ text: `Deleted "${spec.name}".`, type: 'info' });
+                                    setTimeout(() => setSpecActionNotice({ text: '', type: 'info' }), 2500);
+                                  } catch (err) {
+                                    setSpecActionNotice({ text: err.message, type: 'error' });
+                                  }
+                                }}
+                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-rose-100 text-gray-400 hover:text-rose-600 flex items-center justify-center cursor-pointer transition-colors"
+                                title="Delete specialization"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+              <span>Total Specializations: <strong>{specsList.length}</strong></span>
+              <button
+                type="button"
+                onClick={() => setManageSpecsModalOpen(false)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD / EDIT SPECIALIZATION SUB-MODAL ── */}
+      {addSpecModalOpen && (
+        <div className="fixed inset-0 z-70 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-gray-100 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h4 className="font-black text-gray-900 text-base">
+                {editingSpecItem ? 'Edit Specialization' : 'Add New Specialization'}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setAddSpecModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Target B2B Role *
+                </label>
+                <select
+                  value={newSpecRole}
+                  onChange={(e) => setNewSpecRole(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:outline-hidden focus:border-[#C2477A]"
+                >
+                  <option value="salon">Salon (B2B)</option>
+                  <option value="artist">Makeup Artist (B2B)</option>
+                  <option value="beautician">Beautician (B2B)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Specialization Title *
+                </label>
+                <input
+                  type="text"
+                  value={newSpecName}
+                  onChange={(e) => setNewSpecName(e.target.value)}
+                  placeholder="e.g. Bridal HD Airbrush, Korean Glass Skin..."
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-hidden focus:border-[#C2477A]"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  System verifies duplicate entries automatically (case-insensitive).
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setAddSpecModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSavingSpec || !newSpecName.trim()}
+                onClick={async () => {
+                  const clean = newSpecName.trim();
+                  if (!clean) return;
+                  setIsSavingSpec(true);
+                  try {
+                    let updated;
+                    if (editingSpecItem) {
+                      updated = await adminUpdateSpecialization(dbClient, editingSpecItem.id, {
+                        name: clean,
+                        role: newSpecRole
+                      });
+                      setSpecActionNotice({ text: `Updated "${clean}" successfully!`, type: 'success' });
+                    } else {
+                      updated = await adminAddSpecialization(dbClient, {
+                        name: clean,
+                        role: newSpecRole
+                      });
+                      setSpecActionNotice({ text: `Added "${clean}" successfully!`, type: 'success' });
+                    }
+                    setSpecsList(updated);
+                    setAddSpecModalOpen(false);
+                    setTimeout(() => setSpecActionNotice({ text: '', type: 'info' }), 3000);
+                  } catch (err) {
+                    alert(err.message || 'Error saving specialization.');
+                  } finally {
+                    setIsSavingSpec(false);
+                  }
+                }}
+                className="px-5 py-2.5 bg-[#C2477A] hover:bg-[#9E2D5B] text-white rounded-xl text-xs font-black shadow-md transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isSavingSpec ? 'Saving...' : editingSpecItem ? 'Save Changes' : 'Create Specialization'}
               </button>
             </div>
           </div>

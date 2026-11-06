@@ -279,7 +279,7 @@ export const downloadSimpleCategoryTemplate = () => {
     ['Display Order', 'Optional', 'Sorting position (1, 2, 3...).'],
     ['Status', 'Optional', 'Active or Inactive (defaults to Active).'],
     ['Show in Mobile App', 'Optional', 'Yes or No (defaults to Yes).'],
-    ['Image URL', 'Optional', 'Direct HTTPS link to image (e.g. Supabase Storage URL).']
+    ['Image URL', 'Optional', 'Direct HTTPS link to image (e.g. Cloud Storage URL).']
   ];
   const wsGuide = XLSX.utils.aoa_to_sheet([guideHeaders, ...guideRows]);
   wsGuide['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 60 }];

@@ -82,6 +82,7 @@ export const SearchScreen = () => {
     removeFromCart,
     isFavorite,
     toggleFavorite,
+    openShadeSheet,
     globalSearchQuery,
     setGlobalSearchQuery
   } = useApp();
@@ -847,9 +848,6 @@ export const SearchScreen = () => {
                     Trending Searches
                   </Text>
                 </View>
-                <Text style={{ color: '#B34D7D' }} className="text-[10px] font-bold">
-                  Live Insights
-                </Text>
               </View>
 
               <View
@@ -1080,6 +1078,7 @@ export const SearchScreen = () => {
                       removeFromCart={removeFromCart}
                       isFavorite={isFavorite}
                       toggleFavorite={toggleFavorite}
+                      onOpenShadeSheet={openShadeSheet}
                       onPressProduct={(prod, shade) => {
                         setSelectedProduct(prod);
                         if (setSelectedShade && shade) setSelectedShade(shade);
@@ -1163,6 +1162,7 @@ export const SearchScreen = () => {
                     removeFromCart={removeFromCart}
                     isFavorite={isFavorite}
                     toggleFavorite={toggleFavorite}
+                    onOpenShadeSheet={openShadeSheet}
                     onPressProduct={(prod, shade) => {
                       setSelectedProduct(prod);
                       if (setSelectedShade && shade) setSelectedShade(shade);

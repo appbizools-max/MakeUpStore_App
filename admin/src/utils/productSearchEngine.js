@@ -520,6 +520,22 @@ export const matchProductSearch = (product, searchQuery) => {
 /**
  * Extracts active and sellable variants from either p.variants or p.shades
  */
+export const isPlaceholderVariant = (v) => {
+  if (!v || typeof v !== 'object') return true;
+  const name = String(v.color_name || v.name || v.title || v.shade || '').trim().toLowerCase();
+  return (
+    !name ||
+    name === 'default' ||
+    name === 'default shade' ||
+    name === 'standard' ||
+    name === 'standard formulation' ||
+    name === 'n/a' ||
+    name === 'non-shade' ||
+    name === 'n/a (non-shade)' ||
+    name === 'default variant'
+  );
+};
+
 export const getSafeActiveVariants = (p) => {
   if (!p) return [];
   const list = [];
@@ -530,7 +546,7 @@ export const getSafeActiveVariants = (p) => {
   }
   if (Array.isArray(rawVariants) && rawVariants.length > 0) {
     rawVariants.forEach((v, idx) => {
-      if (v && v.active !== false && v.isSellable !== false && !v.isDeleted) {
+      if (v && v.active !== false && v.isSellable !== false && !v.isDeleted && !isPlaceholderVariant(v)) {
         list.push({ ...v, _source: 'variants', _idx: idx });
       }
     });
@@ -543,7 +559,7 @@ export const getSafeActiveVariants = (p) => {
     }
     if (Array.isArray(rawShades) && rawShades.length > 0) {
       rawShades.forEach((s, idx) => {
-        if (s && s.active !== false && !s.isDeleted) {
+        if (s && s.active !== false && !s.isDeleted && !isPlaceholderVariant(s)) {
           list.push({ ...s, _source: 'shades', _idx: idx });
         }
       });

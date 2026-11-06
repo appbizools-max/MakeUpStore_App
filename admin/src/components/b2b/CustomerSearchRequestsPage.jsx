@@ -33,7 +33,10 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
     searchRequestsLoading = false,
     refreshSearchRequests,
     updateSearchRequestStatus,
-    deleteSearchRequest
+    deleteSearchRequest,
+    bulkDeleteSearchRequests,
+    clearAllSearchRequests,
+    currentAuthUser
   } = useAdmin();
 
   const [filterQuery, setFilterQuery] = useState('');
@@ -43,10 +46,83 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [inspectMatchedReq, setInspectMatchedReq] = useState(null);
 
+  // Multi-selection & clearing state
+  const [selectedRequestIds, setSelectedRequestIds] = useState([]);
+  const [clearModal, setClearModal] = useState({
+    isOpen: false,
+    type: 'single', // 'single' | 'batch' | 'all'
+    ids: [],
+    title: ''
+  });
+  const [isClearing, setIsClearing] = useState(false);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await refreshSearchRequests();
     setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  // Selection handlers
+  const handleToggleSelectAll = () => {
+    if (selectedRequestIds.length === filteredRequests.length) {
+      setSelectedRequestIds([]);
+    } else {
+      setSelectedRequestIds(filteredRequests.map(r => r.id));
+    }
+  };
+
+  const handleToggleSelectOne = (id) => {
+    setSelectedRequestIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const openClearSingle = (request) => {
+    setClearModal({
+      isOpen: true,
+      type: 'single',
+      ids: [request.id],
+      title: `"${request.query || request.barcode}"`
+    });
+  };
+
+  const openClearBatch = () => {
+    setClearModal({
+      isOpen: true,
+      type: 'batch',
+      ids: selectedRequestIds,
+      title: `${selectedRequestIds.length} Selected Search Records`
+    });
+  };
+
+  const openClearAll = () => {
+    setClearModal({
+      isOpen: true,
+      type: 'all',
+      ids: searchRequests.map(r => r.id),
+      title: `All Customer Search Activity (${searchRequests.length} Records)`
+    });
+  };
+
+  const handleExecuteClear = async () => {
+    setIsClearing(true);
+    try {
+      if (clearModal.type === 'all' && typeof clearAllSearchRequests === 'function') {
+        await clearAllSearchRequests();
+      } else if (clearModal.type === 'batch' && typeof bulkDeleteSearchRequests === 'function') {
+        await bulkDeleteSearchRequests(clearModal.ids);
+      } else if (typeof deleteSearchRequest === 'function') {
+        for (const id of clearModal.ids) {
+          await deleteSearchRequest(id);
+        }
+      }
+      setSelectedRequestIds(prev => prev.filter(id => !clearModal.ids.includes(id)));
+      setClearModal({ isOpen: false, type: 'single', ids: [], title: '' });
+    } catch (e) {
+      alert('Error clearing search requests: ' + e.message);
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   // Metrics calculation
@@ -172,7 +248,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
             onClick={handleRefresh}
             disabled={isRefreshing || searchRequestsLoading}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#FCE4EC] hover:border-[#C2477A] hover:bg-[#FFF5F8] text-black text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
-            title="Refresh requests from Supabase"
+            title="Refresh requests"
           >
             <RefreshCw size={14} className={`text-[#C2477A] ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>Sync Live</span>
@@ -321,20 +397,47 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
             })}
           </div>
 
-          {/* Workflow Status Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold text-gray-500">Status:</span>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-2.5 py-1 outline-none focus:border-[#C2477A] cursor-pointer"
-            >
-              <option value="all">All Statuses</option>
-              <option value="pending">⏳ Needs Review</option>
-              <option value="reviewed">🔍 Under Review</option>
-              <option value="product_added">✅ Product Added</option>
-              <option value="dismissed">✕ Dismissed</option>
-            </select>
+          {/* Workflow Status Filter & Bulk Clear Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-gray-500">Status:</span>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-2.5 py-1 outline-none focus:border-[#C2477A] cursor-pointer"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">⏳ Needs Review</option>
+                <option value="reviewed">🔍 Under Review</option>
+                <option value="product_added">✅ Product Added</option>
+                <option value="dismissed">✕ Dismissed</option>
+              </select>
+            </div>
+
+            {/* Delete Selected Batch */}
+            {selectedRequestIds.length > 0 && (
+              <button
+                type="button"
+                onClick={openClearBatch}
+                className="flex items-center gap-1 px-3 py-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 font-bold text-xs transition-all cursor-pointer animate-fade-in"
+              >
+                <Trash2 size={13} className="text-rose-600" />
+                <span>Delete Selected ({selectedRequestIds.length})</span>
+              </button>
+            )}
+
+            {/* Clear All Search Activity (Admin only) */}
+            {searchRequests.length > 0 && (
+              <button
+                type="button"
+                onClick={openClearAll}
+                className="flex items-center gap-1 px-3 py-1 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 font-bold text-xs transition-all cursor-pointer"
+                title="Clear all recorded customer search queries"
+              >
+                <Trash2 size={13} />
+                <span>Clear All Search Activity</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -356,6 +459,15 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white border-b border-[#FCE4EC] text-[11px] font-black uppercase tracking-wider text-black">
+                  <th className="py-3 px-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filteredRequests.length > 0 && selectedRequestIds.length === filteredRequests.length}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                      title="Select All"
+                    />
+                  </th>
                   <th className="py-3 px-4">Search Query / Barcode</th>
                   <th className="py-3 px-4">Result Status</th>
                   <th className="py-3 px-4">Search Count</th>
@@ -370,12 +482,22 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                   const count = Number(request.search_count) || 1;
                   const isFound = request.is_found !== false;
                   const matchedList = Array.isArray(request.matched_products) ? request.matched_products : [];
+                  const isSelected = selectedRequestIds.includes(request.id);
 
                   return (
                     <tr
                       key={request.id}
-                      className="hover:bg-[#FFF5F8]/40 transition-colors group"
+                      className={`hover:bg-[#FFF5F8]/40 transition-colors group ${isSelected ? 'bg-pink-50/40' : ''}`}
                     >
+                      {/* Checkbox */}
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectOne(request.id)}
+                          className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                        />
+                      </td>
                       {/* Search Query */}
                       <td className="py-3.5 px-4 font-bold text-black">
                         <div className="flex items-center gap-2">
@@ -501,11 +623,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
 
                           <button
                             type="button"
-                            onClick={() => {
-                              if (window.confirm(`Delete search record for "${request.query}"?`)) {
-                                deleteSearchRequest(request.id);
-                              }
-                            }}
+                            onClick={() => openClearSingle(request)}
                             className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
                             title="Delete this search record"
                           >
@@ -565,6 +683,61 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                 className="px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ────────── Clear Search Activity Confirmation Modal ────────── */}
+      {clearModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-pink-100 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-gray-900">
+                  {clearModal.type === 'all'
+                    ? 'Clear All Search Activity?'
+                    : clearModal.type === 'batch'
+                    ? `Delete ${clearModal.ids.length} Search Records?`
+                    : 'Delete Search Record?'}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Admin Data Management Control
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 text-xs text-gray-700 space-y-1.5">
+              <div className="font-semibold text-gray-900">
+                Target: <span className="font-bold text-[#C2477A]">{clearModal.title}</span>
+              </div>
+              <p className="text-gray-500 text-[11px] leading-relaxed">
+                {clearModal.type === 'all'
+                  ? 'This will permanently remove all search history records and missing product queries from the database. This action cannot be undone.'
+                  : 'This record will be permanently deleted from the search database and will no longer appear in search analytics or reports.'}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setClearModal({ isOpen: false, type: 'single', ids: [], title: '' })}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isClearing}
+                onClick={handleExecuteClear}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                <span>{isClearing ? 'Clearing...' : 'Confirm Delete'}</span>
               </button>
             </div>
           </div>

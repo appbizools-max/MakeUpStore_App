@@ -72,7 +72,7 @@ function hexToHsl(hex) {
 }
 
 export default function HexColorPicker({
-  value = '#CE4270',
+  value = '',
   onChange,
   className = '',
   align = 'left'

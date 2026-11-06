@@ -471,6 +471,14 @@ export const B2BVerificationScreen = () => {
                   <Text className="text-xs text-[#3A2430] font-bold">{email || userProfile?.email}</Text>
                 </View>
               ) : null}
+              <View className="flex-row justify-between items-start">
+                <Text className="text-xs text-stone-500 font-medium">Specializations:</Text>
+                <Text className="text-xs text-[#C2477A] font-bold text-right flex-1 ml-2">
+                  {Array.isArray(userProfile?.specializations) && userProfile.specializations.length > 0
+                    ? userProfile.specializations.join(', ')
+                    : (userProfile?.businessType || 'General Professional')}
+                </Text>
+              </View>
               <View className="flex-row justify-between">
                 <Text className="text-xs text-stone-500 font-medium">Experience:</Text>
                 <Text className="text-xs text-[#3A2430] font-bold">{experience || userProfile?.experience || '1–3 Years'}</Text>

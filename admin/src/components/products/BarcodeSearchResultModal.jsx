@@ -80,7 +80,7 @@ export default function BarcodeSearchResultModal({
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-gray-900">Barcode Scan Result</h3>
-              <p className="text-[11px] text-gray-500 font-medium">Real-time Supabase catalog lookup</p>
+              <p className="text-[11px] text-gray-500 font-medium">Real-time catalog lookup</p>
             </div>
           </div>
           <button type="button" onClick={onClose}
@@ -109,7 +109,7 @@ export default function BarcodeSearchResultModal({
               </div>
               <div className="text-center">
                 <p className="font-extrabold text-sm text-gray-900">Searching Catalog...</p>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">Querying live Supabase database</p>
+                <p className="text-xs text-gray-500 font-medium mt-0.5">Querying live database</p>
               </div>
             </div>
           )}
@@ -330,7 +330,7 @@ export default function BarcodeSearchResultModal({
         {!isSearching && (
           <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400 font-medium flex items-center gap-2">
             <ScanBarcode size={12} className="text-[#CE4270]" />
-            <span>Live Supabase lookup — includes product &amp; variant barcodes</span>
+            <span>Live catalog lookup — includes product &amp; variant barcodes</span>
           </div>
         )}
       </div>

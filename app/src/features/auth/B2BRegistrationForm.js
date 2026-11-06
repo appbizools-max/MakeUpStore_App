@@ -12,10 +12,17 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
-import { ROLE_SHORT_TITLES } from '../../utils/b2bVerificationService';
+import {
+  ROLE_SHORT_TITLES,
+  B2B_EXPERIENCE_OPTIONS,
+  DEFAULT_SPECIALIZATIONS_MASTER,
+  fetchSpecializationsMaster,
+  suggestSpecialization
+} from '../../utils/b2bVerificationService';
+import { supabase } from '../../config/supabase';
 
 export const B2BRegistrationForm = () => {
-  const { userRole, userProfile, setUserProfile, setCurrentScreen, prefetchUserProfile } = useApp();
+  const { userRole, userProfile, setUserProfile, setCurrentScreen, prefetchUserProfile, saveUserProfile } = useApp();
 
   const roleTitle = ROLE_SHORT_TITLES[userRole] || 'Business Partner';
 
@@ -27,45 +34,124 @@ export const B2BRegistrationForm = () => {
   );
   const [email, setEmail] = useState(userProfile?.email || '');
 
-  // Role-specific Specializations
-  const SPECIALIZATIONS_BY_ROLE = {
-    salon: [
-      'Unisex Salon',
-      'Women Salon',
-      "Men's Salon",
-      'Spa & Wellness',
-      'Hair Studio',
-      'Bridal Studio'
-    ],
-    artist: [
-      'Bridal Makeup',
-      'Fashion & Editorial',
-      'Freelance Artist',
-      'Celebrity & TV',
-      'Makeup Academy',
-      'Party & Events'
-    ],
-    beautician: [
-      'Skin Care & Facial',
-      'Hair Styling & Color',
-      'Nail & Lash Art',
-      'Aesthetic & Laser',
-      'Freelance Beauty',
-      'Spa Therapist'
-    ]
+  // Dynamic Specializations Master & Multi-select State
+  const [availableSpecs, setAvailableSpecs] = useState([]);
+  const [selectedSpecs, setSelectedSpecs] = useState(() => {
+    if (Array.isArray(userProfile?.specializations) && userProfile.specializations.length > 0) {
+      return userProfile.specializations;
+    }
+    if (userProfile?.businessType) {
+      return userProfile.businessType.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  });
+
+  // Search filter for specializations
+  const [specSearch, setSpecSearch] = useState('');
+
+  // "Other" / Custom Specialization Input State
+  const [showOtherInput, setShowOtherInput] = useState(false);
+  const [customSpecName, setCustomSpecName] = useState('');
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestNotice, setSuggestNotice] = useState({ text: '', type: 'info' });
+
+  // Load Specializations Master from Store Database on Mount
+  useEffect(() => {
+    let isMounted = true;
+    fetchSpecializationsMaster(supabase).then(list => {
+      if (!isMounted) return;
+      if (Array.isArray(list) && list.length > 0) {
+        const roleFiltered = list.filter(s => s.role === userRole && s.isActive !== false);
+        setAvailableSpecs(roleFiltered);
+        if (selectedSpecs.length === 0 && roleFiltered.length > 0) {
+          setSelectedSpecs([roleFiltered[0].name]);
+        }
+      }
+    }).catch(() => {
+      const defs = DEFAULT_SPECIALIZATIONS_MASTER.filter(s => s.role === userRole);
+      if (isMounted) {
+        setAvailableSpecs(defs);
+        if (selectedSpecs.length === 0 && defs.length > 0) {
+          setSelectedSpecs([defs[0].name]);
+        }
+      }
+    });
+
+    return () => { isMounted = false; };
+  }, [userRole]);
+
+  // Toggle selection for a specialization tag
+  const toggleSpecialization = (specName) => {
+    setSelectedSpecs(prev => {
+      if (prev.includes(specName)) {
+        if (prev.length <= 1) return prev; // Keep at least one selected
+        return prev.filter(s => s !== specName);
+      } else {
+        return [...prev, specName];
+      }
+    });
   };
 
-  const roleSpecs = SPECIALIZATIONS_BY_ROLE[userRole] || SPECIALIZATIONS_BY_ROLE.salon;
-  const [businessType, setBusinessType] = useState(userProfile?.businessType || roleSpecs[0]);
+  // Remove a specialization tag
+  const removeSpecialization = (specName) => {
+    setSelectedSpecs(prev => {
+      if (prev.length <= 1) return prev;
+      return prev.filter(s => s !== specName);
+    });
+  };
 
-  // Experience Options
-  const EXPERIENCE_OPTIONS = [
-    '< 1 Year',
-    '1–3 Years',
-    '3–5 Years',
-    '5–10 Years',
-    '10+ Years'
-  ];
+  // Handle Suggesting / Adding "Other" Custom Specialization
+  const handleAddCustomSpecialization = async () => {
+    const clean = customSpecName.trim();
+    if (!clean) return;
+
+    // Duplicate check: already selected?
+    if (selectedSpecs.some(s => s.toLowerCase() === clean.toLowerCase())) {
+      setSuggestNotice({ text: `"${clean}" is already in your selected list.`, type: 'warning' });
+      setTimeout(() => setSuggestNotice({ text: '', type: 'info' }), 3500);
+      setCustomSpecName('');
+      setShowOtherInput(false);
+      return;
+    }
+
+    // Duplicate check: already in available specs?
+    const existing = availableSpecs.find(s => s.name.toLowerCase() === clean.toLowerCase());
+    if (existing) {
+      setSelectedSpecs(prev => [...prev, existing.name]);
+      setSuggestNotice({ text: `"${existing.name}" added to your specializations.`, type: 'success' });
+      setTimeout(() => setSuggestNotice({ text: '', type: 'info' }), 3500);
+      setCustomSpecName('');
+      setShowOtherInput(false);
+      return;
+    }
+
+    setIsSuggesting(true);
+    try {
+      const res = await suggestSpecialization(supabase, {
+        name: clean,
+        role: userRole,
+        suggestedBy: ownerName.trim() || email.trim() || mobileNumber.trim() || 'B2B Partner'
+      });
+
+      const addedName = res.item?.name || clean;
+      setAvailableSpecs(prev => [res.item, ...prev]);
+      setSelectedSpecs(prev => [...prev, addedName]);
+      setCustomSpecName('');
+      setShowOtherInput(false);
+      setSuggestNotice({
+        text: `"${addedName}" suggested & added to your profile!`,
+        type: 'success'
+      });
+      setTimeout(() => setSuggestNotice({ text: '', type: 'info' }), 4000);
+    } catch (err) {
+      setSuggestNotice({ text: err.message || 'Could not suggest specialization.', type: 'error' });
+      setTimeout(() => setSuggestNotice({ text: '', type: 'info' }), 3500);
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
+  // Experience Options (Standardized)
   const [experience, setExperience] = useState(userProfile?.experience || '1–3 Years');
 
   // Address State
@@ -147,6 +233,7 @@ export const B2BRegistrationForm = () => {
   const isEmailValid = !email.trim() || emailRegex.test(email.trim());
 
   const isFormValid =
+    selectedSpecs.length > 0 &&
     businessName.trim().length >= 2 &&
     ownerName.trim().length >= 2 &&
     cleanPhone.length === 10 &&
@@ -156,7 +243,9 @@ export const B2BRegistrationForm = () => {
     state.trim().length >= 2 &&
     isEmailValid;
 
-  const handleProceed = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleProceed = async () => {
     setTouched({
       businessName: true,
       ownerName: true,
@@ -168,32 +257,59 @@ export const B2BRegistrationForm = () => {
       email: true
     });
 
-    if (!isFormValid) return;
+    if (!isFormValid || isSubmitting) return;
+    setIsSubmitting(true);
 
-    const fullPhone = `+91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)}`;
+    try {
+      const fullPhone = `+91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)}`;
 
-    setUserProfile(prev => ({
-      ...prev,
-      name: ownerName.trim(),
-      phone: fullPhone,
-      email: email.trim(),
-      businessName: businessName.trim(),
-      businessType,
-      experience,
-      address: address.trim(),
-      pincode: cleanPin,
-      city: city.trim(),
-      state: state.trim(),
-      gstNumber: gstin.trim().toUpperCase(),
-      role: userRole,
-      isB2BProfileFilled: true
-    }));
+      if (saveUserProfile) {
+        await saveUserProfile({
+          fullName: ownerName.trim(),
+          name: ownerName.trim(),
+          ownerName: ownerName.trim(),
+          phone: fullPhone,
+          email: email.trim(),
+          businessName: businessName.trim(),
+          business_name: businessName.trim(),
+          businessType: selectedSpecs.join(', '),
+          specializations: selectedSpecs,
+          experience,
+          address: address.trim(),
+          pincode: cleanPin,
+          city: city.trim(),
+          state: state.trim(),
+          gstNumber: gstin.trim().toUpperCase(),
+          role: userRole,
+          isB2BProfileFilled: true,
+        });
+      } else {
+        setUserProfile(prev => ({
+          ...prev,
+          name: ownerName.trim(),
+          phone: fullPhone,
+          email: email.trim(),
+          businessName: businessName.trim(),
+          businessType: selectedSpecs.join(', '),
+          specializations: selectedSpecs,
+          experience,
+          address: address.trim(),
+          pincode: cleanPin,
+          city: city.trim(),
+          state: state.trim(),
+          gstNumber: gstin.trim().toUpperCase(),
+          role: userRole,
+          isB2BProfileFilled: true
+        }));
+      }
 
-    if (prefetchUserProfile) {
-      prefetchUserProfile(fullPhone);
+      setCurrentScreen('b2b_verification');
+    } catch (err) {
+      console.warn('Error saving B2B profile:', err);
+      setCurrentScreen('b2b_verification');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setCurrentScreen('otp');
   };
 
   return (
@@ -325,14 +441,27 @@ export const B2BRegistrationForm = () => {
                 onBlur={() => setTouched(t => ({ ...t, mobileNumber: true }))}
                 keyboardType="phone-pad"
                 maxLength={11}
+                editable={!userProfile?.isPhoneVerified}
                 className="flex-1 text-sm font-bold text-[#3A2430] p-0"
                 placeholder="10-digit mobile number"
                 placeholderTextColor="#A8929A"
               />
+              {userProfile?.isPhoneVerified && (
+                <View className="flex-row items-center bg-[#DCFCE7] px-2.5 py-1 rounded-full">
+                  <Ionicons name="checkmark-circle" size={13} color="#16A34A" />
+                  <Text className="text-[10px] font-bold text-[#166534] ml-1">Verified</Text>
+                </View>
+              )}
             </View>
-            <Text className="text-[11px] text-[#8C7078] font-medium ml-1 mt-1.5">
-              A 4-digit verification code will be sent to this mobile number on the next step.
-            </Text>
+            {userProfile?.isPhoneVerified ? (
+              <Text className="text-[11px] text-[#166534] font-medium ml-1 mt-1.5">
+                ✓ Verified via OTP. This number will be linked to your business account.
+              </Text>
+            ) : (
+              <Text className="text-[11px] text-[#8C7078] font-medium ml-1 mt-1.5">
+                Your registered business mobile number.
+              </Text>
+            )}
             {touched.mobileNumber && cleanPhone.length !== 10 && (
               <Text className="text-[10px] text-red-500 font-bold ml-1 mt-1">Please enter a valid 10-digit mobile number</Text>
             )}
@@ -363,52 +492,192 @@ export const B2BRegistrationForm = () => {
 
         {/* ── SECTION 3: SPECIALIZATION & EXPERIENCE ───────────────── */}
         <View className="mb-5 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
-          <View className="flex-row items-center gap-2 mb-3">
-            <Ionicons name="sparkles-outline" size={16} color="#C2477A" />
-            <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
-              3. Specialization & Experience
-            </Text>
-          </View>
-
-          {/* Specialization Pills */}
-          <View className="mb-4">
-            <Text className="text-xs font-bold text-[#553846] mb-2 ml-1">
-              Category Specialization *
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {roleSpecs.map(spec => {
-                const isSelected = businessType === spec;
-                return (
-                  <TouchableOpacity
-                    key={spec}
-                    activeOpacity={0.8}
-                    onPress={() => setBusinessType(spec)}
-                    className={`px-3 py-2 rounded-full border ${
-                      isSelected
-                        ? 'bg-white border-[#C2477A]'
-                        : 'bg-white border-stone-200'
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-bold ${
-                        isSelected ? 'text-[#C2477A]' : 'text-stone-600'
-                      }`}
-                    >
-                      {spec}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="sparkles-outline" size={16} color="#C2477A" />
+              <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+                3. Specialization & Experience
+              </Text>
+            </View>
+            <View className="bg-pink-50 px-2 py-0.5 rounded-full border border-pink-100">
+              <Text className="text-[10px] font-bold text-[#C2477A]">
+                {selectedSpecs.length} Selected
+              </Text>
             </View>
           </View>
 
-          {/* Experience Pills */}
-          <View>
-            <Text className="text-xs font-bold text-[#553846] mb-2 ml-1">
-              Years in Business / Industry *
+          {/* Notice Banner */}
+          {suggestNotice.text ? (
+            <View className={`mb-3 p-2.5 rounded-xl border flex-row items-center gap-2 ${
+              suggestNotice.type === 'success' ? 'bg-emerald-50 border-emerald-200' :
+              suggestNotice.type === 'warning' ? 'bg-amber-50 border-amber-200' :
+              suggestNotice.type === 'error' ? 'bg-red-50 border-red-200' :
+              'bg-blue-50 border-blue-200'
+            }`}>
+              <Ionicons
+                name={suggestNotice.type === 'success' ? 'checkmark-circle' : 'alert-circle'}
+                size={16}
+                color={suggestNotice.type === 'success' ? '#059669' : '#C2477A'}
+              />
+              <Text className="text-xs font-bold text-[#3A2430] flex-1">
+                {suggestNotice.text}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Active Selected Tags (Removable) */}
+          <View className="mb-3">
+            <Text className="text-xs font-bold text-[#553846] mb-1.5 ml-1">
+              Active Specializations * <Text className="text-[11px] font-normal text-stone-500">(Tap × to remove)</Text>
+            </Text>
+            <View className="flex-row flex-wrap gap-1.5 min-h-[36px] p-2 bg-[#FFF9FA] border border-[#FCE4EC] rounded-xl">
+              {selectedSpecs.map(specName => (
+                <View
+                  key={specName}
+                  className="flex-row items-center gap-1.5 bg-white border border-[#C2477A] px-2.5 py-1 rounded-full shadow-2xs"
+                >
+                  <Text className="text-xs font-bold text-[#C2477A]">
+                    {specName}
+                  </Text>
+                  <TouchableOpacity
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() => removeSpecialization(specName)}
+                  >
+                    <Ionicons name="close-circle" size={15} color="#C2477A" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Search Filter Bar */}
+          <View className="mb-3">
+            <View className="flex-row items-center bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5">
+              <Ionicons name="search" size={15} color="#A8929A" />
+              <TextInput
+                value={specSearch}
+                onChangeText={setSpecSearch}
+                placeholder="Search specializations..."
+                placeholderTextColor="#A8929A"
+                className="flex-1 ml-2 text-xs font-semibold text-[#3A2430] py-1"
+              />
+              {specSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setSpecSearch('')} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                  <Ionicons name="close-circle" size={16} color="#A8929A" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Available Specialization Pills */}
+          <View className="mb-4">
+            <Text className="text-[11px] font-bold text-stone-500 mb-2 ml-1">
+              Select all that apply to your business:
             </Text>
             <View className="flex-row flex-wrap gap-2">
-              {EXPERIENCE_OPTIONS.map(exp => {
+              {availableSpecs
+                .filter(s => !specSearch || (s.name || '').toLowerCase().includes(specSearch.toLowerCase()))
+                .map(spec => {
+                  const isSelected = selectedSpecs.includes(spec.name);
+                  return (
+                    <TouchableOpacity
+                      key={spec.id || spec.name}
+                      activeOpacity={0.8}
+                      onPress={() => toggleSpecialization(spec.name)}
+                      className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${
+                        isSelected
+                          ? 'bg-[#FFF0F5] border-[#C2477A]'
+                          : 'bg-white border-stone-200'
+                      }`}
+                    >
+                      <Ionicons
+                        name={isSelected ? 'checkmark-circle' : 'add-outline'}
+                        size={14}
+                        color={isSelected ? '#C2477A' : '#705060'}
+                      />
+                      <Text
+                        className={`text-xs font-bold ${
+                          isSelected ? 'text-[#C2477A]' : 'text-stone-700'
+                        }`}
+                      >
+                        {spec.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+              {/* + Other / Custom Pill */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setShowOtherInput(prev => !prev)}
+                className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed ${
+                  showOtherInput
+                    ? 'bg-[#C2477A] border-[#C2477A]'
+                    : 'bg-stone-50 border-stone-400'
+                }`}
+              >
+                <Ionicons
+                  name={showOtherInput ? 'close-outline' : 'add-circle-outline'}
+                  size={14}
+                  color={showOtherInput ? '#FFFFFF' : '#C2477A'}
+                />
+                <Text
+                  className={`text-xs font-bold ${
+                    showOtherInput ? 'text-white' : 'text-[#C2477A]'
+                  }`}
+                >
+                  + Other / Custom
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Custom Specialization Input (Expanding Form) */}
+            {showOtherInput && (
+              <View className="mt-3 p-3 bg-[#FFF9FA] border border-[#FCE4EC] rounded-xl">
+                <Text className="text-xs font-bold text-[#553846]">
+                  Suggest & Add Custom Specialization
+                </Text>
+                <Text className="text-[11px] text-stone-500 mt-0.5">
+                  Type your custom specialization below. It will be added to your profile and submitted for admin approval.
+                </Text>
+                <View className="flex-row items-center gap-2 mt-2">
+                  <TextInput
+                    value={customSpecName}
+                    onChangeText={setCustomSpecName}
+                    placeholder="e.g. Bridal Nail Extensions, HD Airbrush..."
+                    placeholderTextColor="#A8929A"
+                    className="flex-1 bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-[#3A2430]"
+                  />
+                  <TouchableOpacity
+                    disabled={isSuggesting || !customSpecName.trim()}
+                    onPress={handleAddCustomSpecialization}
+                    className={`px-3.5 py-2.5 rounded-xl flex-row items-center gap-1.5 ${
+                      !customSpecName.trim() || isSuggesting
+                        ? 'bg-stone-300'
+                        : 'bg-[#C2477A] active:bg-[#9E2D5B]'
+                    }`}
+                  >
+                    {isSuggesting ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="add" size={16} color="#FFFFFF" />
+                        <Text className="text-xs font-black text-white">Add</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Experience Options */}
+          <View>
+            <Text className="text-xs font-bold text-[#553846] mb-2 ml-1">
+              Years of Experience / Industry Track Record *
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {B2B_EXPERIENCE_OPTIONS.map(exp => {
                 const isSelected = experience === exp;
                 return (
                   <TouchableOpacity
@@ -560,24 +829,31 @@ export const B2BRegistrationForm = () => {
           </View>
         </View>
 
-        {/* Action Button: Proceed to OTP Verification */}
+        {/* Action Button: Complete Registration */}
         <TouchableOpacity
           activeOpacity={0.9}
+          disabled={!isFormValid || isSubmitting}
           onPress={handleProceed}
           style={{ backgroundColor: isFormValid ? '#C2477A' : '#E5E7EB' }}
           className="w-full py-4 rounded-full items-center justify-center shadow-lg active:opacity-90 mb-4 flex-row gap-2"
         >
-          <Text
-            style={{ color: isFormValid ? '#FFFFFF' : '#9CA3AF' }}
-            className="font-black text-base tracking-wide"
-          >
-            Proceed to OTP Verification
-          </Text>
-          <Ionicons
-            name="arrow-forward"
-            size={18}
-            color={isFormValid ? '#FFFFFF' : '#9CA3AF'}
-          />
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <Text
+                style={{ color: isFormValid ? '#FFFFFF' : '#9CA3AF' }}
+                className="font-black text-base tracking-wide"
+              >
+                Complete Registration & Continue
+              </Text>
+              <Ionicons
+                name="arrow-forward"
+                size={18}
+                color={isFormValid ? '#FFFFFF' : '#9CA3AF'}
+              />
+            </>
+          )}
         </TouchableOpacity>
 
         {/* Legal Terms Notice */}

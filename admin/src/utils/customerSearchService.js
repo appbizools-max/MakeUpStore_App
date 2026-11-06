@@ -1,4 +1,6 @@
-import { supabase } from '../config/supabase.js';
+import { supabase, supabaseAdmin } from '../config/supabase.js';
+
+const client = supabaseAdmin || supabase;
 
 // In-memory debounce cache to prevent duplicate logs within a short session window
 const recentSearchLogTimes = new Map();
@@ -60,7 +62,7 @@ export async function trackCustomerSearch({
 
     // 1. Try dedicated Supabase table `customer_search_requests`
     try {
-      const { data: existing, error: selectErr } = await supabase
+      const { data: existing, error: selectErr } = await client
         .from('customer_search_requests')
         .select('*')
         .eq('normalized_query', normQuery)
@@ -70,7 +72,7 @@ export async function trackCustomerSearch({
         if (existing && existing.length > 0) {
           const rec = existing[0];
           const updatedCount = (rec.search_count || 1) + 1;
-          const { data: updated, error: updateErr } = await supabase
+          const { data: updated, error: updateErr } = await client
             .from('customer_search_requests')
             .update({
               search_count: updatedCount,
@@ -108,7 +110,7 @@ export async function trackCustomerSearch({
             user_role: user?.role || 'Customer'
           };
 
-          const { data: inserted, error: insertErr } = await supabase
+          const { data: inserted, error: insertErr } = await client
             .from('customer_search_requests')
             .insert(newRecord)
             .select();
@@ -121,7 +123,7 @@ export async function trackCustomerSearch({
     }
 
     // 2. Real Supabase Fallback via `brands` table ('salbeau_customer_search_requests')
-    const { data: brandRows, error: brandFetchErr } = await supabase
+    const { data: brandRows, error: brandFetchErr } = await client
       .from('brands')
       .select('id, logo')
       .eq('id', 'salbeau_customer_search_requests')
@@ -184,7 +186,7 @@ export async function trackCustomerSearch({
       requestsList = requestsList.slice(0, 500);
     }
 
-    await supabase.from('brands').upsert({
+    await client.from('brands').upsert({
       id: 'salbeau_customer_search_requests',
       name: 'Customer Search Requests',
       enabled: true,
@@ -216,7 +218,7 @@ export async function recordSearchNotFound(rawQuery, user = null) {
 export async function fetchCustomerSearchRequests() {
   try {
     // 1. Try dedicated table first
-    const { data: tableData, error: tableErr } = await supabase
+    const { data: tableData, error: tableErr } = await client
       .from('customer_search_requests')
       .select('*')
       .order('latest_searched_at', { ascending: false });
@@ -226,7 +228,7 @@ export async function fetchCustomerSearchRequests() {
     }
 
     // 2. Fallback to Supabase brands table storage
-    const { data: brandRows, error: brandErr } = await supabase
+    const { data: brandRows, error: brandErr } = await client
       .from('brands')
       .select('id, logo')
       .eq('id', 'salbeau_customer_search_requests')
@@ -248,19 +250,19 @@ export const fetchAllSearchRequests = fetchCustomerSearchRequests;
 
 export async function updateSearchRequestStatus(requestId, newStatus, notes = null) {
   try {
-    const { error } = await supabase
+    const { error } = await client
       .from('customer_search_requests')
       .update({ status: newStatus, notes, updated_at: new Date().toISOString() })
       .eq('id', requestId);
 
     // Also update fallback
-    const { data: bData } = await supabase.from('brands').select('logo').eq('id', 'salbeau_customer_search_requests').limit(1);
+    const { data: bData } = await client.from('brands').select('logo').eq('id', 'salbeau_customer_search_requests').limit(1);
     if (bData?.[0]?.logo) {
       try {
         const parsed = JSON.parse(bData[0].logo);
         if (Array.isArray(parsed)) {
           const updated = parsed.map(r => r.id === requestId ? { ...r, status: newStatus, notes } : r);
-          await supabase.from('brands').update({ logo: JSON.stringify(updated) }).eq('id', 'salbeau_customer_search_requests');
+          await client.from('brands').update({ logo: JSON.stringify(updated) }).eq('id', 'salbeau_customer_search_requests');
         }
       } catch (e) {}
     }
@@ -273,20 +275,52 @@ export async function updateSearchRequestStatus(requestId, newStatus, notes = nu
 
 export async function deleteSearchRequest(requestId) {
   try {
-    await supabase.from('customer_search_requests').delete().eq('id', requestId);
-    const { data: bData } = await supabase.from('brands').select('logo').eq('id', 'salbeau_customer_search_requests').limit(1);
+    await client.from('customer_search_requests').delete().eq('id', requestId);
+    const { data: bData } = await client.from('brands').select('logo').eq('id', 'salbeau_customer_search_requests').limit(1);
     if (bData?.[0]?.logo) {
       try {
         const parsed = JSON.parse(bData[0].logo);
         if (Array.isArray(parsed)) {
           const updated = parsed.filter(r => r.id !== requestId);
-          await supabase.from('brands').update({ logo: JSON.stringify(updated) }).eq('id', 'salbeau_customer_search_requests');
+          await client.from('brands').update({ logo: JSON.stringify(updated) }).eq('id', 'salbeau_customer_search_requests');
         }
       } catch (e) {}
     }
     return { success: true };
   } catch (err) {
     console.warn('Error deleting search request:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function bulkDeleteSearchRequests(requestIds = []) {
+  if (!requestIds || requestIds.length === 0) return { success: true, count: 0 };
+  try {
+    await client.from('customer_search_requests').delete().in('id', requestIds);
+    const { data: bData } = await client.from('brands').select('logo').eq('id', 'salbeau_customer_search_requests').limit(1);
+    if (bData?.[0]?.logo) {
+      try {
+        const parsed = JSON.parse(bData[0].logo);
+        if (Array.isArray(parsed)) {
+          const updated = parsed.filter(r => !requestIds.includes(r.id));
+          await client.from('brands').update({ logo: JSON.stringify(updated) }).eq('id', 'salbeau_customer_search_requests');
+        }
+      } catch (e) {}
+    }
+    return { success: true, count: requestIds.length };
+  } catch (err) {
+    console.warn('Error bulk deleting search requests:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function clearAllSearchRequests() {
+  try {
+    await client.from('customer_search_requests').delete().not('id', 'is', null);
+    await client.from('brands').delete().eq('id', 'salbeau_customer_search_requests');
+    return { success: true };
+  } catch (err) {
+    console.warn('Error clearing all search requests:', err);
     return { success: false, error: err.message };
   }
 }

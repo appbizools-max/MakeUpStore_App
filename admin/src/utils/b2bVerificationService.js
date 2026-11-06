@@ -424,3 +424,224 @@ export const getVerificationDocumentSignedUrl = async (supabase, doc, expiresIn 
 
   return rawPath;
 };
+
+// ==============================================================================
+// B2B SPECIALIZATIONS & EXPERIENCE MASTER ENGINE
+// ==============================================================================
+
+export const B2B_EXPERIENCE_OPTIONS = [
+  'Fresher',
+  '<1 Year',
+  '1–3 Years',
+  '3–5 Years',
+  '5–10 Years',
+  '10–15 Years',
+  '15+ Years'
+];
+
+export const DEFAULT_SPECIALIZATIONS_MASTER = [
+  // Salon
+  { id: 'spec_salon_1', role: 'salon', name: 'Unisex Salon', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_salon_2', role: 'salon', name: 'Women Salon', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_salon_3', role: 'salon', name: "Men's Salon", isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_salon_4', role: 'salon', name: 'Spa & Wellness', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_salon_5', role: 'salon', name: 'Hair Studio', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_salon_6', role: 'salon', name: 'Bridal Studio', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_salon_7', role: 'salon', name: 'Nail Bar & Studio', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_salon_8', role: 'salon', name: 'Aesthetic Skin Clinic', isActive: true, isApproved: true, isCustom: false },
+  // Makeup Artist
+  { id: 'spec_artist_1', role: 'artist', name: 'Bridal Makeup', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_artist_2', role: 'artist', name: 'Fashion & Editorial', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_artist_3', role: 'artist', name: 'Freelance Artist', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_artist_4', role: 'artist', name: 'Celebrity & TV', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_artist_5', role: 'artist', name: 'Makeup Academy', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_artist_6', role: 'artist', name: 'Party & Events', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_artist_7', role: 'artist', name: 'Airbrush & HD Makeup', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_artist_8', role: 'artist', name: 'SFX & Theatrical Makeup', isActive: true, isApproved: true, isCustom: false },
+  // Beautician
+  { id: 'spec_beautician_1', role: 'beautician', name: 'Skin Care & Facial', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_beautician_2', role: 'beautician', name: 'Hair Styling & Color', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_beautician_3', role: 'beautician', name: 'Nail & Lash Art', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_beautician_4', role: 'beautician', name: 'Aesthetic & Laser', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_beautician_5', role: 'beautician', name: 'Freelance Beauty', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_beautician_6', role: 'beautician', name: 'Spa Therapist', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_beautician_7', role: 'beautician', name: 'Eyebrow & Microblading', isActive: true, isApproved: true, isCustom: false },
+  { id: 'spec_beautician_8', role: 'beautician', name: 'Body Polishing & Waxing', isActive: true, isApproved: true, isCustom: false },
+];
+
+export const fetchSpecializationsMaster = async (supabaseClient) => {
+  try {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('salbeau_b2b_specializations_master');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (supabaseClient) {
+              fetchSpecializationsFromDb(supabaseClient).then(remote => {
+                if (remote && remote.length) {
+                  localStorage.setItem('salbeau_b2b_specializations_master', JSON.stringify(remote));
+                }
+              }).catch(() => {});
+            }
+            return parsed;
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (supabaseClient) {
+      const remote = await fetchSpecializationsFromDb(supabaseClient);
+      if (remote && remote.length) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('salbeau_b2b_specializations_master', JSON.stringify(remote));
+        }
+        return remote;
+      }
+    }
+  } catch (err) {
+    console.warn('fetchSpecializationsMaster error:', err);
+  }
+
+  return DEFAULT_SPECIALIZATIONS_MASTER;
+};
+
+const fetchSpecializationsFromDb = async (supabaseClient) => {
+  try {
+    const { data, error } = await supabaseClient
+      .from('brands')
+      .select('logo')
+      .eq('id', 'salbeau_b2b_specializations_master')
+      .maybeSingle();
+
+    if (!error && data?.logo) {
+      const parsed = JSON.parse(data.logo);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const merged = [...parsed];
+        const existingNames = new Set(parsed.map(p => `${p.role}:${(p.name || '').toLowerCase()}`));
+        DEFAULT_SPECIALIZATIONS_MASTER.forEach(def => {
+          if (!existingNames.has(`${def.role}:${def.name.toLowerCase()}`)) {
+            merged.push(def);
+          }
+        });
+        return merged;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading specializations from DB:', e);
+  }
+  return DEFAULT_SPECIALIZATIONS_MASTER;
+};
+
+export const saveSpecializationsMaster = async (supabaseClient, list) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('salbeau_b2b_specializations_master', JSON.stringify(list));
+  }
+
+  if (!supabaseClient) return list;
+
+  try {
+    await supabaseClient.from('brands').upsert({
+      id: 'salbeau_b2b_specializations_master',
+      name: 'B2B Specializations Master',
+      brand_name: 'B2B Specializations Master',
+      logo: JSON.stringify(list),
+      updated_at: new Date().toISOString()
+    });
+  } catch (e) {
+    console.warn('Error saving specializations to DB:', e);
+  }
+
+  return list;
+};
+
+export const suggestSpecialization = async (supabaseClient, { name, role, suggestedBy = 'User' }) => {
+  const currentList = await fetchSpecializationsMaster(supabaseClient);
+  const cleanName = (name || '').trim();
+  if (!cleanName) throw new Error('Specialization name cannot be empty');
+
+  const duplicate = currentList.find(
+    s => s.role === role && s.name.trim().toLowerCase() === cleanName.toLowerCase()
+  );
+
+  if (duplicate) {
+    return { item: duplicate, isDuplicate: true };
+  }
+
+  const newEntry = {
+    id: `spec_sug_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    name: cleanName,
+    role: role || 'salon',
+    isActive: true,
+    isApproved: false,
+    isCustom: true,
+    suggestedBy: suggestedBy || 'User',
+    createdAt: new Date().toISOString()
+  };
+
+  const updated = [newEntry, ...currentList];
+  await saveSpecializationsMaster(supabaseClient, updated);
+  return { item: newEntry, isDuplicate: false, updatedList: updated };
+};
+
+export const adminAddSpecialization = async (supabaseClient, { name, role }) => {
+  const currentList = await fetchSpecializationsMaster(supabaseClient);
+  const cleanName = (name || '').trim();
+  if (!cleanName) throw new Error('Specialization name is required');
+
+  const duplicate = currentList.find(
+    s => s.role === role && s.name.trim().toLowerCase() === cleanName.toLowerCase()
+  );
+  if (duplicate) {
+    throw new Error(`Specialization "${cleanName}" already exists for ${role}.`);
+  }
+
+  const newEntry = {
+    id: `spec_admin_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    name: cleanName,
+    role: role || 'salon',
+    isActive: true,
+    isApproved: true,
+    isCustom: false,
+    suggestedBy: 'Admin',
+    createdAt: new Date().toISOString()
+  };
+
+  const updated = [newEntry, ...currentList];
+  await saveSpecializationsMaster(supabaseClient, updated);
+  return updated;
+};
+
+export const adminUpdateSpecialization = async (supabaseClient, id, updates) => {
+  const currentList = await fetchSpecializationsMaster(supabaseClient);
+  
+  if (updates.name) {
+    const cleanName = updates.name.trim();
+    const target = currentList.find(s => s.id === id);
+    const targetRole = updates.role || target?.role;
+    const dup = currentList.find(
+      s => s.id !== id && s.role === targetRole && s.name.trim().toLowerCase() === cleanName.toLowerCase()
+    );
+    if (dup) {
+      throw new Error(`Another specialization with name "${cleanName}" already exists for this role.`);
+    }
+    updates.name = cleanName;
+  }
+
+  const updated = currentList.map(s => {
+    if (s.id === id) {
+      return { ...s, ...updates, updatedAt: new Date().toISOString() };
+    }
+    return s;
+  });
+
+  await saveSpecializationsMaster(supabaseClient, updated);
+  return updated;
+};
+
+export const adminDeleteSpecialization = async (supabaseClient, id) => {
+  const currentList = await fetchSpecializationsMaster(supabaseClient);
+  const updated = currentList.filter(s => s.id !== id);
+  await saveSpecializationsMaster(supabaseClient, updated);
+  return updated;
+};

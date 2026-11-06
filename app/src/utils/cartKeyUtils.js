@@ -32,6 +32,22 @@ export const getCartQuantityMap = (cart = []) => {
   return map;
 };
 
+export const isPlaceholderShade = (s) => {
+  if (!s || typeof s !== 'object') return true;
+  const name = String(s.color_name || s.name || s.title || s.shade || '').trim().toLowerCase();
+  return (
+    !name ||
+    name === 'default' ||
+    name === 'default shade' ||
+    name === 'standard' ||
+    name === 'standard formulation' ||
+    name === 'n/a' ||
+    name === 'non-shade' ||
+    name === 'n/a (non-shade)' ||
+    name === 'default variant'
+  );
+};
+
 export const getSafeProductShadesList = (product) => {
   if (!product) return [];
   let raw = product.shades || product.variants;
@@ -43,6 +59,6 @@ export const getSafeProductShadesList = (product) => {
     }
   }
   if (!Array.isArray(raw)) return [];
-  return raw.filter(s => s && s.active !== false && !s.isDeleted);
+  return raw.filter(s => s && s.active !== false && !s.isDeleted && !isPlaceholderShade(s));
 };
 

@@ -17,6 +17,7 @@ import {
   Edit,
   Save,
   Trash2,
+  AlertTriangle,
   Sparkles,
   CheckCircle2,
   Loader2,
@@ -40,7 +41,13 @@ import {
   Building2,
   Upload,
   Globe,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Flame,
+  Star,
+  Clock,
+  ArrowUp,
+  ArrowDown,
+  GripVertical
 } from 'lucide-react';
 import SearchableSelect from '../common/SearchableSelect';
 import RoleQuantityTiersManager from './RoleQuantityTiersManager';
@@ -96,6 +103,7 @@ export default function ProductsCatalogMatrix({
   handleOpenEditProduct,
   handleStartEditProduct,
   handleOpenDeleteProduct,
+  bulkDeleteProducts: propBulkDeleteProducts,
   productTiersLocal = {},
   setProductTiersLocal,
   isSavingTiers = false,
@@ -110,6 +118,7 @@ export default function ProductsCatalogMatrix({
   shadeFormDraft = { name: '', hexColor: '#C2477A', priceOverride: '', active: true },
   setShadeFormDraft,
   updateProduct,
+  updateProductsOrder,
   productRecordsPerPage = 15,
   setProductRecordsPerPage,
   productStartIndex = 0,
@@ -126,6 +135,216 @@ export default function ProductsCatalogMatrix({
   const [copiedKey, setCopiedKey] = useState(null);
   const [activeImagePreview, setActiveImagePreview] = useState(null);
   const adminCtx = useAdmin();
+
+  // Multi-Product Selection & Bulk Actions State
+  const [selectedProductIds, setSelectedProductIds] = useState(new Set());
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = useState(null);
+  const [bulkToastMessage, setBulkToastMessage] = useState(null);
+
+  // ── Dynamic Promotional Sections & Priority Ordering ──────────────────────
+  const [activeSectionFilter, setActiveSectionFilter] = useState('all'); // 'all' | 'bestsellers' | 'recent' | 'recommendations'
+  const [draggedProductIndex, setDraggedProductIndex] = useState(null);
+  const [dragOverProductIndex, setDragOverProductIndex] = useState(null);
+
+  const bestsellersCount = useMemo(() => (products || []).filter(p => p.isBestSeller).length, [products]);
+  const recentCount = useMemo(() => (products || []).filter(p => p.isRecentProduct).length, [products]);
+  const recCount = useMemo(() => (products || []).filter(p => p.isTopRecommendation).length, [products]);
+
+  // When a section filter is active, filter and sort by that section's priority
+  const sectionFilteredProducts = useMemo(() => {
+    let base = [...filteredProducts];
+    if (activeSectionFilter === 'bestsellers') {
+      return base.filter(p => p.isBestSeller).sort((a, b) => {
+        const prioA = Number(a.bestSellerPriority ?? a.sort_order ?? 99999);
+        const prioB = Number(b.bestSellerPriority ?? b.sort_order ?? 99999);
+        return prioA - prioB;
+      });
+    }
+    if (activeSectionFilter === 'recent') {
+      return base.filter(p => p.isRecentProduct).sort((a, b) => {
+        const prioA = Number(a.recentPriority ?? a.sort_order ?? 99999);
+        const prioB = Number(b.recentPriority ?? b.sort_order ?? 99999);
+        return prioA - prioB;
+      });
+    }
+    if (activeSectionFilter === 'recommendations') {
+      return base.filter(p => p.isTopRecommendation).sort((a, b) => {
+        const prioA = Number(a.recommendationPriority ?? a.sort_order ?? 99999);
+        const prioB = Number(b.recommendationPriority ?? b.sort_order ?? 99999);
+        return prioA - prioB;
+      });
+    }
+    return base;
+  }, [filteredProducts, activeSectionFilter]);
+
+  // Effective products displayed on table / cards
+  const effectiveDisplayProducts = useMemo(() => {
+    if (activeSectionFilter === 'all') {
+      return paginatedProducts;
+    }
+    return sectionFilteredProducts;
+  }, [activeSectionFilter, paginatedProducts, sectionFilteredProducts]);
+
+  // Section flag toggling for individual products
+  const handleToggleSectionFlag = async (product, flagName) => {
+    const nextVal = !product[flagName];
+    const updateFn = updateProduct || adminCtx?.updateProduct;
+    if (typeof updateFn === 'function') {
+      try {
+        await updateFn(product.id, { [flagName]: nextVal });
+        const label = flagName === 'isBestSeller' ? 'Best Seller'
+          : flagName === 'isRecentProduct' ? 'Recent Product'
+          : 'Top Recommendation';
+        setBulkToastMessage(`Product ${nextVal ? 'marked as' : 'removed from'} ${label}!`);
+        setTimeout(() => setBulkToastMessage(null), 3000);
+      } catch (err) {
+        console.error('Failed to toggle product flag:', err);
+      }
+    }
+  };
+
+  // Bulk set section flag for selected products
+  const handleBulkSetSection = async (flagName, value) => {
+    const updateFn = updateProduct || adminCtx?.updateProduct;
+    if (typeof updateFn !== 'function') return;
+    const ids = Array.from(selectedProductIds);
+    try {
+      for (const id of ids) {
+        await updateFn(id, { [flagName]: value });
+      }
+      const label = flagName === 'isBestSeller' ? 'Best Seller'
+        : flagName === 'isRecentProduct' ? 'Recent Product'
+        : 'Top Recommendation';
+      setBulkToastMessage(`${ids.length} products ${value ? 'marked as' : 'removed from'} ${label}!`);
+      setTimeout(() => setBulkToastMessage(null), 3500);
+    } catch (err) {
+      console.error('Bulk section update failed:', err);
+    }
+  };
+
+  // Drag and drop reordering
+  const handleProductDragStart = (idx) => {
+    setDraggedProductIndex(idx);
+  };
+
+  const handleProductDragEnter = (idx) => {
+    setDragOverProductIndex(idx);
+  };
+
+  const handleProductDrop = async (dropIndex) => {
+    if (draggedProductIndex === null || draggedProductIndex === dropIndex) {
+      setDraggedProductIndex(null);
+      setDragOverProductIndex(null);
+      return;
+    }
+
+    const items = [...effectiveDisplayProducts];
+    const moved = items[draggedProductIndex];
+    items.splice(draggedProductIndex, 1);
+    items.splice(dropIndex, 0, moved);
+
+    setDraggedProductIndex(null);
+    setDragOverProductIndex(null);
+
+    const orderFn = updateProductsOrder || adminCtx?.updateProductsOrder;
+    if (typeof orderFn === 'function') {
+      const sectionKey = activeSectionFilter === 'bestsellers' ? 'bestseller'
+        : activeSectionFilter === 'recent' ? 'recent'
+        : activeSectionFilter === 'recommendations' ? 'recommendation'
+        : 'general';
+      await orderFn(items, sectionKey);
+      setBulkToastMessage(`Order updated and synchronized with User App!`);
+      setTimeout(() => setBulkToastMessage(null), 3500);
+    }
+  };
+
+  const handleProductSwap = async (idx, direction) => {
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= effectiveDisplayProducts.length) return;
+
+    const items = [...effectiveDisplayProducts];
+    const temp = items[idx];
+    items[idx] = items[targetIdx];
+    items[targetIdx] = temp;
+
+    const orderFn = updateProductsOrder || adminCtx?.updateProductsOrder;
+    if (typeof orderFn === 'function') {
+      const sectionKey = activeSectionFilter === 'bestsellers' ? 'bestseller'
+        : activeSectionFilter === 'recent' ? 'recent'
+        : activeSectionFilter === 'recommendations' ? 'recommendation'
+        : 'general';
+      await orderFn(items, sectionKey);
+      setBulkToastMessage(`Order swapped and synchronized with User App!`);
+      setTimeout(() => setBulkToastMessage(null), 3500);
+    }
+  };
+
+  const pageProductIds = useMemo(() => (effectiveDisplayProducts || []).map(p => p.id).filter(Boolean), [effectiveDisplayProducts]);
+  const isAllPageSelected = pageProductIds.length > 0 && pageProductIds.every(id => selectedProductIds.has(id));
+  const isSomePageSelected = pageProductIds.some(id => selectedProductIds.has(id)) && !isAllPageSelected;
+
+  const handleToggleSelectProduct = (productId, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setSelectedProductIds(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSelectAllVisible = () => {
+    if (pageProductIds.length === 0) return;
+    setSelectedProductIds(prev => {
+      const allSelected = pageProductIds.every(id => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        pageProductIds.forEach(id => next.delete(id));
+      } else {
+        pageProductIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllFiltered = () => {
+    const filteredIds = (filteredProducts || []).map(p => p.id).filter(Boolean);
+    setSelectedProductIds(new Set(filteredIds));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedProductIds(new Set());
+  };
+
+  const handleExecuteBulkDelete = async () => {
+    if (selectedProductIds.size === 0) return;
+    setIsBulkDeleting(true);
+    setBulkDeleteError(null);
+    try {
+      const idsToDelete = Array.from(selectedProductIds);
+      const deleteFn = propBulkDeleteProducts || adminCtx.bulkDeleteProducts;
+      const res = await deleteFn(idsToDelete);
+      if (res && res.staged) {
+        setBulkToastMessage(res.message || `${res.stagedCount} product deletion(s) submitted for approval.`);
+      } else {
+        const count = res?.deletedCount || idsToDelete.length;
+        setBulkToastMessage(`Successfully deleted ${count} product${count > 1 ? 's' : ''} from catalog and database.`);
+      }
+      setSelectedProductIds(new Set());
+      setIsBulkDeleteModalOpen(false);
+      setTimeout(() => setBulkToastMessage(null), 4500);
+    } catch (err) {
+      console.error('Bulk deletion error:', err);
+      setBulkDeleteError(err.message || 'Failed to delete selected products. Please try again.');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   const toggleProductDetails = (productId) => {
     setExpandedDetailsProductIds((prev) => {
@@ -277,75 +496,6 @@ export default function ProductsCatalogMatrix({
       {/* 2. Search & Filters Bar */}
       <div className="p-2.5 bg-white rounded-2xl border border-pink-100/90 flex flex-wrap items-center gap-2">
         {/* Search Bar */}
-        <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-pink-100 shadow-2xs flex-1 min-w-[200px] focus-within:border-[#C2477A] transition-colors">
-          <Search size={14} className="text-[#C2477A] shrink-0" />
-          <input
-            type="text"
-            placeholder="Search by product name, brand, barcode, category or attributes..."
-            value={productSearch}
-            onChange={(e) => {
-              setProductSearch(e.target.value);
-              setProductCurrentPage(1);
-            }}
-            className="bg-transparent text-xs outline-none text-gray-900 placeholder-gray-400 font-medium w-full"
-          />
-          {productSearch && (
-            <button
-              type="button"
-              onClick={() => {
-                setProductSearch('');
-                setProductCurrentPage(1);
-              }}
-              className="text-gray-400 hover:text-gray-600 cursor-pointer p-0.5 rounded-full hover:bg-gray-100"
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-
-        {/* Scan Barcode Button */}
-        <button
-          type="button"
-          onClick={() => setIsCatalogScannerOpen(true)}
-          className="px-3 py-2 rounded-xl font-bold text-xs bg-gradient-to-r from-[#C2477A] to-[#9E2D5B] hover:from-[#9E2D5B] text-white shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-all active:scale-95"
-          title="Scan physical product barcode with camera"
-        >
-          <ScanBarcode size={14} />
-          <span>Scan Barcode</span>
-        </button>
-
-        {/* Brand Filter */}
-        <div className="w-[145px] sm:w-[160px] shrink-0">
-          <SearchableSelect
-            options={['All Brands', ...availableProductBrands.filter(b => b && b !== 'all')]}
-            value={productBrandFilter === 'all' ? 'All Brands' : productBrandFilter}
-            onChange={(val) => {
-              setProductBrandFilter(val === 'All Brands' ? 'all' : val);
-              setProductCurrentPage(1);
-            }}
-            placeholder="All Brands"
-            searchPlaceholder="Search brand..."
-            emptyMessage="No brands found"
-            compact={true}
-          />
-        </div>
-
-        {/* Category Filter */}
-        <div className="w-[145px] sm:w-[160px] shrink-0">
-          <SearchableSelect
-            options={['All Categories', ...availableProductCategories.filter(c => c && c !== 'all')]}
-            value={productCategoryFilter === 'all' ? 'All Categories' : productCategoryFilter}
-            onChange={(val) => {
-              setProductCategoryFilter(val === 'All Categories' ? 'all' : val);
-              setProductCurrentPage(1);
-            }}
-            placeholder="All Categories"
-            searchPlaceholder="Search category..."
-            emptyMessage="No categories found"
-            compact={true}
-          />
-        </div>
-        {/* Search Bar */}
         <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100 shadow-2xs flex-1 min-w-[220px] focus-within:border-[#C2477A] transition-colors">
           <Search size={15} className="text-[#C2477A] shrink-0" />
           <input
@@ -434,20 +584,201 @@ export default function ProductsCatalogMatrix({
         )}
       </div>
 
+      {/* 2B. Promotional Sections & Priority Reorder Navigation */}
+      <div className="p-3 bg-white rounded-2xl border border-pink-100/90 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setActiveSectionFilter('all')}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeSectionFilter === 'all'
+                ? 'bg-[#C2477A] text-white shadow-2xs'
+                : 'bg-white text-gray-700 hover:bg-pink-50 border border-pink-100'
+            }`}
+          >
+            <Boxes size={13} />
+            <span>All Products</span>
+            <span className="text-[10px] px-1.5 py-0.2 bg-black/10 rounded-full font-mono">{products.length}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSectionFilter('bestsellers')}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeSectionFilter === 'bestsellers'
+                ? 'bg-amber-500 text-white shadow-2xs font-extrabold'
+                : 'bg-white text-amber-800 hover:bg-amber-50 border border-amber-200'
+            }`}
+          >
+            <Flame size={13} className={activeSectionFilter === 'bestsellers' ? 'text-white fill-white' : 'text-amber-500 fill-amber-500'} />
+            <span>Best Sellers</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+              activeSectionFilter === 'bestsellers' ? 'bg-black/20 text-white' : 'bg-amber-100 text-amber-900'
+            }`}>{bestsellersCount}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSectionFilter('recent')}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeSectionFilter === 'recent'
+                ? 'bg-cyan-600 text-white shadow-2xs font-extrabold'
+                : 'bg-white text-cyan-800 hover:bg-cyan-50 border border-cyan-200'
+            }`}
+          >
+            <Sparkles size={13} className={activeSectionFilter === 'recent' ? 'text-white' : 'text-cyan-600'} />
+            <span>Recent Products</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+              activeSectionFilter === 'recent' ? 'bg-black/20 text-white' : 'bg-cyan-100 text-cyan-900'
+            }`}>{recentCount}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSectionFilter('recommendations')}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeSectionFilter === 'recommendations'
+                ? 'bg-purple-600 text-white shadow-2xs font-extrabold'
+                : 'bg-white text-purple-800 hover:bg-purple-50 border border-purple-200'
+            }`}
+          >
+            <Star size={13} className={activeSectionFilter === 'recommendations' ? 'text-white fill-white' : 'text-purple-600 fill-purple-600'} />
+            <span>Top Recommendations</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+              activeSectionFilter === 'recommendations' ? 'bg-black/20 text-white' : 'bg-purple-100 text-purple-900'
+            }`}>{recCount}</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs">
+          {activeSectionFilter !== 'all' ? (
+            <span className="text-xs font-bold text-[#C2477A] bg-pink-50 border border-pink-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+              <GripVertical size={13} />
+              <span>Section Priority Mode Active: Drag or use ↑ ↓ to set User App order</span>
+            </span>
+          ) : (
+            <span className="text-[11px] font-medium text-gray-500">
+              💡 Use toggles to feature products in Best Sellers, Recent, or Top Recommendations
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Bulk Action Toast Alert */}
+      {bulkToastMessage && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between gap-3 text-emerald-800 text-xs font-bold shadow-xs animate-fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <span>{bulkToastMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBulkToastMessage(null)}
+            className="text-emerald-600 hover:text-emerald-900 cursor-pointer p-1 rounded-lg hover:bg-emerald-100"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Bulk Selection Action Bar */}
+      {selectedProductIds.size > 0 && (
+        <div className="p-3 bg-gradient-to-r from-pink-50 via-white to-pink-50 rounded-2xl border-2 border-pink-200/90 shadow-md flex flex-wrap items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#C2477A] text-white flex items-center justify-center font-black text-xs shadow-xs">
+              {selectedProductIds.size}
+            </div>
+            <div>
+              <p className="text-xs font-black text-gray-900 tracking-tight">
+                {selectedProductIds.size} {selectedProductIds.size === 1 ? 'Product' : 'Products'} Selected
+              </p>
+              <span className="text-[11px] text-gray-500 font-medium">
+                Apply section visibility or batch actions
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Quick Bulk Promotional Flags */}
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-pink-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => handleBulkSetSection('isBestSeller', true)}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Mark all selected as Best Seller"
+              >
+                <Flame size={12} className="text-amber-500 fill-amber-500" />
+                <span>+ Best Seller</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleBulkSetSection('isRecentProduct', true)}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Mark all selected as Recent Product"
+              >
+                <Sparkles size={12} className="text-cyan-600" />
+                <span>+ Recent</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleBulkSetSection('isTopRecommendation', true)}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Mark all selected as Top Recommendation"
+              >
+                <Star size={12} className="text-purple-600 fill-purple-600" />
+                <span>+ Top Rec</span>
+              </button>
+            </div>
+
+            {selectedProductIds.size < filteredProducts.length && (
+              <button
+                type="button"
+                onClick={handleSelectAllFiltered}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-100/70 border border-pink-200 text-[#C2477A] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              >
+                Select All {filteredProducts.length}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 text-gray-600 text-xs font-bold transition-all cursor-pointer"
+            >
+              Clear Selection
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setBulkDeleteError(null);
+                setIsBulkDeleteModalOpen(true);
+              }}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+            >
+              <Trash2 size={15} />
+              <span>Delete Selected ({selectedProductIds.size})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Responsive Cards Layout (< 768px) */}
       <div className="block md:hidden space-y-3.5">
-        {paginatedProducts.length === 0 ? (
+        {effectiveDisplayProducts.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-pink-100">
             <Package size={32} className="text-pink-300 mx-auto mb-2" />
             <p className="font-bold text-sm text-gray-700">No products found</p>
           </div>
         ) : (
-          paginatedProducts.map((p, pIdx) => {
+          effectiveDisplayProducts.map((p, pIdx) => {
             const pImage = p.imageUrl || p.image;
             const variantsList = getSafeActiveVariants(p);
             const currentBrand = (p.brandName || brands?.find(b => b.id === p.brandId)?.name || p.brand || '').trim();
             const prevBrand = pIdx > 0
-              ? (paginatedProducts[pIdx - 1].brandName || brands?.find(b => b.id === paginatedProducts[pIdx - 1].brandId)?.name || paginatedProducts[pIdx - 1].brand || '').trim()
+              ? (effectiveDisplayProducts[pIdx - 1].brandName || brands?.find(b => b.id === effectiveDisplayProducts[pIdx - 1].brandId)?.name || effectiveDisplayProducts[pIdx - 1].brand || '').trim()
               : null;
             const showBrandHeader = pIdx === 0 || currentBrand.toLowerCase() !== (prevBrand || '').toLowerCase();
 
@@ -466,7 +797,44 @@ export default function ProductsCatalogMatrix({
                     </span>
                   </div>
                 )}
-                <div key={`m_${p.id || p._id || p.barcode || pIdx}`} className="bg-white rounded-2xl border border-pink-100 p-4 shadow-sm space-y-3">
+                <div key={`m_${p.id || p._id || p.barcode || pIdx}`} className={`bg-white rounded-2xl border ${selectedProductIds.has(p.id) ? 'border-[#C2477A] bg-pink-50/20 ring-1 ring-[#C2477A]/30' : 'border-pink-100'} p-4 shadow-sm space-y-3`}>
+                  <div className="flex items-center justify-between pb-2 border-b border-pink-50">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={selectedProductIds.has(p.id)}
+                        onChange={(e) => handleToggleSelectProduct(p.id, e)}
+                        className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                      />
+                      <span className="text-[11px] font-bold text-gray-700">Select product</span>
+                    </label>
+
+                    {/* Priority & Swap Controls */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded bg-pink-50 text-[#C2477A] font-mono font-bold text-[10px] flex items-center justify-center border border-pink-200">
+                        #{pIdx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={pIdx === 0}
+                        onClick={() => handleProductSwap(pIdx, -1)}
+                        className="p-1 rounded bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 disabled:opacity-30 cursor-pointer"
+                        title="Move Priority Up"
+                      >
+                        <ArrowUp size={11} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={pIdx === effectiveDisplayProducts.length - 1}
+                        onClick={() => handleProductSwap(pIdx, 1)}
+                        className="p-1 rounded bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 disabled:opacity-30 cursor-pointer"
+                        title="Move Priority Down"
+                      >
+                        <ArrowDown size={11} />
+                      </button>
+                    </div>
+                  </div>
+
                 <div className="flex gap-3">
                   <div
                     onClick={() => pImage && setActiveImagePreview(pImage)}
@@ -506,6 +874,48 @@ export default function ProductsCatalogMatrix({
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Promotional Section Toggles */}
+                <div className="flex items-center gap-1.5 flex-wrap bg-gray-50/70 p-2 rounded-xl border border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSectionFlag(p, 'isBestSeller')}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
+                      p.isBestSeller
+                        ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs font-extrabold'
+                        : 'bg-white text-gray-500 border-gray-200'
+                    }`}
+                  >
+                    <Flame size={11} className={p.isBestSeller ? "text-amber-600 fill-amber-500" : "text-gray-400"} />
+                    <span>Best Seller</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSectionFlag(p, 'isRecentProduct')}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
+                      p.isRecentProduct
+                        ? 'bg-cyan-100 text-cyan-900 border-cyan-300 shadow-2xs font-extrabold'
+                        : 'bg-white text-gray-500 border-gray-200'
+                    }`}
+                  >
+                    <Sparkles size={11} className={p.isRecentProduct ? "text-cyan-600" : "text-gray-400"} />
+                    <span>Recent</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSectionFlag(p, 'isTopRecommendation')}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
+                      p.isTopRecommendation
+                        ? 'bg-purple-100 text-purple-900 border-purple-300 shadow-2xs font-extrabold'
+                        : 'bg-white text-gray-500 border-gray-200'
+                    }`}
+                  >
+                    <Star size={11} className={p.isTopRecommendation ? "text-purple-600 fill-purple-600" : "text-gray-400"} />
+                    <span>Top Rec</span>
+                  </button>
                 </div>
 
                 {/* 4-Tier Role Pricing Grid */}
@@ -576,8 +986,23 @@ export default function ProductsCatalogMatrix({
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="bg-white backdrop-blur-md text-gray-700 uppercase font-black text-[10px] tracking-wide border-b border-pink-200/80 sticky top-0 z-10 shadow-2xs">
+              <th className="py-3 px-3 text-center w-10 shrink-0">
+                <input
+                  type="checkbox"
+                  checked={isAllPageSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = isSomePageSelected;
+                  }}
+                  onChange={handleToggleSelectAllVisible}
+                  className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                  title={isAllPageSelected ? "Deselect all visible products" : "Select all visible products on current page"}
+                  aria-label="Select all visible products"
+                />
+              </th>
+              <th className="py-3 px-1.5 text-center w-14 shrink-0 whitespace-nowrap">ORDER</th>
               <th className="py-3 px-2 text-center w-12 shrink-0">IMAGE</th>
               <th className="py-3 px-3 text-left min-w-[200px]">PRODUCT & DETAILS</th>
+              <th className="py-3 px-2 text-center whitespace-nowrap min-w-[150px]">FEATURED SECTIONS</th>
               <th className="py-3 px-2 text-left whitespace-nowrap">BARCODE</th>
               <th className="py-3 px-2 text-left whitespace-nowrap">BRAND</th>
               <th className="py-3 px-1.5 text-right whitespace-nowrap">ORIGINAL MRP (₹)</th>
@@ -589,9 +1014,9 @@ export default function ProductsCatalogMatrix({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {paginatedProducts.length === 0 ? (
+            {effectiveDisplayProducts.length === 0 ? (
               <tr>
-                <td colSpan={10} className="py-14 px-6 text-center">
+                <td colSpan={13} className="py-14 px-6 text-center">
                   {isBarcodeQuery && isBarcodeQuery(productSearch) ? (
                     <div className="max-w-md mx-auto p-6 bg-white border border-pink-200 rounded-3xl shadow-xs space-y-3">
                       <div className="w-12 h-12 rounded-2xl bg-pink-100 text-[#C2477A] flex items-center justify-center mx-auto shadow-2xs">
@@ -646,7 +1071,7 @@ export default function ProductsCatalogMatrix({
                 </td>
               </tr>
             ) : (
-              paginatedProducts.map((p, index) => {
+              effectiveDisplayProducts.map((p, index) => {
                 const isEditing = editingProductId === p.id;
                 const variantsList = getSafeActiveVariants(p);
                 const hasChildVariants = !p.isVariantChild && variantsList.length > 0;
@@ -658,7 +1083,7 @@ export default function ProductsCatalogMatrix({
                 // Canonical Brand Grouping Header logic
                 const currentBrand = (p.brandName || brands?.find(b => b.id === p.brandId)?.name || p.brand || '').trim();
                 const prevBrand = index > 0
-                  ? (paginatedProducts[index - 1].brandName || brands?.find(b => b.id === paginatedProducts[index - 1].brandId)?.name || paginatedProducts[index - 1].brand || '').trim()
+                  ? (effectiveDisplayProducts[index - 1].brandName || brands?.find(b => b.id === effectiveDisplayProducts[index - 1].brandId)?.name || effectiveDisplayProducts[index - 1].brand || '').trim()
                   : null;
                 const showBrandHeader = index === 0 || currentBrand.toLowerCase() !== (prevBrand || '').toLowerCase();
 
@@ -677,7 +1102,7 @@ export default function ProductsCatalogMatrix({
                   <React.Fragment key={p.id || p._id || p.barcode || index}>
                     {showBrandHeader && (
                       <tr className="bg-gradient-to-r from-white via-pink-50/30 to-white border-y border-pink-200/90">
-                        <td colSpan={10} className="py-2 px-4">
+                        <td colSpan={13} className="py-2 px-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <Building2 size={13} className="text-[#C2477A]" />
@@ -693,24 +1118,80 @@ export default function ProductsCatalogMatrix({
                       </tr>
                     )}
                     <tr
+                      draggable={true}
+                      onDragStart={() => handleProductDragStart(index)}
+                      onDragEnter={() => handleProductDragEnter(index)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => handleProductDrop(index)}
                       className={`transition-colors border-b border-pink-100/50 ${
-                        isExpandedDetails
-                          ? 'bg-white'
-                          : editingTiersProductId === p.id
-                          ? 'bg-amber-50/40'
-                          : index % 2 === 1
-                          ? 'bg-white hover:bg-[#FFF2F5]'
-                          : 'bg-white hover:bg-[#FFF2F5]/60'
+                        draggedProductIndex === index
+                          ? 'opacity-40 bg-pink-100/60'
+                          : dragOverProductIndex === index
+                            ? 'bg-pink-100/40 border-t-2 border-[#C2477A]'
+                            : selectedProductIds.has(p.id)
+                              ? 'bg-pink-50/80 border-pink-200'
+                              : isExpandedDetails
+                              ? 'bg-white'
+                              : editingTiersProductId === p.id
+                              ? 'bg-amber-50/40'
+                              : index % 2 === 1
+                              ? 'bg-white hover:bg-[#FFF2F5]'
+                              : 'bg-white hover:bg-[#FFF2F5]/60'
                       }`}
                     >
+                      {/* Checkbox Column */}
+                      <td className="py-2.5 px-3 text-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedProductIds.has(p.id)}
+                          onChange={(e) => handleToggleSelectProduct(p.id, e)}
+                          className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                          title="Select product for bulk action"
+                          aria-label={`Select ${p.name}`}
+                        />
+                      </td>
+
+                      {/* ORDER: Drag Grip & Swap Buttons */}
+                      <td className="py-2.5 px-1.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center justify-center gap-1">
+                          <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A] p-0.5" title="Drag to reorder priority">
+                            <GripVertical size={13} />
+                          </span>
+                          <span className="w-5 h-5 rounded-md bg-pink-50 text-[#C2477A] font-mono font-bold text-[10px] flex items-center justify-center border border-pink-200 shadow-2xs">
+                            {index + 1}
+                          </span>
+                          <div className="flex flex-col gap-0.5 ml-0.5">
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => handleProductSwap(index, -1)}
+                              className="w-3.5 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+                              title="Move Product Up (higher priority)"
+                            >
+                              <ArrowUp size={8} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === effectiveDisplayProducts.length - 1}
+                              onClick={() => handleProductSwap(index, 1)}
+                              className="w-3.5 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+                              title="Move Product Down (lower priority)"
+                            >
+                              <ArrowDown size={8} />
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+
                       {/* 1. Thumbnail Image & Gallery Indicator */}
                       <td className="py-2.5 px-2 text-center">
                         <div
                           onClick={() => {
                             if (pImage) setActiveImagePreview(pImage);
+                            else if (typeof handleOpenEditProduct === 'function') handleOpenEditProduct(p);
                           }}
-                          className="relative w-10 h-10 rounded-xl overflow-hidden bg-white border border-pink-100 flex items-center justify-center mx-auto shadow-2xs group cursor-pointer"
-                          title="Click to view full image"
+                          className="relative w-10 h-10 rounded-xl overflow-hidden bg-white border border-pink-100 hover:border-[#C2477A] flex items-center justify-center mx-auto shadow-2xs group cursor-pointer transition-colors"
+                          title={pImage ? "Click to view full image (or click Edit to manage gallery)" : "No image - Click to upload images"}
                         >
                           {pImage ? (
                             <img
@@ -722,7 +1203,10 @@ export default function ProductsCatalogMatrix({
                               }}
                             />
                           ) : (
-                            <Package size={18} className="text-pink-300" />
+                            <div className="flex flex-col items-center justify-center text-pink-300 group-hover:text-[#C2477A] transition-colors">
+                              <Package size={16} />
+                              <span className="text-[8px] font-black leading-none mt-0.5">+Add</span>
+                            </div>
                           )}
                           {allImages.length > 1 && (
                             <span className="absolute bottom-0 right-0 bg-black/70 text-white text-[8px] font-black px-1 rounded-tl shadow-xs">
@@ -969,6 +1453,53 @@ export default function ProductsCatalogMatrix({
                         </div>
                       </td>
 
+                      {/* FEATURED SECTIONS: Best Seller, Recent, Top Recommendations */}
+                      <td className="py-2.5 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center gap-1 flex-wrap justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSectionFlag(p, 'isBestSeller')}
+                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
+                              p.isBestSeller
+                                ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs font-black scale-105'
+                                : 'bg-white text-gray-400 border-gray-200 hover:border-amber-300 hover:text-amber-700'
+                            }`}
+                            title={p.isBestSeller ? "Best Seller Active (Click to remove)" : "Click to mark as Best Seller"}
+                          >
+                            <Flame size={10} className={p.isBestSeller ? "text-amber-600 fill-amber-500" : "text-gray-300"} />
+                            <span>Best Seller</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSectionFlag(p, 'isRecentProduct')}
+                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
+                              p.isRecentProduct
+                                ? 'bg-cyan-100 text-cyan-900 border-cyan-300 shadow-2xs font-black scale-105'
+                                : 'bg-white text-gray-400 border-gray-200 hover:border-cyan-300 hover:text-cyan-700'
+                            }`}
+                            title={p.isRecentProduct ? "Recent Product Active (Click to remove)" : "Click to mark as Recent"}
+                          >
+                            <Sparkles size={10} className={p.isRecentProduct ? "text-cyan-600" : "text-gray-300"} />
+                            <span>Recent</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSectionFlag(p, 'isTopRecommendation')}
+                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
+                              p.isTopRecommendation
+                                ? 'bg-purple-100 text-purple-900 border-purple-300 shadow-2xs font-black scale-105'
+                                : 'bg-white text-gray-400 border-gray-200 hover:border-purple-300 hover:text-purple-700'
+                            }`}
+                            title={p.isTopRecommendation ? "Top Recommendation Active (Click to remove)" : "Click to mark as Top Rec"}
+                          >
+                            <Star size={10} className={p.isTopRecommendation ? "text-purple-600 fill-purple-600" : "text-gray-300"} />
+                            <span>Top Rec</span>
+                          </button>
+                        </div>
+                      </td>
+
                       {/* 3. Barcode */}
                       <td className="py-2.5 px-2 whitespace-nowrap">
                         {isEditing ? (
@@ -1211,7 +1742,7 @@ export default function ProductsCatalogMatrix({
                     {/* INLINE EXPANDABLE FULL PRODUCT DETAILS PANEL */}
                     {isExpandedDetails && (
                       <tr key={p.id + '_full_details_panel'} className="bg-white border-y-2 border-pink-200/80">
-                        <td colSpan={10} className="p-4 sm:p-6">
+                        <td colSpan={11} className="p-4 sm:p-6">
                           <div className="bg-white rounded-3xl border border-pink-200 shadow-sm p-5 sm:p-6 space-y-6">
                             {/* Card Header with Key Identifiers */}
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-pink-100">
@@ -1586,7 +2117,7 @@ export default function ProductsCatalogMatrix({
                     {/* EXPANDABLE QUANTITY DISCOUNT TIERS PANEL */}
                     {editingTiersProductId === p.id && (
                       <tr key={p.id + '_tiers_panel'} className="bg-amber-50/40 border-y-2 border-pink-200">
-                        <td colSpan={10} className="p-4 sm:p-5">
+                        <td colSpan={11} className="p-4 sm:p-5">
                           <RoleQuantityTiersManager
                             tiers={productTiersLocal}
                             onChange={setProductTiersLocal}
@@ -1607,7 +2138,7 @@ export default function ProductsCatalogMatrix({
                     {/* EXPANDABLE SHADE / COLOR VARIANT MANAGER PANEL */}
                     {editingShadeProductId === p.id && (
                       <tr key={p.id + '_shades_panel'} className="bg-white border-y-2 border-[#FCE4EC]">
-                        <td colSpan={10} className="p-4 sm:p-5">
+                        <td colSpan={11} className="p-4 sm:p-5">
                           <div className="bg-white rounded-3xl border border-[#FCE4EC] shadow-sm p-5 space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#FCE4EC]">
                               <div>
@@ -2433,6 +2964,130 @@ export default function ProductsCatalogMatrix({
             >
               <X size={18} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 7. BULK DELETE CONFIRMATION MODAL */}
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-scale-up">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-pink-100/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shadow-2xs border border-rose-100">
+                  <Trash2 size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-gray-900 tracking-wide">
+                    Delete {selectedProductIds.size} Products in Bulk?
+                  </h3>
+                  <span className="text-[11px] text-gray-400 font-medium block">
+                    Permanent deletion from database & user mobile app
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isBulkDeleting}
+                onClick={() => {
+                  if (isBulkDeleting) return;
+                  setIsBulkDeleteModalOpen(false);
+                }}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Warning Box */}
+            <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-xs text-rose-800">
+              <AlertTriangle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-extrabold block mb-0.5">Warning: Irreversible Database Action</strong>
+                <span>
+                  Deleting these <strong>{selectedProductIds.size} products</strong> will permanently delete their records from the database, purge all associated media from storage, and instantly remove them from the Customer Mobile App, bags, and favorites.
+                </span>
+              </div>
+            </div>
+
+            {bulkDeleteError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded-xl text-xs font-semibold">
+                {bulkDeleteError}
+              </div>
+            )}
+
+            {/* Selected Products Scrollable Preview List */}
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-extrabold text-gray-700 uppercase tracking-wider">
+                  Selected Products ({selectedProductIds.size})
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  Showing first {Math.min(selectedProductIds.size, 10)} items
+                </span>
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-gray-50 rounded-xl border border-gray-100 custom-scrollbar">
+                {Array.from(selectedProductIds).slice(0, 10).map((pid) => {
+                  const prod = (products || []).find(p => p.id === pid) || (filteredProducts || []).find(p => p.id === pid);
+                  const pImg = prod?.imageUrl || prod?.image;
+                  return (
+                    <div key={pid} className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-gray-100">
+                      <div className="w-8 h-8 rounded-md bg-gray-100 border border-pink-100 overflow-hidden shrink-0 flex items-center justify-center">
+                        {pImg ? (
+                          <img src={pImg} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Package size={14} className="text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-900 truncate">
+                          {prod?.name || pid}
+                        </p>
+                        <span className="text-[10px] text-gray-500 font-medium">
+                          {prod?.brandName || prod?.brand || 'Brand'} • {prod?.category || 'Category'} • ₹{prod?.mrp || 0}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {selectedProductIds.size > 10 && (
+                  <p className="text-[11px] text-center text-gray-500 font-bold py-1">
+                    + {selectedProductIds.size - 10} more products
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                disabled={isBulkDeleting}
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isBulkDeleting}
+                onClick={handleExecuteBulkDelete}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>Deleting {selectedProductIds.size} Products...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={15} />
+                    <span>Confirm Permanent Bulk Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

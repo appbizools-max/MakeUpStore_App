@@ -156,20 +156,32 @@ export const CompleteProfileScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Header with Back Arrow */}
-        <View className="flex-row items-center mb-6">
+        <View className="flex-row items-center justify-between mb-5">
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => setCurrentScreen('otp')}
+            onPress={() => setCurrentScreen('onboarding')}
             className="w-10 h-10 rounded-full bg-white border border-[#FCE4EC] items-center justify-center shadow-2xs mr-3"
           >
             <Ionicons name="arrow-back" size={20} color="#C2477A" />
           </TouchableOpacity>
+
+          {userProfile?.phone ? (
+            <View className="flex-row items-center bg-[#F0FDF4] border border-[#DCFCE7] px-3 py-1.5 rounded-full">
+              <Ionicons name="checkmark-circle" size={14} color="#16A34A" className="mr-1" />
+              <Text className="text-xs font-bold text-[#166534] ml-1">
+                {userProfile.phone} Verified
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Title */}
-        <View className="mb-7 items-center">
+        <View className="mb-5 items-center">
           <Text className="text-2xl font-black text-[#3A2430] tracking-tight">
             Complete Your Profile
+          </Text>
+          <Text className="text-xs font-medium text-[#8C7078] mt-1 text-center">
+            Tell us your details to personalize your shopping experience
           </Text>
         </View>
 

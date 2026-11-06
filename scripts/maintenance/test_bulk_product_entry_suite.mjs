@@ -42,17 +42,17 @@ console.log('SALBEAU MAKEUPSTORE: BULK PRODUCT ENTRY AUTOMATED TEST SUITE');
 console.log('================================================================\n');
 
 // -----------------------------------------------------------------------------
-// TEST 1: CANONICAL 18 COLUMNS VERIFICATION
+// TEST 1: CANONICAL COLUMNS VERIFICATION
 // -----------------------------------------------------------------------------
-console.log('--- TEST 1: Canonical 18 Columns Specification ---');
+console.log('--- TEST 1: Canonical Columns Specification ---');
 assert(
-  CANONICAL_TEMPLATE_COLUMNS.length === 18,
-  'Canonical columns array contains exactly 18 supported fields',
+  CANONICAL_TEMPLATE_COLUMNS.length === REQUIRED_HEADERS.length,
+  `Canonical columns array contains exactly ${REQUIRED_HEADERS.length} supported fields`,
   `Found ${CANONICAL_TEMPLATE_COLUMNS.length} columns`
 );
 
 const matchesAllExpected = REQUIRED_HEADERS.every(h => CANONICAL_TEMPLATE_COLUMNS.includes(h));
-assert(matchesAllExpected, 'Canonical columns list contains all 18 specified headers in exact format');
+assert(matchesAllExpected, `Canonical columns list contains all ${REQUIRED_HEADERS.length} specified headers in exact format`);
 
 // -----------------------------------------------------------------------------
 // TEST 2: 3-SHEET WORKBOOK GENERATION & STRUCTURE

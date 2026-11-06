@@ -609,7 +609,7 @@ export default function FulfillmentStatusSelector({
                 {isSubmitting ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    <span>Updating Supabase...</span>
+                    <span>Updating status...</span>
                   </>
                 ) : (
                   <>

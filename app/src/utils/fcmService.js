@@ -217,23 +217,137 @@ export function setupFCMForegroundListener(onNotificationReceived) {
   return () => {};
 }
 
+// In-memory deduplication cache to prevent identical system notifications within a 5-second window
+const recentNotificationCache = new Map();
+
+function isDuplicateNotification(dedupKey, windowMs = 5000) {
+  if (!dedupKey) return false;
+  const now = Date.now();
+  if (recentNotificationCache.has(dedupKey)) {
+    const prevTime = recentNotificationCache.get(dedupKey);
+    if (now - prevTime < windowMs) {
+      return true;
+    }
+  }
+  recentNotificationCache.set(dedupKey, now);
+
+  // Evict stale entries when cache grows
+  if (recentNotificationCache.size > 80) {
+    for (const [k, timestamp] of recentNotificationCache.entries()) {
+      if (now - timestamp > 30000) {
+        recentNotificationCache.delete(k);
+      }
+    }
+  }
+  return false;
+}
+
 /**
- * Triggers a native system tray & lock-screen notification directly via Android SalbeauFCM.
+ * Triggers a native system tray & lock-screen notification directly via Android SalbeauFCM
+ * or Web Notifications API (System Tray).
+ * Guaranteed to route to the OS Notification Drawer without any in-app popups.
  */
 export async function displayLocalNotification(title, message, data = {}) {
   try {
-    if (Platform.OS === 'android' && NativeModules.SalbeauFCM?.displayNotification) {
-      const sanitizedData = {};
-      if (data && typeof data === 'object') {
-        for (const [k, v] of Object.entries(data)) {
-          sanitizedData[k] = String(v ?? '');
-        }
+    const cleanTitle = String(title || 'Salbeau Beauty Store').trim();
+    const cleanMessage = String(message || '').trim();
+    const orderId = String(data?.orderId || data?.order_id || data?.orderNumber || '').trim();
+    const notifType = String(data?.type || data?.eventType || 'general').trim();
+
+    // Deduplication check
+    const dedupKey = `${orderId}_${notifType}_${cleanTitle}_${cleanMessage}`;
+    if (isDuplicateNotification(dedupKey, 5000)) {
+      console.log('[FCM System Tray] Suppressed duplicate notification:', dedupKey);
+      return false;
+    }
+
+    const sanitizedData = {};
+    if (data && typeof data === 'object') {
+      for (const [k, v] of Object.entries(data)) {
+        sanitizedData[k] = String(v ?? '');
       }
-      await NativeModules.SalbeauFCM.displayNotification(title, message, sanitizedData);
+    }
+
+    // 1. Native Android System Drawer Notification
+    if (Platform.OS === 'android' && NativeModules.SalbeauFCM?.displayNotification) {
+      await NativeModules.SalbeauFCM.displayNotification(cleanTitle, cleanMessage, sanitizedData);
       return true;
+    }
+
+    // 2. Web / Desktop OS Notification Drawer Fallback
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        const notif = new Notification(cleanTitle, {
+          body: cleanMessage,
+          icon: '/favicon.ico',
+          data: sanitizedData
+        });
+        notif.onclick = () => {
+          window.focus();
+          DeviceEventEmitter.emit('onNotificationTapped', sanitizedData);
+        };
+        return true;
+      }
     }
   } catch (err) {
     console.warn('[FCM] displayLocalNotification error:', err);
   }
   return false;
+}
+
+/**
+ * Retrieves initial notification payload if app was opened cold by tapping a system tray notification.
+ */
+export async function getInitialNotification() {
+  try {
+    if (Platform.OS === 'android' && NativeModules.SalbeauFCM?.getInitialNotification) {
+      const initial = await NativeModules.SalbeauFCM.getInitialNotification();
+      if (initial && typeof initial === 'object' && Object.keys(initial).length > 0) {
+        return initial;
+      }
+    }
+  } catch (err) {
+    console.warn('[FCM] getInitialNotification error:', err);
+  }
+  return null;
+}
+
+/**
+ * Listens for system notification click events when app is already running or resumed from background.
+ */
+export function setupNotificationTapListener(onNotificationTapped) {
+  const sub = DeviceEventEmitter.addListener('onNotificationTapped', (payload) => {
+    console.log('[FCM System Tray Tapped]:', payload);
+    if (typeof onNotificationTapped === 'function' && payload) {
+      onNotificationTapped(payload);
+    }
+  });
+
+  return () => {
+    sub.remove();
+  };
+}
+
+/**
+ * Clears FCM device push token upon user logout.
+ * Prevents subsequent users on the same device from receiving previous user's notifications.
+ */
+export async function clearFCMToken(userId = null, phone = null) {
+  try {
+    await AsyncStorage.removeItem('salbeau_fcm_token').catch(() => {});
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('salbeau_fcm_token');
+    }
+
+    const identifier = phone || userId;
+    if (identifier) {
+      await supabase
+        .from('users')
+        .update({ fcm_token: null, updated_at: new Date().toISOString() })
+        .or(`phone.eq.${identifier},id.eq.${identifier}`);
+    }
+    console.log('[FCM] Push token cleared on logout.');
+  } catch (err) {
+    console.warn('[FCM] clearFCMToken error:', err);
+  }
 }

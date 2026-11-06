@@ -16,6 +16,7 @@ import { PurplleProductCard } from '../../components/PurplleProductCard';
 import { PremiumFilterBottomSheet } from '../../components/PremiumFilterBottomSheet';
 import { CategoryHeader } from './components/CategoryHeader';
 import { getCartQuantityMap } from '../../utils/cartKeyUtils';
+import { filterProductsByHierarchy } from '../../config/categoriesHierarchy';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 44) / 2;
@@ -68,19 +69,33 @@ export const ProductListingView = ({
     return count;
   }, [selectedBrands, selectedPriceRange, selectedDiscount]);
 
+  // Resolve strictly filtered products matching category and subcategory
+  const effectiveProducts = useMemo(() => {
+    if (products && products.length > 0) return products;
+    if (category || subcategory || leafCategory) {
+      return filterProductsByHierarchy(
+        appCtx.activeProducts || [],
+        category?.name || (typeof category === 'string' ? category : null),
+        subcategory?.name || (typeof subcategory === 'string' ? subcategory : null),
+        leafCategory
+      );
+    }
+    return products || [];
+  }, [products, category, subcategory, leafCategory, appCtx.activeProducts]);
+
   // Unique brands list from current products
   const availableBrands = useMemo(() => {
     const brandSet = new Set();
-    products.forEach(p => {
+    effectiveProducts.forEach(p => {
       const b = p.brandName || p.brand_name || p.brand;
       if (b && typeof b === 'string') brandSet.add(b.trim());
     });
     return Array.from(brandSet);
-  }, [products]);
+  }, [effectiveProducts]);
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
-    let list = [...products];
+    let list = [...effectiveProducts];
 
     // Search query filter
     if (searchQuery.trim()) {

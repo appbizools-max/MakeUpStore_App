@@ -187,7 +187,7 @@ export default function BrandImportModal({
                 Import Brands from Excel
               </h3>
               <p className="text-[11px] text-gray-500 font-medium">
-                Exact Category Mapping &bull; Zero Default Fallback &bull; Supabase Persistent
+                Exact Category Mapping &bull; Zero Default Fallback &bull; Cloud Synced
               </p>
             </div>
           </div>
@@ -247,7 +247,7 @@ export default function BrandImportModal({
                   <span>Import Completed & Saved to Database!</span>
                 </div>
                 <p className="text-xs text-emerald-700 leading-relaxed">
-                  All brands have been accurately mapped to their designated categories and saved permanently to Supabase. Records reflect dynamically across Brand Master, Product Management, and the User App.
+                  All brands have been accurately mapped to their designated categories and saved permanently to database. Records reflect dynamically across Brand Master, Product Management, and the User App.
                 </p>
               </div>
 
@@ -579,7 +579,7 @@ export default function BrandImportModal({
               {isProcessing ? (
                 <>
                   <Loader2 size={15} className="animate-spin" />
-                  <span>Submitting & Saving {previewData.validRows} Brands to Supabase...</span>
+                  <span>Submitting & Saving {previewData.validRows} Brands to Database...</span>
                 </>
               ) : (
                 <>

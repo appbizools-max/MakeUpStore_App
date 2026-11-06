@@ -26,7 +26,10 @@ import {
   CheckSquare,
   Square,
   Loader2,
-  Building2
+  Building2,
+  GripVertical,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 import BrandFormModal from './BrandFormModal';
@@ -65,7 +68,8 @@ export default function BrandManagementPage({
   onDeleteBrand,
   onBulkDeleteBrands,
   onToggleBrandStatus,
-  onBulkImportBrands
+  onBulkImportBrands,
+  onUpdateBrandsOrder
 }) {
   // Navigation & Modal States
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -80,7 +84,7 @@ export default function BrandManagementPage({
   const [logoFilter, setLogoFilter] = useState('all'); // 'all' | 'has_logo' | 'no_logo'
 
   // Sorting States
-  const [sortField, setSortField] = useState('brandNumber'); // 'brandNumber' | 'name' | 'createdAt'
+  const [sortField, setSortField] = useState('displayOrder'); // 'displayOrder' | 'brandNumber' | 'name' | 'createdAt'
   const [sortDirection, setSortDirection] = useState('asc'); // 'asc' | 'desc'
 
   // Pagination States
@@ -182,7 +186,15 @@ export default function BrandManagementPage({
       let valA = '';
       let valB = '';
 
-      if (sortField === 'brandNumber') {
+      if (sortField === 'displayOrder') {
+        const orderA = typeof a.sort_order === 'number' ? a.sort_order : (typeof a.display_order === 'number' ? a.display_order : 99999);
+        const orderB = typeof b.sort_order === 'number' ? b.sort_order : (typeof b.display_order === 'number' ? b.display_order : 99999);
+        if (orderA !== orderB) {
+          return sortDirection === 'asc' ? orderA - orderB : orderB - orderA;
+        }
+        valA = a.name || '';
+        valB = b.name || '';
+      } else if (sortField === 'brandNumber') {
         const numA = resolveBrandNumber(a, brands);
         const numB = resolveBrandNumber(b, brands);
         const seqA = parseBrandNumberSeq(numA);
@@ -234,6 +246,76 @@ export default function BrandManagementPage({
     } else {
       setSortField(field);
       setSortDirection('asc');
+    }
+  };
+
+  // Drag-and-drop & Swap Priority Reordering for Brands
+  const [draggedBrandIndex, setDraggedBrandIndex] = useState(null);
+  const [dragOverBrandIndex, setDragOverBrandIndex] = useState(null);
+
+  const handleBrandDragStart = (indexOnPage) => {
+    setDraggedBrandIndex(indexOnPage);
+  };
+
+  const handleBrandDragEnter = (indexOnPage) => {
+    setDragOverBrandIndex(indexOnPage);
+  };
+
+  const handleBrandDrop = async (dropIndexOnPage) => {
+    if (draggedBrandIndex === null || draggedBrandIndex === dropIndexOnPage) {
+      setDraggedBrandIndex(null);
+      setDragOverBrandIndex(null);
+      return;
+    }
+    const itemToMove = paginatedBrands[draggedBrandIndex];
+    const targetItem = paginatedBrands[dropIndexOnPage];
+    if (!itemToMove || !targetItem) {
+      setDraggedBrandIndex(null);
+      setDragOverBrandIndex(null);
+      return;
+    }
+
+    // Clone clean list of brands
+    const allValidBrands = [...brands].filter(b => b && !b.id?.startsWith('app_') && !b.id?.startsWith('salbeau_') && b.category !== 'SystemConfig');
+    const fromIndex = allValidBrands.findIndex(b => b.id === itemToMove.id);
+    const toIndex = allValidBrands.findIndex(b => b.id === targetItem.id);
+
+    if (fromIndex !== -1 && toIndex !== -1) {
+      allValidBrands.splice(fromIndex, 1);
+      allValidBrands.splice(toIndex, 0, itemToMove);
+      const persistFn = onUpdateBrandsOrder || adminCtx?.updateBrandsOrder;
+      if (typeof persistFn === 'function') {
+        await persistFn(allValidBrands);
+        showToast('Brand order updated and synchronized with User App!');
+      }
+    }
+
+    setDraggedBrandIndex(null);
+    setDragOverBrandIndex(null);
+  };
+
+  const handleMoveBrand = async (indexOnPage, direction) => {
+    const targetIndexOnPage = indexOnPage + direction;
+    if (targetIndexOnPage < 0 || targetIndexOnPage >= paginatedBrands.length) return;
+
+    const sourceItem = paginatedBrands[indexOnPage];
+    const targetItem = paginatedBrands[targetIndexOnPage];
+    if (!sourceItem || !targetItem) return;
+
+    const allValidBrands = [...brands].filter(b => b && !b.id?.startsWith('app_') && !b.id?.startsWith('salbeau_') && b.category !== 'SystemConfig');
+    const idxA = allValidBrands.findIndex(b => b.id === sourceItem.id);
+    const idxB = allValidBrands.findIndex(b => b.id === targetItem.id);
+
+    if (idxA !== -1 && idxB !== -1) {
+      const temp = allValidBrands[idxA];
+      allValidBrands[idxA] = allValidBrands[idxB];
+      allValidBrands[idxB] = temp;
+
+      const persistFn = onUpdateBrandsOrder || adminCtx?.updateBrandsOrder;
+      if (typeof persistFn === 'function') {
+        await persistFn(allValidBrands);
+        showToast('Brand order moved and synchronized with User App!');
+      }
     }
   };
 
@@ -476,11 +558,10 @@ export default function BrandManagementPage({
       {/* Toast Notification */}
       {toastMessage && (
         <div
-          className={`p-4 rounded-2xl text-xs font-bold flex items-center justify-between border shadow-2xs animate-fade-in ${
-            toastMessage.type === 'error'
+          className={`p-4 rounded-2xl text-xs font-bold flex items-center justify-between border shadow-2xs animate-fade-in ${toastMessage.type === 'error'
               ? 'bg-rose-50 text-rose-700 border-rose-200'
               : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2">
             {toastMessage.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
@@ -617,16 +698,15 @@ export default function BrandManagementPage({
               <EyeOff size={16} />
             </div>
           </div>
-          <div 
+          <div
             onClick={() => {
               setSelectedCategoryFilter(selectedCategoryFilter === 'uncategorized' ? 'all' : 'uncategorized');
               setCurrentPage(1);
             }}
-            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between shadow-2xs ${
-              selectedCategoryFilter === 'uncategorized'
+            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between shadow-2xs ${selectedCategoryFilter === 'uncategorized'
                 ? 'bg-amber-100 border-amber-300 ring-2 ring-amber-400/40'
                 : 'bg-amber-50/50 border-amber-200 hover:bg-amber-100/40'
-            }`}
+              }`}
             title="Click to toggle unassigned categories filter"
           >
             <div>
@@ -716,7 +796,7 @@ export default function BrandManagementPage({
                   setSearchQuery('');
                   setSelectedCategoryFilter('all');
                   setStatusFilter('all');
-                                    setCurrentPage(1);
+                  setCurrentPage(1);
                 }}
                 className="h-10 px-3 rounded-xl bg-white border border-pink-200 text-[#C2477A] hover:bg-pink-50 transition-colors shadow-2xs cursor-pointer flex items-center gap-1 text-xs font-bold"
                 title="Reset Filters"
@@ -794,7 +874,8 @@ export default function BrandManagementPage({
         <div className="overflow-x-auto rounded-2xl border border-pink-100/90 shadow-2xs bg-white">
           <table className="w-full text-left border-collapse text-xs table-fixed">
             <colgroup>
-              <col className="w-12" />
+              <col className="w-10" />
+              <col className="w-24" />
               <col className="w-32" />
               <col className="min-w-[220px]" />
               <col className="min-w-[200px]" />
@@ -803,7 +884,7 @@ export default function BrandManagementPage({
             <thead>
               <tr className="bg-white text-gray-900 uppercase font-black text-xs tracking-wider border-b border-pink-100">
                 {/* Checkbox for Select All */}
-                <th className="py-4 px-3 text-center align-middle">
+                <th className="py-4 px-2 text-center align-middle">
                   <input
                     type="checkbox"
                     checked={selectedBrandIds.size === paginatedBrands.length && paginatedBrands.length > 0}
@@ -811,6 +892,18 @@ export default function BrandManagementPage({
                     className="w-3.5 h-3.5 accent-[#C2477A] rounded cursor-pointer mx-auto block"
                     title="Select all on current page"
                   />
+                </th>
+
+                {/* COLUMN: Order & Priority */}
+                <th
+                  className="py-4 px-2 text-center align-middle cursor-pointer hover:bg-pink-100/60 transition-colors w-24"
+                  onClick={() => handleSort('displayOrder')}
+                  title="Click to sort by App display order"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>PRIORITY</span>
+                    <ArrowUpDown size={11} className={sortField === 'displayOrder' ? 'text-[#C2477A]' : 'text-gray-400'} />
+                  </div>
                 </th>
 
                 {/* COLUMN 1: Brand Number */}
@@ -843,7 +936,7 @@ export default function BrandManagementPage({
             <tbody className="divide-y divide-pink-50">
               {paginatedBrands.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-16 px-6 text-center text-gray-400">
+                  <td colSpan={6} className="py-16 px-6 text-center text-gray-400">
                     <Store size={36} className="mx-auto mb-2 text-gray-300" />
                     <p className="font-bold text-sm text-gray-700">No partner brands found</p>
                     <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
@@ -867,22 +960,67 @@ export default function BrandManagementPage({
                   return (
                     <tr
                       key={brand.id}
-                      className={`transition-colors ${
-                        isSelected
-                          ? 'bg-white hover:bg-pink-100/40'
-                          : index % 2 === 1
-                            ? 'bg-white hover:bg-pink-50/40'
-                            : 'bg-white hover:bg-pink-50/30'
-                      }`}
+                      draggable={isAdmin}
+                      onDragStart={() => handleBrandDragStart(index)}
+                      onDragEnter={() => handleBrandDragEnter(index)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => handleBrandDrop(index)}
+                      className={`transition-colors ${draggedBrandIndex === index
+                          ? 'opacity-40 bg-pink-100/60'
+                          : dragOverBrandIndex === index
+                            ? 'bg-pink-100/40 border-t-2 border-[#C2477A]'
+                            : isSelected
+                              ? 'bg-white hover:bg-pink-100/40'
+                              : index % 2 === 1
+                                ? 'bg-white hover:bg-pink-50/40'
+                                : 'bg-white hover:bg-pink-50/30'
+                        }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-3 px-3 text-center align-middle">
+                      <td className="py-3 px-2 text-center align-middle">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectRow(brand.id)}
                           className="w-3.5 h-3.5 accent-[#C2477A] rounded cursor-pointer mx-auto block"
                         />
+                      </td>
+
+                      {/* COLUMN: Drag & Swap Priority */}
+                      <td className="py-3 px-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center justify-center gap-1">
+                          <span
+                            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A] p-0.5"
+                            title="Drag & drop to reorder brand priority"
+                          >
+                            <GripVertical size={13} />
+                          </span>
+                          <span className="w-6 h-5 rounded-md bg-pink-50 text-[#C2477A] font-mono font-black text-[10px] flex items-center justify-center border border-pink-200 shadow-2xs">
+                            {startIndex + index + 1}
+                          </span>
+                          {isAdmin && (
+                            <div className="flex flex-col gap-0.5 ml-0.5">
+                              <button
+                                type="button"
+                                disabled={index === 0 && effectivePage === 1}
+                                onClick={() => handleMoveBrand(index, -1)}
+                                className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                title="Move Brand Up (higher priority)"
+                              >
+                                <ArrowUp size={8} />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === paginatedBrands.length - 1 && effectivePage === totalPages}
+                                onClick={() => handleMoveBrand(index, 1)}
+                                className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                title="Move Brand Down (lower priority)"
+                              >
+                                <ArrowDown size={8} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </td>
 
                       {/* COLUMN 1: Brand Number */}
@@ -956,23 +1094,20 @@ export default function BrandManagementPage({
                               type="button"
                               onClick={() => { if (isAdmin) onToggleBrandStatus(brand.id); }}
                               disabled={!isAdmin}
-                              className={`relative inline-flex h-4 w-8 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                isEnabled ? 'bg-emerald-500' : 'bg-gray-300'
-                              } ${isAdmin ? 'cursor-pointer' : 'cursor-default opacity-80'}`}
+                              className={`relative inline-flex h-4 w-8 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isEnabled ? 'bg-emerald-500' : 'bg-gray-300'
+                                } ${isAdmin ? 'cursor-pointer' : 'cursor-default opacity-80'}`}
                               title={isAdmin ? (isEnabled ? 'Click to make Inactive' : 'Click to make Active') : 'Status (Admin Only)'}
                             >
                               <span
-                                className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
-                                  isEnabled ? 'translate-x-4' : 'translate-x-0'
-                                }`}
+                                className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${isEnabled ? 'translate-x-4' : 'translate-x-0'
+                                  }`}
                               />
                             </button>
                             <span
-                              className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border ${
-                                isEnabled
+                              className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border ${isEnabled
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : 'bg-gray-100 text-gray-500 border-gray-200'
-                              }`}
+                                }`}
                             >
                               {isEnabled ? 'Active' : 'Inactive'}
                             </span>
@@ -1057,11 +1192,10 @@ export default function BrandManagementPage({
               type="button"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage <= 1}
-              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${
-                currentPage <= 1
+              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${currentPage <= 1
                   ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
                   : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
-              }`}
+                }`}
               title="Previous Page"
             >
               <ChevronLeft size={15} />
@@ -1081,11 +1215,10 @@ export default function BrandManagementPage({
                     <button
                       type="button"
                       onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-xl font-bold text-xs flex items-center justify-center transition-all cursor-pointer ${
-                        isCurrent
+                      className={`w-8 h-8 rounded-xl font-bold text-xs flex items-center justify-center transition-all cursor-pointer ${isCurrent
                           ? 'bg-[#C2477A] text-white shadow-xs'
                           : 'bg-white border border-pink-200 text-gray-700 hover:bg-pink-50'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
@@ -1097,11 +1230,10 @@ export default function BrandManagementPage({
               type="button"
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
-              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${
-                currentPage >= totalPages
+              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${currentPage >= totalPages
                   ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
                   : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
-              }`}
+                }`}
               title="Next Page"
             >
               <ChevronRight size={15} />
@@ -1144,11 +1276,11 @@ export default function BrandManagementPage({
 
       {/* Delete Protected / In-Use Modal */}
       {deleteWarning && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px] transition-all"
           onClick={(e) => { if (e.target === e.currentTarget) setDeleteWarning(null); }}
         >
-          <div 
+          <div
             className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-amber-100 animate-slide-left relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1204,11 +1336,11 @@ export default function BrandManagementPage({
 
       {/* Batch Delete Confirmation Modal */}
       {bulkDeleteModalData && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px] transition-all"
           onClick={(e) => { if (e.target === e.currentTarget && !isBulkDeleting) setBulkDeleteModalData(null); }}
         >
-          <div 
+          <div
             className="bg-white w-full max-w-lg h-full shadow-2xl flex flex-col border-l border-pink-100 animate-slide-left relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1323,11 +1455,11 @@ export default function BrandManagementPage({
 
       {/* Delete Confirmation Modal for Unreferenced Brands */}
       {deleteTargetBrand && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px] transition-all"
           onClick={(e) => { if (e.target === e.currentTarget) setDeleteTargetBrand(null); }}
         >
-          <div 
+          <div
             className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-pink-100 animate-slide-left relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,17 @@ import {
   StatusBar,
   TouchableOpacity,
   TextInput,
-  Image
+  Image,
+  Animated,
+  Dimensions
 } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { getSubcategoriesForCategory } from '../../config/categoriesHierarchy';
 import { CategoryHeader } from './components/CategoryHeader';
 import { getSafeImageSource } from '../../utils/imageUtils';
+import { getCategoryFA5Icon } from '../../utils/categoryIcons';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
  * Curated authentic cosmetic descriptions for all subcategories
@@ -90,24 +95,31 @@ const BEAUTY_DESCRIPTIONS = {
 
 /**
  * CategoryDetailView (Level 2)
- * Premium, minimal white-and-pink UI/UX matching reference layout:
- * 1. Category Header with parent link, category icon & title, search and cart
- * 2. Shop by Category soft-pink banner with Explore All action
- * 3. Real-time subcategory search bar
- * 4. Clean rounded subcategory cards with title, description, and pink chevron
+ * Enhanced with interactive horizontal sliding active tab indicator,
+ * content fade/slide transitions, and dynamic subcategories.
  */
 export const CategoryDetailView = ({
   category,
+  allCategories = [],
+  onSelectCategory,
   onSelectSubcategory,
   onBack,
   onViewAllProducts,
   liveSubcategories = null,
   liveLeafCategories = null,
 }) => {
+  const [currentCategory, setCurrentCategory] = useState(category);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Normalize category name & key
-  const categoryName = category?.name || 'Category';
+  // Keep internal state in sync if parent category prop changes
+  useEffect(() => {
+    if (category && (category.name || '').toLowerCase() !== (currentCategory?.name || '').toLowerCase()) {
+      setCurrentCategory(category);
+    }
+  }, [category]);
+
+  const categoryName = currentCategory?.name || 'Category';
+
   const categoryIconName = useMemo(() => {
     const n = (categoryName || '').toLowerCase();
     if (n.includes('skin')) return 'leaf-outline';
@@ -120,12 +132,12 @@ export const CategoryDetailView = ({
     return 'sparkles-outline';
   }, [categoryName]);
 
-  // Dynamic Subcategories: Live DB first, fallback to category hierarchy
+  // ── DYNAMIC SUBCATEGORIES FOR ACTIVE CATEGORY ────────────────────────────────
   const subcategories = useMemo(() => {
     if (liveSubcategories && Array.isArray(liveSubcategories) && liveSubcategories.length > 0) {
-      const nCatId    = (category?.id     || '').toLowerCase().trim();
-      const nCatName  = (category?.name   || '').toLowerCase().trim();
-      const nCatDbKey = (category?.dbKey  || '').toLowerCase().trim();
+      const nCatId    = (currentCategory?.id     || '').toLowerCase().trim();
+      const nCatName  = (currentCategory?.name   || '').toLowerCase().trim();
+      const nCatDbKey = (currentCategory?.dbKey  || '').toLowerCase().trim();
       const matched = liveSubcategories.filter(s => {
         if (s.enabled === false) return false;
         const sCatId   = (s.categoryId   || s.category_id   || '').toLowerCase().trim();
@@ -156,8 +168,8 @@ export const CategoryDetailView = ({
           });
       }
     }
-    return getSubcategoriesForCategory(category);
-  }, [category, liveSubcategories, liveLeafCategories]);
+    return getSubcategoriesForCategory(currentCategory);
+  }, [currentCategory, liveSubcategories, liveLeafCategories]);
 
   // Real-time search filtered subcategories
   const filteredSubcategories = useMemo(() => {
@@ -170,7 +182,7 @@ export const CategoryDetailView = ({
     });
   }, [subcategories, searchQuery]);
 
-  // Helper for subtitle / 1-line description
+  // Subcategory Description Helper
   const getSubcategoryDescription = (sub) => {
     if (sub.description && sub.description.trim()) return sub.description.trim();
     if (sub.tagline && sub.tagline.trim()) return sub.tagline.trim();
@@ -188,260 +200,271 @@ export const CategoryDetailView = ({
 
       {/* ── 1. UNIFIED CATEGORY HEADER ───────────────────────────── */}
       <CategoryHeader
-        parentTitle="Categories"
+        parentTitle="Home"
         title={categoryName}
         categoryIcon={categoryIconName}
-        categoryImage={category?.image || null}
+        categoryImage={currentCategory?.image || null}
         onBack={onBack}
       />
 
+      {/* ── 2. CATEGORY CONTENT & SUBCATEGORIES ───────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 16,
-          paddingBottom: 110
+          paddingBottom: 110,
         }}
         className="bg-white flex-1"
       >
-        {/* ── 2. "SHOP BY CATEGORY" LUXURY RIBBON BANNER ───────────── */}
-        <View
-          style={{
-            backgroundColor: '#FFF0F5',
-            borderColor: '#F6DCE6',
-            borderWidth: 1.2,
-            borderRadius: 18,
-            paddingVertical: 14,
-            paddingHorizontal: 16,
-            marginBottom: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            shadowColor: '#C2477A',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 6,
-            elevation: 1
-          }}
-        >
-          {/* Left: 3D Category Icon Avatar */}
+        <View>
+          {/* ── A. "SHOP BY CATEGORY" LUXURY RIBBON BANNER WITH CATEGORY ICON ─── */}
           <View
             style={{
-              width: 46,
-              height: 46,
-              borderRadius: 14,
-              backgroundColor: '#FFFFFF',
-              borderColor: '#F8B4D9',
-              borderWidth: 1,
+              backgroundColor: '#FFF0F5',
+              borderColor: '#F6DCE6',
+              borderWidth: 1.2,
+              borderRadius: 18,
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              marginBottom: 16,
+              flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-              flexShrink: 0,
+              justifyContent: 'space-between',
               shadowColor: '#C2477A',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.08,
-              shadowRadius: 2,
-              elevation: 1
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              elevation: 1,
             }}
           >
-            {category?.image ? (
-              <Image
-                source={getSafeImageSource(category.image)}
-                style={{ width: '84%', height: '84%' }}
-                resizeMode="contain"
-              />
-            ) : (
-              <Ionicons name={categoryIconName} size={22} color="#C2477A" />
+            {/* Left: Category Icon / Image */}
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: '#FFFFFF',
+                borderColor: '#F8B4D9',
+                borderWidth: 1.2,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
+                flexShrink: 0,
+                shadowColor: '#C2477A',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.12,
+                shadowRadius: 3,
+                elevation: 2,
+                overflow: 'hidden',
+              }}
+            >
+              {currentCategory?.image || currentCategory?.imageUrl ? (
+                <Image
+                  source={getSafeImageSource(currentCategory.image || currentCategory.imageUrl)}
+                  style={{ width: '100%', height: '100%', borderRadius: 22 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <FontAwesome5
+                  name={getCategoryFA5Icon(categoryName).icon || 'sparkles'}
+                  size={20}
+                  color="#C2477A"
+                />
+              )}
+            </View>
+
+            {/* Center: Title & Subtitle */}
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text
+                style={{ color: '#1F2937', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 }}
+                numberOfLines={1}
+              >
+                Shop {categoryName}
+              </Text>
+              <Text
+                style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginTop: 2 }}
+                numberOfLines={1}
+              >
+                Find the right {categoryName.toLowerCase()} for your routine
+              </Text>
+            </View>
+
+            {/* Right: Explore All -> Outline Pill */}
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={onViewAllProducts}
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderColor: '#C2477A',
+                borderWidth: 1.3,
+                borderRadius: 20,
+                paddingVertical: 6,
+                paddingHorizontal: 13,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 3,
+                flexShrink: 0,
+              }}
+            >
+              <Text style={{ color: '#C2477A', fontSize: 12, fontWeight: '800' }}>
+                Explore All
+              </Text>
+              <Ionicons name="arrow-forward" size={13} color="#C2477A" />
+            </TouchableOpacity>
+          </View>
+
+          {/* ── B. SEARCH SUBCATEGORIES INPUT ──────────────────────── */}
+          <View
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderColor: '#F0E3EA',
+              borderWidth: 1.2,
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              height: 46,
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16,
+              shadowColor: '#C2477A',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.03,
+              shadowRadius: 3,
+              elevation: 1,
+            }}
+          >
+            <Ionicons name="search" size={18} color="#C2477A" style={{ marginRight: 10 }} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={`Search ${categoryName.toLowerCase()} subcategories...`}
+              placeholderTextColor="#9CA3AF"
+              style={{
+                flex: 1,
+                color: '#1F2937',
+                fontSize: 13.5,
+                fontWeight: '500',
+                paddingVertical: 0,
+              }}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {Boolean(searchQuery) && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close-circle" size={17} color="#9CA3AF" />
+              </TouchableOpacity>
             )}
           </View>
 
-          {/* Center: Title & Subtitle */}
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            <Text
-              style={{ color: '#1F2937', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 }}
-              numberOfLines={1}
-            >
-              Shop by Category
-            </Text>
-            <Text
-              style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginTop: 2 }}
-              numberOfLines={1}
-            >
-              Find the right {categoryName.toLowerCase()} for your routine
-            </Text>
-          </View>
+          {/* ── C. VERTICAL SUBCATEGORY CARDS ───── */}
+          <View className="space-y-3">
+            {filteredSubcategories.map((sub) => {
+              const description = getSubcategoryDescription(sub);
 
-          {/* Right: Explore All -> Outline Pill */}
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={onViewAllProducts}
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderColor: '#C2477A',
-              borderWidth: 1.3,
-              borderRadius: 20,
-              paddingVertical: 6,
-              paddingHorizontal: 13,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 3,
-              flexShrink: 0
-            }}
-          >
-            <Text style={{ color: '#C2477A', fontSize: 12, fontWeight: '800' }}>
-              Explore All
-            </Text>
-            <Ionicons name="arrow-forward" size={13} color="#C2477A" />
-          </TouchableOpacity>
-        </View>
-
-        {/* ── 3. SEARCH SUBCATEGORIES INPUT ────────────────────────── */}
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderColor: '#F0E3EA',
-            borderWidth: 1.2,
-            borderRadius: 14,
-            paddingHorizontal: 14,
-            height: 46,
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 16,
-            shadowColor: '#C2477A',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.03,
-            shadowRadius: 3,
-            elevation: 1
-          }}
-        >
-          <Ionicons name="search" size={18} color="#C2477A" style={{ marginRight: 10 }} />
-          <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder={`Search ${categoryName.toLowerCase()} categories...`}
-            placeholderTextColor="#9CA3AF"
-            style={{
-              flex: 1,
-              color: '#1F2937',
-              fontSize: 13.5,
-              fontWeight: '500',
-              paddingVertical: 0
-            }}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-          {Boolean(searchQuery) && (
-            <TouchableOpacity
-              onPress={() => setSearchQuery('')}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="close-circle" size={17} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* ── 4. VERTICAL SUBCATEGORY CARDS LIST ───────────────────── */}
-        <View className="space-y-3">
-          {filteredSubcategories.map((sub) => {
-            const description = getSubcategoryDescription(sub);
-            return (
-              <TouchableOpacity
-                key={sub.id || sub.name}
-                activeOpacity={0.7}
-                onPress={() => onSelectSubcategory && onSelectSubcategory(sub)}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderColor: '#F0E3EA',
-                  borderWidth: 1.2,
-                  borderRadius: 16,
-                  paddingVertical: 16,
-                  paddingHorizontal: 18,
-                  marginBottom: 12,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  shadowColor: '#C2477A',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.04,
-                  shadowRadius: 4,
-                  elevation: 1
-                }}
-              >
-                {/* Left: Title & 1-line Description */}
-                <View style={{ flex: 1, paddingRight: 14 }}>
-                  <Text
-                    style={{ color: '#1F2937', fontSize: 15.5, fontWeight: '800' }}
-                    numberOfLines={1}
-                  >
-                    {sub.name}
-                  </Text>
-                  <Text
-                    style={{ color: '#6B7280', fontSize: 12.5, fontWeight: '500', marginTop: 4, lineHeight: 18 }}
-                    numberOfLines={2}
-                  >
-                    {description}
-                  </Text>
-                </View>
-
-                {/* Right: Soft Circular Pink Arrow Button (>) */}
-                <View
+              return (
+                <TouchableOpacity
+                  key={sub.id || sub.name}
+                  activeOpacity={0.75}
+                  onPress={() => onSelectSubcategory && onSelectSubcategory(sub)}
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: '#FFF0F5',
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#F0E3EA',
+                    borderWidth: 1.2,
+                    borderRadius: 18,
+                    paddingVertical: 15,
+                    paddingHorizontal: 18,
+                    marginBottom: 12,
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
+                    justifyContent: 'space-between',
+                    shadowColor: '#C2477A',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 5,
+                    elevation: 2,
                   }}
                 >
-                  <Ionicons name="chevron-forward" size={16} color="#C2477A" />
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                  {/* Title & Description */}
+                  <View style={{ flex: 1, paddingRight: 14 }}>
+                    <Text
+                      style={{ color: '#1F2937', fontSize: 15, fontWeight: '800' }}
+                      numberOfLines={1}
+                    >
+                      {sub.name}
+                    </Text>
+                    <Text
+                      style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginTop: 3, lineHeight: 18 }}
+                      numberOfLines={2}
+                    >
+                      {description}
+                    </Text>
+                  </View>
 
-        {/* Empty state when search yields no matches */}
-        {filteredSubcategories.length === 0 && (
-          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 48 }}>
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                backgroundColor: '#FFF0F5',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 12
-              }}
-            >
-              <Ionicons name="search-outline" size={26} color="#C2477A" />
-            </View>
-            <Text style={{ color: '#1F2937', fontSize: 15, fontWeight: '700' }}>
-              No categories match "{searchQuery}"
-            </Text>
-            <Text style={{ color: '#6B7280', fontSize: 12.5, marginTop: 4, textAlign: 'center', paddingHorizontal: 32 }}>
-              Try searching for something else or explore all products directly.
-            </Text>
-            <TouchableOpacity
-              onPress={() => setSearchQuery('')}
-              activeOpacity={0.7}
-              style={{
-                marginTop: 14,
-                backgroundColor: '#C2477A',
-                borderRadius: 20,
-                paddingHorizontal: 16,
-                paddingVertical: 8
-              }}
-            >
-              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
-                Reset Search
-              </Text>
-            </TouchableOpacity>
+                  {/* Right: Soft Circular Pink Arrow Button (>) */}
+                  <View
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: '#FFF0F5',
+                      borderColor: '#F8B4D9',
+                      borderWidth: 1,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Ionicons name="chevron-forward" size={16} color="#C2477A" />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        )}
+
+          {/* Empty state when search yields no matches */}
+          {filteredSubcategories.length === 0 && (
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 48 }}>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: '#FFF0F5',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <Ionicons name="search-outline" size={26} color="#C2477A" />
+              </View>
+              <Text style={{ color: '#1F2937', fontSize: 15, fontWeight: '700' }}>
+                No subcategories match "{searchQuery}"
+              </Text>
+              <Text style={{ color: '#6B7280', fontSize: 12.5, marginTop: 4, textAlign: 'center', paddingHorizontal: 32 }}>
+                Try searching for something else or explore all products directly.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                activeOpacity={0.7}
+                style={{
+                  marginTop: 14,
+                  backgroundColor: '#C2477A',
+                  borderRadius: 20,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+                  Reset Search
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

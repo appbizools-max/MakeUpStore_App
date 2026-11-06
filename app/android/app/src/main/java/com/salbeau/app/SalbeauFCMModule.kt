@@ -62,6 +62,24 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
                 Log.w(TAG, "Failed to emit onFCMPushReceived: ${e.message}")
             }
         }
+
+        fun sendNotificationTapped(data: Map<String, String>) {
+            try {
+                activeReactContext?.let { context ->
+                    if (context.hasActiveReactInstance()) {
+                        val dataMap = Arguments.createMap()
+                        for ((k, v) in data) {
+                            dataMap.putString(k, v)
+                        }
+                        context
+                            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                            .emit("onNotificationTapped", dataMap)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to emit onNotificationTapped: ${e.message}")
+            }
+        }
     }
 
     init {
@@ -70,6 +88,36 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
     }
 
     override fun getName(): String = MODULE_NAME
+
+    @ReactMethod
+    fun getInitialNotification(promise: Promise) {
+        try {
+            val activity = currentActivity
+            val intent = activity?.intent
+            if (intent != null && intent.extras != null) {
+                val bundle = intent.extras
+                val map = Arguments.createMap()
+                var hasData = false
+                for (key in bundle!!.keySet()) {
+                    val value = bundle.get(key)
+                    if (value != null) {
+                        map.putString(key, value.toString())
+                        hasData = true
+                    }
+                }
+                if (hasData) {
+                    // Consume extras so repeated calls don't duplicate navigation
+                    intent.replaceExtras(android.os.Bundle())
+                    promise.resolve(map)
+                    return
+                }
+            }
+            promise.resolve(null)
+        } catch (e: Exception) {
+            Log.w(TAG, "getInitialNotification error: ${e.message}")
+            promise.resolve(null)
+        }
+    }
 
     @ReactMethod
     fun getFCMToken(promise: Promise) {

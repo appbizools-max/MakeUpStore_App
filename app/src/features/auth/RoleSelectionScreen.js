@@ -82,7 +82,7 @@ const MakeupArtistBrushIcon = ({ color = '#B9477D', size = 20 }) => (
 // ── MAIN COMPONENT ──────────────────────────────────────────────────────
 
 export const RoleSelectionScreen = () => {
-  const { userRole, setUserRole, setCurrentScreen } = useApp();
+  const { userRole, setUserRole, setCurrentScreen, userProfile } = useApp();
 
   const [fontsLoaded] = useFonts({
     GreatVibes_400Regular,
@@ -146,10 +146,11 @@ export const RoleSelectionScreen = () => {
     try {
       if (accountType === 'general_user') {
         setUserRole('general');
+        setCurrentScreen('complete_profile');
       } else {
         setUserRole(selectedRole || 'salon');
+        setCurrentScreen('b2b_registration');
       }
-      setCurrentScreen('login');
     } finally {
       setIsSubmitting(false);
     }
@@ -222,8 +223,57 @@ export const RoleSelectionScreen = () => {
           }}
         >
           <View>
+            {/* ── TOP NAVIGATION ROW (BACK TO LOGIN & VERIFIED PHONE) ─── */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 10,
+              }}
+            >
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setCurrentScreen('login')}
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 19,
+                  backgroundColor: '#FFF0F5',
+                  borderWidth: 1,
+                  borderColor: '#FCE4EC',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="arrow-back" size={20} color="#B9477D" />
+              </TouchableOpacity>
+
+              {userProfile?.phone ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#F0FDF4',
+                    borderWidth: 1,
+                    borderColor: '#DCFCE7',
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 14,
+                  }}
+                >
+                  <Ionicons name="checkmark-circle" size={14} color="#16A34A" style={{ marginRight: 5 }} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>
+                    {userProfile.phone} Verified
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ width: 38 }} />
+              )}
+            </View>
+
             {/* ── BRAND LOGO & GOLD DIVIDER ─────────────────────────────── */}
-            <View style={{ alignItems: 'center', marginTop: 12, marginBottom: 16 }}>
+            <View style={{ alignItems: 'center', marginTop: 4, marginBottom: 16 }}>
               <Text
                 style={{
                   fontFamily: fontsLoaded ? 'GreatVibes_400Regular' : Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif',

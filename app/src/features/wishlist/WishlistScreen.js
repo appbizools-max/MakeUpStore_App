@@ -244,8 +244,8 @@ export const WishlistScreen = () => {
           <View className="flex-row flex-wrap justify-between gap-y-3.5">
             {favorites.map((item) => {
               const rolePrice = getRolePrice(item, userRole);
-              const originalMrp = item.mrp > rolePrice ? item.mrp : Math.round(item.mrp * 1.25);
-              const discountPercent = Math.round(((originalMrp - rolePrice) / originalMrp) * 100);
+              const originalMrp = (item.mrp && Number(item.mrp) > rolePrice) ? Number(item.mrp) : rolePrice;
+              const discountPercent = (originalMrp > rolePrice && originalMrp > 0) ? Math.round(((originalMrp - rolePrice) / originalMrp) * 100) : 0;
 
               return (
                 <TouchableOpacity

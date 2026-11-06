@@ -9,7 +9,8 @@ import {
   TextInput,
   Alert,
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
@@ -29,8 +30,19 @@ export const OrderHistoryScreen = () => {
     setSelectedOrderIdForDetails,
     reorderOrderItems,
     addToCart,
-    isCatalogLoading
+    isCatalogLoading,
+    refreshOrders
   } = useApp();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    refreshOrders?.();
+    const interval = setInterval(() => {
+      refreshOrders?.();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [refreshOrders]);
 
   // Two Main Tabs: 'all' | 'completed'
   const [activeTab, setActiveTab] = useState('all');
@@ -289,6 +301,18 @@ export const OrderHistoryScreen = () => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 16, paddingTop: 6, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={async () => {
+              setIsRefreshing(true);
+              try { await refreshOrders?.(); } catch (_) {}
+              setIsRefreshing(false);
+            }}
+            colors={['#CE4270']}
+            tintColor="#CE4270"
+          />
+        }
       >
         {isCatalogLoading && filteredOrders.length === 0 ? (
           <View className="p-8 items-center justify-center my-6">

@@ -1,5 +1,6 @@
 package com.salbeau.app
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 
@@ -38,6 +39,22 @@ class MainActivity : ReactActivity() {
               mainComponentName,
               fabricEnabled
           ){})
+  }
+
+  override fun onNewIntent(intent: Intent) {
+      super.onNewIntent(intent)
+      setIntent(intent)
+      val bundle = intent.extras
+      if (bundle != null) {
+          val map = mutableMapOf<String, String>()
+          for (key in bundle.keySet()) {
+              val v = bundle.get(key)
+              if (v != null) {
+                  map[key] = v.toString()
+              }
+          }
+          SalbeauFCMModule.sendNotificationTapped(map)
+      }
   }
 
   /**

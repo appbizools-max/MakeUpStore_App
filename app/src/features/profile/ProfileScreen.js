@@ -47,8 +47,7 @@ export const ProfileScreen = () => {
     updateAddress,
     deleteAddress,
     setDefaultAddress,
-    logout,
-    unreadNotificationsCount = 0
+    logout
   } = useApp();
 
   const name = userProfile?.name || '';
@@ -684,13 +683,6 @@ export const ProfileScreen = () => {
               subtitle: 'Track live status and reorder items',
               icon: 'bag-handle-outline',
               action: () => setCurrentScreen('orders')
-            },
-            {
-              title: 'Notifications & Alerts',
-              subtitle: unreadNotificationsCount > 0 ? `${unreadNotificationsCount} unread notification${unreadNotificationsCount > 1 ? 's' : ''}` : 'View order tracking, B2B updates & offers',
-              icon: 'notifications-outline',
-              badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : null,
-              action: () => setCurrentScreen('notifications')
             },
             {
               title: 'Saved Delivery Addresses',
@@ -1700,7 +1692,7 @@ export const ProfileScreen = () => {
                   if (logout) {
                     logout();
                   } else {
-                    setCurrentScreen('onboarding');
+                    setCurrentScreen('login');
                   }
                 }}
                 activeOpacity={0.85}

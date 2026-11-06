@@ -8,7 +8,8 @@ import {
   Image,
   Dimensions,
   StyleSheet,
-  StatusBar
+  StatusBar,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
@@ -46,6 +47,7 @@ export const ProductDetailScreen = () => {
     removeFromCart,
     cart = [],
     setCurrentScreen,
+    previousScreen,
     isFavorite,
     toggleFavorite,
     selectedShade: contextSelectedShade,
@@ -95,7 +97,7 @@ export const ProductDetailScreen = () => {
       }
     });
 
-    return { shadeList: sList.length > 0 ? sList : allSubProducts, variantList: vList };
+    return { shadeList: sList, variantList: vList };
   }, [allSubProducts]);
 
   // Track product ID to prevent shade reset on incidental re-renders
@@ -103,6 +105,8 @@ export const ProductDetailScreen = () => {
 
   // Robust shade resolver matching Nykaa specification
   const resolveInitialShade = useCallback(() => {
+    if (!allSubProducts || allSubProducts.length === 0) return null;
+
     // 1. Clicked variant child from navigation
     if (selectedProduct?.isVariantChild && selectedProduct?.variantData) {
       const match = allSubProducts.find(s =>
@@ -207,6 +211,39 @@ export const ProductDetailScreen = () => {
     }
   }, [selectedProduct?.id, selectedShade?.id, selectedShade?.name]);
 
+  const brandName = selectedProduct?.brandName || selectedProduct?.brand || 'Lakmé';
+  const brandProducts = useMemo(() => {
+    if (!selectedProduct?.id || !activeProducts || activeProducts.length === 0) return [];
+    const bLower = (brandName || '').trim().toLowerCase();
+    const sameBrand = activeProducts.filter(p => {
+      const b = (p.brandName || p.brand || '').trim().toLowerCase();
+      return b === bLower && p.id !== selectedProduct?.id;
+    });
+    if (sameBrand.length > 0) return sameBrand.slice(0, 10);
+    // Fallback: other popular products in the catalog
+    return activeProducts.filter(p => p.id !== selectedProduct?.id).slice(0, 8);
+  }, [selectedProduct?.id, brandName, activeProducts]);
+
+  // Display only: Product Name – Variant Name (Strict Nykaa Specification)
+  const fullTitle = useMemo(() => {
+    if (!selectedProduct) return '';
+    const parentName = (selectedProduct.name || selectedProduct.title || '').trim();
+    const variantName = (
+      selectedShade?.name ||
+      selectedShade?.title ||
+      selectedShade?.shade ||
+      selectedProduct.variantName ||
+      selectedProduct.variant ||
+      selectedProduct.size ||
+      ''
+    ).trim();
+
+    if (variantName && variantName.toLowerCase() !== parentName.toLowerCase()) {
+      return `${parentName} – ${variantName}`;
+    }
+    return parentName;
+  }, [selectedProduct, selectedShade]);
+
   if (!selectedProduct) {
     return (
       <View className="flex-1 bg-white items-center justify-center p-6">
@@ -228,59 +265,32 @@ export const ProductDetailScreen = () => {
   const cartBadgeCount = (cart || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
 
   // Dynamic pricing
-  const currentRolePrice = getRolePrice(selectedProduct, userRole, selectedShade, selectedQty);
+  const currentRolePrice = typeof getRolePrice === 'function'
+    ? getRolePrice(selectedProduct, userRole, selectedShade, selectedQty)
+    : (Number(selectedProduct?.generalPrice || selectedProduct?.mrp) || 0);
   const rawShadeMrp = selectedShade?.mrp ?? selectedShade?.priceOverride ?? selectedShade?.price_override ?? selectedShade?.price ?? selectedProduct?.mrp;
   const displayMrp = (rawShadeMrp && Number(rawShadeMrp) > currentRolePrice)
     ? Number(rawShadeMrp)
-    : (selectedProduct?.mrp && Number(selectedProduct.mrp) > currentRolePrice ? Number(selectedProduct.mrp) : Math.round(currentRolePrice * 1.25));
+    : (selectedProduct?.mrp && Number(selectedProduct.mrp) > currentRolePrice ? Number(selectedProduct.mrp) : currentRolePrice);
   const hasDiscount = displayMrp > currentRolePrice;
-  const savings = displayMrp - currentRolePrice;
-  const discountPercent = hasDiscount ? Math.round((savings / displayMrp) * 100) : 0;
-
-  // "More Products from [Brand]"
-  const brandName = selectedProduct.brandName || selectedProduct.brand || 'Lakmé';
-  const brandProducts = useMemo(() => {
-    if (!activeProducts || activeProducts.length === 0) return [];
-    const bLower = brandName.trim().toLowerCase();
-    const sameBrand = activeProducts.filter(p => {
-      const b = (p.brandName || p.brand || '').trim().toLowerCase();
-      return b === bLower && p.id !== selectedProduct.id;
-    });
-    if (sameBrand.length > 0) return sameBrand.slice(0, 10);
-    // Fallback: other popular products in the catalog
-    return activeProducts.filter(p => p.id !== selectedProduct.id).slice(0, 8);
-  }, [selectedProduct.id, brandName, activeProducts]);
+  const savings = hasDiscount ? displayMrp - currentRolePrice : 0;
+  const discountPercent = (hasDiscount && displayMrp > 0) ? Math.round((savings / displayMrp) * 100) : 0;
 
   // Add to Cart Action: Adds selectedQty units of the active shade
   const handleAddToCart = () => {
-    addToCart(effectiveProduct || selectedProduct, selectedQty, selectedShade);
+    if (!selectedProduct) return;
+    const targetProd = effectiveProduct || selectedProduct;
+    if (addToCart) {
+      addToCart(targetProd, selectedQty, selectedShade);
+    }
     const shadeTitle = selectedShade?.name || selectedShade?.title || '';
-    setAddedToastMessage(`Added ${selectedQty}x ${(effectiveProduct || selectedProduct).name}${shadeTitle ? ` (${shadeTitle})` : ''} to bag! ✨`);
-    if (rememberSelectedShade && effectiveProduct?.id && selectedShade) {
-      rememberSelectedShade(effectiveProduct.id, selectedShade);
+    setAddedToastMessage(`Added ${selectedQty}x ${targetProd.name || 'Product'}${shadeTitle ? ` (${shadeTitle})` : ''} to bag! ✨`);
+    if (rememberSelectedShade && targetProd?.id && selectedShade) {
+      rememberSelectedShade(targetProd.id, selectedShade);
     }
   };
 
-  const isLiked = isFavorite ? isFavorite(selectedProduct?.id) : false;
-
-  // Display only: Product Name – Variant Name (Strict Nykaa Specification)
-  const fullTitle = useMemo(() => {
-    const parentName = (selectedProduct.name || selectedProduct.title || '').trim();
-    const variantName = (
-      selectedShade?.name ||
-      selectedShade?.title ||
-      selectedShade?.shade ||
-      selectedProduct.variantName ||
-      selectedProduct.variant ||
-      selectedProduct.size ||
-      ''
-    ).trim();
-
-    if (variantName && variantName.toLowerCase() !== parentName.toLowerCase()) {
-      return `${parentName} – ${variantName}`;
-    }
-    return parentName;
-  }, [selectedProduct, selectedShade]);
+  const isLiked = isFavorite && selectedProduct?.id ? isFavorite(selectedProduct.id) : false;
 
   return (
     <View className="flex-1 bg-white">
@@ -292,7 +302,13 @@ export const ProductDetailScreen = () => {
       <View className="px-4 py-2.5 bg-white border-b border-[#F0F0F0] flex-row justify-between items-center z-30">
         {/* Back Button */}
         <TouchableOpacity
-          onPress={() => setCurrentScreen('category')}
+          onPress={() => {
+            if (previousScreen && previousScreen !== 'product' && previousScreen !== 'product_detail') {
+              setCurrentScreen(previousScreen);
+            } else {
+              setCurrentScreen('category');
+            }
+          }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           activeOpacity={0.7}
           className="p-1"
@@ -498,16 +514,15 @@ export const ProductDetailScreen = () => {
         )}
 
         {/* ───────────────────────────────────────────────────────────── */}
-        {/* 6. NORMAL IN-FLOW PURCHASE & MULTI-PRODUCT CART MANAGEMENT */}
+        {/* 6. QUANTITY SELECTION & ADD TO BAG */}
         {/* ───────────────────────────────────────────────────────────── */}
-        <View className="px-4 py-4 bg-white border-b border-[#F0F0F0]">
-          {/* Row 1: Quantity Stepper & In-Cart Counter */}
-          <View className="flex-row items-center justify-between mb-3 bg-[#FFF8FA] p-3 rounded-2xl border border-[#F8D7E6]">
+        <View className="px-4 py-3.5 bg-white border-b border-[#F0F0F0]">
+          <View className="flex-row items-center justify-between bg-[#FFF8FA] p-3 rounded-2xl border border-[#F8D7E6]">
             <View>
               <Text className="text-xs font-extrabold text-[#1F2937]">Select Quantity</Text>
               <Text className="text-[10.5px] text-[#8C7078] mt-0.5">
                 {cartQty > 0
-                  ? `✨ ${cartQty} units already in your bag`
+                  ? `✨ ${cartQty} in bag • Add more units as needed`
                   : 'Add multiple units as needed'}
               </Text>
             </View>
@@ -538,51 +553,20 @@ export const ProductDetailScreen = () => {
             </View>
           </View>
 
-          {/* Row 2: Wishlist + Add to Bag CTA */}
-          <View className="flex-row items-center gap-3">
-            {/* Wishlist Button */}
-            <TouchableOpacity
-              onPress={() => toggleFavorite(selectedProduct)}
-              activeOpacity={0.8}
-              className="flex-row items-center justify-center gap-1.5 px-4 h-12 rounded-xl bg-white border border-[#E8E8E8] shadow-2xs"
-            >
-              <Ionicons
-                name={isLiked ? "heart" : "heart-outline"}
-                size={19}
-                color={isLiked ? "#C2477A" : "#171717"}
-              />
-              <Text className="text-xs font-bold text-[#171717]">Wishlist</Text>
-            </TouchableOpacity>
-
-            {/* Add to Cart CTA */}
-            <TouchableOpacity
-              onPress={handleAddToCart}
-              activeOpacity={0.85}
-              style={styles.addToCartButton}
-              className="flex-1 h-12 rounded-xl flex-row items-center justify-center gap-2 shadow-md active:bg-[#B83760]"
-            >
-              <Ionicons name="bag-handle" size={16} color="#FFFFFF" />
-              <Text className="text-white text-xs font-black uppercase tracking-wider">
-                {cartQty > 0
-                  ? `Add ${selectedQty} More to Bag`
-                  : `Add to Bag • ₹${currentRolePrice * selectedQty}`}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Optional Direct Shortcut to Bag */}
-          {cartQty > 0 && (
-            <TouchableOpacity
-              onPress={() => setCurrentScreen('cart')}
-              activeOpacity={0.75}
-              className="mt-2.5 flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#FFF0F5] border border-[#F8B4D9]"
-            >
-              <Ionicons name="checkmark-circle" size={15} color="#C2477A" />
-              <Text className="text-xs font-extrabold text-[#C2477A]">
-                {cartQty} {cartQty === 1 ? 'unit' : 'units'} in Bag • View Bag & Checkout ↗
-              </Text>
-            </TouchableOpacity>
-          )}
+          {/* In-Page Add to Bag CTA */}
+          <TouchableOpacity
+            onPress={handleAddToCart}
+            activeOpacity={0.85}
+            style={styles.addToCartButton}
+            className="w-full h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md active:bg-[#B83760] mt-3"
+          >
+            <Ionicons name="bag-handle" size={18} color="#FFFFFF" />
+            <Text className="text-white text-xs font-black uppercase tracking-wider">
+              {cartQty > 0
+                ? `Add ${selectedQty} More to Bag • ₹${currentRolePrice * selectedQty}`
+                : `Add to Bag • ₹${currentRolePrice * selectedQty}`}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Dynamic Manual Description */}
@@ -716,6 +700,42 @@ export const ProductDetailScreen = () => {
         })()}
       </ScrollView>
 
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* 8. NYKAA-STYLE FIXED STICKY FOOTER CTA */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      <View
+        style={styles.stickyFooter}
+        className="bg-white border-t border-[#F0E6EC] px-4 py-2.5 flex-row items-center gap-3"
+      >
+        {/* Wishlist Button */}
+        <TouchableOpacity
+          onPress={() => toggleFavorite(selectedProduct)}
+          activeOpacity={0.75}
+          className="w-12 h-12 rounded-2xl bg-white border border-[#E8E8E8] items-center justify-center shadow-2xs"
+        >
+          <Ionicons
+            name={isLiked ? "heart" : "heart-outline"}
+            size={22}
+            color={isLiked ? "#C2477A" : "#171717"}
+          />
+        </TouchableOpacity>
+
+        {/* Add to Bag CTA Button */}
+        <TouchableOpacity
+          onPress={handleAddToCart}
+          activeOpacity={0.85}
+          style={styles.addToCartButton}
+          className="flex-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md active:bg-[#B83760]"
+        >
+          <Ionicons name="bag-handle" size={18} color="#FFFFFF" />
+          <Text className="text-white text-xs font-black uppercase tracking-wider">
+            {cartQty > 0
+              ? `Add More • ₹${currentRolePrice * selectedQty}`
+              : `Add to Bag • ₹${currentRolePrice * selectedQty}`}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Celebratory In-App Toast */}
       {addedToastMessage && (
         <View style={styles.toastContainer}>
@@ -729,7 +749,18 @@ export const ProductDetailScreen = () => {
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    paddingBottom: 40
+    paddingBottom: 24
+  },
+  stickyFooter: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F3E8EE',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
   },
   addToCartButton: {
     backgroundColor: '#C2477A',
@@ -741,13 +772,13 @@ const styles = StyleSheet.create({
   },
   toastContainer: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 74,
     alignSelf: 'center',
     backgroundColor: 'rgba(23, 23, 23, 0.95)',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 24,
-    zIndex: 40,
+    zIndex: 50,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

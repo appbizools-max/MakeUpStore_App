@@ -9,12 +9,15 @@ import {
   CheckCircle2,
   AlertCircle,
   AlertTriangle,
+  Loader2,
   RefreshCw,
   X,
   Save,
   Image as ImageIcon,
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
+  ArrowDown,
   ExternalLink,
   Check,
   Eye,
@@ -395,10 +398,10 @@ export default function MainCategoriesManager({
         }
       }
 
-      // Persist to Supabase Database
+      // Persist to Store Database
       const success = await persistHierarchy(mergedCats, mergedSubs, mergedPTs);
       if (!success) {
-        throw new Error('Supabase database persistence failed.');
+        throw new Error('Database persistence failed.');
       }
 
       // Instant synchronization across app and product forms
@@ -444,7 +447,7 @@ export default function MainCategoriesManager({
       // 3. Clear product_types table image
       try {
         await client.from('product_types').update({ image: '' }).neq('id', '___salbeau_dummy___');
-      } catch (_) {}
+      } catch (_) { }
 
       // 4. Clear products image & images
       try {
@@ -458,7 +461,7 @@ export default function MainCategoriesManager({
         await client.from('brands').update({ logo: '' })
           .neq('id', 'salbeau_category_subcategory_hierarchy')
           .neq('id', 'app_category_order_config');
-      } catch (_) {}
+      } catch (_) { }
 
       // 6. Strip all images from local memory categories & subcategories & productTypes
       const cleanCategories = categories.map(c => ({ ...c, image: '', icon: '' }));
@@ -506,11 +509,12 @@ export default function MainCategoriesManager({
     setIsLoading(true);
     setFetchError(null);
     try {
+      const client = supabaseAdmin || supabase;
       // Parallel fetch categories, subcategories, and hierarchy snapshot
       const [catRes, subRes, hierRes] = await Promise.all([
-        supabase.from('categories').select('*').order('sort_order', { ascending: true }),
-        supabase.from('subcategories').select('*').order('sort_order', { ascending: true }),
-        supabase.from('brands').select('logo').eq('id', 'salbeau_category_subcategory_hierarchy').maybeSingle()
+        client.from('categories').select('*').order('sort_order', { ascending: true }),
+        client.from('subcategories').select('*').order('sort_order', { ascending: true }),
+        client.from('brands').select('logo').eq('id', 'salbeau_category_subcategory_hierarchy').maybeSingle()
       ]);
 
       if (catRes.error) throw catRes.error;
@@ -545,7 +549,7 @@ export default function MainCategoriesManager({
           } else if (Array.isArray(parsed?.product_types)) {
             rawLeafCategories = parsed.product_types;
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // 4. Normalize Categories
@@ -839,7 +843,7 @@ export default function MainCategoriesManager({
       };
       try {
         await client.from('product_types').upsert(payload);
-      } catch (_) {}
+      } catch (_) { }
 
       setProductTypes(nextProductTypes);
       if (typeof onRefreshMaster === 'function') onRefreshMaster();
@@ -1021,6 +1025,22 @@ export default function MainCategoriesManager({
     showNotice(`Order updated successfully.`);
   };
 
+  const handleCategorySwap = async (idx, direction) => {
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= filteredAndSortedCategories.length) return;
+    const items = [...filteredAndSortedCategories];
+    const temp = items[idx];
+    items[idx] = items[targetIdx];
+    items[targetIdx] = temp;
+    const updatedCats = items.map((c, i) => ({
+      ...c,
+      display_order: i + 1,
+      sort_order: i + 1
+    }));
+    await persistHierarchy(updatedCats, subcategories, productTypes);
+    showNotice(`Category priority order swapped and synchronized.`);
+  };
+
   // B. Reorder Subcategories (within parent)
   const handleSubcategoryDragStart = (idx) => {
     setDragItemIndex(idx);
@@ -1061,6 +1081,29 @@ export default function MainCategoriesManager({
     setDragOverIndex(null);
     await persistHierarchy(categories, updatedAllSubs, productTypes);
     showNotice(`Order updated successfully.`);
+  };
+
+  const handleSubcategorySwap = async (idx, direction) => {
+    const parentId = selectedCategory?.id;
+    const parentSubs = subcategories
+      .filter(s => s.category_id === parentId)
+      .sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0));
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= parentSubs.length) return;
+    const temp = parentSubs[idx];
+    parentSubs[idx] = parentSubs[targetIdx];
+    parentSubs[targetIdx] = temp;
+    const reindexedParentSubs = parentSubs.map((s, i) => ({
+      ...s,
+      display_order: i + 1,
+      sort_order: i + 1
+    }));
+    const updatedAllSubs = subcategories.map(s => {
+      const found = reindexedParentSubs.find(ps => ps.id === s.id);
+      return found || s;
+    });
+    await persistHierarchy(categories, updatedAllSubs, productTypes);
+    showNotice(`Subcategory priority order swapped and synchronized.`);
   };
 
   // C. Reorder Product Types (within subcategory)
@@ -1842,36 +1885,115 @@ export default function MainCategoriesManager({
     setDeleteModal({ isOpen: false, type: 'category', item: null, isChecking: false, hasRelations: false, childCount: 0, productsCount: 0, isDeleting: false });
   };
 
-  // Hard Delete
+  // Permanent Cascade Hard Delete from Supabase
   const handleConfirmHardDelete = async () => {
-    if (!deleteModal.item || deleteModal.hasRelations) return;
+    if (!deleteModal.item) return;
     setDeleteModal(prev => ({ ...prev, isDeleting: true }));
 
     try {
       const client = supabaseAdmin || supabase;
+      const itemId = deleteModal.item.id;
+      const itemName = deleteModal.item.name;
+
       if (deleteModal.type === 'category') {
-        await client.from('categories').delete().eq('id', deleteModal.item.id);
-        const updatedCats = categories.filter(c => c.id !== deleteModal.item.id);
-        await persistHierarchy(updatedCats, subcategories, productTypes);
-        showNotice(`Main Category "${deleteModal.item.name}" permanently deleted.`);
-      } else if (deleteModal.type === 'subcategory') {
-        await client.from('subcategories').delete().eq('id', deleteModal.item.id);
-        const updatedSubs = subcategories.filter(s => s.id !== deleteModal.item.id);
-        await persistHierarchy(categories, updatedSubs, productTypes);
-        showNotice(`Subcategory "${deleteModal.item.name}" permanently deleted.`);
-      } else {
-        const updatedPTs = productTypes.filter(p => p.id !== deleteModal.item.id);
+        // 1. Cascade delete dependent subcategories in Supabase
         try {
-          await client.from('product_types').delete().eq('id', deleteModal.item.id);
-        } catch (_) {}
+          if (itemName) {
+            await client.from('subcategories').delete().or(`category_id.eq."${itemId}",category_name.eq."${itemName}"`);
+          } else {
+            await client.from('subcategories').delete().eq('category_id', itemId);
+          }
+        } catch (subErr) {
+          console.warn('Subcategories cascade delete notice:', subErr);
+        }
+
+        // 2. Safely archive/unlink products so they no longer appear under this category in the User App
+        try {
+          const prodQuery = itemName
+            ? `category.eq."${itemName}",category.eq."${itemId}"`
+            : `category.eq."${itemId}"`;
+          await client.from('products').update({
+            status: 'archived',
+            is_active: false,
+            category: null
+          }).or(prodQuery);
+        } catch (prodErr) {
+          console.warn('Products cascade unlink notice:', prodErr);
+        }
+
+        // 3. Delete category record permanently from Supabase
+        const { error: catErr } = await client.from('categories').delete().eq('id', itemId);
+        if (catErr && itemName) {
+          await client.from('categories').delete().eq('name', itemName);
+        }
+
+        // 4. Update React state immediately
+        const updatedCats = categories.filter(c => c.id !== itemId && c.name !== itemName);
+        const updatedSubs = subcategories.filter(s => s.category_id !== itemId && s.category_name !== itemName);
+        setCategories(updatedCats);
+        setSubcategories(updatedSubs);
+
+        // 5. Persist updated hierarchy to brands table configuration
+        await persistHierarchy(updatedCats, updatedSubs, productTypes);
+
+        // 6. Synchronize AdminContext
+        if (adminCtx?.deleteCategory) {
+          try {
+            await adminCtx.deleteCategory(itemId);
+          } catch (_) { }
+        }
+
+        // 7. Clear local cache
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            localStorage.removeItem('salbeau_admin_cache_categories');
+            localStorage.removeItem('salbeau_admin_cache_subcategories');
+            localStorage.removeItem('salbeau_categories_catalog_v2');
+            localStorage.removeItem('salbeau_subcategories_v2');
+          } catch (_) { }
+        }
+
+        showNotice(`Main Category "${itemName}" and dependent records permanently deleted from database.`);
+      } else if (deleteModal.type === 'subcategory') {
+        // 1. Cascade delete dependent product types
+        try {
+          await client.from('product_types').delete().or(`subcategory_id.eq."${itemId}",subcategory_id.eq."${itemName}"`);
+        } catch (_) { }
+
+        // 2. Unlink products
+        try {
+          await client.from('products').update({ subcategory: null }).or(`subcategory.eq."${itemName}",subcategory.eq."${itemId}"`);
+        } catch (_) { }
+
+        // 3. Delete subcategory
+        await client.from('subcategories').delete().eq('id', itemId);
+
+        const updatedSubs = subcategories.filter(s => s.id !== itemId && s.name !== itemName);
+        const updatedPTs = productTypes.filter(p => p.subcategory_id !== itemId && p.subcategoryId !== itemId);
+        setSubcategories(updatedSubs);
+        setProductTypes(updatedPTs);
+
+        await persistHierarchy(categories, updatedSubs, updatedPTs);
+        showNotice(`Subcategory "${itemName}" permanently deleted.`);
+      } else {
+        // Product Type delete
+        try {
+          await client.from('products').update({ product_type: null }).or(`product_type.eq."${itemName}",product_type.eq."${itemId}"`);
+        } catch (_) { }
+        try {
+          await client.from('product_types').delete().eq('id', itemId);
+        } catch (_) { }
+
+        const updatedPTs = productTypes.filter(p => p.id !== itemId);
+        setProductTypes(updatedPTs);
         await persistHierarchy(categories, subcategories, updatedPTs);
-        showNotice(`Select Category "${deleteModal.item.name}" permanently deleted.`);
+        showNotice(`Select Category "${itemName}" permanently deleted.`);
       }
 
       setDeleteModal({ isOpen: false, type: 'category', item: null, isChecking: false, hasRelations: false, childCount: 0, productsCount: 0, isDeleting: false });
     } catch (err) {
       console.error('Failed to execute hard delete:', err);
-      showNotice('Failed to delete item from database.', 'error');
+      showNotice('Failed to delete item from database: ' + (err.message || String(err)), 'error');
       setDeleteModal(prev => ({ ...prev, isDeleting: false }));
     }
   };
@@ -1933,6 +2055,120 @@ export default function MainCategoriesManager({
     return result;
   }, [subcategories, selectedCategory, subSearch, subStatusFilter, subMobileFilter]);
 
+  // Multi-Selection State for Bulk Actions (Categories & Subcategories)
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState(new Set());
+  const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState(new Set());
+  const [bulkDeleteCategoriesModalOpen, setBulkDeleteCategoriesModalOpen] = useState(false);
+  const [bulkDeleteSubcategoriesModalOpen, setBulkDeleteSubcategoriesModalOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = useState(null);
+
+  const handleToggleSelectCategory = (catId, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setSelectedCategoryIds(prev => {
+      const next = new Set(prev);
+      if (next.has(catId)) next.delete(catId);
+      else next.add(catId);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAllCategories = () => {
+    const visibleIds = filteredAndSortedCategories.map(c => c.id).filter(Boolean);
+    if (visibleIds.length === 0) return;
+    setSelectedCategoryIds(prev => {
+      const allSelected = visibleIds.every(id => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        visibleIds.forEach(id => next.delete(id));
+      } else {
+        visibleIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleClearCategorySelection = () => {
+    setSelectedCategoryIds(new Set());
+  };
+
+  const handleExecuteBulkDeleteCategories = async () => {
+    if (selectedCategoryIds.size === 0) return;
+    setIsBulkDeleting(true);
+    setBulkDeleteError(null);
+    try {
+      const idsToDelete = Array.from(selectedCategoryIds);
+      if (adminCtx?.bulkDeleteCategories) {
+        await adminCtx.bulkDeleteCategories(idsToDelete);
+      } else {
+        const client = supabaseAdmin || supabase;
+        await client.from('categories').delete().in('id', idsToDelete);
+        setCategories(prev => prev.filter(c => !selectedCategoryIds.has(c.id)));
+      }
+      showNotice(`Successfully deleted ${idsToDelete.length} main categories and synced to database and user app.`);
+      setSelectedCategoryIds(new Set());
+      setBulkDeleteCategoriesModalOpen(false);
+    } catch (err) {
+      console.error('Bulk category delete error:', err);
+      setBulkDeleteError(err.message || 'Failed to delete selected categories.');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleToggleSelectSubcategory = (subId, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setSelectedSubcategoryIds(prev => {
+      const next = new Set(prev);
+      if (next.has(subId)) next.delete(subId);
+      else next.add(subId);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAllSubcategories = () => {
+    const visibleIds = filteredAndSortedSubcategories.map(s => s.id).filter(Boolean);
+    if (visibleIds.length === 0) return;
+    setSelectedSubcategoryIds(prev => {
+      const allSelected = visibleIds.every(id => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        visibleIds.forEach(id => next.delete(id));
+      } else {
+        visibleIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleClearSubcategorySelection = () => {
+    setSelectedSubcategoryIds(new Set());
+  };
+
+  const handleExecuteBulkDeleteSubcategories = async () => {
+    if (selectedSubcategoryIds.size === 0) return;
+    setIsBulkDeleting(true);
+    setBulkDeleteError(null);
+    try {
+      const idsToDelete = Array.from(selectedSubcategoryIds);
+      if (adminCtx?.bulkDeleteSubcategories) {
+        await adminCtx.bulkDeleteSubcategories(idsToDelete);
+      } else {
+        const client = supabaseAdmin || supabase;
+        await client.from('subcategories').delete().in('id', idsToDelete);
+        setSubcategories(prev => prev.filter(s => !selectedSubcategoryIds.has(s.id)));
+      }
+      showNotice(`Successfully deleted ${idsToDelete.length} subcategories and synced to database and user app.`);
+      setSelectedSubcategoryIds(new Set());
+      setBulkDeleteSubcategoriesModalOpen(false);
+    } catch (err) {
+      console.error('Bulk subcategory delete error:', err);
+      setBulkDeleteError(err.message || 'Failed to delete selected subcategories.');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   // C. Filtered Select Categories / Product Types (under selected subcategory)
   const filteredAndSortedProductTypes = useMemo(() => {
     if (!selectedSubcategory) return [];
@@ -1988,11 +2224,10 @@ export default function MainCategoriesManager({
       {notice && (
         <div
           role="alert"
-          className={`p-4 rounded-2xl text-xs font-bold flex items-center justify-between border shadow-sm animate-fade-in transition-all ${
-            notice.type === 'error'
+          className={`p-4 rounded-2xl text-xs font-bold flex items-center justify-between border shadow-sm animate-fade-in transition-all ${notice.type === 'error'
               ? 'bg-rose-50 text-rose-700 border-rose-200'
               : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2.5">
             {notice.type === 'error' ? <AlertCircle size={17} /> : <CheckCircle2 size={17} className="text-emerald-600" />}
@@ -2013,9 +2248,8 @@ export default function MainCategoriesManager({
         <button
           type="button"
           onClick={handleBackToCategories}
-          className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
-            currentView === 'categories' ? 'text-[#C2477A] font-extrabold' : 'text-gray-600 hover:text-[#C2477A]'
-          }`}
+          className={`flex items-center gap-1.5 transition-colors cursor-pointer ${currentView === 'categories' ? 'text-[#C2477A] font-extrabold' : 'text-gray-600 hover:text-[#C2477A]'
+            }`}
         >
           <FolderPlus size={14} className="text-[#C2477A]" />
           <span>Categories</span>
@@ -2027,9 +2261,8 @@ export default function MainCategoriesManager({
             <button
               type="button"
               onClick={handleBackToSubcategories}
-              className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
-                currentView === 'subcategories' ? 'text-[#C2477A] font-extrabold' : 'text-gray-600 hover:text-[#C2477A]'
-              }`}
+              className={`flex items-center gap-1.5 transition-colors cursor-pointer ${currentView === 'subcategories' ? 'text-[#C2477A] font-extrabold' : 'text-gray-600 hover:text-[#C2477A]'
+                }`}
             >
               <span className="px-2 py-0.5 rounded-md bg-white text-[#C2477A] border border-pink-100 text-[10px] uppercase font-bold">
                 Main
@@ -2166,11 +2399,64 @@ export default function MainCategoriesManager({
             </div>
           </div>
 
+          {/* Categories Bulk Selection Action Bar */}
+          {selectedCategoryIds.size > 0 && (
+            <div className="p-3 bg-gradient-to-r from-pink-50 via-white to-pink-50 rounded-2xl border-2 border-pink-200/90 shadow-md flex flex-wrap items-center justify-between gap-3 animate-fade-in mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#C2477A] text-white flex items-center justify-center font-black text-xs shadow-xs">
+                  {selectedCategoryIds.size}
+                </div>
+                <div>
+                  <p className="text-xs font-black text-gray-900 tracking-tight">
+                    {selectedCategoryIds.size} {selectedCategoryIds.size === 1 ? 'Category' : 'Categories'} Selected
+                  </p>
+                  <span className="text-[11px] text-gray-500 font-medium">
+                    Ready for bulk actions
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {selectedCategoryIds.size < filteredAndSortedCategories.length && (
+                  <button
+                    type="button"
+                    onClick={handleToggleSelectAllCategories}
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-100/70 border border-pink-200 text-[#C2477A] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  >
+                    Select All {filteredAndSortedCategories.length} Visible
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleClearCategorySelection}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 text-gray-600 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Clear Selection
+                </button>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBulkDeleteError(null);
+                      setBulkDeleteCategoriesModalOpen(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Trash2 size={15} />
+                    <span>Delete Selected ({selectedCategoryIds.size})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Categories Table View: Clean Table without Slug, Display Order, Created At */}
           {isLoading ? (
             <div className="bg-white p-16 rounded-2xl border border-pink-100 text-center space-y-3">
               <RefreshCw size={28} className="animate-spin mx-auto text-[#C2477A]" />
-              <p className="text-sm font-bold text-gray-700">Loading categories from Supabase...</p>
+              <p className="text-sm font-bold text-gray-700">Loading categories...</p>
             </div>
           ) : filteredAndSortedCategories.length === 0 ? (
             <div className="bg-white p-16 rounded-2xl border border-pink-100 text-center space-y-3">
@@ -2197,6 +2483,18 @@ export default function MainCategoriesManager({
                 <table className="w-full text-left border-collapse min-w-[900px]">
                   <thead>
                     <tr className="border-b border-pink-100 bg-white text-[11px] font-extrabold text-gray-600 uppercase tracking-wider">
+                      <th className="py-4 px-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={filteredAndSortedCategories.length > 0 && filteredAndSortedCategories.every(c => selectedCategoryIds.has(c.id))}
+                          ref={(el) => {
+                            if (el) el.indeterminate = filteredAndSortedCategories.some(c => selectedCategoryIds.has(c.id)) && !filteredAndSortedCategories.every(c => selectedCategoryIds.has(c.id));
+                          }}
+                          onChange={handleToggleSelectAllCategories}
+                          className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                          title="Select all visible categories"
+                        />
+                      </th>
                       <th className="py-4 px-4 w-16 text-center">#</th>
                       <th className="py-4 px-4 min-w-[260px]">Category Name</th>
                       <th className="py-4 px-4 text-center w-48">Subcategories</th>
@@ -2219,12 +2517,27 @@ export default function MainCategoriesManager({
                           onDragEnter={() => handleCategoryDragEnter(idx)}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={() => handleCategoryDrop(idx)}
-                          className={`transition-all group ${
-                            isDragged ? 'opacity-40 bg-white' : isDragOver ? 'bg-pink-100/50' : 'hover:bg-[#FFF9FB]'
-                          }`}
+                          className={`transition-all group ${selectedCategoryIds.has(cat.id)
+                              ? 'bg-pink-50/70'
+                              : isDragged
+                                ? 'opacity-40 bg-white'
+                                : isDragOver
+                                  ? 'bg-pink-100/50'
+                                  : 'hover:bg-[#FFF9FB]'
+                            }`}
                         >
+                          {/* Selection Checkbox */}
+                          <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selectedCategoryIds.has(cat.id)}
+                              onChange={(e) => handleToggleSelectCategory(cat.id, e)}
+                              className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                              title={`Select category ${cat.name}`}
+                            />
+                          </td>
                           {/* # Priority & Editable Sequence */}
-                          <td className="py-3.5 px-3 text-center">
+                          <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
                               <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A]" title="Drag to reorder">
                                 <GripVertical size={14} />
@@ -2240,6 +2553,28 @@ export default function MainCategoriesManager({
                                 className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-white text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
                                 title="Edit priority sequence number directly"
                               />
+                              {isAdmin && (
+                                <div className="flex flex-col gap-0.5 ml-0.5">
+                                  <button
+                                    type="button"
+                                    disabled={idx === 0}
+                                    onClick={() => handleCategorySwap(idx, -1)}
+                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                    title="Move Category Up"
+                                  >
+                                    <ArrowUp size={8} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={idx === filteredAndSortedCategories.length - 1}
+                                    onClick={() => handleCategorySwap(idx, 1)}
+                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                    title="Move Category Down"
+                                  >
+                                    <ArrowDown size={8} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </td>
 
@@ -2287,11 +2622,10 @@ export default function MainCategoriesManager({
                             <button
                               type="button"
                               onClick={() => handleToggleCategoryMobile(cat)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${
-                                cat.show_in_mobile_app
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${cat.show_in_mobile_app
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                   : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
-                              }`}
+                                }`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${cat.show_in_mobile_app ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                               <span>{cat.show_in_mobile_app ? 'Yes' : 'No'}</span>
@@ -2303,11 +2637,10 @@ export default function MainCategoriesManager({
                             <button
                               type="button"
                               onClick={() => handleToggleCategoryStatus(cat)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${
-                                cat.is_active
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${cat.is_active
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                   : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                              }`}
+                                }`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${cat.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                               <span>{cat.is_active ? 'Active' : 'Inactive'}</span>
@@ -2389,9 +2722,8 @@ export default function MainCategoriesManager({
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-pink-100 text-[#C2477A]">
                     Parent Main Category
                   </span>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                    selectedCategory.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'
-                  }`}>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${selectedCategory.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'
+                    }`}>
                     {selectedCategory.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
@@ -2506,6 +2838,59 @@ export default function MainCategoriesManager({
             </div>
           </div>
 
+          {/* Subcategories Bulk Selection Action Bar */}
+          {selectedSubcategoryIds.size > 0 && (
+            <div className="p-3 bg-gradient-to-r from-pink-50 via-white to-pink-50 rounded-2xl border-2 border-pink-200/90 shadow-md flex flex-wrap items-center justify-between gap-3 animate-fade-in mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#C2477A] text-white flex items-center justify-center font-black text-xs shadow-xs">
+                  {selectedSubcategoryIds.size}
+                </div>
+                <div>
+                  <p className="text-xs font-black text-gray-900 tracking-tight">
+                    {selectedSubcategoryIds.size} {selectedSubcategoryIds.size === 1 ? 'Subcategory' : 'Subcategories'} Selected
+                  </p>
+                  <span className="text-[11px] text-gray-500 font-medium">
+                    Ready for bulk actions under {selectedCategory.name}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {selectedSubcategoryIds.size < filteredAndSortedSubcategories.length && (
+                  <button
+                    type="button"
+                    onClick={handleToggleSelectAllSubcategories}
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-100/70 border border-pink-200 text-[#C2477A] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  >
+                    Select All {filteredAndSortedSubcategories.length} Visible
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleClearSubcategorySelection}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 text-gray-600 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Clear Selection
+                </button>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBulkDeleteError(null);
+                      setBulkDeleteSubcategoriesModalOpen(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Trash2 size={15} />
+                    <span>Delete Selected ({selectedSubcategoryIds.size})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Subcategories Table: # | SUB CATEGORY | MAIN CATEGORY | SELECT CATEGORIES | MOBILE APP | STATUS | ACTIONS */}
           {filteredAndSortedSubcategories.length === 0 ? (
             <div className="bg-white p-16 rounded-2xl border border-pink-100 text-center space-y-3">
@@ -2543,6 +2928,18 @@ export default function MainCategoriesManager({
                 <table className="w-full text-left border-collapse min-w-[950px]">
                   <thead>
                     <tr className="border-b border-pink-100 bg-white text-[11px] font-extrabold text-gray-600 uppercase tracking-wider">
+                      <th className="py-4 px-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={filteredAndSortedSubcategories.length > 0 && filteredAndSortedSubcategories.every(s => selectedSubcategoryIds.has(s.id))}
+                          ref={(el) => {
+                            if (el) el.indeterminate = filteredAndSortedSubcategories.some(s => selectedSubcategoryIds.has(s.id)) && !filteredAndSortedSubcategories.every(s => selectedSubcategoryIds.has(s.id));
+                          }}
+                          onChange={handleToggleSelectAllSubcategories}
+                          className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                          title="Select all visible subcategories"
+                        />
+                      </th>
                       <th className="py-4 px-4 w-16 text-center">#</th>
                       <th className="py-4 px-4 min-w-[220px]">Sub Category</th>
                       <th className="py-4 px-4 min-w-[150px]">Main Category</th>
@@ -2564,12 +2961,27 @@ export default function MainCategoriesManager({
                           onDragEnter={() => handleSubcategoryDragEnter(idx)}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={() => handleSubcategoryDrop(idx)}
-                          className={`transition-all group ${
-                            isDragged ? 'opacity-40 bg-white' : isDragOver ? 'bg-pink-100/50' : 'hover:bg-[#FFF9FB]'
-                          }`}
+                          className={`transition-all group ${selectedSubcategoryIds.has(sub.id)
+                              ? 'bg-pink-50/70'
+                              : isDragged
+                                ? 'opacity-40 bg-white'
+                                : isDragOver
+                                  ? 'bg-pink-100/50'
+                                  : 'hover:bg-[#FFF9FB]'
+                            }`}
                         >
+                          {/* Selection Checkbox */}
+                          <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selectedSubcategoryIds.has(sub.id)}
+                              onChange={(e) => handleToggleSelectSubcategory(sub.id, e)}
+                              className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                              title={`Select subcategory ${sub.name}`}
+                            />
+                          </td>
                           {/* # Priority & Editable Sequence */}
-                          <td className="py-3.5 px-3 text-center">
+                          <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
                               <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A]" title="Drag to reorder">
                                 <GripVertical size={14} />
@@ -2585,6 +2997,28 @@ export default function MainCategoriesManager({
                                 className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-white text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
                                 title="Edit priority sequence number directly"
                               />
+                              {isAdmin && (
+                                <div className="flex flex-col gap-0.5 ml-0.5">
+                                  <button
+                                    type="button"
+                                    disabled={idx === 0}
+                                    onClick={() => handleSubcategorySwap(idx, -1)}
+                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                    title="Move Subcategory Up"
+                                  >
+                                    <ArrowUp size={8} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={idx === filteredAndSortedSubcategories.length - 1}
+                                    onClick={() => handleSubcategorySwap(idx, 1)}
+                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                    title="Move Subcategory Down"
+                                  >
+                                    <ArrowDown size={8} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </td>
 
@@ -2614,11 +3048,10 @@ export default function MainCategoriesManager({
                             <button
                               type="button"
                               onClick={() => handleToggleSubcategoryMobile(sub)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${
-                                sub.show_in_mobile_app
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${sub.show_in_mobile_app
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                   : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
-                              }`}
+                                }`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${sub.show_in_mobile_app ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                               <span>{sub.show_in_mobile_app ? 'Yes' : 'No'}</span>
@@ -2630,11 +3063,10 @@ export default function MainCategoriesManager({
                             <button
                               type="button"
                               onClick={() => handleToggleSubcategoryStatus(sub)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${
-                                sub.is_active
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border cursor-pointer transition-colors shadow-2xs ${sub.is_active
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                   : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                              }`}
+                                }`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${sub.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                               <span>{sub.is_active ? 'Active' : 'Inactive'}</span>
@@ -2680,7 +3112,7 @@ export default function MainCategoriesManager({
       {/* 11. ADD / EDIT MAIN CATEGORY MODAL (INTEGRATED IMAGE SECTION)    */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {(modalMode === 'add_category' || modalMode === 'edit_category') && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-[1px] transition-all" focus-trap="true"
           onClick={(e) => {
             if (e.target === e.currentTarget && !isSaving) {
@@ -2688,7 +3120,7 @@ export default function MainCategoriesManager({
             }
           }}
         >
-          <div 
+          <div
             className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-pink-200 animate-slide-left relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2758,13 +3190,11 @@ export default function MainCategoriesManager({
                     <button
                       type="button"
                       onClick={() => setCategoryFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        categoryFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
-                      }`}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${categoryFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
+                        }`}
                     >
-                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        categoryFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
-                      }`} />
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${categoryFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
                     </button>
                     <span className={`text-[10px] font-extrabold ${categoryFormData.show_in_mobile_app ? 'text-[#C2477A]' : 'text-gray-400'}`}>
                       {categoryFormData.show_in_mobile_app ? 'Yes' : 'No'}
@@ -2776,13 +3206,11 @@ export default function MainCategoriesManager({
                     <button
                       type="button"
                       onClick={() => setCategoryFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        categoryFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
-                      }`}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${categoryFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
+                        }`}
                     >
-                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        categoryFormData.is_active ? 'translate-x-5' : 'translate-x-0'
-                      }`} />
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${categoryFormData.is_active ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
                     </button>
                     <span className={`text-[10px] font-extrabold ${categoryFormData.is_active ? 'text-emerald-700' : 'text-gray-400'}`}>
                       {categoryFormData.is_active ? 'Active' : 'Inactive'}
@@ -2829,7 +3257,7 @@ export default function MainCategoriesManager({
       {/* 12. ADD / EDIT SUBCATEGORY MODAL (INTEGRATED IMAGE SECTION)      */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {(modalMode === 'add_subcategory' || modalMode === 'edit_subcategory') && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-[1px] transition-all" focus-trap="true"
           onClick={(e) => {
             if (e.target === e.currentTarget && !isSaving) {
@@ -2837,7 +3265,7 @@ export default function MainCategoriesManager({
             }
           }}
         >
-          <div 
+          <div
             className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col border-l border-pink-200 animate-slide-left relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2934,13 +3362,11 @@ export default function MainCategoriesManager({
                     <button
                       type="button"
                       onClick={() => setSubFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        subFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
-                      }`}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${subFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
+                        }`}
                     >
-                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        subFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
-                      }`} />
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${subFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
                     </button>
                     <span className={`text-[10px] font-extrabold ${subFormData.show_in_mobile_app ? 'text-[#C2477A]' : 'text-gray-400'}`}>
                       {subFormData.show_in_mobile_app ? 'Yes' : 'No'}
@@ -2952,13 +3378,11 @@ export default function MainCategoriesManager({
                     <button
                       type="button"
                       onClick={() => setSubFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        subFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
-                      }`}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${subFormData.is_active ? 'bg-emerald-500' : 'bg-gray-300'
+                        }`}
                     >
-                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        subFormData.is_active ? 'translate-x-5' : 'translate-x-0'
-                      }`} />
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${subFormData.is_active ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
                     </button>
                     <span className={`text-[10px] font-extrabold ${subFormData.is_active ? 'text-emerald-700' : 'text-gray-400'}`}>
                       {subFormData.is_active ? 'Active' : 'Inactive'}
@@ -2994,7 +3418,7 @@ export default function MainCategoriesManager({
       {/* 14. SAFE DELETE CONFIRMATION MODAL                              */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {deleteModal.isOpen && deleteModal.item && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px] transition-all"
           onClick={(e) => {
             if (e.target === e.currentTarget && !deleteModal.isDeleting && !deleteModal.isChecking) {
@@ -3002,44 +3426,40 @@ export default function MainCategoriesManager({
             }
           }}
         >
-          <div 
+          <div
             className="bg-white w-full max-w-md sm:max-w-lg h-auto max-h-[92vh] my-auto rounded-3xl shadow-2xl flex flex-col border border-pink-200 animate-scale-up relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with prominent Close (✕) button */}
-            <div className={`p-4 sm:p-5 sm:px-6 border-b flex items-center justify-between shrink-0 sticky top-0 z-20 ${
-              deleteModal.hasRelations ? 'bg-amber-50/90 border-amber-100' : 'bg-rose-50/90 border-rose-100'
-            }`}>
+            <div className={`p-4 sm:p-5 sm:px-6 border-b flex items-center justify-between shrink-0 sticky top-0 z-20 ${deleteModal.hasRelations ? 'bg-amber-50/90 border-amber-100' : 'bg-rose-50/90 border-rose-100'
+              }`}>
               <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs ${
-                  deleteModal.hasRelations ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
-                }`}>
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs ${deleteModal.hasRelations ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                  }`}>
                   {deleteModal.hasRelations ? <AlertTriangle size={22} /> : <Trash2 size={22} />}
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-base font-black text-gray-900 truncate">
                     {deleteModal.hasRelations
-                      ? `Cannot Delete ${
-                          deleteModal.type === 'category'
-                            ? 'Category'
-                            : deleteModal.type === 'subcategory'
-                            ? 'Subcategory'
-                            : 'Select Category'
-                        }`
-                      : `Delete ${
-                          deleteModal.type === 'category'
-                            ? 'Main Category'
-                            : deleteModal.type === 'subcategory'
-                            ? 'Subcategory'
-                            : 'Select Category'
-                        }?`}
+                      ? `Cannot Delete ${deleteModal.type === 'category'
+                        ? 'Category'
+                        : deleteModal.type === 'subcategory'
+                          ? 'Subcategory'
+                          : 'Select Category'
+                      }`
+                      : `Delete ${deleteModal.type === 'category'
+                        ? 'Main Category'
+                        : deleteModal.type === 'subcategory'
+                          ? 'Subcategory'
+                          : 'Select Category'
+                      }?`}
                   </h3>
                   <span className="text-xs text-gray-500 font-medium truncate block">
                     {deleteModal.type === 'category'
                       ? 'Main Category'
                       : deleteModal.type === 'subcategory'
-                      ? 'Subcategory'
-                      : 'Select Category'}: <strong className="text-gray-800">{deleteModal.item.name}</strong>
+                        ? 'Subcategory'
+                        : 'Select Category'}: <strong className="text-gray-800">{deleteModal.item.name}</strong>
                   </span>
                 </div>
               </div>
@@ -3063,8 +3483,8 @@ export default function MainCategoriesManager({
                 </div>
               ) : deleteModal.hasRelations ? (
                 <div className="space-y-3">
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 font-semibold text-xs leading-relaxed">
-                    This {deleteModal.type === 'category' ? 'category' : deleteModal.type === 'subcategory' ? 'subcategory' : 'select category'} cannot be deleted because it is being used by existing products.
+                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 font-semibold text-xs leading-relaxed">
+                    This {deleteModal.type === 'category' ? 'category' : deleteModal.type === 'subcategory' ? 'subcategory' : 'select category'} has active relations in your database.
                   </div>
 
                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2 text-xs">
@@ -3090,7 +3510,7 @@ export default function MainCategoriesManager({
                   </div>
 
                   <p className="text-gray-500 text-xs leading-relaxed">
-                    To prevent breaking product catalogs or customer orders, records with active relations cannot be hard-deleted. You can safely deactivate it instead.
+                    <strong>Permanent Deletion:</strong> Completely removes this category and its dependent subcategories from the database. Associated products will be cleanly archived/unlinked so they immediately vanish from the customer mobile app.
                   </p>
                 </div>
               ) : (
@@ -3099,13 +3519,13 @@ export default function MainCategoriesManager({
                     Are you sure you want to permanently delete <strong className="text-gray-900">"{deleteModal.item.name}"</strong>?
                   </p>
                   <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-800 text-xs">
-                    This record contains 0 products and 0 dependencies. Deletion will remove it from Supabase.
+                    This record has 0 dependencies. Deletion will permanently remove it from the database.
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="p-5 bg-white border-t border-gray-100 flex items-center justify-end gap-3 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+            <div className="p-5 bg-white border-t border-gray-100 flex flex-wrap items-center justify-end gap-2.5 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               <button
                 type="button"
                 onClick={() => setDeleteModal({ isOpen: false, type: 'category', item: null, isChecking: false, hasRelations: false, childCount: 0, productsCount: 0, isDeleting: false })}
@@ -3115,27 +3535,27 @@ export default function MainCategoriesManager({
                 Cancel
               </button>
 
-              {deleteModal.hasRelations ? (
+              {deleteModal.hasRelations && (
                 <button
                   type="button"
                   onClick={handleConfirmDeactivate}
                   disabled={deleteModal.isDeleting}
-                  className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-50"
                 >
                   {deleteModal.isDeleting ? <RefreshCw size={14} className="animate-spin" /> : <EyeOff size={14} />}
-                  <span>Deactivate {deleteModal.type === 'category' ? 'Category' : deleteModal.type === 'subcategory' ? 'Subcategory' : 'Select Category'}</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleConfirmHardDelete}
-                  disabled={deleteModal.isChecking || deleteModal.isDeleting}
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
-                >
-                  {deleteModal.isDeleting ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                  <span>Permanently Delete</span>
+                  <span>Deactivate Only</span>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={handleConfirmHardDelete}
+                disabled={deleteModal.isChecking || deleteModal.isDeleting}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {deleteModal.isDeleting ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                <span>Permanently Delete</span>
+              </button>
             </div>
           </div>
         </div>
@@ -3143,13 +3563,13 @@ export default function MainCategoriesManager({
 
       {/* ── 5. WIPE ALL IMAGES CONFIRMATION MODAL ───────────────────────────── */}
       {isWipeModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px] transition-all"
           onClick={(e) => {
             if (e.target === e.currentTarget && !isWipingImages) setIsWipeModalOpen(false);
           }}
         >
-          <div 
+          <div
             className="bg-white w-full max-w-lg h-full shadow-2xl flex flex-col border-l border-rose-100 animate-slide-left relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -3237,6 +3657,204 @@ export default function MainCategoriesManager({
           selectedSubcategory={selectedSubcategory}
           onConfirmImport={handleConfirmCategoryImport}
         />
+      )}
+
+      {/* BULK DELETE CATEGORIES CONFIRMATION MODAL */}
+      {bulkDeleteCategoriesModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-scale-up">
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-pink-100/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shadow-2xs border border-rose-100">
+                  <Trash2 size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-gray-900 tracking-wide">
+                    Delete {selectedCategoryIds.size} Main Categories?
+                  </h3>
+                  <span className="text-[11px] text-gray-400 font-medium block">
+                    Permanent cascade deletion from Database & User Mobile App
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isBulkDeleting}
+                onClick={() => {
+                  if (isBulkDeleting) return;
+                  setBulkDeleteCategoriesModalOpen(false);
+                }}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-xs text-rose-800">
+              <AlertTriangle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-extrabold block mb-0.5">Cascade Deletion Warning</strong>
+                <span>
+                  Deleting these <strong>{selectedCategoryIds.size} main categories</strong> will cascade delete all their child subcategories, unlink associated products in the database, and immediately remove them from the Customer Mobile App in real time.
+                </span>
+              </div>
+            </div>
+
+            {bulkDeleteError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded-xl text-xs font-semibold">
+                {bulkDeleteError}
+              </div>
+            )}
+
+            <div className="mb-5">
+              <span className="text-xs font-extrabold text-gray-700 uppercase tracking-wider block mb-2">
+                Selected Categories ({selectedCategoryIds.size})
+              </span>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-gray-50 rounded-xl border border-gray-100 custom-scrollbar">
+                {Array.from(selectedCategoryIds).map((cid) => {
+                  const cat = categories.find(c => c.id === cid);
+                  const subCount = subcategories.filter(s => s.category_id === cid).length;
+                  return (
+                    <div key={cid} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-100 text-xs font-bold text-gray-900">
+                      <div className="flex items-center gap-2">
+                        <FolderPlus size={15} className="text-[#C2477A]" />
+                        <span>{cat?.name || cid}</span>
+                      </div>
+                      <span className="text-[11px] font-medium text-gray-500 bg-pink-50 px-2 py-0.5 rounded-md">
+                        {subCount} subcategories
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                disabled={isBulkDeleting}
+                onClick={() => setBulkDeleteCategoriesModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isBulkDeleting}
+                onClick={handleExecuteBulkDeleteCategories}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>Deleting Categories...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={15} />
+                    <span>Confirm Cascade Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BULK DELETE SUBCATEGORIES CONFIRMATION MODAL */}
+      {bulkDeleteSubcategoriesModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-pink-100 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-scale-up">
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-pink-100/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shadow-2xs border border-rose-100">
+                  <Trash2 size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-gray-900 tracking-wide">
+                    Delete {selectedSubcategoryIds.size} Subcategories?
+                  </h3>
+                  <span className="text-[11px] text-gray-400 font-medium block">
+                    Permanent deletion from Database & User Mobile App
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isBulkDeleting}
+                onClick={() => {
+                  if (isBulkDeleting) return;
+                  setBulkDeleteSubcategoriesModalOpen(false);
+                }}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-xs text-rose-800">
+              <AlertTriangle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-extrabold block mb-0.5">Permanent Deletion Notice</strong>
+                <span>
+                  Deleting these <strong>{selectedSubcategoryIds.size} subcategories</strong> will unlink them from products in the database and instantly remove them from the Customer Mobile App in real time.
+                </span>
+              </div>
+            </div>
+
+            {bulkDeleteError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded-xl text-xs font-semibold">
+                {bulkDeleteError}
+              </div>
+            )}
+
+            <div className="mb-5">
+              <span className="text-xs font-extrabold text-gray-700 uppercase tracking-wider block mb-2">
+                Selected Subcategories ({selectedSubcategoryIds.size})
+              </span>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-gray-50 rounded-xl border border-gray-100 custom-scrollbar">
+                {Array.from(selectedSubcategoryIds).map((sid) => {
+                  const sub = subcategories.find(s => s.id === sid);
+                  return (
+                    <div key={sid} className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-gray-100 text-xs font-bold text-gray-900">
+                      <Layers size={14} className="text-[#C2477A]" />
+                      <span>{sub?.name || sid}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                disabled={isBulkDeleting}
+                onClick={() => setBulkDeleteSubcategoriesModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isBulkDeleting}
+                onClick={handleExecuteBulkDeleteSubcategories}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>Deleting Subcategories...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={15} />
+                    <span>Confirm Permanent Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

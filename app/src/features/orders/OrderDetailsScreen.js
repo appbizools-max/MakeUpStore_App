@@ -10,12 +10,15 @@ import {
   Alert,
   Clipboard,
   Platform,
-  Animated
+  Animated,
+  RefreshControl,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import { CancelWarningModal } from './CancelWarningModal';
 import { getSafeImageSource } from '../../utils/imageUtils';
+import { supabase } from '../../config/supabase';
 
 export const ORDER_STAGES = [
   { key: 'placed', label: 'Placed', description: 'Order received and queued for store acceptance', icon: 'time-outline' },
@@ -121,13 +124,13 @@ export const safeCopyToClipboard = (text) => {
       Clipboard.setString(text);
       return true;
     }
-  } catch (_) {}
+  } catch (_) { }
   try {
     if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text);
       return true;
     }
-  } catch (_) {}
+  } catch (_) { }
   return false;
 };
 
@@ -146,8 +149,19 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
     addToCart,
     showCancelWarningModal,
     setShowCancelWarningModal,
-    pendingCancelOrderId
+    pendingCancelOrderId,
+    refreshOrders
   } = useApp();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    refreshOrders?.();
+    const interval = setInterval(() => {
+      refreshOrders?.();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [refreshOrders]);
 
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [copiedToast, setCopiedToast] = useState(false);
@@ -168,15 +182,96 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
     return () => clearInterval(timer);
   }, []);
 
+  // Direct fetch fallback if selected order isn't present in current local list
+  const [directOrder, setDirectOrder] = useState(null);
+  const [isDirectLoading, setIsDirectLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!propOrder && selectedOrderIdForDetails) {
+      const foundInList = orders.find(o => o.id === selectedOrderIdForDetails);
+      if (!foundInList) {
+        setIsDirectLoading(true);
+        supabase
+          .from('orders')
+          .select('*')
+          .eq('id', selectedOrderIdForDetails)
+          .single()
+          .then(({ data }) => {
+            if (isMounted && data) {
+              let rawItems = data.items || [];
+              if (typeof rawItems === 'string') {
+                try { rawItems = JSON.parse(rawItems); } catch { rawItems = []; }
+              }
+              if (!Array.isArray(rawItems)) rawItems = [];
+
+              let shipmentsMeta = {};
+              if (data.shipments) {
+                if (typeof data.shipments === 'object' && !Array.isArray(data.shipments)) {
+                  shipmentsMeta = data.shipments;
+                } else if (typeof data.shipments === 'string') {
+                  try { shipmentsMeta = JSON.parse(data.shipments); } catch { }
+                }
+              }
+
+              const rawPay = (data.payment_status || shipmentsMeta.paymentStatus || data.internal_status || '').toLowerCase();
+              const paymentStatus = ['paid', 'completed'].includes(rawPay) ? 'paid' : 'pending';
+              const paymentMethod = (data.payment_method || shipmentsMeta.paymentMethod || 'cash').toLowerCase();
+
+              setDirectOrder({
+                id: data.id,
+                userName: data.user_name || data.userName,
+                phone: data.phone,
+                avatar: data.avatar,
+                itemDescription: data.item_description || data.itemDescription,
+                userRole: data.user_role || data.userRole,
+                branch: data.branch,
+                deliveryType: data.delivery_type || data.deliveryType,
+                deliveryAddress: data.delivery_address || data.deliveryAddress,
+                deliveryInstructions: data.delivery_instructions || data.deliveryInstructions || '',
+                totalAmount: Number(data.total_amount || data.totalAmount || 0),
+                status: data.status || 'placed',
+                paymentStatus,
+                paymentMethod,
+                assignedEmployeeId: data.assigned_employee_id || shipmentsMeta.assignedEmployeeId || null,
+                assignedEmployeeName: data.assigned_employee_name || shipmentsMeta.assignedEmployeeName || null,
+                statusHistory: data.status_history || [],
+                rejectionReason: data.rejection_reason || '',
+                placedAt: data.placed_at || data.date,
+                date: data.date || data.placed_at,
+                items: rawItems
+              });
+            }
+          })
+          .catch(() => { })
+          .finally(() => {
+            if (isMounted) setIsDirectLoading(false);
+          });
+      }
+    }
+    return () => { isMounted = false; };
+  }, [propOrder, selectedOrderIdForDetails, orders]);
+
   // Find the target order
   const order = useMemo(() => {
     if (propOrder) return propOrder;
     if (selectedOrderIdForDetails) {
       const found = orders.find(o => o.id === selectedOrderIdForDetails);
       if (found) return found;
+      if (directOrder && directOrder.id === selectedOrderIdForDetails) return directOrder;
     }
-    return orders[0] || null;
-  }, [propOrder, selectedOrderIdForDetails, orders]);
+    return directOrder || orders[0] || null;
+  }, [propOrder, selectedOrderIdForDetails, orders, directOrder]);
+
+  // Safely extract and parse items array
+  const safeItems = useMemo(() => {
+    let raw = order?.items;
+    if (typeof raw === 'string') {
+      try { raw = JSON.parse(raw); } catch { raw = []; }
+    }
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(Boolean);
+  }, [order?.items]);
 
   const handleCopyId = () => {
     if (!order?.id) return;
@@ -239,9 +334,9 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
     try {
       if (reorderOrderItems) {
         await reorderOrderItems(order.id);
-      } else if (order.items && order.items.length > 0 && addToCart) {
-        order.items.forEach(item => {
-          if (item.product) {
+      } else if (safeItems.length > 0 && addToCart) {
+        safeItems.forEach(item => {
+          if (item?.product) {
             addToCart(item.product, item.shade || null, item.quantity || 1);
           }
         });
@@ -260,6 +355,15 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
       Alert.alert('Reorder', 'Could not reorder items. Please try again.');
     }
   };
+
+  if (isDirectLoading) {
+    return (
+      <View className="flex-1 bg-[#FFFFFF] items-center justify-center p-6">
+        <ActivityIndicator size="large" color="#B64F7D" />
+        <Text className="text-xs font-bold text-[#8A7B85] mt-3">Loading Order Details...</Text>
+      </View>
+    );
+  }
 
   if (!order) {
     return (
@@ -303,9 +407,9 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
   }, [order, orderTime]);
 
   // Financial calculations
-  const itemsSubtotal = (order.items || []).reduce((sum, it) => {
-    const price = Number(it.unitPrice || it.price || 0);
-    const qty = Number(it.quantity || 1);
+  const itemsSubtotal = safeItems.reduce((sum, it) => {
+    const price = Number(it?.unitPrice || it?.price || 0);
+    const qty = Number(it?.quantity || 1);
     return sum + (price * qty);
   }, 0);
 
@@ -378,6 +482,18 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={async () => {
+              setIsRefreshing(true);
+              try { await refreshOrders?.(); } catch (_) { }
+              setIsRefreshing(false);
+            }}
+            colors={['#CE4270']}
+            tintColor="#CE4270"
+          />
+        }
       >
         {/* CARD 1: ORDER REFERENCE & STATUS BANNER */}
         <View
@@ -537,13 +653,12 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                         style={{ width: `${100 / ORDER_STAGES.length}%` }}
                       >
                         <View
-                          className={`w-7 h-7 rounded-full items-center justify-center ${
-                            isPassed
+                          className={`w-7 h-7 rounded-full items-center justify-center ${isPassed
                               ? 'bg-[#B64F7D]'
                               : isCurrent
-                              ? 'bg-white border-2 border-[#B64F7D]'
-                              : 'bg-white border border-gray-200'
-                          }`}
+                                ? 'bg-white border-2 border-[#B64F7D]'
+                                : 'bg-white border border-gray-200'
+                            }`}
                         >
                           {isPassed ? (
                             <Ionicons name="checkmark" size={13} color="#FFF" />
@@ -554,13 +669,12 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                           )}
                         </View>
                         <Text
-                          className={`mt-1.5 text-[8.5px] font-extrabold text-center ${
-                            isCurrent
+                          className={`mt-1.5 text-[8.5px] font-extrabold text-center ${isCurrent
                               ? 'text-[#B64F7D]'
                               : isPassed
-                              ? 'text-[#352832]'
-                              : 'text-gray-400'
-                          }`}
+                                ? 'text-[#352832]'
+                                : 'text-gray-400'
+                            }`}
                         >
                           {st.label}
                         </Text>
@@ -602,98 +716,196 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           }}
           className="p-4 mb-4"
         >
-          <View className="flex-row justify-between items-center pb-2 border-b border-[#F0E3EA] mb-3">
-            <View className="flex-row items-center gap-1.5">
-              <Ionicons name="bag-handle-outline" size={15} color="#B64F7D" />
-              <Text className="text-xs font-extrabold text-[#352832] uppercase tracking-wider">
-                Ordered Items ({(order.items || []).length})
-              </Text>
+          <View className="flex-row justify-between items-center pb-3 border-b border-[#F0E3EA] mb-3.5">
+            <View className="flex-row items-center gap-2">
+              <View className="w-7 h-7 rounded-lg bg-pink-50 items-center justify-center border border-[#FCE4EC]">
+                <Ionicons name="bag-handle-outline" size={15} color="#B64F7D" />
+              </View>
+              <div>
+                <Text className="text-xs font-black text-[#352832] uppercase tracking-wider">
+                  Ordered Items ({safeItems.length})
+                </Text>
+                <Text className="text-[10px] text-[#8A7B85] font-semibold">
+                  Itemized pricing & quantities
+                </Text>
+              </div>
             </View>
             <TouchableOpacity
               onPress={handleReorder}
-              className="bg-[#FFFFFF] border border-[#F0E3EA] px-2.5 py-1 rounded-lg flex-row items-center gap-1"
+              className="bg-white border border-[#F0E3EA] px-3 py-1.5 rounded-xl flex-row items-center gap-1.5 shadow-2xs active:bg-pink-50"
             >
-              <Ionicons name="repeat-outline" size={12} color="#B64F7D" />
-              <Text className="text-[10px] font-bold text-[#B64F7D]">Reorder All</Text>
+              <Ionicons name="repeat-outline" size={13} color="#B64F7D" />
+              <Text className="text-[10px] font-extrabold text-[#B64F7D]">Reorder All</Text>
             </TouchableOpacity>
           </View>
 
-          {(order.items || []).map((it, idx) => {
-            const itemPrice = Number(it.unitPrice || it.price || 0);
-            const itemQty = Number(it.quantity || 1);
-            const lineTotal = itemPrice * itemQty;
-            const itemStatus = it.status || order.status || 'placed';
-            const canCancelItem = (itemStatus === 'placed' || itemStatus === 'processing') && isWithin60MinWindow;
+          <View className="space-y-3">
+            {safeItems.map((it, idx) => {
+              const itemPrice = Number(it.unitPrice || it.price || 0);
+              const itemQty = Number(it.quantity || 1);
+              const lineTotal = itemPrice * itemQty;
+              const itemStatus = it.status || order.status || 'placed';
+              const canCancelItem = (itemStatus === 'placed' || itemStatus === 'processing') && isWithin60MinWindow;
 
-            // Fallback image: item image -> product image -> null
-            const itemImage = it.image || it.product?.image || null;
+              const brandName = it.product?.brandName || it.brand || it.brandName || 'SALBEAU';
+              const productName = it.product?.name || it.name || 'Cosmetic Product';
+              const variantName = it.variantName || it.variant || it.selectedVariant?.name || it.size || it.volume || null;
+              
+              const shadeObj = it.shade || it.selectedShade;
+              const shadeName = shadeObj ? (shadeObj.name || shadeObj.color_name || (typeof shadeObj === 'string' ? shadeObj : null)) : null;
+              const shadeColor = shadeObj ? (shadeObj.hexColor || shadeObj.hex || '#CE4270') : null;
 
-            return (
-              <View
-                key={idx}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderColor: '#F0E3EA',
-                  borderWidth: 1,
-                  borderRadius: 16
-                }}
-                className="p-3 mb-2.5 flex-row justify-between items-center"
-              >
-                <View className="flex-row items-center flex-1 mr-2">
-                  <View className="w-13 h-13 rounded-xl bg-white border border-[#F0E3EA] overflow-hidden mr-3 items-center justify-center p-1">
-                    {itemImage ? (
-                      <Image
-                        source={getSafeImageSource(itemImage)}
-                        style={{ width: '88%', height: '88%' }}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <Ionicons name="sparkles" size={20} color="#B64F7D" />
-                    )}
+              const mrp = Number(it.mrp || it.product?.mrp || 0);
+              const hasDiscount = mrp > itemPrice;
+              const discountPercent = hasDiscount ? Math.round(((mrp - itemPrice) / mrp) * 100) : 0;
+
+              // Fallback image: item image -> product image -> variant image -> null
+              const itemImage = it.image || it.product?.image || (Array.isArray(it.product?.images) && it.product.images[0]) || shadeObj?.image || null;
+
+              return (
+                <View
+                  key={idx}
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#F0E3EA',
+                    borderWidth: 1,
+                    borderRadius: 16
+                  }}
+                  className="p-3.5 mb-3"
+                >
+                  {/* Top: Product Image + Brand + Full Name + Variant/Shade */}
+                  <View className="flex-row items-start gap-3">
+                    {/* Square Thumbnail */}
+                    <View
+                      style={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: 14,
+                        backgroundColor: '#FFFFFF',
+                        borderColor: '#F0E3EA',
+                        borderWidth: 1
+                      }}
+                      className="overflow-hidden items-center justify-center p-1.5 shrink-0 shadow-2xs"
+                    >
+                      {itemImage ? (
+                        <Image
+                          source={getSafeImageSource(itemImage)}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <Ionicons name="sparkles" size={24} color="#B64F7D" />
+                      )}
+                    </View>
+
+                    {/* Product Details - Full Name, Brand, Variant & Shade */}
+                    <View className="flex-1 min-w-0">
+                      <View className="flex-row items-center gap-1.5 flex-wrap">
+                        <Text className="text-[10px] font-black text-[#B64F7D] tracking-wider uppercase">
+                          {brandName}
+                        </Text>
+                        {variantName && (
+                          <View className="bg-pink-50 border border-pink-100 px-1.5 py-0.2 rounded-md">
+                            <Text className="text-[9px] font-extrabold text-[#B64F7D]">
+                              {variantName}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Complete product name - zero clipping or truncation */}
+                      <Text
+                        className="text-xs font-black text-[#352832] mt-0.5 leading-snug"
+                        style={{ flexWrap: 'wrap' }}
+                      >
+                        {productName}
+                      </Text>
+
+                      {/* Selected Shade and Swatch */}
+                      {shadeName && (
+                        <View className="flex-row items-center gap-1.5 mt-1 bg-gray-50/80 border border-gray-100 px-2 py-0.5 rounded-lg self-start">
+                          <View
+                            style={{ backgroundColor: shadeColor || '#CE4270' }}
+                            className="w-3 h-3 rounded-full border border-gray-300 shadow-2xs"
+                          />
+                          <Text className="text-[10px] font-bold text-[#554050]">
+                            Shade: {shadeName}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
 
-                  <View className="flex-1">
-                    <Text className="text-[9.5px] font-bold text-[#B64F7D] uppercase tracking-wider">
-                      {it.product?.brandName || it.brand || 'SALBEAU'}
-                    </Text>
-                    <Text className="text-xs font-extrabold text-[#352832]" numberOfLines={1}>
-                      {it.product?.name || it.name || 'Cosmetic Product'}
-                    </Text>
-
-                    {it.shade && (
-                      <View className="flex-row items-center gap-1.5 mt-0.5">
-                        <View
-                          style={{ backgroundColor: it.shade.hexColor || it.shade.hex || '#CE4270' }}
-                          className="w-2.5 h-2.5 rounded-full border border-gray-300"
-                        />
-                        <Text className="text-[10px] font-semibold text-[#8A7B85]" numberOfLines={1}>
-                          Shade: {it.shade.name || it.shade.color_name}
+                  {/* Bottom Strip: Quantity | Unit Price | Discount | Total Amount */}
+                  <View
+                    style={{
+                      borderTopColor: '#F5ECF1',
+                      borderTopWidth: 1
+                    }}
+                    className="mt-3 pt-2.5 flex-row items-center justify-between flex-wrap gap-2"
+                  >
+                    <View className="flex-row items-center gap-2 flex-wrap">
+                      {/* Quantity booked */}
+                      <View className="bg-pink-50/70 border border-pink-200/60 px-2 py-0.5 rounded-lg">
+                        <Text className="text-[10px] font-extrabold text-[#B64F7D]">
+                          Qty: {itemQty}
                         </Text>
                       </View>
-                    )}
 
-                    <Text className="text-[10px] text-[#8A7B85] font-semibold mt-0.5">
-                      Qty: {itemQty} × ₹{itemPrice.toLocaleString('en-IN')}
-                    </Text>
+                      {/* Unit Price */}
+                      <View className="flex-row items-baseline gap-1">
+                        <Text className="text-[10px] text-[#8A7B85] font-semibold">
+                          Unit:
+                        </Text>
+                        <Text className="text-[11px] font-black text-[#352832]">
+                          ₹{itemPrice.toLocaleString('en-IN')}
+                        </Text>
+                        {hasDiscount && (
+                          <Text className="text-[10px] text-[#A697A2] line-through">
+                            ₹{mrp.toLocaleString('en-IN')}
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Discount Badge */}
+                      {hasDiscount && (
+                        <View className="bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-md">
+                          <Text className="text-[9px] font-black text-emerald-700">
+                            {discountPercent}% OFF
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Total Price for that product */}
+                    <View className="flex-row items-baseline gap-1.5 ml-auto">
+                      <Text className="text-[10px] text-[#8A7B85] font-bold uppercase">
+                        Total:
+                      </Text>
+                      <Text className="text-sm font-black text-[#B64F7D]">
+                        ₹{lineTotal.toLocaleString('en-IN')}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                <View className="items-end">
-                  <Text className="text-xs font-black text-[#B64F7D] mb-1">
-                    ₹{lineTotal.toLocaleString('en-IN')}
-                  </Text>
+                  {/* Cancel specific item if inside eligible 60-min window */}
                   {canCancelItem && (
-                    <TouchableOpacity
-                      onPress={() => cancelSpecificOrderItem(order.id, idx)}
-                      className="bg-rose-50 px-2 py-0.5 rounded border border-rose-200 mt-1"
-                    >
-                      <Text className="text-[9px] font-bold text-rose-600">Cancel Item</Text>
-                    </TouchableOpacity>
+                    <View className="mt-2 pt-2 border-t border-dashed border-gray-200 flex-row justify-end">
+                      <TouchableOpacity
+                        onPress={() => cancelSpecificOrderItem(order.id, idx)}
+                        className="bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 flex-row items-center gap-1 active:bg-rose-100"
+                      >
+                        <Ionicons name="close-circle-outline" size={11} color="#E11D48" />
+                        <Text className="text-[9.5px] font-extrabold text-rose-600">
+                          Cancel This Product
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>
         </View>
 
         {/* CARD 4: DELIVERY & CONTACT DETAILS */}
@@ -753,15 +965,35 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           </View>
 
           {/* Delivery Instructions */}
-          <View className="py-2 border-t border-[#F0E3EA]">
-            <Text className="text-[10px] font-bold text-[#8A7B85] uppercase">Delivery Instructions:</Text>
-            <Text className="text-xs font-medium text-[#352832] mt-0.5 leading-relaxed">
-              {order.deliveryInstructions || 'No special delivery instructions provided.'}
-            </Text>
-          </View>
+          {order.deliveryInstructions ? (
+            <View className="py-2 border-t border-[#F0E3EA]">
+              <Text className="text-[10px] font-bold text-[#8A7B85] uppercase">Delivery Instructions:</Text>
+              <Text className="text-xs font-medium text-[#352832] mt-0.5 leading-relaxed">
+                {order.deliveryInstructions}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Assigned Delivery Staff */}
+          {order.assignedEmployeeName ? (
+            <View className="py-2.5 px-3 bg-[#F0FDF4] border border-[#DCFCE7] rounded-xl mt-2 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <View className="w-7 h-7 rounded-full bg-emerald-600 items-center justify-center">
+                  <Ionicons name="person" size={14} color="#FFFFFF" />
+                </View>
+                <View>
+                  <Text className="text-[10px] font-bold text-[#166534] uppercase">Assigned Delivery Partner</Text>
+                  <Text className="text-xs font-black text-[#15803D]">{order.assignedEmployeeName}</Text>
+                </View>
+              </View>
+              <View className="px-2 py-0.5 bg-emerald-100 rounded-full">
+                <Text className="text-[9.5px] font-bold text-[#166534]">Active</Text>
+              </View>
+            </View>
+          ) : null}
         </View>
 
-        {/* CARD 5: PAYMENT SUMMARY */}
+        {/* CARD 5: PAYMENT DETAILS & COLLECTION STATUS */}
         <View
           style={{
             backgroundColor: '#FFFFFF',
@@ -776,14 +1008,42 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           }}
           className="p-4 mb-4"
         >
-          <View className="flex-row items-center gap-1.5 pb-2 border-b border-[#F0E3EA] mb-3">
-            <Ionicons name="receipt-outline" size={15} color="#B64F7D" />
-            <Text className="text-xs font-extrabold text-[#352832] uppercase tracking-wider">
-              Payment Summary
-            </Text>
+          <View className="flex-row justify-between items-center pb-2 border-b border-[#F0E3EA] mb-3">
+            <View className="flex-row items-center gap-1.5">
+              <Ionicons name="card-outline" size={15} color="#B64F7D" />
+              <Text className="text-xs font-extrabold text-[#352832] uppercase tracking-wider">
+                Payment & Collection
+              </Text>
+            </View>
+            <View className={`px-2.5 py-0.5 rounded-full flex-row items-center gap-1 ${order.paymentStatus === 'paid' ? 'bg-[#DCFCE7] border border-[#BBF7D0]' : 'bg-[#FEF3C7] border border-[#FDE68A]'
+              }`}>
+              <Ionicons
+                name={order.paymentStatus === 'paid' ? 'checkmark-circle' : 'time'}
+                size={12}
+                color={order.paymentStatus === 'paid' ? '#16A34A' : '#D97706'}
+              />
+              <Text className={`text-[10px] font-black ${order.paymentStatus === 'paid' ? 'text-[#166534]' : 'text-[#92400E]'
+                }`}>
+                {order.paymentStatus === 'paid' ? 'PAID' : 'COD PENDING'}
+              </Text>
+            </View>
           </View>
 
-          <View className="space-y-2">
+          <View className="space-y-2 mb-3">
+            <View className="flex-row justify-between items-center py-1">
+              <Text className="text-xs text-[#8A7B85] font-medium">Payment Method</Text>
+              <View className="flex-row items-center gap-1">
+                <Ionicons
+                  name={order.paymentMethod === 'qr' ? 'qr-code-outline' : 'cash-outline'}
+                  size={14}
+                  color="#B64F7D"
+                />
+                <Text className="text-xs font-bold text-[#352832]">
+                  {order.paymentMethod === 'qr' ? 'QR / UPI Scanner Collection' : 'Cash on Delivery (Cash)'}
+                </Text>
+              </View>
+            </View>
+
             <View className="flex-row justify-between items-center py-1">
               <Text className="text-xs text-[#8A7B85] font-medium">Item Subtotal</Text>
               <Text className="text-xs font-bold text-[#352832]">₹{itemsSubtotal.toLocaleString('en-IN')}</Text>
@@ -810,9 +1070,9 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
 
             <View className="border-t border-[#F0E3EA] pt-2.5 mt-1 flex-row justify-between items-center">
               <View>
-                <Text className="text-sm font-black text-[#352832]">Total Payable</Text>
+                <Text className="text-sm font-black text-[#352832]">Total Amount</Text>
                 <Text className="text-[10px] text-[#8A7B85]">
-                  Payment Mode: {order.paymentMethod || 'Cash on Delivery (COD)'}
+                  {order.paymentStatus === 'paid' ? 'Payment Verified & Collected' : 'Payable on Delivery'}
                 </Text>
               </View>
               <Text className="text-lg font-black text-[#B64F7D]">

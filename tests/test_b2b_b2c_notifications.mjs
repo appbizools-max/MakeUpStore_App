@@ -84,8 +84,8 @@ describe('SALBEAU NOTIFICATION SYSTEM AUDIT: STANDARDS, B2C & B2B COVERAGE', () 
   });
 
   it('4. B2C User Coverage: Order notifications query filters correctly for retail customers', () => {
-    const appContextPath = path.join(PROJECT_ROOT, 'app/src/context/AppContext.jsx');
-    assert.ok(fs.existsSync(appContextPath), 'AppContext.jsx must exist');
+    const appContextPath = path.join(PROJECT_ROOT, 'app/src/context/AppContext.js');
+    assert.ok(fs.existsSync(appContextPath), 'AppContext.js must exist');
     const content = fs.readFileSync(appContextPath, 'utf8');
 
     // Verify Realtime notification subscription
@@ -93,8 +93,8 @@ describe('SALBEAU NOTIFICATION SYSTEM AUDIT: STANDARDS, B2C & B2B COVERAGE', () 
     // Verify phone/user_id matching logic
     assert.ok(content.includes('cleanPhone && notif.user_id === cleanPhone'), 'AppContext must match by phone');
     assert.ok(content.includes('cleanId && notif.user_id === cleanId'), 'AppContext must match by user id');
-    // Verify target: all and target: customer
-    assert.ok(content.includes("notif.target === 'customer'"), 'AppContext must accept customer-targeted notifications');
+    // Verify system tray delivery
+    assert.ok(content.includes('displayLocalNotification'), 'AppContext must deliver to system tray');
   });
 
   it('5. B2B User Coverage: B2B verification desk dispatches dedicated business events', () => {
@@ -110,26 +110,24 @@ describe('SALBEAU NOTIFICATION SYSTEM AUDIT: STANDARDS, B2C & B2B COVERAGE', () 
     assert.ok(content.includes("await supabase.from('notifications').insert(customerNotification)"), 'Must insert into notifications table');
   });
 
-  it('6. B2B User Coverage: Mobile Notification Center renders B2B badges and deep-links', () => {
-    const notifScreenPath = path.join(PROJECT_ROOT, 'app/src/screens/NotificationCenterScreen.jsx');
-    assert.ok(fs.existsSync(notifScreenPath), 'NotificationCenterScreen.jsx must exist');
-    const content = fs.readFileSync(notifScreenPath, 'utf8');
+  it('6. Mobile System Tray Notification & Deep-Linking Coverage', () => {
+    const fcmServicePath = path.join(PROJECT_ROOT, 'app/src/utils/fcmService.js');
+    assert.ok(fs.existsSync(fcmServicePath), 'fcmService.js must exist');
+    const content = fs.readFileSync(fcmServicePath, 'utf8');
 
-    // Badges
-    assert.ok(content.includes('b2b_approved'), 'Must style b2b_approved badge');
-    assert.ok(content.includes('b2b_rejected'), 'Must style b2b_rejected badge');
-    assert.ok(content.includes('b2b_resubmission_required'), 'Must style b2b_resubmission_required badge');
+    // Verify native tray delivery
+    assert.ok(content.includes('displayLocalNotification'), 'Must export displayLocalNotification');
+    assert.ok(content.includes('getInitialNotification'), 'Must support cold launch getInitialNotification');
+    assert.ok(content.includes('setupNotificationTapListener'), 'Must support warm tap listener');
 
-    // Deep link
-    assert.ok(content.includes("setCurrentScreen('b2b_verification')"), 'Tapping B2B notification must route to b2b_verification');
-    assert.ok(content.includes('View Verification Desk'), 'Must provide View Verification Desk quick action');
-
-    // Filter tab
-    assert.ok(content.includes("id: 'b2b'"), 'Must include B2B Updates tab for business users');
+    // Verify In-App Bell is removed from HomeScreen
+    const homeScreenPath = path.join(PROJECT_ROOT, 'app/src/features/home/HomeScreen.js');
+    const homeContent = fs.readFileSync(homeScreenPath, 'utf8');
+    assert.ok(!homeContent.includes("setCurrentScreen('notifications')"), 'Home Screen must not contain notification bell');
   });
 
   it('7. Realtime Reactive Pricing: App updates B2B pricing immediately on approval without restart', () => {
-    const appContextPath = path.join(PROJECT_ROOT, 'app/src/context/AppContext.jsx');
+    const appContextPath = path.join(PROJECT_ROOT, 'app/src/context/AppContext.js');
     const content = fs.readFileSync(appContextPath, 'utf8');
 
     // Check Realtime listener for b2b_verifications table

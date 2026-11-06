@@ -342,6 +342,13 @@ export const getSafeProductShades = (product) => {
     }
   }
   if (!Array.isArray(raw)) raw = [];
-  return raw.filter(s => s && s.active !== false);
+  return raw.filter(s => {
+    if (!s || s.active === false || s.isDeleted) return false;
+    const name = String(s.color_name || s.name || s.title || s.shade || '').trim().toLowerCase();
+    if (!name || name === 'default' || name === 'default shade' || name === 'standard' || name === 'standard formulation' || name === 'n/a' || name === 'non-shade' || name === 'n/a (non-shade)' || name === 'default variant') {
+      return false;
+    }
+    return true;
+  });
 };
 

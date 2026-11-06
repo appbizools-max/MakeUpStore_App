@@ -814,9 +814,7 @@ export function canAccessTab(tabId, user) {
       return Boolean(perms.employees?.enabled);
     case 'employees/new':
       return Boolean(perms.employees?.enabled && perms.employees?.actions?.add);
-    case 'audit_trail':
-      return Boolean(perms.employees?.enabled || perms.reports?.enabled);
-    case 'dashboard_visibility':
+        case 'dashboard_visibility':
     case 'settings':
       return Boolean(perms.settings?.enabled);
     case 'quick_panel': {
@@ -855,8 +853,7 @@ export function getFirstAccessibleTab(user) {
     'pricing_rules',
     'cancel_fee',
     'employees',
-    'audit_trail',
-    'approval_center',
+        'approval_center',
     'dashboard_visibility',
     'quick_panel'
   ];

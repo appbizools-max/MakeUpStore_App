@@ -399,7 +399,7 @@ export const SelectShadeBottomSheet = ({
             {/* 2. PROPORTIONALLY SCALED PRODUCT IMAGE */}
             <View
               style={{
-                backgroundColor: '#FFF7FA',
+                backgroundColor: '#FFFFFF',
                 height: 132,
               }}
               className="w-full items-center justify-center px-4 relative overflow-hidden"

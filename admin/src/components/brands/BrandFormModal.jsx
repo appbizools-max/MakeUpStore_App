@@ -567,7 +567,7 @@ export default function BrandFormModal({
               {isSubmitting ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
-                  <span>Saving to Supabase...</span>
+                  <span>Saving to Database...</span>
                 </>
               ) : (
                 <>

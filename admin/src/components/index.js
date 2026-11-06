@@ -45,13 +45,11 @@ export { default as CustomerSearchRequestsPage } from './b2b/CustomerSearchReque
 
 // Governance & Employees Module
 export { default as ApprovalCenterPage } from './governance/ApprovalCenterPage';
-export { default as AuditTrailPage } from './governance/AuditTrailPage';
 export { default as AllEmployeesPage } from './governance/employees/AllEmployeesPage';
 export { default as AddEmployeePage } from './governance/employees/AddEmployeePage';
 export { default as EmployeeProfilePage } from './governance/employees/EmployeeProfilePage';
 export { default as EditEmployeePage } from './governance/employees/EditEmployeePage';
 export { default as EmployeePermissionsPage } from './governance/employees/EmployeePermissionsPage';
-export { default as EmployeeActivityPage } from './governance/employees/EmployeeActivityPage';
 
 // Common Reusable Controls
 export {

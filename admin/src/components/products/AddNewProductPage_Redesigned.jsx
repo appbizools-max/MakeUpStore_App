@@ -58,6 +58,7 @@ import {
   Globe
 } from 'lucide-react';
 import InPanelImageBrowserDrawer from './InPanelImageBrowserDrawer';
+import ProductImageGalleryManager from './ProductImageGalleryManager';
 import { useAdmin, DEFAULT_PRICING_RULES } from '../../context/AdminContext';
 import { validateBarcodeFormat, normalizeBarcode, detectBarcodeType } from '../../utils/barcodeUtils';
 import {
@@ -1767,9 +1768,9 @@ export default function AddNewProductPage({
                       setFormData({ ...formData, name: e.target.value });
                       if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: null }));
                     }}
-                    className={`w-full px-3 py-2.5 rounded-xl border outline-none font-semibold text-gray-900 text-xs shadow-2xs transition-all ${fieldErrors.name
-                      ? 'border-rose-400 bg-rose-50/30 focus:border-rose-500 ring-2 ring-rose-100'
-                      : 'border-pink-100 focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15 bg-white'
+                    className={`w-full px-3 py-2.5 rounded-xl border outline-none font-semibold text-gray-900 text-xs shadow-2xs transition-all bg-white ${fieldErrors.name
+                      ? 'border-rose-400 focus:border-rose-500 ring-2 ring-rose-100'
+                      : 'border-pink-100 focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15'
                       }`}
                   />
                   {fieldErrors.name && (
@@ -2108,13 +2109,13 @@ export default function AddNewProductPage({
                           }, 0);
                         }
                       }}
-                      className={`w-full py-2.5 pl-3 pr-10 rounded-xl border font-mono font-bold text-gray-900 text-xs outline-none transition-all shadow-2xs ${barcodeStatus.exists
-                        ? 'border-rose-400 bg-rose-50/50 text-rose-900 ring-2 ring-rose-100'
+                      className={`w-full py-2.5 pl-3 pr-10 rounded-xl border font-mono font-bold text-gray-900 text-xs outline-none transition-all shadow-2xs bg-white ${barcodeStatus.exists
+                        ? 'border-rose-400 text-rose-900 ring-2 ring-rose-100'
                         : barcodeStatus.formatError
-                          ? 'border-amber-400 bg-amber-50/50'
+                          ? 'border-amber-400'
                           : barcodeStatus.checkedBarcode && !barcodeStatus.exists && !barcodeStatus.formatError
-                            ? 'border-emerald-300 bg-emerald-50/20 text-gray-900'
-                            : 'border-pink-100 bg-white focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15'
+                            ? 'border-emerald-300 text-gray-900'
+                            : 'border-pink-100 focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15'
                         }`}
                     />
                     {formData.barcode && (
@@ -2244,221 +2245,34 @@ export default function AddNewProductPage({
               </div>
             </div>
 
-            {/* CARD 3: MEDIA & PRODUCT GALLERY */}
-            <div
-              onDragOver={(e) => { e.preventDefault(); setIsDraggingImage(true); }}
-              onDragLeave={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget)) {
-                  setIsDraggingImage(false);
-                }
+            {/* CARD 3: PROFESSIONAL PRODUCT & VARIANT IMAGE MANAGEMENT */}
+            <ProductImageGalleryManager
+              images={formData.images || (formData.image ? [formData.image] : [])}
+              primaryImage={formData.image || (formData.images && formData.images[0]) || ''}
+              onChangeImages={(newImagesList, newPrimary) => {
+                setFormData(prev => ({
+                  ...prev,
+                  images: newImagesList,
+                  image: newPrimary || (newImagesList && newImagesList[0]) || ''
+                }));
+                setIsDirty(true);
               }}
-              onDrop={handleImageDrop}
-              className={`bg-white rounded-2xl border transition-all p-6 shadow-xs space-y-4 ${isDraggingImage ? 'border-[#E11D48] ring-2 ring-pink-100 bg-white' : 'border-[#F3D7DF]'
-                }`}
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-pink-100/70">
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-full bg-[#E11D48] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                    3
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-black text-gray-900 tracking-tight">
-                        Product Media &amp; Gallery
-                      </h2>
-                      {uploadedImagesList.length > 0 && (
-                        <span className="text-[10px] font-bold text-[#E11D48] bg-white border border-pink-100 px-2 py-0.5 rounded-full">
-                          {uploadedImagesList.length} {uploadedImagesList.length === 1 ? 'image' : 'images'}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-gray-500 font-medium">
-                      Upload directly to Supabase storage, manage thumbnails, set primary image, or search Google
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowUrlInput(!showUrlInput)}
-                    className="px-2.5 py-1.5 rounded-xl border border-pink-200 text-[#E11D48] bg-white hover:bg-pink-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <LinkIcon size={12} />
-                    <span>Paste URL</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSearchGoogleImages}
-                    className="px-2.5 py-1.5 rounded-xl border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                    title="Search Google Images in a new browser tab"
-                  >
-                    <Globe size={13} className="text-amber-600" />
-                    <span>Search Google Images ↗</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* URL Input Bar */}
-              {showUrlInput && (
-                <div className="p-3 bg-white rounded-xl border border-pink-100 flex items-center gap-2">
-                  <input
-                    type="url"
-                    placeholder="https://images.example.com/products/packshot.jpg"
-                    value={imageUrlInput}
-                    onChange={(e) => setImageUrlInput(e.target.value)}
-                    className="flex-1 py-1.5 px-3 rounded-lg border border-pink-200 bg-white font-mono text-xs text-gray-900 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddFromUrl}
-                    className="px-3 py-1.5 rounded-lg bg-[#E11D48] text-white text-xs font-bold shadow-xs cursor-pointer"
-                  >
-                    Add Image
-                  </button>
-                </div>
-              )}
-
-              {/* Hidden File Input */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                multiple
-                accept="image/png,image/jpeg,image/webp"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    handleFilesUpload(e.target.files);
-                  }
-                  e.target.value = '';
-                }}
-                className="hidden"
-              />
-
-              {imageError && (
-                <div className="p-3 rounded-xl bg-white border border-red-300 text-red-700 text-xs font-bold flex items-center justify-between shadow-xs">
-                  <span>{imageError}</span>
-                  <button onClick={() => setImageError(null)} className="p-0.5 text-rose-500 hover:text-rose-800">
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-
-              {/* Compact Dropzone when empty OR Thumbnails strip with + Add More */}
-              {uploadedImagesList.length === 0 ? (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`w-full py-6 px-4 rounded-xl border-2 border-dashed flex flex-col sm:flex-row items-center justify-between gap-4 transition-all cursor-pointer ${isDraggingImage
-                    ? 'border-[#E11D48] bg-white'
-                    : 'border-pink-200/90 hover:border-[#E11D48] bg-white hover:bg-pink-50/50'
-                    }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-white text-[#E11D48] flex items-center justify-center shadow-xs border border-pink-100 shrink-0">
-                      {isUploadingImage ? (
-                        <Loader2 size={20} className="animate-spin text-[#E11D48]" />
-                      ) : (
-                        <Upload size={20} />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-800">
-                        {isUploadingImage ? 'Uploading product image to storage...' : 'Drag & drop packshot images here, or browse files'}
-                      </p>
-                      <p className="text-[11px] text-gray-400">
-                        Supports PNG, JPG, WebP up to 10MB each (Multiple files supported)
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#E11D48] to-[#E6005C] text-white text-xs font-bold shadow-2xs pointer-events-none shrink-0"
-                  >
-                    Browse Files
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 overflow-x-auto pb-2 custom-scrollbar">
-                    {uploadedImagesList.map((imgUrl, index) => {
-                      const isSelected = selectedPreviewImageIndex === index;
-                      const isPrimary = index === 0;
-                      return (
-                        <div
-                          key={index}
-                          onClick={() => setSelectedPreviewImageIndex(index)}
-                          className={`group relative w-24 h-28 rounded-2xl border overflow-hidden bg-white shrink-0 shadow-2xs transition-all cursor-pointer ${isSelected ? 'border-[#E11D48] ring-2 ring-pink-200' : 'border-pink-100 hover:border-pink-300'
-                            }`}
-                        >
-                          <img
-                            src={imgUrl}
-                            alt={`Packshot ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-
-                          {/* Primary Badge */}
-                          {isPrimary ? (
-                            <span className="absolute top-1 left-1 bg-[#E11D48] text-white text-[8.5px] font-black px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
-                              ★ Primary
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSetPrimaryImage(index);
-                              }}
-                              className="absolute top-1 left-1 bg-black/60 hover:bg-[#E11D48] text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                              title="Set as primary image"
-                            >
-                              Make Primary
-                            </button>
-                          )}
-
-                          {/* Index label */}
-                          <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.2 rounded backdrop-blur-xs">
-                            #{index + 1}
-                          </span>
-
-                          {/* Remove Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveImage(index);
-                            }}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-white/95 hover:bg-rose-600 text-gray-600 hover:text-white flex items-center justify-center transition-colors shadow-xs cursor-pointer opacity-90 group-hover:opacity-100"
-                            title="Remove packshot"
-                          >
-                            <X size={11} className="stroke-[2.5]" />
-                          </button>
-                        </div>
-                      );
-                    })}
-
-                    {/* [ + Add More ] Tile */}
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploadingImage}
-                      className="w-24 h-28 rounded-2xl border-2 border-dashed border-pink-200 hover:border-[#E11D48] bg-white hover:bg-pink-50/50 flex flex-col items-center justify-center gap-1.5 shrink-0 text-[#E11D48] transition-colors cursor-pointer"
-                      title="Upload or drag & drop more packshots"
-                    >
-                      {isUploadingImage ? (
-                        <Loader2 size={20} className="animate-spin text-[#E11D48]" />
-                      ) : (
-                        <Plus size={20} />
-                      )}
-                      <span className="text-[10.5px] font-bold">
-                        {isUploadingImage ? 'Uploading...' : '+ Add More'}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+              variants={formData.shades || []}
+              onChangeVariants={(newVariants) => {
+                setFormData(prev => ({
+                  ...prev,
+                  shades: newVariants
+                }));
+                setIsDirty(true);
+              }}
+              productName={formData.name}
+              brandName={formData.brandName}
+              category={formData.category}
+              subcategory={formData.subcategory}
+              sku={formData.sku || 'prod'}
+              disabled={isSaving}
+              showVariantSection={true}
+            />
 
             {/* CARD 5: DYNAMIC PRODUCT VARIANTS (SCHEMA-DRIVEN BUILDER) */}
             <DynamicVariantBuilder
@@ -2776,9 +2590,9 @@ export default function AddNewProductPage({
                       onChange={(e) => handleMrpChange(e.target.value)}
                       onWheel={(e) => e.target.blur()}
                       onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                      className={`w-full pl-12 pr-3 py-2.5 rounded-xl border outline-none font-bold text-gray-900 text-xs shadow-2xs ${fieldErrors.mrp
-                        ? 'border-rose-400 bg-rose-50/40 ring-2 ring-rose-100'
-                        : 'border-pink-100 focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15 bg-white'
+                      className={`w-full pl-12 pr-3 py-2.5 rounded-xl border outline-none font-bold text-gray-900 text-xs shadow-2xs bg-white ${fieldErrors.mrp
+                        ? 'border-rose-400 ring-2 ring-rose-100'
+                        : 'border-pink-100 focus:border-[#E11D48] focus:ring-2 focus:ring-[#E11D48]/15'
                         }`}
                     />
                   </div>
@@ -2808,9 +2622,9 @@ export default function AddNewProductPage({
                       onChange={(e) => handleRolePriceChange('general', e.target.value)}
                       onWheel={(e) => e.target.blur()}
                       onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                      className={`w-full pl-12 pr-3 py-2.5 rounded-xl border outline-none font-bold text-gray-900 text-xs shadow-2xs ${fieldErrors.generalPrice
-                        ? 'border-rose-400 bg-rose-50/40'
-                        : 'border-pink-100 focus:border-[#E11D48] bg-white'
+                      className={`w-full pl-12 pr-3 py-2.5 rounded-xl border outline-none font-bold text-gray-900 text-xs shadow-2xs bg-white ${fieldErrors.generalPrice
+                        ? 'border-rose-400'
+                        : 'border-pink-100 focus:border-[#E11D48]'
                         }`}
                     />
                   </div>

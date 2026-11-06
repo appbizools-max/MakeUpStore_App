@@ -133,7 +133,7 @@ export const AdminSidebar = ({
     if (itemId === 'cancel_fee') return activeTab === 'cancel_fee';
     if (itemId === 'pricing_rules') return activeTab === 'pricing_rules';
     if (itemId === 'employees') return activeTab === 'employees' || activeTab === 'employees/new';
-        if (itemId === 'audit_trail') return activeTab === 'audit_trail';
+    if (itemId === 'audit_trail') return activeTab === 'audit_trail';
     if (itemId === 'quick_panel') return activeTab === 'quick_panel';
     return activeTab === itemId;
   }, [activeTab]);
@@ -348,8 +348,7 @@ export const AdminSidebar = ({
           badgeVariant: 'brand',
           subItems: [
             { id: 'employees', label: 'All Employees', icon: Users },
-            { id: 'employees/new', label: 'Add Employee', icon: UserPlus },
-            { id: 'employees/activity', label: 'Activity Logs', icon: Clock }
+            { id: 'employees/new', label: 'Add Employee', icon: UserPlus }
           ]
         }
       ]
@@ -446,12 +445,11 @@ export const AdminSidebar = ({
             }`}>
             {!isSidebarCollapsed ? (
               <div className="flex items-center gap-2 overflow-hidden">
-                <span
-                  style={{ fontFamily: "'Great Vibes', cursive" }}
-                  className="text-2xl text-[#C2477A] font-normal tracking-wide leading-none select-none truncate"
-                >
-                  Salbeau
-                </span>
+                <img
+                  src="/Logo.png"
+                  alt="Salbeau"
+                  className="h-7 w-auto object-contain select-none"
+                />
                 <span className="text-[10px] font-bold tracking-wider uppercase text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
                   {currentAuthUser?.role === 'employee' ? (currentAuthUser.designation || 'Staff') : 'Admin'}
                 </span>
@@ -526,8 +524,8 @@ export const AdminSidebar = ({
                           onMouseEnter={(e) => handleTooltipEnter(e, item.label, tooltipBadge)}
                           onMouseLeave={handleTooltipLeave}
                           className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isActive
-                              ? 'bg-white text-[#C2477A] shadow-2xs ring-1 ring-[#C2477A]/30 font-bold'
-                              : 'text-slate-500 hover:bg-[#FFF5F8] hover:text-[#C2477A]'
+                            ? 'bg-white text-[#C2477A] shadow-2xs ring-1 ring-[#C2477A]/30 font-bold'
+                            : 'text-slate-500 hover:bg-[#FFF5F8] hover:text-[#C2477A]'
                             }`}
                           aria-label={item.label}
                         >
@@ -561,8 +559,8 @@ export const AdminSidebar = ({
                           }}
                           aria-expanded={hasSubItems ? isSubOpen : undefined}
                           className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isActive
-                              ? 'bg-white text-[#C2477A] font-semibold shadow-2xs relative before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-1 before:bg-[#C2477A] before:rounded-r-full'
-                              : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
+                            ? 'bg-white text-[#C2477A] font-semibold shadow-2xs relative before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-1 before:bg-[#C2477A] before:rounded-r-full'
+                            : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
                             }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -597,8 +595,8 @@ export const AdminSidebar = ({
                                   type="button"
                                   onClick={() => navigateToTab(sub.id)}
                                   className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isSubActive
-                                      ? 'bg-white text-[#C2477A] font-semibold'
-                                      : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
+                                    ? 'bg-white text-[#C2477A] font-semibold'
+                                    : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
                                     }`}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
@@ -697,12 +695,11 @@ export const AdminSidebar = ({
             {/* Mobile Header */}
             <div className="shrink-0 p-4 border-b border-pink-100/70 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span
-                  style={{ fontFamily: "'Great Vibes', cursive" }}
-                  className="text-2xl text-[#C2477A] font-normal tracking-wide"
-                >
-                  Salbeau
-                </span>
+                <img
+                  src="/Logo.png"
+                  alt="Salbeau"
+                  className="h-7 w-auto object-contain"
+                />
                 <span className="text-[10px] font-bold uppercase text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
                   {currentAuthUser?.role === 'employee' ? (currentAuthUser.designation || 'Staff') : 'Admin'}
                 </span>
@@ -749,8 +746,8 @@ export const AdminSidebar = ({
                               setIsMobileDrawerOpen(false);
                             }}
                             className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-colors cursor-pointer ${isActive
-                                ? 'bg-white text-[#C2477A] font-semibold'
-                                : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
+                              ? 'bg-white text-[#C2477A] font-semibold'
+                              : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
                               }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
@@ -787,8 +784,8 @@ export const AdminSidebar = ({
                                       setIsMobileDrawerOpen(false);
                                     }}
                                     className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${isSubActive
-                                        ? 'bg-white text-[#C2477A] font-semibold'
-                                        : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
+                                      ? 'bg-white text-[#C2477A] font-semibold'
+                                      : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
                                       }`}
                                   >
                                     <div className="flex items-center gap-2 min-w-0">
@@ -840,3 +837,4 @@ export const AdminSidebar = ({
 };
 
 export default AdminSidebar;
+

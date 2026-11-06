@@ -32,7 +32,7 @@ import {
   saveCentralBannersMaster,
   deleteBannerPermanent
 } from '../../services/bannerManagementService';
-import { supabase } from '../../config/supabase';
+import { supabase, supabaseAdmin } from '../../config/supabase';
 import { uploadOptimizedImage } from '../../services/imageStorageService';
 import { useAdmin } from '../../context/AdminContext';
 import InlineImageSection from '../media/InlineImageSection';
@@ -46,7 +46,7 @@ export default function BannerManagementPage({
   const [subcategories, setSubcategories] = useState(propSubcategories);
   const [productTypes, setProductTypes] = useState(propProductTypes);
 
-  // Sync prop changes or fetch directly from Supabase
+  // Sync prop changes or fetch directly from Store Database
   useEffect(() => {
     if (propCategories.length > 0) setCategories(propCategories);
     if (propSubcategories.length > 0) setSubcategories(propSubcategories);
@@ -55,10 +55,11 @@ export default function BannerManagementPage({
     if (propCategories.length === 0 || propSubcategories.length === 0) {
       const fetchHierarchy = async () => {
         try {
+          const client = supabaseAdmin || supabase;
           const [catRes, subRes, ptRes] = await Promise.all([
-            supabase.from('categories').select('*').order('name'),
-            supabase.from('subcategories').select('*').order('name'),
-            supabase.from('product_types').select('*').order('name')
+            client.from('categories').select('*').order('name'),
+            client.from('subcategories').select('*').order('name'),
+            client.from('product_types').select('*').order('name')
           ]);
           if (catRes.data && catRes.data.length > 0) setCategories(catRes.data);
           if (subRes.data && subRes.data.length > 0) setSubcategories(subRes.data);
@@ -74,7 +75,6 @@ export default function BannerManagementPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -87,12 +87,10 @@ export default function BannerManagementPage({
     bannerType: 'home',
     imageUrl: '',
     mobileImageUrl: '',
+    destinationType: 'BEST_SELLERS', // 'BEST_SELLERS' | 'CATEGORY'
+    destinationId: 'best_sellers',
     categoryId: '',
     categoryName: '',
-    subcategoryId: '',
-    subcategoryName: '',
-    selectionId: '',
-    selectionName: '',
     ctaText: 'Shop Now →',
     ctaLink: '',
     displayOrder: 1,
@@ -123,7 +121,7 @@ export default function BannerManagementPage({
       setBanners(data);
     } catch (err) {
       console.error('Error loading central banners:', err);
-      showToast('Failed to load banners from Supabase.', 'error');
+      showToast('Failed to load banners from database.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -133,12 +131,9 @@ export default function BannerManagementPage({
     loadBanners();
   }, [loadBanners]);
 
-  // Filtered Banners
+  // Filtered Banners (Strictly Home Screen Banners)
   const filteredBanners = useMemo(() => {
     return banners.filter(b => {
-      if (typeFilter !== 'all' && b.bannerType !== typeFilter && b.type !== typeFilter) {
-        return false;
-      }
       if (statusFilter === 'active' && b.isActive === false) return false;
       if (statusFilter === 'inactive' && b.isActive !== false) return false;
 
@@ -147,17 +142,15 @@ export default function BannerManagementPage({
         const matchTitle = (b.title || '').toLowerCase().includes(q);
         const matchSubtitle = (b.subtitle || '').toLowerCase().includes(q);
         const matchCat = (b.categoryName || '').toLowerCase().includes(q);
-        const matchSub = (b.subcategoryName || '').toLowerCase().includes(q);
-        const matchSel = (b.selectionName || '').toLowerCase().includes(q);
-        if (!matchTitle && !matchSubtitle && !matchCat && !matchSub && !matchSel) return false;
+        if (!matchTitle && !matchSubtitle && !matchCat) return false;
       }
 
       return true;
     }).sort((a, b) => (Number(a.displayOrder) || 1) - (Number(b.displayOrder) || 1));
-  }, [banners, typeFilter, statusFilter, searchQuery]);
+  }, [banners, statusFilter, searchQuery]);
 
   // Open Add Drawer
-  const handleOpenAdd = (defaultType = 'home') => {
+  const handleOpenAdd = () => {
     const nextOrder = banners.length > 0
       ? Math.max(...banners.map(b => Number(b.displayOrder) || 1)) + 1
       : 1;
@@ -166,15 +159,13 @@ export default function BannerManagementPage({
     setDrawerFormData({
       title: '',
       subtitle: '',
-      bannerType: defaultType,
+      bannerType: 'home',
       imageUrl: '',
       mobileImageUrl: '',
+      destinationType: 'BEST_SELLERS',
+      destinationId: 'best_sellers',
       categoryId: '',
       categoryName: '',
-      subcategoryId: '',
-      subcategoryName: '',
-      selectionId: '',
-      selectionName: '',
       ctaText: 'Shop Now →',
       ctaLink: '',
       displayOrder: nextOrder,
@@ -190,16 +181,14 @@ export default function BannerManagementPage({
     setDrawerFormData({
       title: banner.title || banner.name || '',
       subtitle: banner.subtitle || '',
-      bannerType: banner.bannerType || banner.type || 'home',
+      bannerType: 'home',
       imageUrl: banner.imageUrl || '',
       mobileImageUrl: banner.mobileImageUrl || banner.imageUrl || '',
+      destinationType: banner.destinationType || (banner.categoryId || banner.categoryName ? 'CATEGORY' : 'BEST_SELLERS'),
+      destinationId: banner.destinationId || banner.categoryName || 'best_sellers',
       categoryId: banner.categoryId || '',
       categoryName: banner.categoryName || '',
-      subcategoryId: banner.subcategoryId || '',
-      subcategoryName: banner.subcategoryName || '',
-      selectionId: banner.selectionId || '',
-      selectionName: banner.selectionName || '',
-      ctaText: banner.ctaText || 'Shop Now →',
+      ctaText: banner.ctaText || banner.ctaLabel || 'Shop Now →',
       ctaLink: banner.ctaLink || '',
       displayOrder: Number(banner.displayOrder) || 1,
       isActive: banner.isActive !== false
@@ -238,10 +227,7 @@ export default function BannerManagementPage({
     e.preventDefault();
 
     const errors = {};
-    const titleVal = drawerFormData.title.trim() ||
-      (drawerFormData.bannerType === 'home'
-        ? 'Home Store Banner'
-        : (drawerFormData.categoryName ? `${drawerFormData.categoryName} Banner` : 'Promotional Banner'));
+    const titleVal = drawerFormData.title.trim() || 'Home Store Banner';
 
     if (!drawerFormData.imageUrl.trim()) {
       errors.imageUrl = 'Banner image is required';
@@ -255,22 +241,24 @@ export default function BannerManagementPage({
 
     setIsSaving(true);
     try {
+      const destinationType = drawerFormData.destinationType === 'CATEGORY' && drawerFormData.categoryId ? 'CATEGORY' : 'BEST_SELLERS';
+      const destinationId = destinationType === 'CATEGORY' ? (drawerFormData.categoryName || drawerFormData.categoryId) : 'best_sellers';
+
       const bannerPayload = {
         id: editingBanner?.id || `banner_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         name: titleVal,
         title: titleVal,
         subtitle: drawerFormData.subtitle.trim(),
-        bannerType: drawerFormData.bannerType,
-        type: drawerFormData.bannerType,
+        bannerType: 'home',
+        type: 'home',
         imageUrl: drawerFormData.imageUrl.trim(),
         mobileImageUrl: (drawerFormData.mobileImageUrl || drawerFormData.imageUrl).trim(),
-        categoryId: drawerFormData.categoryId,
-        categoryName: drawerFormData.categoryName,
-        subcategoryId: drawerFormData.subcategoryId,
-        subcategoryName: drawerFormData.subcategoryName,
-        selectionId: drawerFormData.selectionId,
-        selectionName: drawerFormData.selectionName,
+        destinationType,
+        destinationId,
+        categoryId: drawerFormData.categoryId || '',
+        categoryName: drawerFormData.categoryName || '',
         ctaText: drawerFormData.ctaText.trim() || 'Shop Now →',
+        ctaLabel: drawerFormData.ctaText.trim() || 'Shop Now →',
         ctaLink: drawerFormData.ctaLink.trim(),
         displayOrder: Number(drawerFormData.displayOrder) || 1,
         isActive: drawerFormData.isActive,
@@ -297,7 +285,7 @@ export default function BannerManagementPage({
       }
 
       setIsDrawerOpen(false);
-      showToast(editingBanner ? 'Banner updated successfully in database!' : 'New banner published successfully to Supabase and live in app!');
+      showToast(editingBanner ? 'Banner updated successfully in database!' : 'New banner published successfully and live in app!');
     } catch (err) {
       console.error('Error saving banner:', err);
       showToast('Failed to save banner to database: ' + (err.message || String(err)), 'error');
@@ -339,7 +327,7 @@ export default function BannerManagementPage({
       }
 
       setDeleteTargetBanner(null);
-      showToast(`Banner "${deleteTargetBanner.title || 'Untitled'}" permanently deleted from Supabase database & storage!`);
+      showToast(`Banner "${deleteTargetBanner.title || 'Untitled'}" permanently deleted from database & cloud storage!`);
     } catch (err) {
       console.error('Delete error:', err);
       showToast('Failed to delete banner: ' + (err.message || String(err)), 'error');
@@ -412,10 +400,10 @@ export default function BannerManagementPage({
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-            Centralized Banner Management
+            Home Banner Management
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 font-medium">
-            Manage all customer-facing banners from a single command center. Assign banners to Home, Categories, Subcategories, or Leaf Selections with instant real-time app reflection.
+            Manage the hero carousel banners displayed on the customer mobile app home screen with instant real-time synchronization.
           </p>
         </div>
 
@@ -432,11 +420,11 @@ export default function BannerManagementPage({
 
           <button
             type="button"
-            onClick={() => handleOpenAdd('home')}
+            onClick={handleOpenAdd}
             className="h-10 px-5 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition-all active:scale-[0.98] cursor-pointer"
           >
             <PlusCircle size={16} />
-            <span>+ Create New Banner</span>
+            <span>+ Create Home Banner</span>
           </button>
         </div>
       </div>
@@ -444,41 +432,10 @@ export default function BannerManagementPage({
       {/* Filter Bar */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-pink-100/80 shadow-xs space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Banner Type Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-gray-50 rounded-2xl border border-gray-200/60">
-            <button
-              type="button"
-              onClick={() => setTypeFilter('all')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                typeFilter === 'all'
-                  ? 'bg-white text-[#C2477A] shadow-2xs border border-pink-100 font-black'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              All Banners ({banners.length})
-            </button>
-            {BANNER_TYPES.map(t => {
-              const count = banners.filter(b => (b.bannerType || b.type) === t.id).length;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTypeFilter(t.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    typeFilter === t.id
-                      ? 'bg-white text-[#C2477A] shadow-2xs border border-pink-100 font-black'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <span>{t.label.replace(' Banner', '')}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                    typeFilter === t.id ? 'bg-white text-[#C2477A]' : 'bg-gray-200/70 text-gray-600'
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+          {/* Banner Counter Badge */}
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-pink-50 border border-pink-200 text-[#C2477A] text-xs font-black">
+            <ImageIcon size={14} />
+            <span>Home Carousel Banners ({banners.length})</span>
           </div>
 
           {/* Active / Inactive filter */}
@@ -500,7 +457,7 @@ export default function BannerManagementPage({
           <Search size={16} className="text-[#C2477A] shrink-0" />
           <input
             type="text"
-            placeholder="Search banners by title, headline, category or subcategory name..."
+            placeholder="Search home banners by title or category..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-transparent text-xs sm:text-sm outline-none text-gray-900 placeholder-gray-400 font-medium w-full"
@@ -517,7 +474,7 @@ export default function BannerManagementPage({
       {isLoading ? (
         <div className="bg-white rounded-3xl p-16 border border-pink-100 text-center space-y-3">
           <RefreshCw size={28} className="animate-spin text-[#C2477A] mx-auto" />
-          <p className="text-xs font-bold text-gray-600">Loading banner records from Supabase...</p>
+          <p className="text-xs font-bold text-gray-600">Loading banner records...</p>
         </div>
       ) : filteredBanners.length === 0 ? (
         <div className="bg-white rounded-3xl p-16 border border-pink-100 text-center space-y-4">
@@ -527,24 +484,23 @@ export default function BannerManagementPage({
           <div>
             <h3 className="text-base font-black text-gray-900">No Banners Found</h3>
             <p className="text-xs text-gray-500 max-w-md mx-auto mt-1">
-              {searchQuery || typeFilter !== 'all' || statusFilter !== 'all'
+              {searchQuery || statusFilter !== 'all'
                 ? 'No banners match your current search or filter criteria. Try resetting filters.'
-                : 'No promotional or hero banners have been uploaded yet. Click "+ Create New Banner" to add your first campaign!'}
+                : 'No home carousel banners have been configured yet. Click "+ Create Home Banner" to add your first hero banner!'}
             </p>
           </div>
           <button
             type="button"
-            onClick={() => handleOpenAdd(typeFilter !== 'all' ? typeFilter : 'home')}
+            onClick={handleOpenAdd}
             className="px-5 py-2.5 rounded-xl bg-[#C2477A] text-white font-extrabold text-xs shadow-xs hover:bg-[#b83760] transition-all cursor-pointer inline-flex items-center gap-2"
           >
             <PlusCircle size={15} />
-            <span>Create First Banner</span>
+            <span>Create First Home Banner</span>
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredBanners.map((banner, index) => {
-            const typeConfig = BANNER_TYPES.find(t => t.id === (banner.bannerType || banner.type)) || BANNER_TYPES[0];
             return (
               <div
                 key={banner.id}
@@ -568,7 +524,7 @@ export default function BannerManagementPage({
                   {/* Type Badge & Active Pill Overlays */}
                   <div className="absolute top-3 left-3 flex items-center gap-1.5">
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/75 text-white backdrop-blur-xs shadow-xs">
-                      {typeConfig.label.replace(' Banner', '')}
+                      Home Hero
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-xs shadow-xs ${
                       banner.isActive !== false
@@ -709,7 +665,7 @@ export default function BannerManagementPage({
                     {editingBanner ? 'Edit Banner Record' : 'Create New Promotional Banner'}
                   </h2>
                   <p className="text-[11px] text-gray-400 font-medium truncate">
-                    Permanent Supabase Database and Storage Integration
+                    Permanent Cloud Database and Storage Integration
                   </p>
                 </div>
               </div>
@@ -727,32 +683,10 @@ export default function BannerManagementPage({
             {/* Compact Form Body (No massive empty gaps) */}
             <form onSubmit={handleFormSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 custom-scrollbar">
-                {/* Banner Placement Type Dropdown */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                    <span>Banner Placement Type</span>
-                    <span className="text-[10px] text-gray-400 font-semibold">Location in app</span>
-                  </label>
-                  <select
-                    value={drawerFormData.bannerType}
-                    onChange={(e) => {
-                      const newType = e.target.value;
-                      setDrawerFormData(prev => ({ ...prev, bannerType: newType }));
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none cursor-pointer focus:border-[#C2477A]"
-                  >
-                    {BANNER_TYPES.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.label} ({t.recommendedSize})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Banner Title & Subtitle */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-700">Banner Title / Headline</label>
+                    <label className="text-xs font-bold text-gray-700">Banner Title / Headline <span className="text-rose-500">*</span></label>
                     <input
                       type="text"
                       placeholder="e.g. Glowing Skin Festival"
@@ -777,69 +711,37 @@ export default function BannerManagementPage({
                   </div>
                 </div>
 
-                {/* Category Routing Assignment Fields */}
-                {(drawerFormData.bannerType === 'category' ||
-                  drawerFormData.bannerType === 'subcategory' ||
-                  drawerFormData.bannerType === 'selection') && (
-                  <div className="p-3 rounded-xl bg-white border border-pink-100 space-y-2.5">
-                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#C2477A]">
-                      <Layers size={13} />
-                      <span>Category Routing Assignment</span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-gray-700">Main Category</label>
-                      <select
-                        value={drawerFormData.categoryId}
-                        onChange={(e) => {
-                          const catId = e.target.value;
-                          const catObj = categories.find(c => String(c.id) === String(catId));
-                          setDrawerFormData(prev => ({
-                            ...prev,
-                            categoryId: catId,
-                            categoryName: catObj?.name || '',
-                            subcategoryId: '',
-                            subcategoryName: '',
-                            selectionId: '',
-                            selectionName: ''
-                          }));
-                        }}
-                        className="w-full px-3 py-1.5 rounded-lg border border-pink-200 bg-white text-xs font-bold text-gray-800 outline-none"
-                      >
-                        <option value="">Select Main Category...</option>
-                        {categories.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {(drawerFormData.bannerType === 'subcategory' || drawerFormData.bannerType === 'selection') && (
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-gray-700">Subcategory</label>
-                        <select
-                          value={drawerFormData.subcategoryId}
-                          onChange={(e) => {
-                            const subId = e.target.value;
-                            const subObj = subcategories.find(s => String(s.id) === String(subId));
-                            setDrawerFormData(prev => ({
-                              ...prev,
-                              subcategoryId: subId,
-                              subcategoryName: subObj?.name || '',
-                              selectionId: '',
-                              selectionName: ''
-                            }));
-                          }}
-                          className="w-full px-3 py-1.5 rounded-lg border border-pink-200 bg-white text-xs font-bold text-gray-800 outline-none"
-                        >
-                          <option value="">Select Subcategory...</option>
-                          {availableSubcategories.map(s => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                {/* Banner Tap Destination */}
+                <div className="p-3 rounded-xl bg-white border border-pink-100 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#C2477A]">
+                    <Layers size={13} />
+                    <span>Tap Action / Destination (Where users go when tapping)</span>
                   </div>
-                )}
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-gray-700">Destination</label>
+                    <select
+                      value={drawerFormData.categoryId || ''}
+                      onChange={(e) => {
+                        const catId = e.target.value;
+                        const catObj = categories.find(c => String(c.id) === String(catId));
+                        setDrawerFormData(prev => ({
+                          ...prev,
+                          categoryId: catId,
+                          categoryName: catObj?.name || '',
+                          destinationType: catId ? 'CATEGORY' : 'BEST_SELLERS',
+                          destinationId: catObj?.name || 'best_sellers'
+                        }));
+                      }}
+                      className="w-full px-3 py-2 rounded-lg border border-pink-200 bg-white text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A] cursor-pointer"
+                    >
+                      <option value="">Storewide / Best Sellers</option>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>Category: {c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
                 {/* Compact Banner Image Section */}
                 <div className="space-y-2">
@@ -917,7 +819,7 @@ export default function BannerManagementPage({
                           {isUploadingImage ? <RefreshCw size={14} className="animate-spin" /> : <Upload size={14} />}
                         </div>
                         <span className="font-extrabold text-xs text-gray-800">
-                          {isUploadingImage ? 'Uploading to Supabase...' : 'Click to Browse Image or Drag & Drop'}
+                          {isUploadingImage ? 'Uploading to storage...' : 'Click to Browse Image or Drag & Drop'}
                         </span>
                         <span className="text-[10px] text-gray-400">
                           Supports local files or drag from Google Images
@@ -1090,12 +992,12 @@ export default function BannerManagementPage({
                   <span>Irreversible Action</span>
                 </p>
                 <p className="text-[11px] leading-relaxed">
-                  This banner record will be removed from Supabase database tables and its image asset will be purged from Supabase Storage. It will immediately cease appearing in customer apps.
+                  This banner record will be removed from database tables and its image asset will be purged from cloud storage. It will immediately cease appearing in customer apps.
                 </p>
               </div>
               <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10.5px] font-semibold flex items-center gap-1.5">
                 <CheckCircle size={13} className="text-emerald-600 shrink-0" />
-                <span>Safety backup snapshot will be preserved in Supabase before deletion.</span>
+                <span>Safety backup snapshot will be preserved in cloud storage before deletion.</span>
               </div>
             </div>
 
