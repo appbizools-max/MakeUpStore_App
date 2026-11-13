@@ -24,6 +24,7 @@ export const WishlistScreen = () => {
     getRolePrice,
     setSelectedProduct,
     setCurrentScreen,
+    goBack,
     cart = [],
     addToCart,
     updateCartQuantity
@@ -79,13 +80,13 @@ export const WishlistScreen = () => {
           }}
           style={{
             backgroundColor: '#FFFFFF',
-            borderColor: '#C2477A',
+            borderColor: '#D81B60',
             borderWidth: 1.2,
           }}
           className="px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
         >
-          <Ionicons name={qty > 0 ? "color-palette" : "color-palette-outline"} size={12} color="#C2477A" />
-          <Text className="text-[10px] font-black text-[#C2477A]">
+          <Ionicons name={qty > 0 ? "color-palette" : "color-palette-outline"} size={12} color="#D81B60" />
+          <Text className="text-[10px] font-black text-[#D81B60]">
             {qty > 0 ? `${qty} in Bag` : 'Select Shade'}
           </Text>
         </TouchableOpacity>
@@ -96,8 +97,8 @@ export const WishlistScreen = () => {
       return (
         <View
           style={{
-            backgroundColor: '#C2477A',
-            shadowColor: '#C2477A',
+            backgroundColor: '#D81B60',
+            shadowColor: '#D81B60',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.25,
             shadowRadius: 4,
@@ -145,13 +146,13 @@ export const WishlistScreen = () => {
         }}
         style={{
           backgroundColor: '#FFFFFF',
-          borderColor: '#C2477A',
+          borderColor: '#D81B60',
           borderWidth: 1.5,
         }}
         className="px-3 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
       >
-        <Ionicons name="add" size={13} color="#C2477A" />
-        <Text className="text-xs font-black text-[#C2477A]">Add</Text>
+        <Ionicons name="add" size={13} color="#D81B60" />
+        <Text className="text-xs font-black text-[#D81B60]">Add</Text>
       </TouchableOpacity>
     );
   };
@@ -164,11 +165,14 @@ export const WishlistScreen = () => {
       <View className="px-4 pt-3 pb-3 bg-white border-b border-[#F0E6EC] flex-row items-center justify-between shadow-2xs">
         <View className="flex-row items-center gap-3">
           <TouchableOpacity
-            onPress={() => setCurrentScreen('home')}
+            onPress={() => {
+              if (typeof goBack === 'function') goBack();
+              else setCurrentScreen('home');
+            }}
             style={{ borderColor: '#F3F4F6', borderWidth: 1 }}
             className="w-9 h-9 rounded-full bg-white items-center justify-center shadow-xs"
           >
-            <Ionicons name="chevron-back" size={18} color="#C2477A" />
+            <Ionicons name="chevron-back" size={18} color="#D81B60" />
           </TouchableOpacity>
           <View>
             <Text className="text-base font-black text-[#1E1B1D] tracking-tight">
@@ -205,7 +209,7 @@ export const WishlistScreen = () => {
             }}
             className="items-center justify-center mb-5 shadow-xs"
           >
-            <Ionicons name="heart-outline" size={38} color="#C2477A" />
+            <Ionicons name="heart-outline" size={38} color="#D81B60" />
           </View>
 
           <Text className="text-lg font-black text-[#1E1B1D] mb-1.5 text-center">
@@ -219,8 +223,8 @@ export const WishlistScreen = () => {
             activeOpacity={0.88}
             onPress={() => setCurrentScreen('home')}
             style={{
-              backgroundColor: '#C2477A',
-              shadowColor: '#C2477A',
+              backgroundColor: '#D81B60',
+              shadowColor: '#D81B60',
               shadowOffset: { width: 0, height: 3 },
               shadowOpacity: 0.3,
               shadowRadius: 6,
@@ -280,7 +284,7 @@ export const WishlistScreen = () => {
                       {/* Discount Badge */}
                       {discountPercent > 0 && (
                         <View
-                          style={{ backgroundColor: '#C2477A' }}
+                          style={{ backgroundColor: '#D81B60' }}
                           className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full"
                         >
                           <Text className="text-white text-[8.5px] font-black uppercase">
@@ -302,13 +306,13 @@ export const WishlistScreen = () => {
                         <Ionicons
                           name="heart"
                           size={18}
-                          color="#C2477A"
+                          color="#D81B60"
                         />
                       </TouchableOpacity>
                     </View>
 
                     {/* Brand & Name */}
-                    <Text className="text-[8.5px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5">
+                    <Text className="text-[8.5px] font-bold text-[#D81B60] uppercase tracking-wider mb-0.5">
                       {item.brandName || 'SALBEAU'}
                     </Text>
                     <Text
@@ -325,7 +329,7 @@ export const WishlistScreen = () => {
                       <Text className="text-[9px] font-semibold text-[#8C7E86] line-through">
                         MRP ₹{originalMrp}
                       </Text>
-                      <Text className="text-sm font-extrabold text-[#C2477A]">
+                      <Text className="text-sm font-extrabold text-[#D81B60]">
                         ₹{rolePrice}
                       </Text>
                     </View>
@@ -348,8 +352,8 @@ export const WishlistScreen = () => {
             left: 12,
             right: 12,
             zIndex: 50,
-            backgroundColor: '#C2477A',
-            shadowColor: '#C2477A',
+            backgroundColor: '#D81B60',
+            shadowColor: '#D81B60',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.35,
             shadowRadius: 10,
@@ -373,10 +377,10 @@ export const WishlistScreen = () => {
             onPress={() => setCurrentScreen('cart')}
             className="bg-white px-4 py-2.5 rounded-xl flex-row items-center gap-1.5 shadow-xs"
           >
-            <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+            <Text className="text-xs font-black text-[#D81B60] uppercase tracking-wider">
               View Cart
             </Text>
-            <Ionicons name="arrow-forward" size={14} color="#C2477A" />
+            <Ionicons name="arrow-forward" size={14} color="#D81B60" />
           </TouchableOpacity>
         </View>
       )}

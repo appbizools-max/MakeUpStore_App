@@ -162,7 +162,7 @@ export const CompleteProfileScreen = () => {
             onPress={() => setCurrentScreen('onboarding')}
             className="w-10 h-10 rounded-full bg-white border border-[#FCE4EC] items-center justify-center shadow-2xs mr-3"
           >
-            <Ionicons name="arrow-back" size={20} color="#C2477A" />
+            <Ionicons name="arrow-back" size={20} color="#D81B60" />
           </TouchableOpacity>
 
           {userProfile?.phone ? (
@@ -188,12 +188,12 @@ export const CompleteProfileScreen = () => {
         {/* ---------------- 1. Full Name * ---------------- */}
         <View className="mb-5">
           <Text className="text-xs font-bold text-[#3A2430] mb-2">
-            Full Name <Text className="text-[#C2477A]">*</Text>
+            Full Name <Text className="text-[#D81B60]">*</Text>
           </Text>
           <View
             className={`border rounded-2xl bg-white px-4 py-3.5 shadow-2xs ${
               fullNameTouched && fullName.trim().length < 2
-                ? 'border-[#E11D48]'
+                ? 'border-[#D81B60]'
                 : 'border-[#FCE4EC]'
             }`}
           >
@@ -212,7 +212,7 @@ export const CompleteProfileScreen = () => {
             />
           </View>
           {fullNameTouched && fullName.trim().length < 2 && (
-            <Text className="text-[11px] font-bold text-[#E11D48] mt-1 ml-1">
+            <Text className="text-[11px] font-bold text-[#D81B60] mt-1 ml-1">
               Please enter your full name.
             </Text>
           )}
@@ -226,7 +226,7 @@ export const CompleteProfileScreen = () => {
           <View
             className={`border rounded-2xl bg-white px-4 py-3.5 shadow-2xs ${
               emailTouched && !isEmailValid
-                ? 'border-[#E11D48]'
+                ? 'border-[#D81B60]'
                 : 'border-[#FCE4EC]'
             }`}
           >
@@ -245,7 +245,7 @@ export const CompleteProfileScreen = () => {
             />
           </View>
           {emailTouched && !isEmailValid && (
-            <Text className="text-[11px] font-bold text-[#E11D48] mt-1 ml-1">
+            <Text className="text-[11px] font-bold text-[#D81B60] mt-1 ml-1">
               Please enter a valid email format.
             </Text>
           )}
@@ -254,12 +254,12 @@ export const CompleteProfileScreen = () => {
         {/* ---------------- 3. PIN Code * ---------------- */}
         <View className="mb-5">
           <Text className="text-xs font-bold text-[#3A2430] mb-2">
-            PIN Code <Text className="text-[#C2477A]">*</Text>
+            PIN Code <Text className="text-[#D81B60]">*</Text>
           </Text>
           <View
             className={`border rounded-2xl bg-white px-4 py-3.5 flex-row items-center justify-between shadow-2xs ${
               pincodeTouched && pincode.replace(/\D/g, '').length !== 6
-                ? 'border-[#E11D48]'
+                ? 'border-[#D81B60]'
                 : 'border-[#FCE4EC]'
             }`}
           >
@@ -278,18 +278,18 @@ export const CompleteProfileScreen = () => {
               className="flex-1 text-sm font-bold text-[#3A2430] p-0"
             />
             {isDetecting && (
-              <ActivityIndicator size="small" color="#C2477A" style={{ marginLeft: 8 }} />
+              <ActivityIndicator size="small" color="#D81B60" style={{ marginLeft: 8 }} />
             )}
           </View>
 
           {pincodeTouched && pincode.replace(/\D/g, '').length > 0 && pincode.replace(/\D/g, '').length < 6 && (
-            <Text className="text-[11px] font-bold text-[#E11D48] mt-1 ml-1">
+            <Text className="text-[11px] font-bold text-[#D81B60] mt-1 ml-1">
               Please enter a valid 6-digit PIN code.
             </Text>
           )}
 
           {detectionError ? (
-            <Text className="text-[11px] font-semibold text-[#E11D48] mt-1.5 ml-1 leading-snug">
+            <Text className="text-[11px] font-semibold text-[#D81B60] mt-1.5 ml-1 leading-snug">
               {detectionError}
             </Text>
           ) : null}
@@ -356,8 +356,8 @@ export const CompleteProfileScreen = () => {
           onPress={handleContinue}
           className={`w-full py-4 rounded-full items-center justify-center shadow-lg active:scale-[0.99] transition-all ${
             isFormValid && !isSubmitting
-              ? 'bg-[#C2477A]'
-              : 'bg-[#C2477A]/40'
+              ? 'bg-[#D81B60]'
+              : 'bg-[#D81B60]/40'
           }`}
         >
           {isSubmitting ? (

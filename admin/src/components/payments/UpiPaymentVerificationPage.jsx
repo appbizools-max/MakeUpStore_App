@@ -342,7 +342,7 @@ export default function UpiPaymentVerificationPage() {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Search by Order ID, Customer, Rider, or UTR..."
-            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#C2477A] focus:bg-white"
+            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#D81B60] focus:bg-white"
           />
         </div>
 
@@ -351,7 +351,7 @@ export default function UpiPaymentVerificationPage() {
           <select
             value={selectedBranch}
             onChange={e => setSelectedBranch(e.target.value)}
-            className="px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C2477A]"
+            className="px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#D81B60]"
           >
             <option value="all">All Branches</option>
             {branches.map(b => (
@@ -405,7 +405,7 @@ export default function UpiPaymentVerificationPage() {
                     <tr key={rec.id} className="hover:bg-gray-50/60 transition-colors">
                       {/* Order ID & Status */}
                       <td className="py-3 px-4 font-bold text-gray-900">
-                        <div className="font-extrabold text-[#C2477A] text-xs">#{rec.orderId}</div>
+                        <div className="font-extrabold text-[#D81B60] text-xs">#{rec.orderId}</div>
                         <div className="mt-1">
                           {isPending && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
@@ -436,7 +436,7 @@ export default function UpiPaymentVerificationPage() {
                       {/* Delivery Partner & Branch */}
                       <td className="py-3 px-4">
                         <div className="font-bold text-gray-800 flex items-center gap-1">
-                          <User size={12} className="text-[#C2477A]" />
+                          <User size={12} className="text-[#D81B60]" />
                           <span>{rec.deliveryPartnerName}</span>
                         </div>
                         <div className="text-[11px] text-gray-500 font-medium flex items-center gap-1 mt-0.5">
@@ -629,7 +629,7 @@ export default function UpiPaymentVerificationPage() {
               <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 space-y-2">
                 <div className="flex items-center justify-between font-bold">
                   <span className="text-gray-500">Order ID:</span>
-                  <span className="text-[#C2477A]">#{actionRecord.orderId}</span>
+                  <span className="text-[#D81B60]">#{actionRecord.orderId}</span>
                 </div>
                 <div className="flex items-center justify-between font-bold">
                   <span className="text-gray-500">Customer:</span>
@@ -654,7 +654,7 @@ export default function UpiPaymentVerificationPage() {
                   value={actionNotes}
                   onChange={e => setActionNotes(e.target.value)}
                   placeholder="e.g. Verified via Bank Statement / Razorpay"
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
@@ -743,7 +743,7 @@ export default function UpiPaymentVerificationPage() {
                   value={rejectionReason}
                   onChange={e => setRejectionReason(e.target.value)}
                   placeholder="e.g. Transaction receipt is blurry / Amount does not match bank credits / Invalid UTR reference"
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
@@ -754,7 +754,7 @@ export default function UpiPaymentVerificationPage() {
                   value={actionNotes}
                   onChange={e => setActionNotes(e.target.value)}
                   placeholder="Additional audit note"
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
             </div>

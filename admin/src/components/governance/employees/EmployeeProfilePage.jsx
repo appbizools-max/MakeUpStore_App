@@ -62,7 +62,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
         <button
           type="button"
           onClick={() => onNavigate('employees')}
-          className="mt-4 px-4 py-2 bg-[#CE4270] text-white rounded-xl text-xs font-bold"
+          className="mt-4 px-4 py-2 bg-[#D81B60] text-white rounded-xl text-xs font-bold"
         >
           ← Return to All Employees
         </button>
@@ -82,7 +82,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
         <button
           type="button"
           onClick={() => onNavigate('employees')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-pink-100 text-gray-700 hover:text-[#CE4270] font-bold text-xs transition-all shadow-2xs cursor-pointer w-fit"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-pink-100 text-gray-700 hover:text-[#D81B60] font-bold text-xs transition-all shadow-2xs cursor-pointer w-fit"
         >
           <ArrowLeft size={16} />
           <span>← Back to Employees</span>
@@ -101,7 +101,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
           <button
             type="button"
             onClick={() => onNavigate(`employees/${employee.id}/permissions`)}
-            className="px-4 py-2 rounded-xl bg-[#CE4270] hover:bg-[#b83760] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
             <Sliders size={14} />
             <span>Manage Permissions</span>
@@ -113,7 +113,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-pink-100 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-3xl overflow-hidden bg-pink-100 text-[#CE4270] flex items-center justify-center font-bold text-xl border-2 border-pink-200 shadow-md shrink-0">
+            <div className="w-20 h-20 rounded-3xl overflow-hidden bg-pink-100 text-[#D81B60] flex items-center justify-center font-bold text-xl border-2 border-pink-200 shadow-md shrink-0">
               {employee.profile_photo ? (
                 <img src={employee.profile_photo} alt={employee.full_name} className="w-full h-full object-cover" />
               ) : (
@@ -141,7 +141,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
               </div>
 
               <p className="text-xs font-semibold text-gray-600 flex items-center gap-2">
-                <span className="text-[#CE4270] font-extrabold uppercase">{employee.designation || 'Staff'}</span>
+                <span className="text-[#D81B60] font-extrabold uppercase">{employee.designation || 'Staff'}</span>
                 <span>•</span>
                 <span className="text-gray-500 font-medium">{employee.role === 'admin' ? 'Admin Access' : 'Employee Access'}</span>
               </p>
@@ -183,7 +183,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
                   isActive
-                    ? 'bg-[#CE4270] text-white shadow-xs'
+                    ? 'bg-[#D81B60] text-white shadow-xs'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
@@ -234,7 +234,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
                 <button
                   type="button"
                   onClick={() => onNavigate(`employees/${employee.id}/permissions`)}
-                  className="text-xs font-bold text-[#CE4270] hover:underline"
+                  className="text-xs font-bold text-[#D81B60] hover:underline"
                 >
                   Configure All →
                 </button>
@@ -271,7 +271,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
               <h2 className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">
                 Assigned Work Load
               </h2>
-              <div className="text-3xl font-black text-[#CE4270]">{assignedOrders.length}</div>
+              <div className="text-3xl font-black text-[#D81B60]">{assignedOrders.length}</div>
               <p className="text-xs text-gray-500">
                 Customer orders currently assigned to {employee.full_name} for confirmation or dispatch.
               </p>
@@ -298,7 +298,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
             <button
               type="button"
               onClick={() => onNavigate(`employees/${employee.id}/permissions`)}
-              className="px-4 py-2 bg-[#CE4270] text-white rounded-xl text-xs font-bold hover:bg-[#b83760]"
+              className="px-4 py-2 bg-[#D81B60] text-white rounded-xl text-xs font-bold hover:bg-[#b83760]"
             >
               Edit Permissions
             </button>
@@ -331,7 +331,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
                             key={act.key}
                             className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
                               hasAction
-                                ? 'bg-pink-100 text-[#CE4270] border border-pink-200'
+                                ? 'bg-pink-100 text-[#D81B60] border border-pink-200'
                                 : 'bg-gray-100 text-gray-400 border border-gray-200 line-through'
                             }`}
                           >
@@ -375,7 +375,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
                       Customer: {order.userName || order.user_name || 'Retail Customer'} • ₹{order.totalAmount || order.total_amount || 0}
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-white text-[#CE4270] border border-pink-100">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-white text-[#D81B60] border border-pink-100">
                     {order.status}
                   </span>
                 </div>

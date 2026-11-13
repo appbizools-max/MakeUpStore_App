@@ -100,7 +100,7 @@ export default function PaymentStatusSelector({ order, onUpdatePaymentStatus, on
         <div className="absolute left-0 mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-pink-100 py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
           <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
             <span className="font-bold text-[10px] uppercase tracking-wider text-gray-400">Update Payment</span>
-            <span className="text-[10px] font-bold text-[#C2477A]">COD / Manual</span>
+            <span className="text-[10px] font-bold text-[#D81B60]">COD / Manual</span>
           </div>
           <div className="max-h-56 overflow-y-auto py-1">
             {PAYMENT_STATUS_OPTIONS.map((opt) => {
@@ -111,14 +111,14 @@ export default function PaymentStatusSelector({ order, onUpdatePaymentStatus, on
                   type="button"
                   onClick={() => handleSelect(opt.id)}
                   className={`w-full text-left px-3 py-2 flex items-start gap-2.5 hover:bg-pink-50/60 transition-colors cursor-pointer ${
-                    isSelected ? 'bg-pink-50/80 font-bold text-[#C2477A]' : 'text-gray-700 font-medium'
+                    isSelected ? 'bg-pink-50/80 font-bold text-[#D81B60]' : 'text-gray-700 font-medium'
                   }`}
                 >
                   <span className={`w-2 h-2 rounded-full ${opt.dotColor} mt-1 shrink-0`}></span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="text-xs">{opt.label}</span>
-                      {isSelected && <Check size={12} className="text-[#C2477A] shrink-0" />}
+                      {isSelected && <Check size={12} className="text-[#D81B60] shrink-0" />}
                     </div>
                     <div className="text-[10px] text-gray-400 font-normal truncate mt-0.5">
                       {opt.description}

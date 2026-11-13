@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { supabase } from '../config/supabase';
 import { storage } from '../utils/storage';
 import { getSafeImageUri, DEFAULT_CATEGORY_FALLBACKS } from '../utils/imageUtils';
-import { setLiveCategoryHierarchy } from '../config/categoriesHierarchy';
+import { setLiveCategoryHierarchy, MAIN_CATEGORIES } from '../config/categoriesHierarchy';
 import {
   normalizeQuantityTiers,
   getProductTiersForRole,
@@ -29,6 +29,7 @@ import {
   setupNotificationTapListener,
   clearFCMToken
 } from '../utils/fcmService';
+import { calculateDeliveryCharge, DEFAULT_DELIVERY_CONFIG } from '../utils/deliveryChargeCalculator';
 
 const AppContext = createContext();
 
@@ -375,21 +376,6 @@ const getInitialAuthSession = () => {
 
 export const DEFAULT_HOME_BANNERS = [
   {
-    id: 'banner_1',
-    badge: 'Up to 30% OFF',
-    discountBadge: 'Up to 30% OFF',
-    title: 'Healthy Hair Starts Here',
-    subtitle: 'Nourish • Repair • Shine',
-    ctaLabel: 'Shop Hair Care →',
-    destinationType: 'CATEGORY',
-    destinationId: 'Hair Care',
-    imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&auto=format&fit=crop&q=80',
-    displayOrder: 1,
-    isActive: true,
-    startDate: null,
-    endDate: null
-  },
-  {
     id: 'banner_2',
     badge: 'SKINCARE RITUALS',
     title: 'Healthy Skin, Happier You',
@@ -398,7 +384,7 @@ export const DEFAULT_HOME_BANNERS = [
     destinationType: 'CATEGORY',
     destinationId: 'Skin Care',
     imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_2.jpg',
-    displayOrder: 2,
+    displayOrder: 1,
     isActive: true,
     startDate: null,
     endDate: null
@@ -458,10 +444,19 @@ export const DEFAULT_STORE_SETTINGS = {
     currencySymbol: '₹'
   },
   delivery: {
+    pricingModel: 'default_free', // 'default_free' | 'always_free' | 'per_km' | 'order_value' | 'fixed'
+    isDefaultFree: true,
+    isFreeDeliveryAll: false,
+    fixedDeliveryFee: 49,
     standardDeliveryFee: 49,
-    freeDeliveryThreshold: 499,
+    perKmRate: 3, // ₹3 per km
+    baseDistanceKm: 2, // First 2 km
+    baseDeliveryCharge: 20, // ₹20 base fee
+    maxDeliveryDistanceKm: 50,
+    freeDeliveryThreshold: 500, // Free above ₹500
+    enableFreeDeliveryThreshold: true,
     estimatedDeliveryTime: 'Same Day / 24-48 Hours',
-    minOrderAmount: 99,
+    minOrderAmount: 0,
   },
   payments: {
     allowCod: true,
@@ -494,6 +489,43 @@ export const AppProvider = ({ children }) => {
   });
   const [previousScreen, setPreviousScreen] = useState('home');
 
+  // Robust Navigation History Stack for Back Button & Deep Linking
+  const [navigationHistory, setNavigationHistory] = useState(() => {
+    const session = getInitialAuthSession();
+    if (session && session.phone && session.isProfileComplete) {
+      return ['home'];
+    }
+    return ['login'];
+  });
+
+  const navigateTo = useCallback((screen, { replace = false } = {}) => {
+    if (!screen) return;
+    _setCurrentScreen(screen);
+    setNavigationHistory(prev => {
+      if (prev[prev.length - 1] === screen && !replace) return prev;
+      if (replace) {
+        const copy = [...prev];
+        if (copy.length > 0) copy[copy.length - 1] = screen;
+        else copy.push(screen);
+        return copy;
+      }
+      return [...prev, screen];
+    });
+  }, []);
+
+  const goBack = useCallback(() => {
+    setNavigationHistory(prev => {
+      if (prev.length <= 1) {
+        // Already at root screen; keep stack intact
+        return prev;
+      }
+      const nextStack = prev.slice(0, prev.length - 1);
+      const targetScreen = nextStack[nextStack.length - 1];
+      _setCurrentScreen(targetScreen);
+      return nextStack;
+    });
+  }, []);
+
   const setCurrentScreen = useCallback((newScr) => {
     _setCurrentScreen(prev => {
       if (prev !== newScr && prev !== 'splash') {
@@ -501,7 +533,14 @@ export const AppProvider = ({ children }) => {
       }
       return newScr;
     });
+    setNavigationHistory(prev => {
+      if (prev[prev.length - 1] === newScr) return prev;
+      return [...prev, newScr];
+    });
   }, []);
+
+  // Secure Deep Linking State
+  const [pendingNotificationDeepLink, setPendingNotificationDeepLink] = useState(null);
 
   const [currentUpiOrder, setCurrentUpiOrder] = useState(null);
   const [storeSettings, setStoreSettings] = useState(() => {
@@ -525,10 +564,12 @@ export const AppProvider = ({ children }) => {
     return DEFAULT_STORE_SETTINGS;
   });
 
-  const getDeliveryFee = useCallback((amount = 0) => {
-    const threshold = Number(storeSettings?.delivery?.freeDeliveryThreshold ?? 499);
-    if (Number(amount) >= threshold) return 0;
-    return Number(storeSettings?.delivery?.standardDeliveryFee ?? 49);
+  const getDeliveryFee = useCallback((amount = 0, distanceKm = 5) => {
+    return calculateDeliveryCharge({
+      orderAmount: amount,
+      distanceKm,
+      config: storeSettings
+    });
   }, [storeSettings]);
 
   useEffect(() => {
@@ -560,7 +601,10 @@ export const AppProvider = ({ children }) => {
       const saved = storage.getSync('salbeau_home_banners');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const clean = parsed.filter(b => b.id !== 'banner_1' && b.title !== 'Glow Your Own Way');
+          if (clean.length > 0) return clean;
+        }
       }
     } catch (e) {}
     return DEFAULT_HOME_BANNERS;
@@ -571,7 +615,10 @@ export const AppProvider = ({ children }) => {
       const saved = storage.getSync('salbeau_central_banners');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const clean = parsed.filter(b => b.id !== 'banner_1' && b.title !== 'Glow Your Own Way');
+          if (clean.length > 0) return clean;
+        }
       }
     } catch (e) {}
     return [];
@@ -648,42 +695,14 @@ export const AppProvider = ({ children }) => {
   });
 
   // Restore authenticated session from persistent storage on startup
+  // Strict rule: once any user logs into the app, they remain logged in indefinitely until explicit logout
   useEffect(() => {
     let isMounted = true;
     const restoreSession = async () => {
       try {
-        // Automatic global user data & cache reset for mobile app
-        const cacheVer = await storage.getItem('salbeau_mobile_cache_v13');
-        if (cacheVer !== 'true') {
-          await Promise.all([
-            storage.removeItem(AUTH_SESSION_KEY),
-            storage.removeItem('salbeau_user_profile'),
-            storage.removeItem('salbeau_cache_orders'),
-            storage.removeItem('salbeau_cache_cart'),
-            storage.removeItem('salbeau_cart'),
-            storage.removeItem('salbeau_favorites'),
-            storage.removeItem('salbeau_addresses'),
-            storage.removeItem('salbeau_user_role'),
-            storage.removeItem('salbeau_b2b_verification_record'),
-            storage.removeItem('salbeau_search_history'),
-            storage.removeItem('salbeau_recent_searches'),
-            storage.removeItem('salbeau_cache_products'),
-            storage.removeItem('salbeau_cache_categories'),
-            storage.removeItem('salbeau_cache_brands'),
-            storage.removeItem('salbeau_cache_subcategories'),
-            storage.removeItem('salbeau_recently_viewed_ids'),
-            storage.setItem('salbeau_mobile_cache_v13', 'true')
-          ]).catch(() => {});
-          setUserProfile(EMPTY_USER_PROFILE);
-          setUserRole('general');
-          setOrders([]);
-          setCart([]);
-          setFavorites([]);
-          setAddresses([]);
-        }
-
-        const [savedAuth, savedProds, savedCats, savedBrands, savedSubs] = await Promise.all([
+        const [savedAuth, savedProfile, savedProds, savedCats, savedBrands, savedSubs] = await Promise.all([
           storage.getItem(AUTH_SESSION_KEY),
+          storage.getItem('salbeau_user_profile'),
           storage.getItem('salbeau_cache_products'),
           storage.getItem('salbeau_cache_categories'),
           storage.getItem('salbeau_cache_brands'),
@@ -704,7 +723,7 @@ export const AppProvider = ({ children }) => {
             try {
               const parsedCats = JSON.parse(savedCats);
               if (Array.isArray(parsedCats) && parsedCats.length > 0) {
-                setRawCategories(prev => (prev.length === 0 ? parsedCats : prev));
+                setRawCategories(parsedCats);
               }
             } catch (_) {}
           }
@@ -725,16 +744,35 @@ export const AppProvider = ({ children }) => {
             } catch (_) {}
           }
 
+          let restored = false;
           if (savedAuth) {
-            const parsed = JSON.parse(savedAuth);
-            if (parsed && parsed.phone && parsed.isProfileComplete) {
-              if (parsed.profile) setUserProfile(parsed.profile);
-              if (parsed.role) setUserRole(parsed.role);
-              if (parsed.addresses && Array.isArray(parsed.addresses)) setAddresses(parsed.addresses);
-              // Profile and authentication restored cleanly. SplashScreen's 1.8s branded timer handles navigation to 'home'.
-              setIsRestoringSession(false);
-              return;
-            }
+            try {
+              const parsed = JSON.parse(savedAuth);
+              if (parsed && (parsed.isProfileComplete || parsed.profile?.isProfileComplete) && (parsed.phone || parsed.profile?.phone)) {
+                const profileObj = parsed.profile || parsed;
+                setUserProfile(profileObj);
+                if (parsed.role) setUserRole(parsed.role);
+                if (parsed.addresses && Array.isArray(parsed.addresses)) setAddresses(parsed.addresses);
+                _setCurrentScreen('home');
+                restored = true;
+              }
+            } catch (_) {}
+          }
+
+          if (!restored && savedProfile) {
+            try {
+              const parsedProf = JSON.parse(savedProfile);
+              if (parsedProf && parsedProf.phone && parsedProf.isProfileComplete) {
+                setUserProfile(parsedProf);
+                if (parsedProf.role) setUserRole(parsedProf.role);
+                _setCurrentScreen('home');
+                restored = true;
+              }
+            } catch (_) {}
+          }
+
+          if (!restored) {
+            _setCurrentScreen('login');
           }
         }
       } catch (e) {
@@ -843,7 +881,11 @@ export const AppProvider = ({ children }) => {
   const userRoleRef = useRef(userRole);
   useEffect(() => { userRoleRef.current = userRole; }, [userRole]);
   const [brands, setBrands] = useState(() => getCachedData('salbeau_cache_brands', []));
-  const [rawCategories, setRawCategories] = useState(() => getCachedData('salbeau_cache_categories', []));
+  const [rawCategories, setRawCategories] = useState(() => {
+    const cached = getCachedData('salbeau_cache_categories', null);
+    if (Array.isArray(cached) && cached.length > 0) return cached;
+    return (MAIN_CATEGORIES || []).map(mapCategoryFromDb);
+  });
   const [subcategories, setSubcategories] = useState(() => getCachedData('salbeau_cache_subcategories', []));
   const [leafCategories, setLeafCategories] = useState(() => getCachedData('salbeau_cache_leaf_categories', []));
   const [pricingRules, setPricingRules] = useState(() => getCachedData('salbeau_pricing_rules', DEFAULT_PRICING_RULES));
@@ -870,6 +912,7 @@ export const AppProvider = ({ children }) => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedShade, setSelectedShade] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState(null);
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
@@ -1003,8 +1046,9 @@ export const AppProvider = ({ children }) => {
           ? Promise.resolve({ data: null, isCached: true })
           : supabase.from('orders').select('id, items, status').order('date', { ascending: false }).limit(200);
 
-        const [brandsRes, productsRes, categoriesRes, subcategoriesRes, storeOrdersRes] = await Promise.all([
-          supabase.from('brands').select('*'),
+        const [brandsRes, brandConfigsRes, productsRes, categoriesRes, subcategoriesRes, storeOrdersRes] = await Promise.all([
+          supabase.from('brands').select('id, name, enabled, logo, created_at, category, sort_order, updated_at').not('id', 'like', 'app_%').not('id', 'like', 'salbeau_%'),
+          supabase.from('brands').select('id, logo, name').or('id.like.app_%,id.like.salbeau_%'),
           supabase.from('products').select('*').order('created_at', { ascending: false }),
           supabase.from('categories').select('*').order('sort_order', { ascending: true }),
           supabase.from('subcategories').select('*').order('sort_order', { ascending: true }),
@@ -1035,11 +1079,11 @@ export const AppProvider = ({ children }) => {
       let hierarchyCategories = [];
       let parsedHier = null;
 
-      if (brandsRes.data) {
-        const brandsData = brandsRes.data;
+      const configsData = Array.isArray(brandConfigsRes?.data) ? brandConfigsRes.data : [];
 
+      if (configsData.length > 0) {
         // Pricing Rules (global role discounts & quantity tiers)
-        const pricingRow = brandsData.find(b => b.id === 'app_pricing_discount_config');
+        const pricingRow = configsData.find(b => b.id === 'app_pricing_discount_config');
         if (pricingRow && pricingRow.logo) {
           try {
             const parsedPricing = JSON.parse(pricingRow.logo);
@@ -1050,7 +1094,7 @@ export const AppProvider = ({ children }) => {
           } catch (e) {}
         }
 
-        const visibilityRow = brandsData.find(b => b.id === 'app_home_section_visibility');
+        const visibilityRow = configsData.find(b => b.id === 'app_home_section_visibility');
         if (visibilityRow && visibilityRow.logo) {
           try {
             const parsedVisibility = JSON.parse(visibilityRow.logo);
@@ -1061,7 +1105,7 @@ export const AppProvider = ({ children }) => {
           } catch (e) { }
         }
 
-        const recRow = brandsData.find(b => b.id === 'app_recommendation_config');
+        const recRow = configsData.find(b => b.id === 'app_recommendation_config');
         if (recRow && recRow.logo) {
           try {
             const parsedRec = JSON.parse(recRow.logo);
@@ -1072,7 +1116,7 @@ export const AppProvider = ({ children }) => {
           } catch (e) { }
         }
 
-        const centralRow = brandsData.find(b => b.id === 'app_central_banners_master');
+        const centralRow = configsData.find(b => b.id === 'app_central_banners_master');
         if (centralRow && centralRow.logo) {
           try {
             const parsedCentral = JSON.parse(centralRow.logo);
@@ -1088,7 +1132,7 @@ export const AppProvider = ({ children }) => {
           } catch (e) { }
         }
 
-        const bannersRow = brandsData.find(b => b.id === 'app_home_banners');
+        const bannersRow = configsData.find(b => b.id === 'app_home_banners');
         if (bannersRow && bannersRow.logo) {
           try {
             const parsedBanners = JSON.parse(bannersRow.logo);
@@ -1098,9 +1142,15 @@ export const AppProvider = ({ children }) => {
             }
           } catch (e) { }
         }
+      }
 
-        const mappedBrands = brandsData
-          .filter(b => !b.id.startsWith('app_') && !b.id.startsWith('salbeau_') && b.category !== 'SystemConfig' && b.category !== 'System Config')
+      if (brandsRes?.data && Array.isArray(brandsRes.data) && brandsRes.data.length > 0) {
+        const rawBrandsList = brandsRes.data;
+        const mappedBrands = rawBrandsList
+          .filter(b => {
+            const idStr = String(b.id || '');
+            return !idStr.startsWith('app_') && !idStr.startsWith('salbeau_') && b.category !== 'SystemConfig' && b.category !== 'System Config';
+          })
           .map(b => ({
             id: b.id,
             name: b.name,
@@ -1114,9 +1164,11 @@ export const AppProvider = ({ children }) => {
 
         setBrands(mappedBrands);
         setCachedData('salbeau_cache_brands', mappedBrands);
+      }
 
+      if (configsData.length > 0) {
         // Live Category & Subcategory Master Hierarchy Sync
-        const hierRow = brandsData.find(b => b.id === 'salbeau_category_subcategory_hierarchy');
+        const hierRow = configsData.find(b => b.id === 'salbeau_category_subcategory_hierarchy');
         if (hierRow && hierRow.logo) {
           try {
             parsedHier = JSON.parse(hierRow.logo);
@@ -1175,7 +1227,7 @@ export const AppProvider = ({ children }) => {
           setCachedData('salbeau_cache_subcategories', mergedSubs);
         }
 
-        const catConfigRow = brandsData.find(b => b.id === 'app_category_order_config');
+        const catConfigRow = configsData.find(b => b.id === 'app_category_order_config');
         if (catConfigRow && catConfigRow.logo && (!categoriesRes.data || categoriesRes.data.length === 0)) {
           try {
             const parsedCatList = JSON.parse(catConfigRow.logo);
@@ -1201,6 +1253,8 @@ export const AppProvider = ({ children }) => {
         });
       } else if (hierarchyCategories.length > 0) {
         finalCategories = hierarchyCategories;
+      } else {
+        finalCategories = (MAIN_CATEGORIES || []).map(mapCategoryFromDb);
       }
 
       finalCategories.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
@@ -1283,9 +1337,12 @@ export const AppProvider = ({ children }) => {
                 }).catch(() => {});
               }
               copy[idx] = updatedOrder;
+              setCachedData('salbeau_cache_orders', copy);
               return copy;
             }
-            return [updatedOrder, ...prev];
+            const nextList = [updatedOrder, ...prev];
+            setCachedData('salbeau_cache_orders', nextList);
+            return nextList;
           });
         } else if (payload.eventType === 'DELETE') {
           const deletedId = payload.old?.id;
@@ -1382,6 +1439,26 @@ export const AppProvider = ({ children }) => {
       // 3. BRANDS & APP CONFIGS
       .on('postgres_changes', { event: '*', schema: 'public', table: 'brands' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          if (payload.new && payload.new.id === 'salbeau_store_settings' && payload.new.logo) {
+            try {
+              const parsedSettings = JSON.parse(payload.new.logo);
+              if (parsedSettings && typeof parsedSettings === 'object') {
+                setStoreSettings(prev => ({
+                  ...prev,
+                  ...parsedSettings,
+                  identity: { ...prev.identity, ...(parsedSettings.identity || {}) },
+                  delivery: { ...prev.delivery, ...(parsedSettings.delivery || {}) },
+                  payments: { ...prev.payments, ...(parsedSettings.payments || {}) },
+                  operations: { ...prev.operations, ...(parsedSettings.operations || {}) },
+                  policies: { ...prev.policies, ...(parsedSettings.policies || {}) },
+                }));
+                try {
+                  storage.setItem('salbeau_store_settings_cache', JSON.stringify(parsedSettings));
+                } catch (_) {}
+              }
+            } catch (e) {}
+            return;
+          }
           if (payload.new && payload.new.id === 'app_pricing_discount_config' && payload.new.logo) {
             try {
               const parsedPricing = JSON.parse(payload.new.logo);
@@ -1696,13 +1773,24 @@ export const AppProvider = ({ children }) => {
     const rawId = (userProfile?.id || '').trim();
     const digits10 = rawPhone.replace(/\D/g, '').slice(-10);
 
+    // If profile is not loaded yet, don't wipe out existing cached orders
     if (!rawPhone && !rawId) {
-      setOrders([]);
-      return [];
+      return orders;
     }
 
     try {
-      let query = supabase.from('orders').select('*').order('date', { ascending: false });
+      // Automatic 60-Day Cutoff for Customer Order History (Asia/Kolkata / IST)
+      // Customers (both B2C Retail & B2B Trade) view only orders from the last 60 days.
+      // Database & Admin Panel retain 100% of historical records.
+      const sixtyDaysMs = 60 * 24 * 60 * 60 * 1000;
+      const cutoffDate = new Date(Date.now() - sixtyDaysMs);
+      const cutoffIso = cutoffDate.toISOString();
+
+      let query = supabase
+        .from('orders')
+        .select('*')
+        .gte('date', cutoffIso)
+        .order('date', { ascending: false });
       const conds = [];
       if (rawPhone) conds.push(`phone.eq.${rawPhone}`);
       if (digits10 && digits10.length >= 10) {
@@ -1713,7 +1801,6 @@ export const AppProvider = ({ children }) => {
       }
       if (rawId) {
         conds.push(`user_id.eq.${rawId}`);
-        conds.push(`userId.eq.${rawId}`);
       }
 
       if (conds.length > 0) {
@@ -1722,15 +1809,22 @@ export const AppProvider = ({ children }) => {
 
       const { data, error } = await query;
       if (!error && Array.isArray(data)) {
-        const mapped = data.map(mapOrderFromDb);
+        const cutoffTime = cutoffDate.getTime();
+        const mapped = data.map(mapOrderFromDb).filter(o => {
+          if (!o) return false;
+          const t = new Date(o.date || o.placedAt || o.created_at).getTime();
+          return !isNaN(t) ? t >= cutoffTime : true;
+        });
+
         setOrders(mapped);
+        setCachedData('salbeau_cache_orders', mapped);
         return mapped;
       }
     } catch (err) {
       console.warn('fetchUserOrders error:', err);
     }
     return [];
-  }, [userProfile?.phone, userProfile?.id]);
+  }, [userProfile?.phone, userProfile?.id, orders]);
 
   useEffect(() => {
     fetchUserOrders();
@@ -1787,12 +1881,40 @@ export const AppProvider = ({ children }) => {
   const dismissOrderStatusNotification = useCallback(() => {}, []);
 
   // Handle System Tray Notification Clicks & Deep-Linking (Cold & Warm)
+  // Protected: Unauthenticated users are redirected to login and protected order details are hidden
   const handleSystemNotificationTap = useCallback((data) => {
     if (!data) return;
     const orderId = data.orderId || data.order_id || data.orderNumber;
     const targetScreen = data.screen || data.targetScreen;
-    
+
+    const isAuthenticated = Boolean(userProfile?.isProfileComplete && userProfile?.phone);
+    if (!isAuthenticated) {
+      console.log('[Push Notification] User is not authenticated. Storing deep link and redirecting to login...');
+      setPendingNotificationDeepLink(data);
+      try {
+        storage.setItem('salbeau_pending_deep_link', JSON.stringify(data));
+      } catch (_) {}
+      setSelectedOrderIdForDetails(null);
+      setCurrentScreen('login');
+      return;
+    }
+
     if (orderId) {
+      // Permission verification: ensure the order belongs to this authenticated user
+      const cleanPhone = (userProfile?.phone || '').replace(/\D/g, '').slice(-10);
+      const isOwner = (orders || []).some(o => {
+        if (o.id !== orderId) return false;
+        const oPhone = (o.phone || '').replace(/\D/g, '').slice(-10);
+        return (cleanPhone && oPhone && cleanPhone === oPhone) ||
+          (userProfile?.id && (o.userId === userProfile.id || o.user_id === userProfile.id));
+      });
+
+      if (orders.length > 0 && !isOwner) {
+        console.warn('[Security] Logged-in user is not authorized to access order #', orderId);
+        setCurrentScreen('home');
+        return;
+      }
+
       setSelectedOrderIdForDetails(orderId);
       setCurrentScreen('order_details');
     } else if (targetScreen) {
@@ -1804,15 +1926,67 @@ export const AppProvider = ({ children }) => {
     } else {
       setCurrentScreen('home');
     }
-  }, []);
+  }, [userProfile?.isProfileComplete, userProfile?.phone, userProfile?.id, orders, setCurrentScreen]);
 
-  // Native Android FCM & Notifications synchronization
+  // Handle post-login deep link redirection
+  const resolvePostLoginDeepLink = useCallback(async (authenticatedUser) => {
+    let deepLink = pendingNotificationDeepLink;
+    if (!deepLink) {
+      try {
+        const saved = await storage.getItem('salbeau_pending_deep_link');
+        if (saved) deepLink = JSON.parse(saved);
+      } catch (_) {}
+    }
+    if (!deepLink) return false;
+
+    setPendingNotificationDeepLink(null);
+    try {
+      await storage.removeItem('salbeau_pending_deep_link');
+    } catch (_) {}
+
+    const orderId = deepLink.orderId || deepLink.order_id || deepLink.orderNumber;
+    const targetScreen = deepLink.screen || deepLink.targetScreen;
+
+    if (orderId) {
+      const cleanPhone = (authenticatedUser?.phone || '').replace(/\D/g, '').slice(-10);
+      const isOwner = (orders || []).some(o => {
+        if (o.id !== orderId) return false;
+        const oPhone = (o.phone || '').replace(/\D/g, '').slice(-10);
+        return (cleanPhone && oPhone && cleanPhone === oPhone) ||
+          (authenticatedUser?.id && (o.userId === authenticatedUser.id || o.user_id === authenticatedUser.id));
+      });
+
+      if (orders.length > 0 && !isOwner) {
+        console.warn('[Security] Logged-in user is not authorized to access order #', orderId);
+        setCurrentScreen('home');
+        return true;
+      }
+
+      setSelectedOrderIdForDetails(orderId);
+      setCurrentScreen('order_details');
+      return true;
+    }
+
+    if (targetScreen) {
+      setCurrentScreen(targetScreen);
+      return true;
+    }
+
+    return false;
+  }, [pendingNotificationDeepLink, orders, setCurrentScreen]);
+
+  // Native Android FCM & Notifications synchronization (Guarded against repeated callback execution)
+  const fcmSyncMountedRef = useRef(false);
   useEffect(() => {
     fetchNotifications();
     const cleanPhone = (userProfile?.phone || '').trim();
     const cleanId = (userProfile?.id || '').trim();
-    // Always request FCM token & Android 13+ runtime permission on mount
+    
+    // Request FCM token & Android 13+ runtime permission
     requestFCMToken(cleanId, cleanPhone);
+
+    if (fcmSyncMountedRef.current) return;
+    fcmSyncMountedRef.current = true;
 
     // 1. Cold Launch: Check if app was opened by clicking a system notification in tray
     getInitialNotification().then((initial) => {
@@ -1842,7 +2016,7 @@ export const AppProvider = ({ children }) => {
       if (typeof unsubTap === 'function') unsubTap();
       if (typeof unsubFCM === 'function') unsubFCM();
     };
-  }, [userProfile?.phone, userProfile?.id, fetchNotifications, handleSystemNotificationTap]);
+  }, [userProfile?.phone, userProfile?.id]);
 
   // Personalized Real-time & In-App Welcome Notification on User Login
   const triggerLoginWelcomeNotification = useCallback(async (profileOverride = null) => {
@@ -2520,17 +2694,23 @@ export const AppProvider = ({ children }) => {
       await storage.removeItem('salbeau_cache_cart');
       await storage.removeItem('salbeau_cache_orders');
       await storage.removeItem('salbeau_cache_favorites');
+      await storage.removeItem('salbeau_pending_deep_link');
       if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.removeItem(AUTH_SESSION_KEY);
         window.localStorage.removeItem('salbeau_user_profile');
         window.localStorage.removeItem('salbeau_cart');
         window.localStorage.removeItem('salbeau_cache_orders');
         window.localStorage.removeItem('salbeau_cache_favorites');
+        window.localStorage.removeItem('salbeau_pending_deep_link');
       }
     } catch (e) { }
 
     profileCacheRef.current.clear();
     pendingPrefetchRef.current.clear();
+
+    setPendingNotificationDeepLink(null);
+    setSelectedOrderIdForDetails(null);
+    setNavigationHistory(['login']);
 
     setUserProfile(EMPTY_USER_PROFILE);
     setUserRole('general');
@@ -2704,11 +2884,17 @@ export const AppProvider = ({ children }) => {
       removeFromCart(cartItemId);
       return;
     }
-    setCart(prev => prev.map(item => (item.id === cartItemId ? { ...item, quantity } : item)));
+    setCart(prev => prev.map(item => {
+      const isMatch = item.id === cartItemId || String(item.product?.id) === String(cartItemId) || String(item.productId) === String(cartItemId);
+      return isMatch ? { ...item, quantity } : item;
+    }));
   }, []);
 
   const removeFromCart = useCallback((cartItemId) => {
-    setCart(prev => prev.filter(item => item.id !== cartItemId));
+    setCart(prev => prev.filter(item => {
+      const isMatch = item.id === cartItemId || String(item.product?.id) === String(cartItemId) || String(item.productId) === String(cartItemId);
+      return !isMatch;
+    }));
   }, []);
 
   const clearCart = async () => {
@@ -2861,7 +3047,11 @@ export const AppProvider = ({ children }) => {
       items: orderItems
     };
 
-    setOrders(prev => [formattedOrder, ...prev]);
+    setOrders(prev => {
+      const next = [formattedOrder, ...prev];
+      setCachedData('salbeau_cache_orders', next);
+      return next;
+    });
 
     try {
       const orderPayload = {
@@ -2927,17 +3117,19 @@ export const AppProvider = ({ children }) => {
     ).catch(() => {});
 
     // Save notification to backend database for auditing & delivery logs
-    supabase.from('notifications').insert({
-      id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      user_id: userId,
-      target: 'customer',
-      title: 'Order Placed Successfully! 🎉',
-      message: `Your makeup order #${newOrderId} for ₹${Number(formattedOrder.totalAmount || 0).toLocaleString('en-IN')} has been placed.`,
-      type: 'order_status',
-      data: { orderId: newOrderId, orderNumber: newOrderId, eventType: 'order_placed' },
-      is_read: false,
-      created_at: now.toISOString()
-    }).catch(() => {});
+    try {
+      await supabase.from('notifications').insert([{
+        id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        user_id: userId,
+        target: 'customer',
+        title: 'Order Placed Successfully! 🎉',
+        message: `Your makeup order #${newOrderId} for ₹${Number(formattedOrder.totalAmount || 0).toLocaleString('en-IN')} has been placed.`,
+        type: 'order_status',
+        data: { orderId: newOrderId, orderNumber: newOrderId, eventType: 'order_placed' },
+        is_read: false,
+        created_at: now.toISOString()
+      }]);
+    } catch (_) {}
 
     return formattedOrder;
   };
@@ -3131,6 +3323,10 @@ export const AppProvider = ({ children }) => {
         setCurrentUpiOrder,
         currentScreen,
         previousScreen,
+        navigationHistory,
+        navigateTo,
+        goBack,
+        resolvePostLoginDeepLink,
         setCurrentScreen: setProtectedScreen,
         userRole,
         setUserRole,
@@ -3157,6 +3353,8 @@ export const AppProvider = ({ children }) => {
         setSelectedShade,
         selectedCategory,
         setSelectedCategory,
+        selectedSubcategory,
+        setSelectedSubcategory,
         selectedBrand,
         setSelectedBrand,
         searchQuery,

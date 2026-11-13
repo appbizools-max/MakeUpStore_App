@@ -72,13 +72,13 @@ export const StaffLoginScreen = () => {
             onPress={() => setCurrentScreen('login')}
             className="w-10 h-10 rounded-full bg-[#FFF0F5] border border-[#FCE4EC] items-center justify-center shadow-2xs"
           >
-            <Ionicons name="arrow-back" size={20} color="#C2477A" />
+            <Ionicons name="arrow-back" size={20} color="#D81B60" />
           </TouchableOpacity>
 
           {/* Secure Staff Badge */}
           <View className="flex-row items-center bg-[#FDF2F8] border border-[#FCE4EC] px-3.5 py-1.5 rounded-full">
-            <Ionicons name="shield-checkmark" size={14} color="#C2477A" style={{ marginRight: 5 }} />
-            <Text className="text-[11px] font-black text-[#C2477A] tracking-wider uppercase">
+            <Ionicons name="shield-checkmark" size={14} color="#D81B60" style={{ marginRight: 5 }} />
+            <Text className="text-[11px] font-black text-[#D81B60] tracking-wider uppercase">
               Admin Assigned Staff
             </Text>
           </View>
@@ -87,7 +87,7 @@ export const StaffLoginScreen = () => {
         {/* Center Icon & Branding */}
         <View className="items-center mb-6">
           <View className="w-20 h-20 rounded-3xl bg-[#FFF0F5] border border-[#FCD8E3] items-center justify-center shadow-sm mb-3">
-            <Ionicons name="bicycle" size={38} color="#C2477A" />
+            <Ionicons name="bicycle" size={38} color="#D81B60" />
           </View>
           <Text className="text-2xl font-black text-[#3A2430] text-center">
             Delivery Partner Login
@@ -104,7 +104,7 @@ export const StaffLoginScreen = () => {
               <Ionicons
                 name={errorReason === 'DEACTIVATED' ? 'ban-outline' : 'alert-circle'}
                 size={20}
-                color={errorReason === 'DEACTIVATED' ? '#D97706' : '#E11D48'}
+                color={errorReason === 'DEACTIVATED' ? '#D97706' : '#D81B60'}
                 style={{ marginRight: 8, marginTop: 1 }}
               />
               <View className="flex-1">
@@ -125,7 +125,7 @@ export const StaffLoginScreen = () => {
             User ID, Employee Code, or Mobile Number *
           </Text>
 
-          <View className="border border-[#FCE4EC] focus:border-[#C2477A] bg-white rounded-2xl py-3.5 px-4 flex-row items-center shadow-2xs">
+          <View className="border border-[#FCE4EC] focus:border-[#D81B60] bg-white rounded-2xl py-3.5 px-4 flex-row items-center shadow-2xs">
             <Ionicons name="person-outline" size={18} color="#8C7078" style={{ marginRight: 10 }} />
             <TextInput
               value={identifier}
@@ -150,7 +150,7 @@ export const StaffLoginScreen = () => {
             Staff Password (Assigned by Admin) *
           </Text>
 
-          <View className="border border-[#FCE4EC] focus:border-[#C2477A] bg-white rounded-2xl py-3.5 px-4 flex-row items-center shadow-2xs">
+          <View className="border border-[#FCE4EC] focus:border-[#D81B60] bg-white rounded-2xl py-3.5 px-4 flex-row items-center shadow-2xs">
             <Ionicons name="lock-closed-outline" size={18} color="#8C7078" style={{ marginRight: 10 }} />
             <TextInput
               value={password}
@@ -175,7 +175,7 @@ export const StaffLoginScreen = () => {
           activeOpacity={0.9}
           disabled={!isFormValid || isSubmitting}
           onPress={handleLogin}
-          style={{ backgroundColor: isFormValid && !isSubmitting ? '#C2477A' : '#E5E7EB' }}
+          style={{ backgroundColor: isFormValid && !isSubmitting ? '#D81B60' : '#E5E7EB' }}
           className="w-full py-4 rounded-full flex-row items-center justify-center shadow-lg active:opacity-90 mb-4"
         >
           {isSubmitting ? (

@@ -318,7 +318,7 @@ export default function BrandFormModal({
         {/* Drawer Header */}
         <div className="p-5 px-6 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-white via-white to-white shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#D81B60] flex items-center justify-center font-bold shadow-2xs shrink-0">
               {isEdit ? <Edit size={20} /> : <BadgePlus size={22} />}
             </div>
             <div>
@@ -327,7 +327,7 @@ export default function BrandFormModal({
                   {isEdit ? 'Edit Brand Master' : 'Add New Brand'}
                 </h3>
                 {formData.brandNumber && (
-                  <span className="text-[10.5px] font-black uppercase px-2 py-0.5 rounded-md bg-white text-[#C2477A] border border-pink-200">
+                  <span className="text-[10.5px] font-black uppercase px-2 py-0.5 rounded-md bg-white text-[#D81B60] border border-pink-200">
                     {formData.brandNumber}
                   </span>
                 )}
@@ -363,7 +363,7 @@ export default function BrandFormModal({
           <div className="space-y-1.5">
             <label className="text-gray-900 font-extrabold text-xs flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Tag size={13} className="text-[#C2477A]" />
+                <Tag size={13} className="text-[#D81B60]" />
                 <span>Brand Name <span className="text-rose-500">*</span></span>
               </span>
               {errors.name && <span className="text-rose-500 text-[11px] font-semibold">{errors.name}</span>}
@@ -374,8 +374,8 @@ export default function BrandFormModal({
               placeholder="e.g. AGARO, AIR WICK, LAKME, MAYBELLINE"
               value={formData.name}
               onChange={handleNameChange}
-              className={`w-full px-4 py-2.5 rounded-xl border bg-white font-bold text-gray-900 shadow-2xs text-xs sm:text-sm outline-none transition-all placeholder:text-gray-400 focus:ring-2 focus:ring-[#C2477A]/20 ${
-                errors.name ? 'border-rose-300 focus:border-rose-500' : 'border-pink-100 focus:border-[#C2477A]'
+              className={`w-full px-4 py-2.5 rounded-xl border bg-white font-bold text-gray-900 shadow-2xs text-xs sm:text-sm outline-none transition-all placeholder:text-gray-400 focus:ring-2 focus:ring-[#D81B60]/20 ${
+                errors.name ? 'border-rose-300 focus:border-rose-500' : 'border-pink-100 focus:border-[#D81B60]'
               }`}
             />
           </div>
@@ -386,10 +386,10 @@ export default function BrandFormModal({
           <div ref={categoryContainerRef} className="relative space-y-1.5">
             <label className="text-gray-900 font-extrabold text-xs flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Sparkles size={13} className="text-[#C2477A]" />
+                <Sparkles size={13} className="text-[#D81B60]" />
                 <span>Categories</span>
               </span>
-              <span className="text-[10px] font-bold text-[#C2477A] bg-white px-2 py-0.5 rounded-full border border-pink-100">
+              <span className="text-[10px] font-bold text-[#D81B60] bg-white px-2 py-0.5 rounded-full border border-pink-100">
                 {formData.categories.length} Selected
               </span>
             </label>
@@ -402,7 +402,7 @@ export default function BrandFormModal({
                 formData.categories.map((cat) => (
                   <span
                     key={cat}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white text-[#C2477A] border border-pink-200 shadow-2xs animate-fade-in"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white text-[#D81B60] border border-pink-200 shadow-2xs animate-fade-in"
                   >
                     <span>{cat}</span>
                     <button
@@ -429,7 +429,7 @@ export default function BrandFormModal({
                   ? `Modify Categories (${formData.categories.length} selected)...`
                   : 'Select Categories from Master Catalog...'}
               </span>
-              <ChevronDown size={14} className={`text-gray-400 transition-transform ${isCategoryDropdownOpen ? 'rotate-180 text-[#C2477A]' : ''}`} />
+              <ChevronDown size={14} className={`text-gray-400 transition-transform ${isCategoryDropdownOpen ? 'rotate-180 text-[#D81B60]' : ''}`} />
             </button>
 
             {/* Searchable Multi-Select Floating Menu */}
@@ -440,7 +440,7 @@ export default function BrandFormModal({
                   placeholder="Search master categories..."
                   value={categorySearchQuery}
                   onChange={(e) => setCategorySearchQuery(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-pink-100 bg-gray-50/70 text-xs font-semibold outline-none focus:border-[#C2477A]"
+                  className="w-full px-3 py-2 rounded-xl border border-pink-100 bg-gray-50/70 text-xs font-semibold outline-none focus:border-[#D81B60]"
                 />
                 <div className="max-h-52 overflow-y-auto space-y-1 custom-scrollbar">
                   {filteredCategoryOptions.length === 0 ? (
@@ -456,7 +456,7 @@ export default function BrandFormModal({
                           onClick={() => toggleCategory(cat)}
                           className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between cursor-pointer transition-colors ${
                             isSelected
-                              ? 'bg-white text-[#C2477A]'
+                              ? 'bg-white text-[#D81B60]'
                               : 'hover:bg-gray-50 text-gray-700'
                           }`}
                         >
@@ -465,7 +465,7 @@ export default function BrandFormModal({
                             type="checkbox"
                             checked={isSelected}
                             readOnly
-                            className="w-4 h-4 accent-[#C2477A] rounded cursor-pointer pointer-events-none"
+                            className="w-4 h-4 accent-[#D81B60] rounded cursor-pointer pointer-events-none"
                           />
                         </div>
                       );
@@ -485,7 +485,7 @@ export default function BrandFormModal({
           <div className="p-4 rounded-2xl bg-white border border-pink-100 space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-gray-900 font-extrabold text-xs flex items-center gap-1.5 uppercase tracking-wider">
-                <Eye size={14} className="text-[#C2477A]" />
+                <Eye size={14} className="text-[#D81B60]" />
                 <span>Brand Visibility Status</span>
               </label>
               <span
@@ -562,7 +562,7 @@ export default function BrandFormModal({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || isUploadingLogo}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white font-extrabold text-xs shadow-xs hover:shadow transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white font-extrabold text-xs shadow-xs hover:shadow transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

@@ -103,6 +103,19 @@ export default function BrandManagementPage({
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const adminCtx = useAdmin ? useAdmin() : null;
+  // Fallback to AdminContext if props are empty or not provided
+  const activeBrands = (Array.isArray(brands) && brands.length > 0) ? brands : (adminCtx?.brands || []);
+  const activeCategories = (Array.isArray(categories) && categories.length > 0) ? categories : (adminCtx?.categories || []);
+  const activeProducts = (Array.isArray(products) && products.length > 0) ? products : (adminCtx?.products || []);
+
+  const safeAddBrand = onAddBrand || adminCtx?.addBrand;
+  const safeUpdateBrand = onUpdateBrand || adminCtx?.updateBrand;
+  const safeDeleteBrand = onDeleteBrand || adminCtx?.deleteBrand;
+  const safeBulkDeleteBrands = onBulkDeleteBrands || adminCtx?.bulkDeleteBrands;
+  const safeToggleBrandStatus = onToggleBrandStatus || adminCtx?.toggleBrandStatus;
+  const safeBulkImportBrands = onBulkImportBrands || adminCtx?.bulkImportBrands;
+  const safeUpdateBrandsOrder = onUpdateBrandsOrder || adminCtx?.updateBrandsOrder;
+
   // Master Data Control: Only authorized administrators can add, edit, or delete Brand Master data.
   // Employees can only view and select existing brands.
   const isEmployee = adminCtx?.currentAuthUser?.role === 'employee' || adminCtx?.currentAuthUser?.role === 'staff';
@@ -124,7 +137,7 @@ export default function BrandManagementPage({
     let active = 0;
     let inactive = 0;
     let uncategorized = 0;
-    (brands || []).forEach(b => {
+    (activeBrands || []).forEach(b => {
       if (!b || b.id?.startsWith('app_') || b.id?.startsWith('salbeau_') || b.category === 'SystemConfig') return;
       if (b.enabled !== false) active++;
       else inactive++;
@@ -137,16 +150,16 @@ export default function BrandManagementPage({
       inactive,
       uncategorized
     };
-  }, [brands]);
+  }, [activeBrands]);
 
   // Filtered & Sorted Brands Computation
   const filteredBrands = useMemo(() => {
-    return (brands || []).filter(b => {
+    return (activeBrands || []).filter(b => {
       if (!b || b.id?.startsWith('app_') || b.id?.startsWith('salbeau_') || b.category === 'SystemConfig') return false;
       // 1. Search Query Match (searches Brand Number, Sequence, Brand Name)
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
-        const brandNum = resolveBrandNumber(b, brands);
+        const brandNum = resolveBrandNumber(b, activeBrands);
         const num = brandNum.toLowerCase();
         const seq = String(parseBrandNumberSeq(brandNum));
         const name = (b.name || '').toLowerCase();
@@ -195,8 +208,8 @@ export default function BrandManagementPage({
         valA = a.name || '';
         valB = b.name || '';
       } else if (sortField === 'brandNumber') {
-        const numA = resolveBrandNumber(a, brands);
-        const numB = resolveBrandNumber(b, brands);
+        const numA = resolveBrandNumber(a, activeBrands);
+        const numB = resolveBrandNumber(b, activeBrands);
         const seqA = parseBrandNumberSeq(numA);
         const seqB = parseBrandNumberSeq(numB);
         if (seqA && seqB) {
@@ -215,7 +228,7 @@ export default function BrandManagementPage({
       const cmp = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
       return sortDirection === 'asc' ? cmp : -cmp;
     });
-  }, [brands, searchQuery, selectedCategoryFilter, statusFilter, logoFilter, sortField, sortDirection]);
+  }, [activeBrands, searchQuery, selectedCategoryFilter, statusFilter, logoFilter, sortField, sortDirection]);
 
   // Pagination Slicing
   const totalPages = Math.max(1, Math.ceil(filteredBrands.length / recordsPerPage));
@@ -352,11 +365,11 @@ export default function BrandManagementPage({
   const handleSaveBrand = async (brandData, isEdit) => {
     try {
       if (isEdit) {
-        await onUpdateBrand(brandData.id, brandData);
+        if (typeof safeUpdateBrand === 'function') await safeUpdateBrand(brandData.id, brandData);
         showToast(`Brand "${brandData.name}" updated successfully.`);
       } else {
-        await onAddBrand(brandData);
-        showToast(`Brand "${brandData.name}" created successfully with ${brandData.brandNumber}.`);
+        if (typeof safeAddBrand === 'function') await safeAddBrand(brandData);
+        showToast(`Brand "${brandData.name}" created successfully with ${brandData.brandNumber || ''}.`);
       }
     } catch (err) {
       console.error('Error saving brand:', err);
@@ -367,7 +380,7 @@ export default function BrandManagementPage({
   // Safe Deletion Handlers
   const handlePromptDelete = (brand) => {
     const brandNorm = (brand.name || '').trim().toLowerCase();
-    const referencingProducts = (products || []).filter(p =>
+    const referencingProducts = (activeProducts || []).filter(p =>
       p.brandId === brand.id ||
       (p.brandName && p.brandName.trim().toLowerCase() === brandNorm) ||
       (p.brand_name && p.brand_name.trim().toLowerCase() === brandNorm) ||
@@ -390,7 +403,7 @@ export default function BrandManagementPage({
   const handleConfirmDelete = async () => {
     if (!deleteTargetBrand) return;
     try {
-      const res = await onDeleteBrand(deleteTargetBrand.id);
+      const res = typeof safeDeleteBrand === 'function' ? await safeDeleteBrand(deleteTargetBrand.id) : null;
       if (res && res.success === false) {
         showToast(res.message, 'error');
       } else {
@@ -514,7 +527,7 @@ export default function BrandManagementPage({
     setIsBulkDeleting(true);
     try {
       for (const item of bulkDeleteModalData.referencedBrands) {
-        await onToggleBrandStatus(item.brand.id);
+        if (typeof safeToggleBrandStatus === 'function') await safeToggleBrandStatus(item.brand.id);
       }
       showToast(`Set ${bulkDeleteModalData.referencedBrands.length} referenced brand(s) to Inactive.`);
       setSelectedBrandIds(new Set());
@@ -578,7 +591,7 @@ export default function BrandManagementPage({
         {/* Module Header Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-5 border-b border-pink-100/70">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-white border border-pink-100 text-[#D81B60] flex items-center justify-center font-bold shadow-2xs shrink-0">
               <Store size={22} />
             </div>
             <div>
@@ -596,7 +609,7 @@ export default function BrandManagementPage({
             <button
               type="button"
               onClick={handleExportAll}
-              className="px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#D81B60] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
               title="Export all brands to Excel"
             >
               <Download size={14} />
@@ -608,7 +621,7 @@ export default function BrandManagementPage({
                 <button
                   type="button"
                   onClick={handleExportSelected}
-                  className="px-3.5 py-2.5 rounded-xl bg-white border border-pink-300 text-[#C2477A] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 animate-fade-in"
+                  className="px-3.5 py-2.5 rounded-xl bg-white border border-pink-300 text-[#D81B60] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 animate-fade-in"
                 >
                   <Download size={14} />
                   <span>Export ({selectedBrandIds.size}) Selected</span>
@@ -645,7 +658,7 @@ export default function BrandManagementPage({
                 <button
                   type="button"
                   onClick={() => setIsImportModalOpen(true)}
-                  className="px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  className="px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#D81B60] font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <Upload size={14} />
                   <span>Import Excel</span>
@@ -654,7 +667,7 @@ export default function BrandManagementPage({
                 <button
                   type="button"
                   onClick={handleOpenAddBrand}
-                  className="bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                  className="bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95"
                 >
                   <BadgePlus size={16} />
                   <span>Add New Brand</span>
@@ -676,7 +689,7 @@ export default function BrandManagementPage({
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Brands</span>
               <span className="text-xl font-black text-gray-900">{brandStats.total}</span>
             </div>
-            <div className="w-8 h-8 rounded-xl bg-pink-100/70 text-[#C2477A] flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-pink-100/70 text-[#D81B60] flex items-center justify-center font-bold">
               <Store size={16} />
             </div>
           </div>
@@ -723,8 +736,8 @@ export default function BrandManagementPage({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5 p-3.5 rounded-2xl bg-white border border-pink-100/80">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
             {/* Search Input: Brand Number, Name */}
-            <div className="flex items-center gap-2 bg-white px-3.5 h-10 rounded-xl border border-pink-200/90 w-full sm:w-72 focus-within:ring-2 focus-within:ring-[#C2477A]/20 transition-all shadow-2xs">
-              <Search size={14} className="text-[#C2477A] shrink-0" />
+            <div className="flex items-center gap-2 bg-white px-3.5 h-10 rounded-xl border border-pink-200/90 w-full sm:w-72 focus-within:ring-2 focus-within:ring-[#D81B60]/20 transition-all shadow-2xs">
+              <Search size={14} className="text-[#D81B60] shrink-0" />
               <input
                 type="text"
                 placeholder="Search brand number or name..."
@@ -751,7 +764,7 @@ export default function BrandManagementPage({
 
             {/* Category Filter */}
             <div className="flex items-center gap-1.5 bg-white px-3 h-10 rounded-xl border border-pink-200/90 shadow-2xs">
-              <Sparkles size={13} className="text-[#C2477A] shrink-0" />
+              <Sparkles size={13} className="text-[#D81B60] shrink-0" />
               <select
                 value={selectedCategoryFilter}
                 onChange={(e) => {
@@ -772,7 +785,7 @@ export default function BrandManagementPage({
 
             {/* Status Filter */}
             <div className="flex items-center gap-1.5 bg-white px-3 h-10 rounded-xl border border-pink-200/90 shadow-2xs">
-              <Eye size={13} className="text-[#C2477A] shrink-0" />
+              <Eye size={13} className="text-[#D81B60] shrink-0" />
               <select
                 value={statusFilter}
                 onChange={(e) => {
@@ -798,7 +811,7 @@ export default function BrandManagementPage({
                   setStatusFilter('all');
                   setCurrentPage(1);
                 }}
-                className="h-10 px-3 rounded-xl bg-white border border-pink-200 text-[#C2477A] hover:bg-pink-50 transition-colors shadow-2xs cursor-pointer flex items-center gap-1 text-xs font-bold"
+                className="h-10 px-3 rounded-xl bg-white border border-pink-200 text-[#D81B60] hover:bg-pink-50 transition-colors shadow-2xs cursor-pointer flex items-center gap-1 text-xs font-bold"
                 title="Reset Filters"
               >
                 <RotateCcw size={13} />
@@ -826,7 +839,7 @@ export default function BrandManagementPage({
                 <button
                   type="button"
                   onClick={() => setSelectedBrandIds(new Set(filteredBrands.map(b => b.id)))}
-                  className="ml-2 text-xs text-[#C2477A] hover:text-[#9A2D5C] underline font-bold cursor-pointer transition-colors"
+                  className="ml-2 text-xs text-[#D81B60] hover:text-[#9A2D5C] underline font-bold cursor-pointer transition-colors"
                 >
                   Select all {filteredBrands.length} brands in catalog
                 </button>
@@ -843,7 +856,7 @@ export default function BrandManagementPage({
               <button
                 type="button"
                 onClick={handleExportSelected}
-                className="px-3.5 py-1.5 rounded-xl bg-white border border-pink-200 text-[#C2477A] hover:bg-pink-50 font-bold text-xs cursor-pointer transition-colors shadow-2xs flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-xl bg-white border border-pink-200 text-[#D81B60] hover:bg-pink-50 font-bold text-xs cursor-pointer transition-colors shadow-2xs flex items-center gap-1.5"
               >
                 <Download size={13} />
                 <span>Export ({selectedBrandIds.size})</span>
@@ -889,7 +902,7 @@ export default function BrandManagementPage({
                     type="checkbox"
                     checked={selectedBrandIds.size === paginatedBrands.length && paginatedBrands.length > 0}
                     onChange={handleToggleSelectAll}
-                    className="w-3.5 h-3.5 accent-[#C2477A] rounded cursor-pointer mx-auto block"
+                    className="w-3.5 h-3.5 accent-[#D81B60] rounded cursor-pointer mx-auto block"
                     title="Select all on current page"
                   />
                 </th>
@@ -902,7 +915,7 @@ export default function BrandManagementPage({
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>PRIORITY</span>
-                    <ArrowUpDown size={11} className={sortField === 'displayOrder' ? 'text-[#C2477A]' : 'text-gray-400'} />
+                    <ArrowUpDown size={11} className={sortField === 'displayOrder' ? 'text-[#D81B60]' : 'text-gray-400'} />
                   </div>
                 </th>
 
@@ -910,7 +923,7 @@ export default function BrandManagementPage({
                 <th className="py-4 px-3 text-left align-middle cursor-pointer hover:bg-pink-100/60 transition-colors" onClick={() => handleSort('brandNumber')}>
                   <div className="flex items-center gap-1.5">
                     <span>BRAND NUMBER</span>
-                    <ArrowUpDown size={11} className={sortField === 'brandNumber' ? 'text-[#C2477A]' : 'text-gray-400'} />
+                    <ArrowUpDown size={11} className={sortField === 'brandNumber' ? 'text-[#D81B60]' : 'text-gray-400'} />
                   </div>
                 </th>
 
@@ -918,7 +931,7 @@ export default function BrandManagementPage({
                 <th className="py-4 px-4 text-left align-middle cursor-pointer hover:bg-pink-100/60 transition-colors" onClick={() => handleSort('name')}>
                   <div className="flex items-center gap-1.5">
                     <span>BRAND NAME</span>
-                    <ArrowUpDown size={11} className={sortField === 'name' ? 'text-[#C2477A]' : 'text-gray-400'} />
+                    <ArrowUpDown size={11} className={sortField === 'name' ? 'text-[#D81B60]' : 'text-gray-400'} />
                   </div>
                 </th>
 
@@ -968,7 +981,7 @@ export default function BrandManagementPage({
                       className={`transition-colors ${draggedBrandIndex === index
                           ? 'opacity-40 bg-pink-100/60'
                           : dragOverBrandIndex === index
-                            ? 'bg-pink-100/40 border-t-2 border-[#C2477A]'
+                            ? 'bg-pink-100/40 border-t-2 border-[#D81B60]'
                             : isSelected
                               ? 'bg-white hover:bg-pink-100/40'
                               : index % 2 === 1
@@ -982,7 +995,7 @@ export default function BrandManagementPage({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectRow(brand.id)}
-                          className="w-3.5 h-3.5 accent-[#C2477A] rounded cursor-pointer mx-auto block"
+                          className="w-3.5 h-3.5 accent-[#D81B60] rounded cursor-pointer mx-auto block"
                         />
                       </td>
 
@@ -990,12 +1003,12 @@ export default function BrandManagementPage({
                       <td className="py-3 px-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center justify-center gap-1">
                           <span
-                            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A] p-0.5"
+                            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#D81B60] p-0.5"
                             title="Drag & drop to reorder brand priority"
                           >
                             <GripVertical size={13} />
                           </span>
-                          <span className="w-6 h-5 rounded-md bg-pink-50 text-[#C2477A] font-mono font-black text-[10px] flex items-center justify-center border border-pink-200 shadow-2xs">
+                          <span className="w-6 h-5 rounded-md bg-pink-50 text-[#D81B60] font-mono font-black text-[10px] flex items-center justify-center border border-pink-200 shadow-2xs">
                             {startIndex + index + 1}
                           </span>
                           {isAdmin && (
@@ -1004,7 +1017,7 @@ export default function BrandManagementPage({
                                 type="button"
                                 disabled={index === 0 && effectivePage === 1}
                                 onClick={() => handleMoveBrand(index, -1)}
-                                className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#D81B60] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
                                 title="Move Brand Up (higher priority)"
                               >
                                 <ArrowUp size={8} />
@@ -1013,7 +1026,7 @@ export default function BrandManagementPage({
                                 type="button"
                                 disabled={index === paginatedBrands.length - 1 && effectivePage === totalPages}
                                 onClick={() => handleMoveBrand(index, 1)}
-                                className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#D81B60] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
                                 title="Move Brand Down (lower priority)"
                               >
                                 <ArrowDown size={8} />
@@ -1024,9 +1037,9 @@ export default function BrandManagementPage({
                       </td>
 
                       {/* COLUMN 1: Brand Number */}
-                      <td className="py-3 px-3 whitespace-nowrap font-mono font-extrabold text-[#C2477A] text-xs align-middle">
+                      <td className="py-3 px-3 whitespace-nowrap font-mono font-extrabold text-[#D81B60] text-xs align-middle">
                         <div className="inline-flex items-center gap-1.5">
-                          <span className="px-2.5 py-1 rounded-lg bg-white border border-pink-200/90 shadow-2xs font-mono font-black text-[#C2477A]">
+                          <span className="px-2.5 py-1 rounded-lg bg-white border border-pink-200/90 shadow-2xs font-mono font-black text-[#D81B60]">
                             {brandNum}
                           </span>
                           {brandSeq > 0 && (
@@ -1048,7 +1061,7 @@ export default function BrandManagementPage({
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : (
-                            <div className="w-7 h-7 rounded-lg bg-white border border-pink-100 flex items-center justify-center shrink-0 text-[#C2477A]">
+                            <div className="w-7 h-7 rounded-lg bg-white border border-pink-100 flex items-center justify-center shrink-0 text-[#D81B60]">
                               <Store size={13} />
                             </div>
                           )}
@@ -1092,7 +1105,7 @@ export default function BrandManagementPage({
                           <div className="inline-flex items-center gap-1.5 mr-1">
                             <button
                               type="button"
-                              onClick={() => { if (isAdmin) onToggleBrandStatus(brand.id); }}
+                              onClick={() => { if (isAdmin && typeof safeToggleBrandStatus === 'function') safeToggleBrandStatus(brand.id); }}
                               disabled={!isAdmin}
                               className={`relative inline-flex h-4 w-8 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isEnabled ? 'bg-emerald-500' : 'bg-gray-300'
                                 } ${isAdmin ? 'cursor-pointer' : 'cursor-default opacity-80'}`}
@@ -1119,7 +1132,7 @@ export default function BrandManagementPage({
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditBrand(brand)}
-                                className="px-2.5 py-1.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-[#C2477A] font-bold text-[11px] shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                                className="px-2.5 py-1.5 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-[#D81B60] font-bold text-[11px] shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                                 title="Edit Brand details"
                               >
                                 <Edit size={12} />
@@ -1161,7 +1174,7 @@ export default function BrandManagementPage({
                   setRecordsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white text-gray-800 font-bold outline-none cursor-pointer focus:border-[#C2477A]"
+                className="px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white text-gray-800 font-bold outline-none cursor-pointer focus:border-[#D81B60]"
               >
                 <option value={15}>15</option>
                 <option value={25}>25</option>
@@ -1194,7 +1207,7 @@ export default function BrandManagementPage({
               disabled={currentPage <= 1}
               className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${currentPage <= 1
                   ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                  : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
+                  : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
                 }`}
               title="Previous Page"
             >
@@ -1216,7 +1229,7 @@ export default function BrandManagementPage({
                       type="button"
                       onClick={() => setCurrentPage(page)}
                       className={`w-8 h-8 rounded-xl font-bold text-xs flex items-center justify-center transition-all cursor-pointer ${isCurrent
-                          ? 'bg-[#C2477A] text-white shadow-xs'
+                          ? 'bg-[#D81B60] text-white shadow-xs'
                           : 'bg-white border border-pink-200 text-gray-700 hover:bg-pink-50'
                         }`}
                     >
@@ -1232,7 +1245,7 @@ export default function BrandManagementPage({
               disabled={currentPage >= totalPages}
               className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${currentPage >= totalPages
                   ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                  : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
+                  : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
                 }`}
               title="Next Page"
             >
@@ -1262,13 +1275,13 @@ export default function BrandManagementPage({
       {isImportModalOpen && (
         <BrandImportModal
           isOpen={isImportModalOpen}
-          masterCategories={categories}
-          existingBrands={brands}
+          masterCategories={activeCategories}
+          existingBrands={activeBrands}
           onAddCategory={adminCtx?.addCategory}
           onClose={() => setIsImportModalOpen(false)}
           onConfirmImport={async (parsedRows, mode) => {
-            const results = await onBulkImportBrands(parsedRows, mode);
-            showToast(`Import processed: ${results.created} created, ${results.updated} updated.`);
+            const results = typeof safeBulkImportBrands === 'function' ? await safeBulkImportBrands(parsedRows, mode) : { created: 0, updated: 0 };
+            showToast(`Import processed: ${results?.created ?? 0} created, ${results?.updated ?? 0} updated.`);
             return results;
           }}
         />
@@ -1321,11 +1334,11 @@ export default function BrandManagementPage({
               <button
                 type="button"
                 onClick={async () => {
-                  await onToggleBrandStatus(deleteWarning.brand.id);
+                  if (typeof safeToggleBrandStatus === 'function') await safeToggleBrandStatus(deleteWarning.brand.id);
                   showToast(`Brand "${deleteWarning.brand.name}" set to Inactive.`);
                   setDeleteWarning(null);
                 }}
-                className="px-4 py-2.5 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-bold text-xs cursor-pointer shadow-xs"
+                className="px-4 py-2.5 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-bold text-xs cursor-pointer shadow-xs"
               >
                 Set Brand Inactive
               </button>

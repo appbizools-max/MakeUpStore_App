@@ -104,7 +104,7 @@ export default function InlineImageSection({
       {/* Header with Title and Action Buttons */}
       <div className="flex flex-wrap items-center justify-between gap-1.5">
         <label className="text-[11px] font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
-          <ImageIcon size={13} className="text-[#C2477A]" />
+          <ImageIcon size={13} className="text-[#D81B60]" />
           <span>{entityType} Image</span>
         </label>
         
@@ -123,7 +123,7 @@ export default function InlineImageSection({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="px-2.5 py-1 bg-white hover:bg-pink-100 text-[#C2477A] border border-pink-200 rounded-lg text-[10.5px] font-extrabold flex items-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+            className="px-2.5 py-1 bg-white hover:bg-pink-100 text-[#D81B60] border border-pink-200 rounded-lg text-[10.5px] font-extrabold flex items-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
             title="Upload local image from computer"
           >
             {isUploading ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />}
@@ -198,7 +198,7 @@ export default function InlineImageSection({
                 value={urlInput}
                 onChange={(e) => handleApplyUrl(e.target.value)}
                 placeholder="Or paste direct image link..."
-                className="w-full px-3 py-2 rounded-xl border border-pink-100 focus:border-[#C2477A] text-xs font-medium outline-none bg-white text-gray-800 transition-colors"
+                className="w-full px-3 py-2 rounded-xl border border-pink-100 focus:border-[#D81B60] text-xs font-medium outline-none bg-white text-gray-800 transition-colors"
               />
             </div>
           </>

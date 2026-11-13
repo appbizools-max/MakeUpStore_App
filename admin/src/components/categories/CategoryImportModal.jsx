@@ -218,13 +218,13 @@ export default function CategoryImportModal({
         {/* Modal Header */}
         <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-white via-white to-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#D81B60] flex items-center justify-center font-bold shadow-2xs shrink-0">
               <FileSpreadsheet size={22} />
             </div>
             <div>
               <h3 className="font-extrabold text-base text-gray-900 tracking-wide flex items-center gap-2">
                 <span>Import Categories from Excel</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-[#C2477A]">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-[#D81B60]">
                   Smart Column Auto-Map
                 </span>
               </h3>
@@ -236,7 +236,7 @@ export default function CategoryImportModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -282,7 +282,7 @@ export default function CategoryImportModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95"
                 >
                   Done & Close
                 </button>
@@ -305,8 +305,8 @@ export default function CategoryImportModal({
                   onClick={() => fileInputRef.current?.click()}
                   className={`p-8 rounded-3xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-3 ${
                     isDragging
-                      ? 'border-[#C2477A] bg-white scale-[0.99]'
-                      : 'border-pink-200/80 bg-[#FFFDFE] hover:border-[#C2477A] hover:bg-pink-50/30'
+                      ? 'border-[#D81B60] bg-white scale-[0.99]'
+                      : 'border-pink-200/80 bg-[#FFFDFE] hover:border-[#D81B60] hover:bg-pink-50/30'
                   }`}
                 >
                   <input
@@ -320,7 +320,7 @@ export default function CategoryImportModal({
                       }
                     }}
                   />
-                  <div className="w-14 h-14 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center shadow-2xs">
+                  <div className="w-14 h-14 rounded-2xl bg-white border border-pink-100 text-[#D81B60] flex items-center justify-center shadow-2xs">
                     <Upload size={26} />
                   </div>
                   <div>
@@ -338,7 +338,7 @@ export default function CategoryImportModal({
                         e.stopPropagation();
                         downloadSimpleCategoryTemplate();
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-white border border-pink-200 hover:border-[#C2477A] text-[#C2477A] text-[11px] font-bold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-white border border-pink-200 hover:border-[#D81B60] text-[#D81B60] text-[11px] font-bold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <Download size={13} />
                       <span>Download Sample Template</span>
@@ -348,7 +348,7 @@ export default function CategoryImportModal({
               ) : (
                 <div className="p-4 rounded-2xl bg-white border border-pink-100 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-pink-200 text-[#C2477A] flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-pink-200 text-[#D81B60] flex items-center justify-center font-bold shrink-0 shadow-2xs">
                       <FileSpreadsheet size={20} />
                     </div>
                     <div className="min-w-0">
@@ -362,7 +362,7 @@ export default function CategoryImportModal({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-xl bg-white border border-gray-200 hover:border-pink-300 text-gray-700 hover:text-[#C2477A] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                      className="px-3 py-1.5 rounded-xl bg-white border border-gray-200 hover:border-pink-300 text-gray-700 hover:text-[#D81B60] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
                     >
                       Change File
                     </button>
@@ -392,7 +392,7 @@ export default function CategoryImportModal({
               {/* Validation Loader */}
               {isValidating && (
                 <div className="p-8 rounded-2xl bg-white border border-pink-100 flex flex-col items-center justify-center gap-2 text-gray-600">
-                  <Loader2 size={24} className="animate-spin text-[#C2477A]" />
+                  <Loader2 size={24} className="animate-spin text-[#D81B60]" />
                   <span className="font-bold text-xs">Analyzing spreadsheet columns and rows...</span>
                 </div>
               )}
@@ -404,7 +404,7 @@ export default function CategoryImportModal({
                   <div className="p-3.5 rounded-2xl bg-gray-50/80 border border-gray-200/80 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-gray-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                        <Sparkles size={13} className="text-[#C2477A]" />
+                        <Sparkles size={13} className="text-[#D81B60]" />
                         <span>Detected Excel Columns ({inspectionData.headers.length})</span>
                       </span>
                       <span className="text-[10px] text-gray-500 font-semibold">
@@ -419,7 +419,7 @@ export default function CategoryImportModal({
                             key={i}
                             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
                               isMapped
-                                ? 'bg-white text-[#C2477A] border-pink-200 shadow-2xs'
+                                ? 'bg-white text-[#D81B60] border-pink-200 shadow-2xs'
                                 : 'bg-white text-gray-600 border-gray-200'
                             }`}
                           >
@@ -439,7 +439,7 @@ export default function CategoryImportModal({
                     {/* LEVEL 1: MAIN CATEGORIES */}
                     <div className={`p-4 rounded-2xl border transition-all ${
                       toggles.importMain
-                        ? 'bg-[#FFFDFC] border-[#C2477A]/50 ring-1 ring-[#C2477A]/20 shadow-2xs'
+                        ? 'bg-[#FFFDFC] border-[#D81B60]/50 ring-1 ring-[#D81B60]/20 shadow-2xs'
                         : 'bg-white border-gray-200 opacity-70 hover:opacity-100'
                     }`}>
                       <div className="flex items-start justify-between gap-3">
@@ -448,7 +448,7 @@ export default function CategoryImportModal({
                             type="checkbox"
                             checked={toggles.importMain}
                             onChange={(e) => setToggles(prev => ({ ...prev, importMain: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] border-gray-300 cursor-pointer"
+                            className="mt-1 w-4 h-4 rounded text-[#D81B60] focus:ring-[#D81B60] border-gray-300 cursor-pointer"
                           />
                           <div>
                             <div className="flex items-center gap-2">
@@ -481,7 +481,7 @@ export default function CategoryImportModal({
                             <select
                               value={mapping.mainCategoryCol}
                               onChange={(e) => setMapping(prev => ({ ...prev, mainCategoryCol: e.target.value }))}
-                              className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-[#C2477A]"
+                              className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-[#D81B60]"
                             >
                               <option value="">— Select Column from Excel —</option>
                               {inspectionData.headers.map((h, i) => (
@@ -496,7 +496,7 @@ export default function CategoryImportModal({
                     {/* LEVEL 2: SUBCATEGORIES */}
                     <div className={`p-4 rounded-2xl border transition-all ${
                       toggles.importSub
-                        ? 'bg-[#FFFDFC] border-[#C2477A]/50 ring-1 ring-[#C2477A]/20 shadow-2xs'
+                        ? 'bg-[#FFFDFC] border-[#D81B60]/50 ring-1 ring-[#D81B60]/20 shadow-2xs'
                         : 'bg-white border-gray-200 opacity-70 hover:opacity-100'
                     }`}>
                       <div className="flex items-start justify-between gap-3">
@@ -505,7 +505,7 @@ export default function CategoryImportModal({
                             type="checkbox"
                             checked={toggles.importSub}
                             onChange={(e) => setToggles(prev => ({ ...prev, importSub: e.target.checked }))}
-                            className="mt-1 w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] border-gray-300 cursor-pointer"
+                            className="mt-1 w-4 h-4 rounded text-[#D81B60] focus:ring-[#D81B60] border-gray-300 cursor-pointer"
                           />
                           <div>
                             <div className="flex items-center gap-2">
@@ -538,7 +538,7 @@ export default function CategoryImportModal({
                             <select
                               value={mapping.subcategoryCol}
                               onChange={(e) => setMapping(prev => ({ ...prev, subcategoryCol: e.target.value }))}
-                              className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-[#C2477A]"
+                              className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-[#D81B60]"
                             >
                               <option value="">— Select Column from Excel —</option>
                               {inspectionData.headers.map((h, i) => (
@@ -559,7 +559,7 @@ export default function CategoryImportModal({
                                     name="subParentMode"
                                     checked={parentConfig.subParentMode === 'from_excel'}
                                     onChange={() => setParentConfig(prev => ({ ...prev, subParentMode: 'from_excel' }))}
-                                    className="text-[#C2477A] focus:ring-[#C2477A]"
+                                    className="text-[#D81B60] focus:ring-[#D81B60]"
                                   />
                                   <span>Use column from Excel: <strong className="text-gray-900">{mapping.mainCategoryCol}</strong></span>
                                 </label>
@@ -570,7 +570,7 @@ export default function CategoryImportModal({
                                     name="subParentMode"
                                     checked={parentConfig.subParentMode === 'fixed'}
                                     onChange={() => setParentConfig(prev => ({ ...prev, subParentMode: 'fixed' }))}
-                                    className="text-[#C2477A] focus:ring-[#C2477A]"
+                                    className="text-[#D81B60] focus:ring-[#D81B60]"
                                   />
                                   <span>Assign all to specific category:</span>
                                 </label>
@@ -607,7 +607,7 @@ export default function CategoryImportModal({
                                       subFixedParentName: cat?.name || ''
                                     }));
                                   }}
-                                  className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-[#C2477A]"
+                                  className="w-full px-3 py-2 rounded-xl border border-pink-200 bg-white font-medium text-gray-900 text-xs outline-none focus:border-[#D81B60]"
                                 >
                                   {categories.map(c => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
@@ -640,7 +640,7 @@ export default function CategoryImportModal({
                         onClick={() => setImportMode('add_new')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           importMode === 'add_new'
-                            ? 'bg-[#C2477A] text-white shadow-2xs'
+                            ? 'bg-[#D81B60] text-white shadow-2xs'
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
@@ -651,7 +651,7 @@ export default function CategoryImportModal({
                         onClick={() => setImportMode('update_existing')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                           importMode === 'update_existing'
-                            ? 'bg-[#C2477A] text-white shadow-2xs'
+                            ? 'bg-[#D81B60] text-white shadow-2xs'
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
@@ -666,7 +666,7 @@ export default function CategoryImportModal({
                       <div className="flex items-center justify-between">
                         <span className="font-extrabold text-xs text-gray-900 flex items-center gap-2">
                           <span>Import Preview</span>
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-[#C2477A] border border-pink-200">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-[#D81B60] border border-pink-200">
                             {importPlan.totalToImport} records ready
                           </span>
                         </span>
@@ -700,7 +700,7 @@ export default function CategoryImportModal({
                                     <td className="px-3.5 py-2 font-mono text-gray-400 text-[11px]">#{r.rowNumber}</td>
                                     <td className="px-3.5 py-2">
                                       {r.levelType === 'category' && (
-                                        <span className="px-2 py-0.5 rounded-md bg-white text-[#C2477A] border border-pink-200 text-[10px] font-bold">
+                                        <span className="px-2 py-0.5 rounded-md bg-white text-[#D81B60] border border-pink-200 text-[10px] font-bold">
                                           Main
                                         </span>
                                       )}
@@ -778,7 +778,7 @@ export default function CategoryImportModal({
               type="button"
               disabled={isProcessing || !importPlan || importPlan.totalToImport === 0}
               onClick={handleExecuteImport}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white font-extrabold text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white font-extrabold text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isProcessing ? (
                 <>

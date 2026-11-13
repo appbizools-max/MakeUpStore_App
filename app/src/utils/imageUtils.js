@@ -16,19 +16,19 @@ export const isValidImageUri = (uri) => {
 
 // Canonical Supabase Storage beauty category fallbacks
 export const DEFAULT_CATEGORY_FALLBACKS = {
-  makeup: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505754975_gvytzx.webp?v=1793505754975',
-  skincare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505683962_hunl1d.webp?v=1793505683962',
-  hairCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505874428_6r1hr8.webp?v=1793505874428',
-  hairStylingTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505817403_oybioz.webp?v=1793505817403',
-  bathBody: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505998316_5h3t1a.webp?v=1793505998316',
-  fragrance: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505916828_ivu8o1.webp?v=1793505916828',
-  mensGrooming: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506238512_er0eqb.webp?v=1793506238512',
-  nailCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505951442_sl1hjy.webp?v=1793505951442',
-  salonProducts: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506188470_oisjf7.webp?v=1793506188470',
-  beautyTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506139285_xc2eij.webp?v=1793506139285',
-  personalCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506048096_8lqwd8.webp?v=1793506048096',
-  beautyKits: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793506188470_oisjf7.webp?v=1793506188470',
-  default: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/gc-home-assets/categories/cat_1793505754975_gvytzx.webp?v=1793505754975'
+  makeup: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_7.png?v=2',
+  skincare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_8.png?v=2',
+  hairCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_9.png?v=2',
+  hairStylingTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_hair_styling.png?v=2',
+  bathBody: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_11.png?v=2',
+  fragrance: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_fragrance.png?v=2',
+  mensGrooming: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_mens_grooming.png?v=2',
+  nailCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_14.png?v=2',
+  salonProducts: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_salon_professional.png?v=2',
+  beautyTools: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_beauty_accessories.png?v=2',
+  personalCare: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_personal_care.png?v=2',
+  beautyKits: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_18.png?v=2',
+  default: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/categories/icon_cat_7.png?v=2'
 };
 
 export const getSafeImageUri = (input, fallback = '') => {

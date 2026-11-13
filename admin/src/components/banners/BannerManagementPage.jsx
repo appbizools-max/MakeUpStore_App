@@ -395,7 +395,7 @@ export default function BannerManagementPage({
       <div className="bg-white p-6 sm:p-7 rounded-3xl border border-pink-100/80 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#C2477A] bg-white px-2.5 py-0.5 rounded-full border border-pink-100">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#D81B60] bg-white px-2.5 py-0.5 rounded-full border border-pink-100">
               Marketing & Visual Merchandising
             </span>
           </div>
@@ -412,16 +412,16 @@ export default function BannerManagementPage({
             type="button"
             onClick={loadBanners}
             disabled={isLoading}
-            className="h-10 px-4 rounded-xl bg-white border border-pink-200 text-gray-700 hover:text-[#C2477A] hover:bg-pink-50 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+            className="h-10 px-4 rounded-xl bg-white border border-pink-200 text-gray-700 hover:text-[#D81B60] hover:bg-pink-50 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
           >
-            <RefreshCw size={15} className={`text-[#C2477A] ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw size={15} className={`text-[#D81B60] ${isLoading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
 
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="h-10 px-5 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition-all active:scale-[0.98] cursor-pointer"
+            className="h-10 px-5 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition-all active:scale-[0.98] cursor-pointer"
           >
             <PlusCircle size={16} />
             <span>+ Create Home Banner</span>
@@ -433,7 +433,7 @@ export default function BannerManagementPage({
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-pink-100/80 shadow-xs space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Banner Counter Badge */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-pink-50 border border-pink-200 text-[#C2477A] text-xs font-black">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-pink-50 border border-pink-200 text-[#D81B60] text-xs font-black">
             <ImageIcon size={14} />
             <span>Home Carousel Banners ({banners.length})</span>
           </div>
@@ -454,7 +454,7 @@ export default function BannerManagementPage({
 
         {/* Search Input */}
         <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100">
-          <Search size={16} className="text-[#C2477A] shrink-0" />
+          <Search size={16} className="text-[#D81B60] shrink-0" />
           <input
             type="text"
             placeholder="Search home banners by title or category..."
@@ -473,12 +473,12 @@ export default function BannerManagementPage({
       {/* Banner Cards Grid */}
       {isLoading ? (
         <div className="bg-white rounded-3xl p-16 border border-pink-100 text-center space-y-3">
-          <RefreshCw size={28} className="animate-spin text-[#C2477A] mx-auto" />
+          <RefreshCw size={28} className="animate-spin text-[#D81B60] mx-auto" />
           <p className="text-xs font-bold text-gray-600">Loading banner records...</p>
         </div>
       ) : filteredBanners.length === 0 ? (
         <div className="bg-white rounded-3xl p-16 border border-pink-100 text-center space-y-4">
-          <div className="w-16 h-16 rounded-3xl bg-white text-[#C2477A] flex items-center justify-center mx-auto border border-pink-100">
+          <div className="w-16 h-16 rounded-3xl bg-white text-[#D81B60] flex items-center justify-center mx-auto border border-pink-100">
             <ImageIcon size={32} />
           </div>
           <div>
@@ -492,7 +492,7 @@ export default function BannerManagementPage({
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="px-5 py-2.5 rounded-xl bg-[#C2477A] text-white font-extrabold text-xs shadow-xs hover:bg-[#b83760] transition-all cursor-pointer inline-flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl bg-[#D81B60] text-white font-extrabold text-xs shadow-xs hover:bg-[#b83760] transition-all cursor-pointer inline-flex items-center gap-2"
           >
             <PlusCircle size={15} />
             <span>Create First Home Banner</span>
@@ -544,7 +544,7 @@ export default function BannerManagementPage({
                         onClick={() => handleReorder(banner, 'up')}
                         title="Move Up"
                         disabled={index === 0}
-                        className="text-gray-400 hover:text-[#C2477A] disabled:opacity-30 cursor-pointer p-0.5"
+                        className="text-gray-400 hover:text-[#D81B60] disabled:opacity-30 cursor-pointer p-0.5"
                       >
                         <ArrowUp size={10} strokeWidth={3} />
                       </button>
@@ -553,7 +553,7 @@ export default function BannerManagementPage({
                         onClick={() => handleReorder(banner, 'down')}
                         title="Move Down"
                         disabled={index === filteredBanners.length - 1}
-                        className="text-gray-400 hover:text-[#C2477A] disabled:opacity-30 cursor-pointer p-0.5"
+                        className="text-gray-400 hover:text-[#D81B60] disabled:opacity-30 cursor-pointer p-0.5"
                       >
                         <ArrowDown size={10} strokeWidth={3} />
                       </button>
@@ -576,7 +576,7 @@ export default function BannerManagementPage({
                     {/* Routing Assignment Badges */}
                     <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                       {banner.categoryName && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-white text-[#C2477A] border border-pink-100">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-white text-[#D81B60] border border-pink-100">
                           <FolderPlus size={11} />
                           <span>{banner.categoryName}</span>
                         </span>
@@ -618,7 +618,7 @@ export default function BannerManagementPage({
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(banner)}
-                        className="w-8 h-8 rounded-xl bg-gray-50 hover:bg-pink-50 text-gray-600 hover:text-[#C2477A] border border-gray-200 hover:border-pink-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                        className="w-8 h-8 rounded-xl bg-gray-50 hover:bg-pink-50 text-gray-600 hover:text-[#D81B60] border border-gray-200 hover:border-pink-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
                         title="Edit Banner"
                       >
                         <Edit size={14} />
@@ -657,7 +657,7 @@ export default function BannerManagementPage({
             {/* Compact Drawer Header */}
             <div className="p-4 px-5 bg-gradient-to-r from-white via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <div className="w-9 h-9 rounded-xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-[#D81B60] text-white flex items-center justify-center shadow-xs shrink-0">
                   <ImageIcon size={18} />
                 </div>
                 <div className="min-w-0">
@@ -695,7 +695,7 @@ export default function BannerManagementPage({
                         setDrawerFormData(prev => ({ ...prev, title: e.target.value }));
                         if (formErrors.title) setFormErrors(prev => ({ ...prev, title: null }));
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none focus:border-[#C2477A]"
+                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none focus:border-[#D81B60]"
                     />
                   </div>
 
@@ -706,14 +706,14 @@ export default function BannerManagementPage({
                       placeholder="e.g. Up to 40% Off"
                       value={drawerFormData.subtitle}
                       onChange={(e) => setDrawerFormData(prev => ({ ...prev, subtitle: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-medium text-gray-800 bg-white outline-none focus:border-[#C2477A]"
+                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-medium text-gray-800 bg-white outline-none focus:border-[#D81B60]"
                     />
                   </div>
                 </div>
 
                 {/* Banner Tap Destination */}
                 <div className="p-3 rounded-xl bg-white border border-pink-100 space-y-2.5">
-                  <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#C2477A]">
+                  <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#D81B60]">
                     <Layers size={13} />
                     <span>Tap Action / Destination (Where users go when tapping)</span>
                   </div>
@@ -733,7 +733,7 @@ export default function BannerManagementPage({
                           destinationId: catObj?.name || 'best_sellers'
                         }));
                       }}
-                      className="w-full px-3 py-2 rounded-lg border border-pink-200 bg-white text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A] cursor-pointer"
+                      className="w-full px-3 py-2 rounded-lg border border-pink-200 bg-white text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60] cursor-pointer"
                     >
                       <option value="">Storewide / Best Sellers</option>
                       {categories.map(c => (
@@ -747,7 +747,7 @@ export default function BannerManagementPage({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                      <ImageIcon size={14} className="text-[#C2477A]" />
+                      <ImageIcon size={14} className="text-[#D81B60]" />
                       <span>Banner Image <span className="text-rose-500">*</span></span>
                     </label>
                     <span className="text-[10px] text-gray-400 font-semibold">
@@ -800,8 +800,8 @@ export default function BannerManagementPage({
                         onClick={() => fileInputRef.current?.click()}
                         className={`p-3.5 rounded-xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                           isDragging
-                            ? 'border-[#C2477A] bg-pink-100/70 scale-[0.99]'
-                            : 'border-pink-200 bg-white hover:bg-[#FFF5F8] hover:border-[#C2477A]'
+                            ? 'border-[#D81B60] bg-pink-100/70 scale-[0.99]'
+                            : 'border-pink-200 bg-white hover:bg-[#FFF5F8] hover:border-[#D81B60]'
                         }`}
                       >
                         <input
@@ -815,7 +815,7 @@ export default function BannerManagementPage({
                             }
                           }}
                         />
-                        <div className="w-7 h-7 rounded-lg bg-white border border-pink-100 shadow-2xs flex items-center justify-center text-[#C2477A]">
+                        <div className="w-7 h-7 rounded-lg bg-white border border-pink-100 shadow-2xs flex items-center justify-center text-[#D81B60]">
                           {isUploadingImage ? <RefreshCw size={14} className="animate-spin" /> : <Upload size={14} />}
                         </div>
                         <span className="font-extrabold text-xs text-gray-800">
@@ -842,7 +842,7 @@ export default function BannerManagementPage({
                               }
                             }
                           }}
-                          className="flex-1 px-3 py-1.5 rounded-xl border border-pink-200 text-xs outline-none focus:border-[#C2477A] bg-white font-medium"
+                          className="flex-1 px-3 py-1.5 rounded-xl border border-pink-200 text-xs outline-none focus:border-[#D81B60] bg-white font-medium"
                         />
                         {customUrlInput.trim() && (
                           <button
@@ -851,7 +851,7 @@ export default function BannerManagementPage({
                               setDrawerFormData(prev => ({ ...prev, imageUrl: customUrlInput.trim(), mobileImageUrl: customUrlInput.trim() }));
                               setCustomUrlInput('');
                             }}
-                            className="px-2.5 py-1.5 rounded-xl bg-[#C2477A] text-white text-xs font-bold hover:bg-[#b83760] transition-colors cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-[#D81B60] text-white text-xs font-bold hover:bg-[#b83760] transition-colors cursor-pointer"
                           >
                             Apply
                           </button>
@@ -889,7 +889,7 @@ export default function BannerManagementPage({
                       placeholder="e.g. Shop Now →"
                       value={drawerFormData.ctaText}
                       onChange={(e) => setDrawerFormData(prev => ({ ...prev, ctaText: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none focus:border-[#C2477A]"
+                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none focus:border-[#D81B60]"
                     />
                   </div>
 
@@ -900,7 +900,7 @@ export default function BannerManagementPage({
                       min="1"
                       value={drawerFormData.displayOrder}
                       onChange={(e) => setDrawerFormData(prev => ({ ...prev, displayOrder: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none focus:border-[#C2477A]"
+                      className="w-full px-3 py-2 rounded-xl border border-pink-200 text-xs font-bold text-gray-800 bg-white outline-none focus:border-[#D81B60]"
                     />
                   </div>
                 </div>
@@ -936,7 +936,7 @@ export default function BannerManagementPage({
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="px-6 py-2.5 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="px-6 py-2.5 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
                   >
                     {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
                     <span>{editingBanner ? 'Save Changes' : 'Publish Banner'}</span>

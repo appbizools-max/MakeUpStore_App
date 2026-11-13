@@ -517,7 +517,7 @@ export const SearchableCombobox = ({
                       setIsOpen(false);
                       externalNotice.onNavigate();
                     }}
-                    className="text-[#C2477A] hover:underline font-extrabold shrink-0 flex items-center gap-0.5 cursor-pointer"
+                    className="text-[#D81B60] hover:underline font-extrabold shrink-0 flex items-center gap-0.5 cursor-pointer"
                   >
                     <span>{externalNotice.pageName}</span>
                     <ChevronRight className="w-3 h-3 inline" />
@@ -4458,7 +4458,7 @@ export const BulkProductEntryModal = ({
                         {/* Column 0A: # */}
                         {isColVisible('index') && (
                           <td className={`sticky left-0 z-20 w-[50px] min-w-[50px] max-w-[50px] px-1.5 py-3 text-center font-mono font-bold text-xs border-r border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] ${
-                            isChild ? 'bg-white text-[#C2477A]' : 'bg-slate-100 text-slate-700'
+                            isChild ? 'bg-white text-[#D81B60]' : 'bg-slate-100 text-slate-700'
                           }`}>
                             <div>{row._rowIndex}</div>
                             {isChild && (
@@ -4467,7 +4467,7 @@ export const BulkProductEntryModal = ({
                               </div>
                             )}
                             {hasChildren && (
-                              <div className="text-[8.5px] font-black text-[#C2477A] leading-none mt-0.5" title={`${childCount} child variants`}>
+                              <div className="text-[8.5px] font-black text-[#D81B60] leading-none mt-0.5" title={`${childCount} child variants`}>
                                 {childCount + 1}sh
                               </div>
                             )}
@@ -4654,11 +4654,11 @@ export const BulkProductEntryModal = ({
                                 className="inline-flex items-center justify-center gap-1 cursor-pointer group/img"
                                 title="Manage Product Images"
                               >
-                                <div className="w-10 h-10 rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center shadow-2xs group-hover/img:border-[#C2477A] transition-colors">
+                                <div className="w-10 h-10 rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center shadow-2xs group-hover/img:border-[#D81B60] transition-colors">
                                   {row.images && row.images[0] ? (
                                     <img src={row.images[0]} alt="Product" className="w-full h-full object-cover" />
                                   ) : (
-                                    <Plus className="w-4 h-4 text-slate-400 group-hover/img:text-[#C2477A]" />
+                                    <Plus className="w-4 h-4 text-slate-400 group-hover/img:text-[#D81B60]" />
                                   )}
                                 </div>
                                 {row.images && row.images.length > 1 && (
@@ -4737,7 +4737,7 @@ export const BulkProductEntryModal = ({
                               </div>
                               {hasChildren && (
                                 <div className="mt-1">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-black bg-pink-100 text-[#C2477A] border border-pink-200 shadow-2xs">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-black bg-pink-100 text-[#D81B60] border border-pink-200 shadow-2xs">
                                     ★ Parent Product ({childCount + 1} Shades)
                                   </span>
                                 </div>
@@ -5418,7 +5418,7 @@ export const BulkProductEntryModal = ({
                                         <button
                                           type="button"
                                           onClick={() => handleAddTierToRow(row._id, activeTierRoleTab)}
-                                          className="p-1 px-1.5 rounded-md text-[10px] font-bold bg-[#CE4270] hover:bg-[#b83861] text-white flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                                          className="p-1 px-1.5 rounded-md text-[10px] font-bold bg-[#D81B60] hover:bg-[#b83861] text-white flex items-center gap-0.5 cursor-pointer shadow-2xs"
                                           title="Add Tier"
                                         >
                                           <Plus className="w-3 h-3" />
@@ -5432,7 +5432,7 @@ export const BulkProductEntryModal = ({
                                           <button
                                             type="button"
                                             onClick={() => handleAddTierToRow(row._id, activeTierRoleTab)}
-                                            className="mt-1 text-[10px] font-bold text-[#CE4270] hover:underline cursor-pointer"
+                                            className="mt-1 text-[10px] font-bold text-[#D81B60] hover:underline cursor-pointer"
                                           >
                                             + Add Tier
                                           </button>
@@ -5561,7 +5561,7 @@ export const BulkProductEntryModal = ({
                                                 }}
                                                 className="sr-only peer"
                                               />
-                                              <div className="w-7 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#C2477A]"></div>
+                                              <div className="w-7 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#D81B60]"></div>
                                             </label>
                                           </div>
 
@@ -5610,7 +5610,7 @@ export const BulkProductEntryModal = ({
                                                                 attributes: { ...(r.attributes || {}), [attrKey]: val }
                                                               } : r));
                                                             }}
-                                                            className="w-full h-6 px-1.5 bg-slate-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 outline-none focus:border-[#C2477A] cursor-pointer"
+                                                            className="w-full h-6 px-1.5 bg-slate-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 outline-none focus:border-[#D81B60] cursor-pointer"
                                                           >
                                                             <option value="">Select...</option>
                                                             {options.map(opt => (
@@ -5629,7 +5629,7 @@ export const BulkProductEntryModal = ({
                                                               } : r));
                                                             }}
                                                             placeholder="Enter value..."
-                                                            className="w-full h-6 px-1.5 bg-slate-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 outline-none focus:border-[#C2477A]"
+                                                            className="w-full h-6 px-1.5 bg-slate-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 outline-none focus:border-[#D81B60]"
                                                           />
                                                         )}
                                                       </div>
@@ -5655,7 +5655,7 @@ export const BulkProductEntryModal = ({
                                                       }));
                                                       e.target.value = '';
                                                     }}
-                                                    className="flex-1 h-6 px-2 bg-white border border-dashed border-[#C2477A]/50 text-[#C2477A] rounded text-[10px] font-bold outline-none cursor-pointer hover:bg-pink-50"
+                                                    className="flex-1 h-6 px-2 bg-white border border-dashed border-[#D81B60]/50 text-[#D81B60] rounded text-[10px] font-bold outline-none cursor-pointer hover:bg-pink-50"
                                                   >
                                                     <option value="" disabled>+ Add Attribute from Master...</option>
                                                     {availableToAdd.map(ma => (
@@ -5816,7 +5816,7 @@ export const BulkProductEntryModal = ({
                                         <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                                           {[
                                             { key: 'general', label: 'General', activeClass: 'bg-teal-700 text-white shadow-2xs' },
-                                            { key: 'salon', label: 'Salon', activeClass: 'bg-[#CE4270] text-white shadow-2xs' },
+                                            { key: 'salon', label: 'Salon', activeClass: 'bg-[#D81B60] text-white shadow-2xs' },
                                             { key: 'artist', label: 'Artist', activeClass: 'bg-purple-700 text-white shadow-2xs' },
                                             { key: 'beautician', label: 'Beautician', activeClass: 'bg-amber-600 text-white shadow-2xs' }
                                           ].map(rRole => {
@@ -5848,7 +5848,7 @@ export const BulkProductEntryModal = ({
                                         <button
                                           type="button"
                                           onClick={() => handleAddTierToRow(row._id, activeTierRoleTab)}
-                                          className="px-2.5 py-1.5 bg-[#CE4270] hover:bg-[#b83861] text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                                          className="px-2.5 py-1.5 bg-[#D81B60] hover:bg-[#b83861] text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
                                         >
                                           <Plus className="w-3.5 h-3.5" />
                                           <span>Add Tier</span>
@@ -5867,7 +5867,7 @@ export const BulkProductEntryModal = ({
                                         <button
                                           type="button"
                                           onClick={() => handleAddTierToRow(row._id, activeTierRoleTab)}
-                                          className="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-pink-100 text-[#CE4270] border border-pink-200 inline-flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                                          className="mt-3 px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-pink-100 text-[#D81B60] border border-pink-200 inline-flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                                         >
                                           <Plus className="w-3.5 h-3.5" />
                                           <span>+ Add First Tier to {activeTierRoleTab.charAt(0).toUpperCase() + activeTierRoleTab.slice(1)}</span>
@@ -5905,7 +5905,7 @@ export const BulkProductEntryModal = ({
                                                         placeholder="3"
                                                         value={tier.minQty ?? ''}
                                                         onChange={(e) => handleUpdateTierInRow(row._id, activeTierRoleTab, tIdx, 'minQty', e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
-                                                        className="w-16 h-7 text-center bg-white border border-slate-300 focus:border-[#CE4270] focus:ring-1 focus:ring-[#CE4270] rounded-md font-mono font-bold text-slate-900 text-xs outline-none"
+                                                        className="w-16 h-7 text-center bg-white border border-slate-300 focus:border-[#D81B60] focus:ring-1 focus:ring-[#D81B60] rounded-md font-mono font-bold text-slate-900 text-xs outline-none"
                                                       />
                                                       <span className="text-[11px] text-slate-400 font-medium">units</span>
                                                     </div>
@@ -5918,7 +5918,7 @@ export const BulkProductEntryModal = ({
                                                         placeholder="+"
                                                         value={tier.maxQty ?? ''}
                                                         onChange={(e) => handleUpdateTierInRow(row._id, activeTierRoleTab, tIdx, 'maxQty', e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
-                                                        className="w-16 h-7 text-center bg-white border border-slate-300 focus:border-[#CE4270] focus:ring-1 focus:ring-[#CE4270] rounded-md font-mono font-bold text-slate-900 text-xs outline-none"
+                                                        className="w-16 h-7 text-center bg-white border border-slate-300 focus:border-[#D81B60] focus:ring-1 focus:ring-[#D81B60] rounded-md font-mono font-bold text-slate-900 text-xs outline-none"
                                                       />
                                                       <span className="text-[11px] text-slate-400 font-medium">units</span>
                                                     </div>
@@ -5933,7 +5933,7 @@ export const BulkProductEntryModal = ({
                                                         placeholder="0"
                                                         value={tier.discount ?? ''}
                                                         onChange={(e) => handleUpdateTierInRow(row._id, activeTierRoleTab, tIdx, 'discount', e.target.value === '' ? 0 : Math.min(100, Math.max(0, Number(e.target.value))))}
-                                                        className="w-16 h-7 text-center bg-white border border-slate-300 focus:border-[#CE4270] focus:ring-1 focus:ring-[#CE4270] rounded-md font-mono font-bold text-slate-900 text-xs outline-none"
+                                                        className="w-16 h-7 text-center bg-white border border-slate-300 focus:border-[#D81B60] focus:ring-1 focus:ring-[#D81B60] rounded-md font-mono font-bold text-slate-900 text-xs outline-none"
                                                       />
                                                       <span className="text-xs font-bold text-slate-600">%</span>
                                                     </div>
@@ -6035,7 +6035,7 @@ export const BulkProductEntryModal = ({
                                                 }}
                                                 className="sr-only peer"
                                               />
-                                              <div className="w-7 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#C2477A]"></div>
+                                              <div className="w-7 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#D81B60]"></div>
                                             </label>
                                           </div>
                                           {isAttrsEnabled ? (

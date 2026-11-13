@@ -48,6 +48,7 @@ export const ProductDetailScreen = () => {
     cart = [],
     setCurrentScreen,
     previousScreen,
+    goBack,
     isFavorite,
     toggleFavorite,
     selectedShade: contextSelectedShade,
@@ -250,7 +251,7 @@ export const ProductDetailScreen = () => {
         <Text className="text-sm font-bold text-[#171717] mb-2">No product selected.</Text>
         <TouchableOpacity
           onPress={() => setCurrentScreen('category')}
-          className="bg-[#C2477A] px-5 py-2.5 rounded-xl shadow-xs"
+          className="bg-[#D81B60] px-5 py-2.5 rounded-xl shadow-xs"
         >
           <Text className="text-xs font-bold text-white">Return to Browse</Text>
         </TouchableOpacity>
@@ -303,7 +304,9 @@ export const ProductDetailScreen = () => {
         {/* Back Button */}
         <TouchableOpacity
           onPress={() => {
-            if (previousScreen && previousScreen !== 'product' && previousScreen !== 'product_detail') {
+            if (typeof goBack === 'function') {
+              goBack();
+            } else if (previousScreen && previousScreen !== 'product' && previousScreen !== 'product_detail') {
               setCurrentScreen(previousScreen);
             } else {
               setCurrentScreen('category');
@@ -343,7 +346,7 @@ export const ProductDetailScreen = () => {
           >
             <Ionicons name="bag-handle-outline" size={21} color="#171717" />
             {cartBadgeCount > 0 && (
-              <View className="absolute -top-1 -right-1.5 bg-[#C2477A] min-w-[15px] h-[15px] px-1 rounded-full items-center justify-center border border-white">
+              <View className="absolute -top-1 -right-1.5 bg-[#D81B60] min-w-[15px] h-[15px] px-1 rounded-full items-center justify-center border border-white">
                 <Text className="text-white text-[7.5px] font-black">
                   {cartBadgeCount > 9 ? '9+' : cartBadgeCount}
                 </Text>
@@ -413,7 +416,7 @@ export const ProductDetailScreen = () => {
                   }}
                   className={`rounded-full transition-all ${
                     idx === currentImageIndex
-                      ? 'w-6 h-1.5 bg-[#C2477A]'
+                      ? 'w-6 h-1.5 bg-[#D81B60]'
                       : 'w-1.5 h-1.5 bg-slate-300'
                   }`}
                 />
@@ -470,10 +473,10 @@ export const ProductDetailScreen = () => {
                 activeOpacity={0.7}
                 className="flex-row items-center gap-0.5"
               >
-                <Text className="text-xs font-black text-[#C2477A]">
+                <Text className="text-xs font-black text-[#D81B60]">
                   All Shades
                 </Text>
-                <Ionicons name="chevron-forward" size={13} color="#C2477A" />
+                <Ionicons name="chevron-forward" size={13} color="#D81B60" />
               </TouchableOpacity>
             </View>
 
@@ -489,7 +492,7 @@ export const ProductDetailScreen = () => {
                   (selectedShade.id && shade.id && selectedShade.id === shade.id) ||
                   (selectedShade.name && shade.name && selectedShade.name === shade.name)
                 );
-                const colorHex = shade.hexColor || shade.hex_color || '#C2477A';
+                const colorHex = shade.hexColor || shade.hex_color || '#D81B60';
 
                 return (
                   <TouchableOpacity
@@ -535,7 +538,7 @@ export const ProductDetailScreen = () => {
                 activeOpacity={0.7}
                 className="w-7 h-7 rounded-lg bg-[#FFF0F5] items-center justify-center"
               >
-                <Ionicons name="remove" size={15} color="#C2477A" />
+                <Ionicons name="remove" size={15} color="#D81B60" />
               </TouchableOpacity>
 
               <Text className="text-sm font-black text-[#1F2937] px-3.5 min-w-[34px] text-center">
@@ -548,7 +551,7 @@ export const ProductDetailScreen = () => {
                 activeOpacity={0.7}
                 className="w-7 h-7 rounded-lg bg-[#FFF0F5] items-center justify-center"
               >
-                <Ionicons name="add" size={15} color="#C2477A" />
+                <Ionicons name="add" size={15} color="#D81B60" />
               </TouchableOpacity>
             </View>
           </View>
@@ -558,7 +561,7 @@ export const ProductDetailScreen = () => {
             onPress={handleAddToCart}
             activeOpacity={0.85}
             style={styles.addToCartButton}
-            className="w-full h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md active:bg-[#B83760] mt-3"
+            className="w-full h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md active:bg-[#C2185B] mt-3"
           >
             <Ionicons name="bag-handle" size={18} color="#FFFFFF" />
             <Text className="text-white text-xs font-black uppercase tracking-wider">
@@ -601,7 +604,7 @@ export const ProductDetailScreen = () => {
                 {validEntries.map(([k, v]) => (
                   <View key={k} className="px-2.5 py-1 rounded-lg bg-pink-50/70 border border-pink-100 flex-row items-center gap-1">
                     <Text className="text-[10px] font-bold text-gray-500 uppercase">{k}:</Text>
-                    <Text className="text-[10.5px] font-black text-[#C2477A]">{String(v)}</Text>
+                    <Text className="text-[10.5px] font-black text-[#D81B60]">{String(v)}</Text>
                   </View>
                 ))}
               </View>
@@ -632,13 +635,13 @@ export const ProductDetailScreen = () => {
                     }}
                     activeOpacity={0.85}
                     style={{
-                      borderColor: isCurrent ? '#C2477A' : '#E8E8E8',
+                      borderColor: isCurrent ? '#D81B60' : '#E8E8E8',
                       borderWidth: isCurrent ? 2 : 1
                     }}
                     className="w-32 mr-3 bg-white rounded-2xl p-2.5 items-center justify-between shadow-2xs"
                   >
                     <View className="bg-white px-2 py-0.5 rounded-full mb-1">
-                      <Text className="text-[9px] font-bold text-[#C2477A]">
+                      <Text className="text-[9px] font-bold text-[#D81B60]">
                         {promoBadge}
                       </Text>
                     </View>
@@ -672,7 +675,7 @@ export const ProductDetailScreen = () => {
 
           return (
             <View className="mx-4 my-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
-              <Text className="text-[10px] font-black uppercase text-[#C2477A] mb-2">
+              <Text className="text-[10px] font-black uppercase text-[#D81B60] mb-2">
                 Quantity Tier Pricing ({effectiveRole.toUpperCase()})
               </Text>
               <View className="flex-row flex-wrap gap-1.5">
@@ -683,7 +686,7 @@ export const ProductDetailScreen = () => {
                     <View
                       key={tier.id || tIdx}
                       className={`p-2 rounded-xl border items-center min-w-[70px] ${
-                        isActive ? 'bg-white border-[#C2477A]' : 'bg-white border-slate-200'
+                        isActive ? 'bg-white border-[#D81B60]' : 'bg-white border-slate-200'
                       }`}
                     >
                       <Text className="text-[10px] font-bold text-gray-800">{tier.minQty}+ units</Text>
@@ -716,7 +719,7 @@ export const ProductDetailScreen = () => {
           <Ionicons
             name={isLiked ? "heart" : "heart-outline"}
             size={22}
-            color={isLiked ? "#C2477A" : "#171717"}
+            color={isLiked ? "#D81B60" : "#171717"}
           />
         </TouchableOpacity>
 
@@ -725,7 +728,7 @@ export const ProductDetailScreen = () => {
           onPress={handleAddToCart}
           activeOpacity={0.85}
           style={styles.addToCartButton}
-          className="flex-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md active:bg-[#B83760]"
+          className="flex-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md active:bg-[#C2185B]"
         >
           <Ionicons name="bag-handle" size={18} color="#FFFFFF" />
           <Text className="text-white text-xs font-black uppercase tracking-wider">
@@ -763,8 +766,8 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 24 : 10,
   },
   addToCartButton: {
-    backgroundColor: '#C2477A',
-    shadowColor: '#C2477A',
+    backgroundColor: '#D81B60',
+    shadowColor: '#D81B60',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,

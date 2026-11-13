@@ -44,11 +44,11 @@ export const SplashScreen = () => {
       >
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-        {/* Brand Logo only — without background and without text */}
+        {/* Brand Logo only — standard default sizing (195x65) */}
         <View className="items-center justify-center">
           <Image
             source={require('../../../Assets/Logo_transparent.png')}
-            style={{ width: 260, height: 87 }}
+            style={{ width: 195, height: 65 }}
             resizeMode="contain"
           />
         </View>

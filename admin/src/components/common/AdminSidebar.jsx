@@ -42,7 +42,7 @@ const getBadgeStyles = (variant = 'neutral') => {
     case 'amber':
       return 'bg-amber-50 text-amber-700 border border-amber-200/90 font-bold';
     case 'brand':
-      return 'bg-white text-[#C2477A] border border-[#FCD8E3] font-bold';
+      return 'bg-white text-[#D81B60] border border-[#FCD8E3] font-bold';
     case 'emerald':
       return 'bg-emerald-50 text-emerald-700 border border-emerald-200/90 font-bold';
     case 'purple':
@@ -516,7 +516,7 @@ export const AdminSidebar = ({
             ) : (
               <div
                 style={{ fontFamily: "'Great Vibes', cursive" }}
-                className="text-2xl text-[#C2477A] font-bold select-none cursor-pointer"
+                className="text-2xl text-[#D81B60] font-bold select-none cursor-pointer"
                 onClick={toggleSidebar}
                 title="Expand sidebar"
               >
@@ -527,7 +527,7 @@ export const AdminSidebar = ({
             <button
               type="button"
               onClick={toggleSidebar}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-[#C2477A] hover:bg-[#FFF5F8] transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none shrink-0"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-[#D81B60] hover:bg-[#FFF5F8] transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#D81B60] focus-visible:outline-none shrink-0"
               title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
@@ -582,15 +582,15 @@ export const AdminSidebar = ({
                           }}
                           onMouseEnter={(e) => handleTooltipEnter(e, item.label, tooltipBadge)}
                           onMouseLeave={handleTooltipLeave}
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isActive
-                            ? 'bg-white text-[#C2477A] shadow-2xs ring-1 ring-[#C2477A]/30 font-bold'
-                            : 'text-slate-500 hover:bg-[#FFF5F8] hover:text-[#C2477A]'
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#D81B60] focus-visible:outline-none ${isActive
+                            ? 'bg-white text-[#D81B60] shadow-2xs ring-1 ring-[#D81B60]/30 font-bold'
+                            : 'text-slate-500 hover:bg-[#FFF5F8] hover:text-[#D81B60]'
                             }`}
                           aria-label={item.label}
                         >
-                          <Icon size={18} className={`shrink-0 transition-transform ${isActive ? 'scale-105 text-[#C2477A]' : 'group-hover:scale-105'}`} />
+                          <Icon size={18} className={`shrink-0 transition-transform ${isActive ? 'scale-105 text-[#D81B60]' : 'group-hover:scale-105'}`} />
                           {item.badge !== undefined && item.badge !== null && (
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#C2477A] ring-2 ring-white" />
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#D81B60] ring-2 ring-white" />
                           )}
                         </button>
                       );
@@ -617,13 +617,13 @@ export const AdminSidebar = ({
                             navigateToTab(item.id);
                           }}
                           aria-expanded={hasSubItems ? isSubOpen : undefined}
-                          className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isActive
-                            ? 'bg-white text-[#C2477A] font-semibold shadow-2xs relative before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-1 before:bg-[#C2477A] before:rounded-r-full'
-                            : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
+                          className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-[#D81B60] focus-visible:outline-none ${isActive
+                            ? 'bg-white text-[#D81B60] font-semibold shadow-2xs relative before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-1 before:bg-[#D81B60] before:rounded-r-full'
+                            : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#D81B60]'
                             }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <Icon size={18} className={`shrink-0 transition-transform ${isActive ? 'scale-105 text-[#C2477A]' : 'text-slate-500 group-hover:scale-105 group-hover:text-[#C2477A]'}`} />
+                            <Icon size={18} className={`shrink-0 transition-transform ${isActive ? 'scale-105 text-[#D81B60]' : 'text-slate-500 group-hover:scale-105 group-hover:text-[#D81B60]'}`} />
                             <span className="truncate">{item.label}</span>
                           </div>
 
@@ -636,7 +636,7 @@ export const AdminSidebar = ({
                             {hasSubItems && (
                               <ChevronDown
                                 size={14}
-                                className={`text-slate-400 transition-transform duration-200 ${isSubOpen ? 'rotate-180 text-[#C2477A]' : ''}`}
+                                className={`text-slate-400 transition-transform duration-200 ${isSubOpen ? 'rotate-180 text-[#D81B60]' : ''}`}
                               />
                             )}
                           </div>
@@ -653,13 +653,13 @@ export const AdminSidebar = ({
                                   key={sub.id}
                                   type="button"
                                   onClick={() => navigateToTab(sub.id)}
-                                  className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#C2477A] focus-visible:outline-none ${isSubActive
-                                    ? 'bg-white text-[#C2477A] font-semibold'
-                                    : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
+                                  className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#D81B60] focus-visible:outline-none ${isSubActive
+                                    ? 'bg-white text-[#D81B60] font-semibold'
+                                    : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#D81B60]'
                                     }`}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
-                                    {SubIcon && <SubIcon size={13} className={`shrink-0 ${isSubActive ? 'text-[#C2477A]' : 'text-slate-400'}`} />}
+                                    {SubIcon && <SubIcon size={13} className={`shrink-0 ${isSubActive ? 'text-[#D81B60]' : 'text-slate-400'}`} />}
                                     <span className="truncate">{sub.label}</span>
                                   </div>
                                   {sub.badge !== undefined && sub.badge !== null && (
@@ -729,7 +729,7 @@ export const AdminSidebar = ({
           <div className="bg-slate-900 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-xl flex items-center gap-2 border border-slate-700/60 whitespace-nowrap">
             <span>{hoveredTooltip.label}</span>
             {hoveredTooltip.badge !== undefined && hoveredTooltip.badge !== null && (
-              <span className="text-[10px] bg-[#C2477A] text-white px-1.5 py-0.2 rounded-full font-bold">
+              <span className="text-[10px] bg-[#D81B60] text-white px-1.5 py-0.2 rounded-full font-bold">
                 {hoveredTooltip.badge}
               </span>
             )}
@@ -805,12 +805,12 @@ export const AdminSidebar = ({
                               setIsMobileDrawerOpen(false);
                             }}
                             className={`w-full h-10 px-2.5 rounded-xl text-[13px] flex items-center justify-between transition-colors cursor-pointer ${isActive
-                              ? 'bg-white text-[#C2477A] font-semibold'
-                              : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#C2477A]'
+                              ? 'bg-white text-[#D81B60] font-semibold'
+                              : 'text-slate-600 hover:bg-[#FFF5F8]/70 hover:text-[#D81B60]'
                               }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <Icon size={18} className={`shrink-0 ${isActive ? 'text-[#C2477A]' : 'text-slate-500'}`} />
+                              <Icon size={18} className={`shrink-0 ${isActive ? 'text-[#D81B60]' : 'text-slate-500'}`} />
                               <span className="truncate">{item.label}</span>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -822,7 +822,7 @@ export const AdminSidebar = ({
                               {hasSubItems && (
                                 <ChevronDown
                                   size={14}
-                                  className={`text-slate-400 transition-transform ${isSubOpen ? 'rotate-180 text-[#C2477A]' : ''}`}
+                                  className={`text-slate-400 transition-transform ${isSubOpen ? 'rotate-180 text-[#D81B60]' : ''}`}
                                 />
                               )}
                             </div>
@@ -843,12 +843,12 @@ export const AdminSidebar = ({
                                       setIsMobileDrawerOpen(false);
                                     }}
                                     className={`w-full h-8 px-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${isSubActive
-                                      ? 'bg-white text-[#C2477A] font-semibold'
-                                      : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#C2477A]'
+                                      ? 'bg-white text-[#D81B60] font-semibold'
+                                      : 'text-slate-500 hover:bg-[#FFF5F8]/50 hover:text-[#D81B60]'
                                       }`}
                                   >
                                     <div className="flex items-center gap-2 min-w-0">
-                                      {SubIcon && <SubIcon size={13} className={`shrink-0 ${isSubActive ? 'text-[#C2477A]' : 'text-slate-400'}`} />}
+                                      {SubIcon && <SubIcon size={13} className={`shrink-0 ${isSubActive ? 'text-[#D81B60]' : 'text-slate-400'}`} />}
                                       <span className="truncate">{sub.label}</span>
                                     </div>
                                     {sub.badge !== undefined && sub.badge !== null && (

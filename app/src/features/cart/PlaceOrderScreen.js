@@ -13,8 +13,11 @@ export const PlaceOrderScreen = () => {
     selectedBranch,
     placeOrder,
     setCurrentScreen,
+    goBack,
     userRole,
-    getRolePrice
+    getRolePrice,
+    getDeliveryFee,
+    setCurrentUpiOrder
   } = useApp();
 
   const [selectedPayment, setSelectedPayment] = useState('upi');
@@ -120,25 +123,62 @@ export const PlaceOrderScreen = () => {
 
   const [notes, setNotes] = useState('');
 
-  const { totalItemCount, bagTotal } = useMemo(() => {
-    let count = 0;
-    let total = 0;
-    for (const item of cart) {
-      count += item.quantity;
-      const rolePrice = getRolePrice(item.product, userRole, item.shade, item.quantity);
-      total += (rolePrice * item.quantity);
-    }
-    return { totalItemCount: count, bagTotal: total };
-  }, [cart, userRole, getRolePrice]);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const isSubmittingRef = useRef(false);
 
-  const discountAmount = 350;
-  const totalPayable = Math.max(0, bagTotal - discountAmount);
+  const { totalItemCount, mrpTotal, bagTotal } = useMemo(() => {
+    let count = 0;
+    let mrp = 0;
+    let total = 0;
+    for (const item of (cart || [])) {
+      if (!item) continue;
+      const qty = item.quantity || 1;
+      count += qty;
+      const originalMrp = Number(item.shade?.mrp || item.product?.mrp || 0);
+      const rolePrice = (typeof getRolePrice === 'function' && item.product)
+        ? getRolePrice(item.product, userRole, item.shade, qty)
+        : (item.product?.generalPrice || item.product?.mrp || 0);
+      mrp += (originalMrp * qty);
+      total += (rolePrice * qty);
+    }
+    return { totalItemCount: count, mrpTotal: mrp, bagTotal: total };
+  }, [cart, userRole, getRolePrice]);
 
   // Active address object or fallback string
   const activeAddr = addresses.find(a => a.id === selectedAddressId);
   const selectedAddressString = activeAddr
     ? `${activeAddr.label}: ${activeAddr.text} (${activeAddr.name || userProfile?.name || 'Customer'} • ${activeAddr.phone || userProfile?.phone || ''})`
     : (userProfile?.address || '');
+
+  // Estimated delivery distance based on address / pin code (km)
+  const estimatedDistanceKm = useMemo(() => {
+    if (!activeAddr) return 4.5;
+    const pin = String(activeAddr.pincode || '').trim();
+    if (!pin) return 5.0;
+    const pinNum = Number(pin);
+    if (isNaN(pinNum)) return 5.0;
+    const last2 = pinNum % 100;
+    return Math.max(1.5, Math.min(25, Number((3.0 + (last2 % 15) * 0.8).toFixed(1))));
+  }, [activeAddr]);
+
+  const discountSavings = Math.max(0, mrpTotal - bagTotal);
+  const deliveryCalc = useMemo(() => {
+    if (typeof getDeliveryFee === 'function') {
+      const res = getDeliveryFee(bagTotal, estimatedDistanceKm);
+      if (typeof res === 'object' && res !== null) return res;
+      return {
+        fee: Number(res || 0),
+        isFree: Number(res || 0) === 0,
+        reason: Number(res || 0) === 0 ? 'FREE' : `₹${res}`,
+        detailText: Number(res || 0) === 0 ? 'Free delivery' : `Delivery fee: ₹${res}`,
+        shortfallForFreeDelivery: 0
+      };
+    }
+    return { fee: 0, isFree: true, reason: 'FREE', detailText: 'Free delivery', shortfallForFreeDelivery: 0 };
+  }, [getDeliveryFee, bagTotal, estimatedDistanceKm]);
+
+  const deliveryFee = deliveryCalc.fee;
+  const totalPayable = bagTotal + deliveryFee;
 
   const handleSaveNewAddress = () => {
     if (!newName.trim()) {
@@ -202,22 +242,36 @@ export const PlaceOrderScreen = () => {
   };
 
   const handleConfirmOrder = async () => {
-    const order = await placeOrder({
-      deliveryType: 'delivery',
-      address: selectedAddressString,
-      branch: selectedBranch,
-      paymentMethod: selectedPayment,
-      notes,
-    });
+    if (isSubmittingRef.current || isPlacingOrder) return;
+    isSubmittingRef.current = true;
+    setIsPlacingOrder(true);
 
-    if (selectedPayment === 'upi') {
-      if (typeof setCurrentUpiOrder === 'function') {
-        setCurrentUpiOrder(order);
+    try {
+      const order = await placeOrder({
+        deliveryType: 'delivery',
+        address: selectedAddressString,
+        branch: selectedBranch,
+        paymentMethod: selectedPayment,
+        deliveryFee,
+        deliveryBreakdown: deliveryCalc,
+        notes,
+      });
+
+      if (selectedPayment === 'upi') {
+        if (typeof setCurrentUpiOrder === 'function') {
+          setCurrentUpiOrder(order);
+        }
+        setCurrentScreen('upi_payment_status');
+      } else {
+        Alert.alert('Order Confirmed!', `Order ${order?.id || ''} placed successfully!`);
+        setCurrentScreen('orders');
       }
-      setCurrentScreen('upi_payment_status');
-    } else {
-      Alert.alert('Order Confirmed!', `Order ${order?.id || ''} placed successfully!`);
-      setCurrentScreen('orders');
+    } catch (err) {
+      console.error('Failed to place order:', err);
+      Alert.alert('Order Failed', 'Could not place order. Please try again.');
+    } finally {
+      setIsPlacingOrder(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -226,10 +280,13 @@ export const PlaceOrderScreen = () => {
       {/* Header Row with Back Button & Title */}
       <View className="flex-row items-center gap-3 mb-5 mt-1">
         <TouchableOpacity
-          onPress={() => setCurrentScreen('cart')}
+          onPress={() => {
+            if (typeof goBack === 'function') goBack();
+            else setCurrentScreen('cart');
+          }}
           className="w-9 h-9 rounded-2xl bg-white border border-gray-200 items-center justify-center shadow-xs"
         >
-          <Ionicons name="chevron-back" size={18} color="#C2477A" />
+          <Ionicons name="chevron-back" size={18} color="#D81B60" />
         </TouchableOpacity>
         <Text className="text-xl font-black text-slate-900 tracking-tight">Checkout</Text>
       </View>
@@ -337,14 +394,19 @@ export const PlaceOrderScreen = () => {
       {/* Expanded Order Items Preview */}
       {isSummaryExpanded && (
         <View className="bg-white border border-gray-200 rounded-2xl p-3 mb-4 space-y-2">
-          {cart.map((item) => {
-            const { product, quantity, shade } = item;
-            const itemId = item.id || (shade ? `${product.id}_${shade.id || shade.name}` : product.id);
-            const rolePrice = getRolePrice(product, userRole, shade, quantity);
+          {(cart || []).map((item, idx) => {
+            if (!item) return null;
+            const product = item.product || {};
+            const quantity = item.quantity || 1;
+            const shade = item.shade;
+            const itemId = item.id || (shade ? `${product.id || idx}_${shade.id || shade.name}` : (product.id || idx));
+            const rolePrice = (typeof getRolePrice === 'function' && item.product)
+              ? getRolePrice(product, userRole, shade, quantity)
+              : (product.generalPrice || product.mrp || 0);
             return (
               <View key={itemId} className="flex-row items-center justify-between py-1 border-b border-gray-100 last:border-b-0">
                 <Text className="text-xs font-semibold text-slate-800 flex-1" numberOfLines={1}>
-                  {product.name}{shade ? ` (${shade.name})` : ''} x {quantity}
+                  {product.name || 'Item'}{shade ? ` (${shade.name || shade.title || 'Shade'})` : ''} x {quantity}
                 </Text>
                 <Text className="text-xs font-bold text-slate-900 ml-2">₹{rolePrice * quantity}</Text>
               </View>
@@ -359,7 +421,7 @@ export const PlaceOrderScreen = () => {
           Select Payment Method
         </Text>
 
-        {/* Option 1: UPI Transfer / QR Code */}
+        {/* Option 1: UPI Payment */}
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => setSelectedPayment('upi')}
@@ -374,15 +436,7 @@ export const PlaceOrderScreen = () => {
               <Ionicons name="qr-code-outline" size={18} color={selectedPayment === 'upi' ? '#7C3AED' : '#64748B'} />
             </View>
             <View className="flex-col flex-1">
-              <View className="flex-row items-center gap-1.5">
-                <Text className="text-xs font-black text-slate-900">UPI / QR Code Transfer</Text>
-                <View className="bg-[#C2477A] px-1.5 py-0.5 rounded">
-                  <Text className="text-[9px] font-black text-white uppercase">Verification Required</Text>
-                </View>
-              </View>
-              <Text className="text-[10px] font-medium text-slate-500 mt-0.5">
-                Transfer via GPay/PhonePe/Paytm • Verified by Admin & Delivery Partner
-              </Text>
+              <Text className="text-xs font-black text-slate-900">UPI Payment</Text>
             </View>
           </View>
           <Ionicons
@@ -404,7 +458,7 @@ export const PlaceOrderScreen = () => {
             <View className={`w-9 h-9 rounded-xl items-center justify-center border shadow-2xs ${
               selectedPayment === 'cod' ? 'bg-pink-100 border-pink-300' : 'bg-white border-gray-200'
             }`}>
-              <Ionicons name="cash-outline" size={18} color={selectedPayment === 'cod' ? '#C2477A' : '#64748B'} />
+              <Ionicons name="cash-outline" size={18} color={selectedPayment === 'cod' ? '#D81B60' : '#64748B'} />
             </View>
             <View className="flex-col flex-1">
               <Text className="text-xs font-black text-slate-900">Cash on Delivery (COD)</Text>
@@ -416,46 +470,69 @@ export const PlaceOrderScreen = () => {
           <Ionicons
             name={selectedPayment === 'cod' ? 'radio-button-on' : 'radio-button-off'}
             size={20}
-            color={selectedPayment === 'cod' ? '#C2477A' : '#94A3B8'}
+            color={selectedPayment === 'cod' ? '#D81B60' : '#94A3B8'}
           />
         </TouchableOpacity>
-
-        {/* UPI Instructions preview */}
-        {selectedPayment === 'upi' && (
-          <View className="mt-3 p-3 bg-purple-50 rounded-xl border border-purple-200">
-            <Text className="text-[11px] font-bold text-purple-900">
-              UPI Instructions:
-            </Text>
-            <Text className="text-[10.5px] text-purple-800 mt-0.5 leading-relaxed">
-              After placing your order, your payment status will remain <strong>PENDING_VERIFICATION</strong>. When your delivery partner arrives or captures payment proof, our store administrator verifies the credits and instantly approves your payment.
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Payment Totals Breakdown Card Box */}
       <View className="bg-white rounded-2xl border border-gray-200 p-4 mb-5 shadow-xs">
         <View className="space-y-2">
-          <View className="flex-row justify-between items-center mb-1">
-            <Text className="text-xs font-medium text-slate-500">Item Total</Text>
-            <Text className="text-xs font-extrabold text-slate-900">₹{bagTotal}</Text>
+          {discountSavings > 0 ? (
+            <>
+              <View className="flex-row justify-between items-center mb-1">
+                <Text className="text-xs font-medium text-slate-500">Item Total (MRP)</Text>
+                <Text className="text-xs font-semibold text-slate-400 line-through">₹{mrpTotal}</Text>
+              </View>
+              <View className="flex-row justify-between items-center mb-1">
+                <Text className="text-xs font-medium text-slate-500">Discount Savings</Text>
+                <Text className="text-xs font-extrabold text-emerald-600">-₹{discountSavings}</Text>
+              </View>
+              <View className="flex-row justify-between items-center mb-1">
+                <Text className="text-xs font-medium text-slate-500">Subtotal</Text>
+                <Text className="text-xs font-extrabold text-slate-900">₹{bagTotal}</Text>
+              </View>
+            </>
+          ) : (
+            <View className="flex-row justify-between items-center mb-1">
+              <Text className="text-xs font-medium text-slate-500">Item Total</Text>
+              <Text className="text-xs font-extrabold text-slate-900">₹{bagTotal}</Text>
+            </View>
+          )}
+
+          <View className="flex-row justify-between items-start mb-1">
+            <View className="flex-1 pr-2">
+              <Text className="text-xs font-medium text-slate-500">Delivery Charges</Text>
+              {deliveryCalc.detailText ? (
+                <Text className="text-[10px] font-medium text-slate-400 mt-0.5">
+                  {deliveryCalc.detailText}
+                </Text>
+              ) : null}
+            </View>
+            <View className="items-end">
+              <Text className={`text-xs font-extrabold ${deliveryFee === 0 ? 'text-emerald-600' : 'text-slate-900'}`}>
+                {deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}
+              </Text>
+              {deliveryCalc.reason && deliveryFee === 0 ? (
+                <Text className="text-[9.5px] font-bold text-emerald-600 mt-0.5">{deliveryCalc.reason}</Text>
+              ) : null}
+            </View>
           </View>
 
-          <View className="flex-row justify-between items-center mb-1">
-            <Text className="text-xs font-medium text-slate-500">Delivery Charges</Text>
-            <Text className="text-xs font-extrabold text-emerald-600">FREE</Text>
-          </View>
-
-          <View className="flex-row justify-between items-center mb-1">
-            <Text className="text-xs font-medium text-slate-500">Discount Applied</Text>
-            <Text className="text-xs font-extrabold text-emerald-600">-₹{discountAmount}</Text>
-          </View>
+          {deliveryCalc.shortfallForFreeDelivery > 0 && (
+            <View className="bg-pink-50/80 border border-pink-200/60 rounded-xl p-2 my-1 flex-row items-center gap-1.5">
+              <Ionicons name="sparkles" size={12} color="#D81B60" />
+              <Text className="text-[10px] font-bold text-[#D81B60]">
+                Add ₹{deliveryCalc.shortfallForFreeDelivery} more to enjoy FREE Delivery!
+              </Text>
+            </View>
+          )}
 
           <View className="border-b border-gray-200 my-1" />
 
           <View className="flex-row justify-between items-center pt-1">
             <Text className="text-sm font-black text-slate-900">Grand Total</Text>
-            <Text className="text-base font-black text-[#C2477A]">₹{totalPayable}</Text>
+            <Text className="text-base font-black text-[#D81B60]">₹{totalPayable}</Text>
           </View>
         </View>
       </View>
@@ -463,11 +540,23 @@ export const PlaceOrderScreen = () => {
       {/* Place Order Button */}
       <TouchableOpacity
         onPress={handleConfirmOrder}
-        className="bg-[#C2477A] rounded-xl py-3.5 px-5 items-center shadow-md mb-6 active:opacity-90"
+        disabled={isPlacingOrder}
+        className={`rounded-xl py-3.5 px-5 items-center shadow-md mb-6 active:opacity-90 ${
+          isPlacingOrder ? 'bg-[#D81B60]/70' : 'bg-[#D81B60]'
+        }`}
       >
-        <Text className="text-xs font-black text-white uppercase tracking-wider">
-          PLACE ORDER • ₹{totalPayable}
-        </Text>
+        {isPlacingOrder ? (
+          <View className="flex-row items-center gap-2">
+            <ActivityIndicator size="small" color="#FFFFFF" />
+            <Text className="text-xs font-black text-white uppercase tracking-wider">
+              PLACING ORDER...
+            </Text>
+          </View>
+        ) : (
+          <Text className="text-xs font-black text-white uppercase tracking-wider">
+            PLACE ORDER • ₹{totalPayable}
+          </Text>
+        )}
       </TouchableOpacity>
 
       {/* FULL SCREEN Add New Address Modal */}
@@ -484,7 +573,7 @@ export const PlaceOrderScreen = () => {
               onPress={() => setShowAddModal(false)}
               className="w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 items-center justify-center"
             >
-              <Ionicons name="chevron-back" size={18} color="#C2477A" />
+              <Ionicons name="chevron-back" size={18} color="#D81B60" />
             </TouchableOpacity>
             <View>
               <Text className="text-base font-black text-slate-900 tracking-tight">Add Delivery Address</Text>
@@ -512,7 +601,7 @@ export const PlaceOrderScreen = () => {
                       onPress={() => setNewLabel(item.id)}
                       className={`flex-1 py-2 px-2.5 rounded-xl border items-center flex-row justify-center gap-1.5 ${
                         isSelected
-                          ? 'bg-[#C2477A] border-[#C2477A] shadow-2xs'
+                          ? 'bg-[#D81B60] border-[#D81B60] shadow-2xs'
                           : 'bg-white border-gray-200'
                       }`}
                     >
@@ -555,7 +644,7 @@ export const PlaceOrderScreen = () => {
                     gap: 8
                   }}
                 >
-                  <Ionicons name="person-outline" size={16} color="#C2477A" />
+                  <Ionicons name="person-outline" size={16} color="#D81B60" />
                   <TextInput
                     value={newName}
                     onChangeText={setNewName}
@@ -584,7 +673,7 @@ export const PlaceOrderScreen = () => {
                     gap: 8
                   }}
                 >
-                  <Ionicons name="call-outline" size={16} color="#C2477A" />
+                  <Ionicons name="call-outline" size={16} color="#D81B60" />
                   <TextInput
                     value={newPhone}
                     onChangeText={setNewPhone}
@@ -611,8 +700,8 @@ export const PlaceOrderScreen = () => {
                   </Text>
                   {pincodeLoading && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <ActivityIndicator size="small" color="#C2477A" />
-                      <Text style={{ color: '#C2477A', fontSize: 11, fontWeight: '700' }}>
+                      <ActivityIndicator size="small" color="#D81B60" />
+                      <Text style={{ color: '#D81B60', fontSize: 11, fontWeight: '700' }}>
                         Searching...
                       </Text>
                     </View>
@@ -640,7 +729,7 @@ export const PlaceOrderScreen = () => {
                     gap: 8
                   }}
                 >
-                  <Ionicons name="pin-outline" size={16} color="#C2477A" />
+                  <Ionicons name="pin-outline" size={16} color="#D81B60" />
                   <TextInput
                     value={pincode}
                     onChangeText={handlePincodeChange}
@@ -676,7 +765,7 @@ export const PlaceOrderScreen = () => {
                     gap: 8
                   }}
                 >
-                  <Ionicons name="location-sharp" size={16} color="#C2477A" />
+                  <Ionicons name="location-sharp" size={16} color="#D81B60" />
                   <TextInput
                     value={city}
                     onChangeText={setCity}
@@ -705,7 +794,7 @@ export const PlaceOrderScreen = () => {
                     gap: 8
                   }}
                 >
-                  <Ionicons name="map-outline" size={16} color="#C2477A" />
+                  <Ionicons name="map-outline" size={16} color="#D81B60" />
                   <TextInput
                     value={state}
                     onChangeText={setState}
@@ -734,7 +823,7 @@ export const PlaceOrderScreen = () => {
                     gap: 8
                   }}
                 >
-                  <Ionicons name="navigate-outline" size={16} color="#C2477A" />
+                  <Ionicons name="navigate-outline" size={16} color="#D81B60" />
                   <TextInput
                     value={streetArea}
                     onChangeText={setStreetArea}
@@ -763,7 +852,7 @@ export const PlaceOrderScreen = () => {
                     gap: 8
                   }}
                 >
-                  <Ionicons name="business-outline" size={16} color="#C2477A" />
+                  <Ionicons name="business-outline" size={16} color="#D81B60" />
                   <TextInput
                     value={houseNo}
                     onChangeText={setHouseNo}
@@ -792,7 +881,7 @@ export const PlaceOrderScreen = () => {
                     gap: 8
                   }}
                 >
-                  <Ionicons name="compass-outline" size={16} color="#C2477A" />
+                  <Ionicons name="compass-outline" size={16} color="#D81B60" />
                   <TextInput
                     value={landmark}
                     onChangeText={setLandmark}
@@ -812,7 +901,7 @@ export const PlaceOrderScreen = () => {
           >
             <TouchableOpacity
               onPress={handleSaveNewAddress}
-              className="bg-[#C2477A] rounded-xl py-3.5 px-5 items-center shadow-md active:opacity-90 flex-row justify-center gap-2"
+              className="bg-[#D81B60] rounded-xl py-3.5 px-5 items-center shadow-md active:opacity-90 flex-row justify-center gap-2"
             >
               <Ionicons name="checkmark-circle" size={17} color="#FFFFFF" />
               <Text className="text-xs font-black text-white uppercase tracking-wider">

@@ -31,7 +31,8 @@ export const OrderHistoryScreen = () => {
     reorderOrderItems,
     addToCart,
     isCatalogLoading,
-    refreshOrders
+    refreshOrders,
+    goBack
   } = useApp();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -49,9 +50,20 @@ export const OrderHistoryScreen = () => {
   const [copiedOrderId, setCopiedOrderId] = useState(null);
   const [activeStageNote, setActiveStageNote] = useState({}); // { [orderId]: stageIndex }
 
-  // Filter orders for the logged-in user
+  // Filter orders for the logged-in user + enforce automatic 60-day customer visibility window
   const userOrders = useMemo(() => {
-    return orders.filter(o => {
+    const sixtyDaysMs = 60 * 24 * 60 * 60 * 1000;
+    const sixtyDaysAgoTimestamp = Date.now() - sixtyDaysMs;
+
+    const matched = orders.filter(o => {
+      if (!o) return false;
+
+      // 60-day automatic visibility window: orders older than 60 days disappear from customer view
+      const orderTime = new Date(o.date || o.placedAt || o.created_at).getTime();
+      if (!isNaN(orderTime) && orderTime < sixtyDaysAgoTimestamp) {
+        return false;
+      }
+
       if (!userProfile) return true;
       const cleanPhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
       const uPhone = cleanPhone(userProfile.phone);
@@ -66,6 +78,14 @@ export const OrderHistoryScreen = () => {
       const nameMatch = userProfile.name && o.userName && userProfile.name.trim().toLowerCase() === o.userName.trim().toLowerCase();
       return Boolean(idMatch || phoneMatch || nameMatch);
     });
+
+    if (matched.length === 0 && orders.length > 0) {
+      return orders.filter(o => {
+        const orderTime = new Date(o?.date || o?.placedAt || o?.created_at).getTime();
+        return isNaN(orderTime) || orderTime >= sixtyDaysAgoTimestamp;
+      });
+    }
+    return matched;
   }, [orders, userProfile]);
 
   // Counts
@@ -140,19 +160,6 @@ export const OrderHistoryScreen = () => {
     }
   };
 
-  const getEstimatedText = (order) => {
-    const s = (order.status || '').toLowerCase();
-    if (s === 'delivered' || s === 'completed') {
-      return `Delivered on ${formatOrderDate(order.date || order.placedAt)}`;
-    }
-    if (s === 'cancelled') return 'Order Cancelled';
-    if (s === 'rejected') return 'Order Rejected by Branch';
-
-    const orderTime = new Date(order.date || order.placedAt || Date.now()).getTime();
-    const est = new Date(orderTime + 3 * 24 * 60 * 60 * 1000);
-    return `Est. Delivery: ${est.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' })}`;
-  };
-
   return (
     <View className="flex-1 bg-[#FFFFFF]">
       {/* ── HEADER ────────────────────────────────────────────────────── */}
@@ -161,7 +168,7 @@ export const OrderHistoryScreen = () => {
           backgroundColor: '#FFFFFF',
           borderBottomWidth: 1,
           borderBottomColor: '#F0E3EA',
-          shadowColor: '#B64F7D',
+          shadowColor: '#D81B60',
           shadowOffset: { width: 0, height: 1.5 },
           shadowOpacity: 0.04,
           shadowRadius: 4,
@@ -170,7 +177,10 @@ export const OrderHistoryScreen = () => {
         className="px-4 py-3 flex-row items-center justify-between"
       >
         <TouchableOpacity
-          onPress={() => setCurrentScreen('home')}
+          onPress={() => {
+            if (typeof goBack === 'function') goBack();
+            else setCurrentScreen('home');
+          }}
           activeOpacity={0.7}
           style={{
             width: 40,
@@ -182,7 +192,7 @@ export const OrderHistoryScreen = () => {
           }}
           className="items-center justify-center"
         >
-          <Ionicons name="chevron-back" size={20} color="#B64F7D" />
+          <Ionicons name="chevron-back" size={20} color="#D81B60" />
         </TouchableOpacity>
 
         <View className="items-center">
@@ -205,7 +215,7 @@ export const OrderHistoryScreen = () => {
           }}
           className="items-center justify-center"
         >
-          <Ionicons name="bag-handle-outline" size={19} color="#B64F7D" />
+          <Ionicons name="bag-handle-outline" size={19} color="#D81B60" />
         </TouchableOpacity>
       </View>
 
@@ -225,7 +235,7 @@ export const OrderHistoryScreen = () => {
             onPress={() => setActiveTab('all')}
             activeOpacity={0.8}
             style={{
-              backgroundColor: activeTab === 'all' ? '#B64F7D' : 'transparent',
+              backgroundColor: activeTab === 'all' ? '#D81B60' : 'transparent',
               borderRadius: 12
             }}
             className="flex-1 py-2 flex-row items-center justify-center gap-1.5"
@@ -249,7 +259,7 @@ export const OrderHistoryScreen = () => {
             >
               <Text
                 className={`text-[9.5px] font-black ${
-                  activeTab === 'all' ? 'text-white' : 'text-[#B64F7D]'
+                  activeTab === 'all' ? 'text-white' : 'text-[#D81B60]'
                 }`}
               >
                 {allOrdersCount}
@@ -262,7 +272,7 @@ export const OrderHistoryScreen = () => {
             onPress={() => setActiveTab('completed')}
             activeOpacity={0.8}
             style={{
-              backgroundColor: activeTab === 'completed' ? '#B64F7D' : 'transparent',
+              backgroundColor: activeTab === 'completed' ? '#D81B60' : 'transparent',
               borderRadius: 12
             }}
             className="flex-1 py-2 flex-row items-center justify-center gap-1.5"
@@ -309,14 +319,14 @@ export const OrderHistoryScreen = () => {
               try { await refreshOrders?.(); } catch (_) {}
               setIsRefreshing(false);
             }}
-            colors={['#CE4270']}
-            tintColor="#CE4270"
+            colors={['#D81B60']}
+            tintColor="#D81B60"
           />
         }
       >
         {isCatalogLoading && filteredOrders.length === 0 ? (
           <View className="p-8 items-center justify-center my-6">
-            <ActivityIndicator size="large" color="#B64F7D" />
+            <ActivityIndicator size="large" color="#D81B60" />
             <Text className="text-xs text-[#8A7B85] mt-2 font-semibold">Loading orders...</Text>
           </View>
         ) : filteredOrders.length === 0 ? (
@@ -344,7 +354,7 @@ export const OrderHistoryScreen = () => {
               <Ionicons
                 name={activeTab === 'completed' ? 'checkmark-done-circle-outline' : 'cube-outline'}
                 size={32}
-                color="#B64F7D"
+                color="#D81B60"
               />
             </View>
             <Text className="text-base font-black text-[#352832] mb-1">
@@ -359,8 +369,8 @@ export const OrderHistoryScreen = () => {
               onPress={() => setCurrentScreen('home')}
               activeOpacity={0.85}
               style={{
-                backgroundColor: '#B64F7D',
-                shadowColor: '#B64F7D',
+                backgroundColor: '#D81B60',
+                shadowColor: '#D81B60',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.2,
                 shadowRadius: 4,
@@ -378,7 +388,6 @@ export const OrderHistoryScreen = () => {
             const currentStageIdx = getStageIndex(order.status);
             const isCancelledOrRejected = currentStageIdx === -1;
             const orderDateStr = formatOrderDate(order.date || order.placedAt);
-            const estimatedStr = getEstimatedText(order);
             const items = order.items || [];
             const firstItem = items[0];
             const remainingItemsCount = Math.max(0, items.length - 1);
@@ -403,8 +412,8 @@ export const OrderHistoryScreen = () => {
                 {/* 1. Card Top: Order ID & Status Pill */}
                 <View className="flex-row justify-between items-start pb-2.5 border-b border-[#F0E3EA]">
                   <View className="flex-1 mr-2">
-                    <View className="flex-row items-center gap-1.5">
-                      <Text className="text-sm font-extrabold text-[#352832]">
+                    <View className="flex-row items-center gap-1.5 flex-wrap">
+                      <Text className="text-xs font-black text-[#352832]" numberOfLines={1}>
                         Order #{order.id}
                       </Text>
                       <TouchableOpacity
@@ -413,47 +422,34 @@ export const OrderHistoryScreen = () => {
                         activeOpacity={0.7}
                         className="bg-[#FFFFFF] border border-[#F0E3EA] px-1.5 py-0.5 rounded flex-row items-center gap-0.5"
                       >
-                        <Ionicons name="copy-outline" size={10} color="#B64F7D" />
-                        <Text className="text-[9px] font-bold text-[#B64F7D]">
+                        <Ionicons name="copy-outline" size={10} color="#D81B60" />
+                        <Text className="text-[9px] font-bold text-[#D81B60]">
                           {isCopied ? 'Copied!' : 'Copy'}
                         </Text>
                       </TouchableOpacity>
                     </View>
-                    <Text className="text-[11px] font-semibold text-[#8A7B85] mt-0.5">
-                      Placed on {orderDateStr}
+                    <Text className="text-[10.5px] font-medium text-[#8A7B85] mt-0.5">
+                      Placed on {orderDateStr} • {items.length} {items.length === 1 ? 'item' : 'items'}
                     </Text>
                   </View>
 
-                  <View className={`px-2.5 py-1 rounded-full flex-row items-center gap-1 ${badge.container}`}>
-                    <Ionicons name={badge.icon} size={11} color="#B64F7D" />
-                    <Text className={`text-[10px] font-black tracking-wider ${badge.text}`}>
+                  <View className={`px-2.5 py-1 rounded-full flex-row items-center gap-1 shrink-0 ${badge.container}`}>
+                    <Ionicons name={badge.icon} size={11} color="#D81B60" />
+                    <Text className={`text-[9.5px] font-black tracking-wider ${badge.text}`}>
                       {badge.label}
                     </Text>
                   </View>
                 </View>
 
-                {/* 2. Estimated Delivery Banner */}
-                <View className="py-2 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-1.5">
-                    <Ionicons name="calendar-outline" size={13} color="#B64F7D" />
-                    <Text className="text-xs font-bold text-[#352832]">
-                      {estimatedStr}
-                    </Text>
-                  </View>
-                  <Text className="text-[10px] font-bold text-[#8A7B85]">
-                    {items.length} {items.length === 1 ? 'item' : 'items'}
-                  </Text>
-                </View>
-
-                {/* 3. Seven-Stage Tracking Timeline */}
+                {/* 2. Seven-Stage Tracking Timeline */}
                 {!isCancelledOrRejected ? (
-                  <View className="py-2 my-1 border-t border-[#F0E3EA]">
+                  <View className="py-2.5 my-1 border-t border-[#F0E3EA]">
                     <View className="relative">
                       {/* Background Bar */}
                       <View className="absolute top-3 left-4 right-4 h-1 bg-[#F0E3EA] rounded-full" />
                       {/* Filled Progress Bar */}
                       <View
-                        className="absolute top-3 left-4 h-1 bg-[#B64F7D] rounded-full"
+                        className="absolute top-3 left-4 h-1 bg-[#D81B60] rounded-full"
                         style={{
                           width: `${Math.min(100, (currentStageIdx / (ORDER_STAGES.length - 1)) * 100)}%`
                         }}
@@ -464,6 +460,7 @@ export const OrderHistoryScreen = () => {
                         {ORDER_STAGES.map((st, idx) => {
                           const isPassed = idx < currentStageIdx;
                           const isCurrent = idx === currentStageIdx;
+                          const shortLabels = ['Placed', 'Conf.', 'Proc.', 'Packed', 'Disp.', 'Out', 'Deliv.'];
 
                           return (
                             <TouchableOpacity
@@ -479,37 +476,51 @@ export const OrderHistoryScreen = () => {
                               style={{ width: `${100 / ORDER_STAGES.length}%` }}
                             >
                               <View
-                                className={`w-6 h-6 rounded-full items-center justify-center ${
+                                className={`w-5 h-5 rounded-full items-center justify-center ${
                                   isPassed
-                                    ? 'bg-[#B64F7D]'
+                                    ? 'bg-[#D81B60]'
                                     : isCurrent
-                                    ? 'bg-white border-2 border-[#B64F7D]'
+                                    ? 'bg-white border-2 border-[#D81B60]'
                                     : 'bg-white border border-gray-200'
                                 }`}
                               >
                                 {isPassed ? (
-                                  <Ionicons name="checkmark" size={12} color="#FFF" />
+                                  <Ionicons name="checkmark" size={10} color="#FFF" />
                                 ) : isCurrent ? (
-                                  <View className="w-1.5 h-1.5 rounded-full bg-[#B64F7D]" />
+                                  <View className="w-1.5 h-1.5 rounded-full bg-[#D81B60]" />
                                 ) : (
-                                  <Text className="text-[8px] font-bold text-gray-400">{idx + 1}</Text>
+                                  <Text className="text-[7.5px] font-bold text-gray-400">{idx + 1}</Text>
                                 )}
                               </View>
                               <Text
-                                className={`mt-1 text-[8px] font-extrabold text-center ${
+                                numberOfLines={1}
+                                className={`mt-0.5 text-[7.5px] font-black text-center ${
                                   isCurrent
-                                    ? 'text-[#B64F7D] font-black'
+                                    ? 'text-[#D81B60]'
                                     : isPassed
                                     ? 'text-[#352832]'
                                     : 'text-gray-400'
                                 }`}
                               >
-                                {st.label}
+                                {shortLabels[idx] || st.label}
                               </Text>
                             </TouchableOpacity>
                           );
                         })}
                       </View>
+                    </View>
+
+                    {/* Stage status indicator pill */}
+                    <View className="mt-2 py-1 px-2.5 rounded-lg bg-[#FFF2F6] border border-pink-100 flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-1.5">
+                        <View className="w-1.5 h-1.5 rounded-full bg-[#D81B60]" />
+                        <Text className="text-[10px] font-black text-[#D81B60]">
+                          {ORDER_STAGES[currentStageIdx]?.label || badge.label}
+                        </Text>
+                      </View>
+                      <Text className="text-[9px] font-extrabold text-[#8A7B85]">
+                        Stage {currentStageIdx + 1} of 7
+                      </Text>
                     </View>
 
                     {/* Stage Note if clicked */}
@@ -549,7 +560,7 @@ export const OrderHistoryScreen = () => {
                             resizeMode="contain"
                           />
                         ) : (
-                          <Ionicons name="cube-outline" size={16} color="#B64F7D" />
+                          <Ionicons name="cube-outline" size={16} color="#D81B60" />
                         )}
                       </View>
                       <View className="flex-1">
@@ -565,7 +576,7 @@ export const OrderHistoryScreen = () => {
 
                     {remainingItemsCount > 0 && (
                       <View className="bg-white border border-[#F0E3EA] px-2 py-1 rounded-md">
-                        <Text className="text-[10px] font-bold text-[#B64F7D]">
+                        <Text className="text-[10px] font-bold text-[#D81B60]">
                           +{remainingItemsCount} more
                         </Text>
                       </View>
@@ -577,7 +588,7 @@ export const OrderHistoryScreen = () => {
                 <View className="flex-row justify-between items-center pt-2.5 border-t border-[#F0E3EA] mt-1">
                   <View>
                     <Text className="text-[9.5px] font-bold text-[#8A7B85] uppercase">Total Amount</Text>
-                    <Text className="text-base font-black text-[#B64F7D]">
+                    <Text className="text-base font-black text-[#D81B60]">
                       ₹{(order.totalAmount || 0).toLocaleString('en-IN')}
                     </Text>
                   </View>
@@ -588,16 +599,16 @@ export const OrderHistoryScreen = () => {
                       activeOpacity={0.8}
                       className="bg-[#FFFFFF] border border-[#F0E3EA] px-3 py-2 rounded-xl flex-row items-center gap-1"
                     >
-                      <Ionicons name="repeat-outline" size={13} color="#B64F7D" />
-                      <Text className="text-xs font-bold text-[#B64F7D]">Reorder</Text>
+                      <Ionicons name="repeat-outline" size={13} color="#D81B60" />
+                      <Text className="text-xs font-bold text-[#D81B60]">Reorder</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       onPress={() => handleOpenDetails(order)}
                       activeOpacity={0.85}
                       style={{
-                        backgroundColor: '#B64F7D',
-                        shadowColor: '#B64F7D',
+                        backgroundColor: '#D81B60',
+                        shadowColor: '#D81B60',
                         shadowOffset: { width: 0, height: 1 },
                         shadowOpacity: 0.15,
                         shadowRadius: 3,

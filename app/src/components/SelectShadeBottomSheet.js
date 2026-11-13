@@ -23,7 +23,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
  * Salbeau Product Shade Selection Bottom Sheet
  * 
  * Multi-Shade Session & Persistent Workflow:
- * - Brand identity: #B8497D, #FFFFFF, #FFF7FA, #352832, #81747C, #F0E4EA
+ * - Brand identity: #D81B60, #FFFFFF, #FFF7FA, #352832, #81747C, #F0E4EA
  * - Keeps sheet open after adding so users can select and add multiple shades in one session
  * - In-bag quantity badges on swatches to visually indicate which shades are already in the bag
  * - Multi-quantity stepper ([-] <qty> [+]) for each shade
@@ -76,7 +76,7 @@ export const SelectShadeBottomSheet = ({
         name: s.name || s.color_name || s.title || `Variant ${idx + 1}`,
         undertone: s.undertone || '',
         isBestseller: Boolean(s.isBestseller || s.bestseller),
-        hexColor: s.hexColor || s.hex_color || '#B8497D'
+        hexColor: s.hexColor || s.hex_color || '#D81B60'
       }));
     }
     return [];
@@ -357,7 +357,7 @@ export const SelectShadeBottomSheet = ({
           >
             <View className="flex-1 pr-3">
               <Text
-                style={{ color: '#B8497D' }}
+                style={{ color: '#D81B60' }}
                 className="text-[10px] font-bold tracking-widest uppercase mb-0.5"
               >
                 {brandDisplayName}
@@ -413,7 +413,7 @@ export const SelectShadeBottomSheet = ({
               {discountPercent > 0 && (
                 <View
                   style={{
-                    backgroundColor: '#B8497D',
+                    backgroundColor: '#D81B60',
                     borderRadius: 6,
                     paddingHorizontal: 7,
                     paddingVertical: 3,
@@ -457,8 +457,8 @@ export const SelectShadeBottomSheet = ({
                   onPress={() => setActiveFilter('all')}
                   activeOpacity={0.75}
                   style={{
-                    backgroundColor: activeFilter === 'all' ? '#B8497D' : '#FFFFFF',
-                    borderColor: activeFilter === 'all' ? '#B8497D' : '#F0E4EA',
+                    backgroundColor: activeFilter === 'all' ? '#D81B60' : '#FFFFFF',
+                    borderColor: activeFilter === 'all' ? '#D81B60' : '#F0E4EA',
                     borderWidth: 1,
                   }}
                   className="px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-2xs"
@@ -475,8 +475,8 @@ export const SelectShadeBottomSheet = ({
                   onPress={() => setActiveFilter('bestsellers')}
                   activeOpacity={0.75}
                   style={{
-                    backgroundColor: activeFilter === 'bestsellers' ? '#B8497D' : '#FFFFFF',
-                    borderColor: activeFilter === 'bestsellers' ? '#B8497D' : '#F0E4EA',
+                    backgroundColor: activeFilter === 'bestsellers' ? '#D81B60' : '#FFFFFF',
+                    borderColor: activeFilter === 'bestsellers' ? '#D81B60' : '#F0E4EA',
                     borderWidth: 1,
                   }}
                   className="px-3.5 py-1.5 rounded-full flex-row items-center gap-1.5 shadow-2xs"
@@ -484,7 +484,7 @@ export const SelectShadeBottomSheet = ({
                   <Ionicons
                     name="flame"
                     size={12}
-                    color={activeFilter === 'bestsellers' ? '#FFFFFF' : '#B8497D'}
+                    color={activeFilter === 'bestsellers' ? '#FFFFFF' : '#D81B60'}
                   />
                   <Text
                     style={{ color: activeFilter === 'bestsellers' ? '#FFFFFF' : '#352832' }}
@@ -510,7 +510,7 @@ export const SelectShadeBottomSheet = ({
                     {selectedShade && (
                       <View className="flex-row items-center gap-1.5">
                         <Text
-                          style={{ color: '#B8497D' }}
+                          style={{ color: '#D81B60' }}
                           className="text-xs font-black"
                         >
                           {selectedShade.name || selectedShade.title || 'Selected'}
@@ -556,7 +556,7 @@ export const SelectShadeBottomSheet = ({
 
                       const shadeKey = shade.id ? String(shade.id) : (shade.name ? String(shade.name).toLowerCase() : '');
                       const qtyInBag = productShadesInCartMap.get(shadeKey) || 0;
-                      const colorHex = shade.hexColor || shade.hex_color || '#B8497D';
+                      const colorHex = shade.hexColor || shade.hex_color || '#D81B60';
 
                   return (
                     <TouchableOpacity
@@ -574,12 +574,12 @@ export const SelectShadeBottomSheet = ({
                           width: 48,
                           height: 48,
                           borderRadius: 24,
-                          borderColor: isSelected ? '#B8497D' : '#F0E4EA',
+                          borderColor: isSelected ? '#D81B60' : '#F0E4EA',
                           borderWidth: isSelected ? 2.5 : 1,
                           backgroundColor: '#FFFFFF',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          shadowColor: '#B8497D',
+                          shadowColor: '#D81B60',
                           shadowOffset: { width: 0, height: 1 },
                           shadowOpacity: isSelected ? 0.2 : 0.04,
                           shadowRadius: 3,
@@ -610,7 +610,7 @@ export const SelectShadeBottomSheet = ({
                               position: 'absolute',
                               top: -2,
                               right: -2,
-                              backgroundColor: '#B8497D',
+                              backgroundColor: '#D81B60',
                               minWidth: 16,
                               height: 16,
                               borderRadius: 8,
@@ -631,7 +631,7 @@ export const SelectShadeBottomSheet = ({
                       {/* Compact Shade Label */}
                       <Text
                         style={{
-                          color: isSelected ? '#B8497D' : '#352832',
+                          color: isSelected ? '#D81B60' : '#352832',
                           fontWeight: isSelected ? '700' : '500',
                           fontSize: 10.5,
                           marginTop: 5,
@@ -679,7 +679,7 @@ export const SelectShadeBottomSheet = ({
                   activeOpacity={0.7}
                   className="w-7 h-7 rounded-lg bg-[#FFF0F5] items-center justify-center"
                 >
-                  <Ionicons name="remove" size={14} color="#B8497D" />
+                  <Ionicons name="remove" size={14} color="#D81B60" />
                 </TouchableOpacity>
 
                 <Text className="text-xs font-black text-[#352832] px-3 min-w-[28px] text-center">
@@ -692,7 +692,7 @@ export const SelectShadeBottomSheet = ({
                   activeOpacity={0.7}
                   className="w-7 h-7 rounded-lg bg-[#FFF0F5] items-center justify-center"
                 >
-                  <Ionicons name="add" size={14} color="#B8497D" />
+                  <Ionicons name="add" size={14} color="#D81B60" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -724,7 +724,7 @@ export const SelectShadeBottomSheet = ({
                 )}
                 {discountPercent > 0 && (
                   <Text
-                    style={{ color: '#B8497D' }}
+                    style={{ color: '#D81B60' }}
                     className="text-xs font-black"
                   >
                     {discountPercent}% OFF
@@ -732,7 +732,7 @@ export const SelectShadeBottomSheet = ({
                 )}
                 {savingsAmount > 0 && (
                   <Text
-                    style={{ color: '#B8497D' }}
+                    style={{ color: '#D81B60' }}
                     className="text-xs font-bold ml-auto"
                   >
                     Save ₹{savingsAmount}
@@ -769,7 +769,7 @@ export const SelectShadeBottomSheet = ({
                   <Ionicons
                     name={isLiked ? 'heart' : 'heart-outline'}
                     size={20}
-                    color="#B8497D"
+                    color="#D81B60"
                   />
                 </TouchableOpacity>
               )}
@@ -781,8 +781,8 @@ export const SelectShadeBottomSheet = ({
                 activeOpacity={0.88}
                 style={{
                   height: 48,
-                  backgroundColor: ((allShades.length > 0 && !selectedShade) || isSelectedShadeSoldOut) ? '#CBD5E1' : '#B8497D',
-                  shadowColor: '#B8497D',
+                  backgroundColor: ((allShades.length > 0 && !selectedShade) || isSelectedShadeSoldOut) ? '#CBD5E1' : '#D81B60',
+                  shadowColor: '#D81B60',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.25,
                   shadowRadius: 5,
@@ -819,7 +819,7 @@ export const SelectShadeBottomSheet = ({
             {totalProductUnitsInCart > 0 && (
               <View className="flex-row items-center justify-between w-full mt-2 pt-2 border-t border-[#F0E4EA]">
                 <View className="flex-row items-center gap-1.5">
-                  <Ionicons name="bag-check" size={14} color="#B8497D" />
+                  <Ionicons name="bag-check" size={14} color="#D81B60" />
                   <Text style={{ color: '#352832', fontSize: 11, fontWeight: '700' }}>
                     {totalProductUnitsInCart} {totalProductUnitsInCart === 1 ? 'item' : 'items'} of this product in Bag
                   </Text>
@@ -844,7 +844,7 @@ export const SelectShadeBottomSheet = ({
                     activeOpacity={0.75}
                     className="px-3 py-1.5 rounded-xl bg-[#FFF0F5] border border-[#F8B4D9] flex-row items-center gap-1"
                   >
-                    <Text style={{ color: '#B8497D', fontSize: 11, fontWeight: '800' }}>
+                    <Text style={{ color: '#D81B60', fontSize: 11, fontWeight: '800' }}>
                       View Bag ({totalCartBadgeCount}) ↗
                     </Text>
                   </TouchableOpacity>

@@ -18,11 +18,13 @@ import { storage } from '../../utils/storage';
 import { getCartQuantityMap, getCartKey, getSafeProductShadesList } from '../../utils/cartKeyUtils';
 import { getCategoryFA5Icon } from '../../utils/categoryIcons';
 import { cleanProductDisplayName } from '../../utils/productDisplayNameUtils';
-import { getSubcategoriesForCategory } from '../../config/categoriesHierarchy';
+import { getSubcategoriesForCategory, findCategoryConfig, CATEGORY_IMAGES } from '../../config/categoriesHierarchy';
+import { PurplleProductCard } from '../../components/PurplleProductCard';
+import { ContinuousBrandScroller } from './components/ContinuousBrandScroller';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 600);
-const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.44);
+const BANNER_HEIGHT = Math.max(160, Math.round(BANNER_WIDTH * (510 / 1200)));
 
 // Reusable Section Header Component
 const SectionHeader = ({
@@ -40,13 +42,13 @@ const SectionHeader = ({
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-1.5 flex-1 pr-2">
           {iconBadgeText && (
-            <View className="bg-[#C2477A] w-5 h-5 rounded-full items-center justify-center shadow-2xs mr-0.5">
+            <View className="bg-[#D81B60] w-5 h-5 rounded-full items-center justify-center shadow-2xs mr-0.5">
               <Text className="text-white text-[7.5px] font-black uppercase tracking-tighter">
                 {iconBadgeText}
               </Text>
             </View>
           )}
-          {iconName && <Ionicons name={iconName} size={16} color="#C2477A" />}
+          {iconName && <Ionicons name={iconName} size={16} color="#D81B60" />}
           <Text className="text-base font-extrabold text-[#3A2430]" numberOfLines={1}>
             {title}
           </Text>
@@ -58,8 +60,8 @@ const SectionHeader = ({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             className="flex-row items-center gap-1"
           >
-            <Text className="text-xs font-bold text-[#C2477A]">{cleanCta}</Text>
-            <Ionicons name="arrow-forward" size={13} color="#C2477A" />
+            <Text className="text-xs font-bold text-[#D81B60]">{cleanCta}</Text>
+            <Ionicons name="arrow-forward" size={13} color="#D81B60" />
           </TouchableOpacity>
         )}
       </View>
@@ -91,9 +93,9 @@ const SkeletonProductCard = () => (
   </View>
 );
 
-// Exact Logo Color Engine: Uniform Brand Pink Theme (#C2477A) with Crisp White Typography
+// Exact Logo Color Engine: Uniform Brand Pink Theme (#D81B60) with Crisp White Typography
 export const getBrandThemeColor = (brand) => {
-  return '#C2477A';
+  return '#D81B60';
 };
 
 // Brand Card: Premium brand button with theme color background, white typography, subtle press animation
@@ -292,13 +294,13 @@ const HomeProductCard = React.memo(({
             </Text>
           </View>
         ) : (product?.isBestSeller || product?.is_bestseller) ? (
-          <View className="absolute top-2 left-2 bg-[#C2477A] px-1.5 py-0.5 rounded-md shadow-xs">
+          <View className="absolute top-2 left-2 bg-[#D81B60] px-1.5 py-0.5 rounded-md shadow-xs">
             <Text className="text-white text-[8px] font-black uppercase tracking-wider">
               BESTSELLER
             </Text>
           </View>
         ) : (product?.isRecommended || product?.is_recommended) ? (
-          <View className="absolute top-2 left-2 bg-[#C2477A] px-1.5 py-0.5 rounded-md shadow-xs">
+          <View className="absolute top-2 left-2 bg-[#D81B60] px-1.5 py-0.5 rounded-md shadow-xs">
             <Text className="text-white text-[8px] font-black uppercase tracking-wider">
               TOP PICK
             </Text>
@@ -318,13 +320,13 @@ const HomeProductCard = React.memo(({
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
             size={19}
-            color="#C2477A"
+            color="#D81B60"
           />
         </TouchableOpacity>
       </View>
 
       {/* 2. Brand Name in Pink */}
-      <Text className="text-[9px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5" numberOfLines={1}>
+      <Text className="text-[9px] font-bold text-[#D81B60] uppercase tracking-wider mb-0.5" numberOfLines={1}>
         {product.brandName || product.brand || 'SALBEAU'}
       </Text>
 
@@ -345,7 +347,7 @@ const HomeProductCard = React.memo(({
                 (selectedShade.id && shade.id && selectedShade.id === shade.id) ||
                 (selectedShade.name && shade.name && selectedShade.name === shade.name)
               );
-              const colorHex = shade.hexColor || shade.hex_color || '#C2477A';
+              const colorHex = shade.hexColor || shade.hex_color || '#D81B60';
 
               return (
                 <TouchableOpacity
@@ -416,22 +418,33 @@ const HomeProductCard = React.memo(({
               }
             }}
             style={{
-              backgroundColor: '#FFFFFF',
-              borderColor: '#C2477A',
+              backgroundColor: cartQty > 0 ? '#D81B60' : '#FFFFFF',
+              borderColor: '#D81B60',
               borderWidth: 1.2,
             }}
             className="w-full py-1.5 rounded-full flex-row items-center justify-center gap-1 shadow-2xs"
           >
-            <Text className="text-[10.5px] font-bold text-[#C2477A]">
-              Choose Shade
-            </Text>
-            <Ionicons name="chevron-down" size={11} color="#C2477A" />
+            {cartQty > 0 ? (
+              <>
+                <Ionicons name="checkmark-circle" size={11} color="#FFFFFF" />
+                <Text className="text-[10.5px] font-black text-white">
+                  In Bag ({cartQty}) • Shades ⌵
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text className="text-[10.5px] font-bold text-[#D81B60]">
+                  Choose Shade
+                </Text>
+                <Ionicons name="chevron-down" size={11} color="#D81B60" />
+              </>
+            )}
           </TouchableOpacity>
         ) : cartQty > 0 ? (
           <View
             style={{
-              backgroundColor: '#C2477A',
-              shadowColor: '#C2477A',
+              backgroundColor: '#D81B60',
+              shadowColor: '#D81B60',
               shadowOffset: { width: 0, height: 1 },
               shadowOpacity: 0.2,
               shadowRadius: 3,
@@ -476,13 +489,13 @@ const HomeProductCard = React.memo(({
             }}
             style={{
               backgroundColor: '#FFFFFF',
-              borderColor: '#C2477A',
+              borderColor: '#D81B60',
               borderWidth: 1.2,
             }}
             className="w-full py-1.5 rounded-full flex-row items-center justify-center gap-1 shadow-2xs"
           >
-            <Ionicons name="add" size={13} color="#C2477A" />
-            <Text className="text-[11px] font-bold text-[#C2477A]">Add</Text>
+            <Ionicons name="add" size={13} color="#D81B60" />
+            <Text className="text-[11px] font-bold text-[#D81B60]">Add</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -498,10 +511,13 @@ export const HomeScreen = () => {
     setSelectedShade,
     rememberSelectedShade,
     setSelectedCategory,
+    selectedSubcategory,
+    setSelectedSubcategory,
     setCurrentScreen,
     cart = [],
     addToCart,
     updateCartQuantity,
+    removeFromCart,
     searchQuery,
     setSearchQuery,
     activeProducts = [],
@@ -586,25 +602,31 @@ export const HomeScreen = () => {
     setCurrentScreen('product');
   }, [setSelectedProduct, setSelectedShade, setCurrentScreen]);
 
-  // Promotional Banners Carousel with Auto-sliding
+  // Continuous Promotional Banners Slideshow
   const [activeSlide, setActiveSlide] = useState(0);
+  const activeSlideRef = useRef(0);
   const bannerScrollRef = useRef(null);
 
   const displayBanners = useMemo(() => {
-    if (activeBanners && activeBanners.length > 0) return activeBanners;
-    if (Array.isArray(homeBanners)) return homeBanners.filter(b => b.isActive !== false);
-    return DEFAULT_HOME_BANNERS;
+    let source = [];
+    if (activeBanners && activeBanners.length > 0) source = activeBanners;
+    else if (Array.isArray(homeBanners)) source = homeBanners.filter(b => b.isActive !== false);
+    else source = DEFAULT_HOME_BANNERS;
+    return source.filter(b => b && b.id !== 'banner_1' && b.title !== 'Glow Your Own Way' && b.name !== 'Glow Your Own Way');
   }, [activeBanners, homeBanners]);
+
+  useEffect(() => {
+    activeSlideRef.current = activeSlide;
+  }, [activeSlide]);
 
   useEffect(() => {
     if (displayBanners.length <= 1) return;
     const timer = setInterval(() => {
-      setActiveSlide(prev => {
-        const next = (prev + 1) % displayBanners.length;
-        bannerScrollRef.current?.scrollTo({ x: next * (BANNER_WIDTH + 12), animated: true });
-        return next;
-      });
-    }, 4500);
+      const next = (activeSlideRef.current + 1) % displayBanners.length;
+      activeSlideRef.current = next;
+      setActiveSlide(next);
+      bannerScrollRef.current?.scrollTo({ x: next * (BANNER_WIDTH + 12), animated: true });
+    }, 3600);
     return () => clearInterval(timer);
   }, [displayBanners.length]);
 
@@ -638,9 +660,185 @@ export const HomeScreen = () => {
   // Active Category & Animated Sliding Tab Indicator for Home Screen Categories Section
   const [activeCategoryHome, setActiveCategoryHome] = useState(null);
 
+  // ── MYNTRA-INSPIRED CATEGORY NAVIGATION & DYNAMIC TAXONOMY ARCHITECTURE ────────
+  // Dynamic Category Navigation (Row 1): 'All' + Store Categories with 3D Imagery & Gold Rings
+  const categoryNavTabs = useMemo(() => {
+    const defaultCategories = [
+      { key: 'MAKEUP', label: 'Makeup', name: 'Makeup', image: CATEGORY_IMAGES?.makeup },
+      { key: 'SKINCARE', label: 'Skincare', name: 'Skincare', image: CATEGORY_IMAGES?.skincare },
+      { key: 'HAIR_CARE', label: 'Hair Care', name: 'Hair Care', image: CATEGORY_IMAGES?.hairCare },
+      { key: 'HAIR_STYLING', label: 'Hair Styling', name: 'Hair Styling Tools', image: CATEGORY_IMAGES?.hairStylingTools },
+      { key: 'BATH_BODY', label: 'Bath & Body', name: 'Bath & Body', image: CATEGORY_IMAGES?.bathBody },
+    ];
+
+    if (displayCategories && displayCategories.length > 0) {
+      const tabs = [];
+      displayCategories.forEach((cat) => {
+        const name = (cat.name || cat.title || '').trim();
+        if (name && !tabs.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+          const config = findCategoryConfig ? findCategoryConfig(name) : null;
+          tabs.push({
+            key: name.toUpperCase().replace(/\s+/g, '_'),
+            label: name,
+            name: name,
+            image: cat.imageUrl || cat.image || config?.image || null,
+            category: cat,
+          });
+        }
+      });
+      return tabs.length > 0 ? tabs : defaultCategories;
+    }
+    return defaultCategories;
+  }, [displayCategories]);
+
+  const DEPARTMENT_TABS = useMemo(() => categoryNavTabs.map(t => t.label), [categoryNavTabs]);
+  const [activeDepartmentTab, setActiveDepartmentTab] = useState('Makeup');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
+  const isAllCategoryFilterSelected = selectedCategoryFilter === 'All';
+
+  // Animated Values & Layout Measurements for Raised Curved Arch Indicator
+  const departmentTabLayouts = useRef({}).current;
+  const departmentTabsScrollRef = useRef(null);
+  const departmentIndicatorX = useRef(new Animated.Value(48)).current;
+  const departmentIndicatorWidth = useRef(new Animated.Value(76)).current;
+  const departmentHasMeasured = useRef(false);
+  const categoryCarouselFadeAnim = useRef(new Animated.Value(1)).current;
+  const categoryCarouselScaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Active Subcategories list for the selected category (Face Makeup, Eye Makeup, Lip Makeup, etc.)
+  const activeCategorySubcategories = useMemo(() => {
+    const activeTabObj = categoryNavTabs.find(
+      t => t.label.toLowerCase() === activeDepartmentTab.toLowerCase() || t.name.toLowerCase() === activeDepartmentTab.toLowerCase()
+    );
+    const targetCat = activeTabObj?.category || (displayCategories || []).find(
+      c => (c.name || '').toLowerCase() === (activeTabObj?.name || activeDepartmentTab).toLowerCase()
+    ) || { name: activeDepartmentTab };
+
+    const subs = getSubcategoriesForCategory ? getSubcategoriesForCategory(targetCat) : [];
+    if (subs && subs.length > 0) {
+      return subs;
+    }
+
+    // High-fidelity fallback subcategories matching beauty store standards
+    const dLower = (activeDepartmentTab || '').toLowerCase();
+    if (dLower.includes('makeup')) {
+      return [
+        { id: 'sub_face', name: 'Face Makeup' },
+        { id: 'sub_eye', name: 'Eye Makeup' },
+        { id: 'sub_lip', name: 'Lip Makeup' },
+        { id: 'sub_cheeks', name: 'Cheeks' },
+        { id: 'sub_tools', name: 'Makeup Tools' },
+      ];
+    } else if (dLower.includes('skin')) {
+      return [
+        { id: 'sub_cleanser', name: 'Cleansers' },
+        { id: 'sub_serum', name: 'Serums & Essences' },
+        { id: 'sub_moisturizer', name: 'Moisturizers' },
+        { id: 'sub_sunscreen', name: 'Sunscreen' },
+        { id: 'sub_eye_care', name: 'Eye Creams' },
+      ];
+    } else if (dLower.includes('hair')) {
+      return [
+        { id: 'sub_shampoo', name: 'Shampoos' },
+        { id: 'sub_conditioner', name: 'Conditioners' },
+        { id: 'sub_hair_oil', name: 'Hair Oils' },
+        { id: 'sub_masks', name: 'Hair Masks' },
+        { id: 'sub_styling', name: 'Styling Serums' },
+      ];
+    }
+    return [
+      { id: 'sub_all_1', name: 'Best Sellers' },
+      { id: 'sub_all_2', name: 'New Launches' },
+      { id: 'sub_all_3', name: 'Daily Essentials' },
+      { id: 'sub_all_4', name: 'Luxury Beauty' },
+    ];
+  }, [activeDepartmentTab, categoryNavTabs, displayCategories]);
+
+  // Dynamic Product Filter based on Active Category Tab & Subcategory Selection
+  const filteredCategoryProducts = useMemo(() => {
+    let prods = activeProducts || [];
+
+    // 1. Filter by Active Top Category Tab (if not 'All')
+    if (activeDepartmentTab && activeDepartmentTab.toLowerCase() !== 'all') {
+      const activeTabObj = categoryNavTabs.find(
+        t => t.label.toLowerCase() === activeDepartmentTab.toLowerCase() || t.name.toLowerCase() === activeDepartmentTab.toLowerCase()
+      );
+      const targetCatName = (activeTabObj?.name || activeDepartmentTab).toLowerCase().trim();
+
+      prods = prods.filter(p => {
+        const pCat = (p.category || p.categoryName || '').toLowerCase().trim();
+        const pSub = (p.subcategory || p.subCategory || '').toLowerCase().trim();
+        const pCats = Array.isArray(p.categories) ? p.categories.map(c => String(c).toLowerCase().trim()) : [];
+        const combinedText = `${p.name || ''} ${pCat} ${pSub} ${p.description || ''}`.toLowerCase();
+        return pCat === targetCatName || pCat.includes(targetCatName) || targetCatName.includes(pCat) || pSub.includes(targetCatName) || pCats.includes(targetCatName) || combinedText.includes(targetCatName);
+      });
+    }
+
+    // 2. Filter by Specific Subcategory / Item Selection
+    if (selectedCategoryFilter && selectedCategoryFilter !== 'All') {
+      const filterLower = selectedCategoryFilter.toLowerCase().trim();
+      prods = prods.filter(p => {
+        const pCat = (p.category || p.categoryName || '').toLowerCase().trim();
+        const pSub = (p.subcategory || p.subCategory || '').toLowerCase().trim();
+        const pCats = Array.isArray(p.categories) ? p.categories.map(c => String(c).toLowerCase().trim()) : [];
+        return pCat === filterLower || pCat.includes(filterLower) || filterLower.includes(pCat) || pSub.includes(filterLower) || pCats.includes(filterLower);
+      });
+    }
+
+    return prods;
+  }, [activeProducts, activeDepartmentTab, categoryNavTabs, selectedCategoryFilter]);
+
+  // Tab Switching Handler with Spring Animation Physics & Soft Centering Scroll
+  const handleDepartmentTabPress = useCallback((tab) => {
+    if (tab === activeDepartmentTab) return;
+    setActiveDepartmentTab(tab);
+    setSelectedCategoryFilter('All');
+
+    const layout = departmentTabLayouts[tab];
+    if (layout && typeof layout.x === 'number') {
+      Animated.parallel([
+        Animated.spring(departmentIndicatorX, {
+          toValue: layout.x,
+          friction: 8,
+          tension: 65,
+          useNativeDriver: false,
+        }),
+        Animated.spring(departmentIndicatorWidth, {
+          toValue: layout.width,
+          friction: 8,
+          tension: 65,
+          useNativeDriver: false,
+        }),
+      ]).start();
+
+      // Soft scrolling to center the active category tab
+      const targetScrollX = Math.max(0, layout.x - (SCREEN_WIDTH / 2) + (layout.width / 2));
+      departmentTabsScrollRef.current?.scrollTo({ x: targetScrollX, animated: true });
+    }
+
+    // Spring & Scale Animation for Content Transition
+    categoryCarouselFadeAnim.setValue(0.25);
+    categoryCarouselScaleAnim.setValue(0.95);
+    Animated.parallel([
+      Animated.timing(categoryCarouselFadeAnim, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.spring(categoryCarouselScaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 65,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [activeDepartmentTab, departmentTabLayouts, departmentIndicatorX, departmentIndicatorWidth, categoryCarouselFadeAnim, categoryCarouselScaleAnim]);
+
   useEffect(() => {
-    if (displayCategories.length > 0 && !activeCategoryHome) {
-      setActiveCategoryHome(displayCategories[0]);
+    if (displayCategories.length > 0) {
+      if (!activeCategoryHome || !displayCategories.some(c => (c.name || '').toLowerCase() === (activeCategoryHome.name || '').toLowerCase())) {
+        setActiveCategoryHome(displayCategories[0]);
+      }
     }
   }, [displayCategories]);
 
@@ -893,14 +1091,12 @@ export const HomeScreen = () => {
       return [...markedRecs].sort((a, b) => {
         const prioA = Number(a.recommendationPriority ?? a.sort_order ?? 99999);
         const prioB = Number(b.recommendationPriority ?? b.sort_order ?? 99999);
-        if (prioA !== prioB) return prioA - prioB;
-        return (Number(b.rating || 0) - Number(a.rating || 0));
+        return prioA - prioB;
       }).slice(0, 15);
     }
-    return [...activeProducts]
-      .filter(p => (Number(p.rating || 0) >= 4.0 || p.isFeatured))
-      .sort((a, b) => (Number(b.rating || 0) - Number(a.rating || 0)))
-      .slice(0, 10);
+    const featured = activeProducts.filter(p => p.isFeatured || p.is_featured);
+    if (featured.length > 0) return featured.slice(0, 10);
+    return [...activeProducts].slice(0, 10);
   }, [activeProducts]);
 
   // 6. Recently Viewed Products (User-specific tracking with persistence)
@@ -958,9 +1154,9 @@ export const HomeScreen = () => {
             onPress={() => setCurrentScreen('wishlist')}
             className="p-1 items-center justify-center relative bg-transparent"
           >
-            <Ionicons name={favorites.length > 0 ? "heart" : "heart-outline"} size={24} color="#C2477A" />
+            <Ionicons name={favorites.length > 0 ? "heart" : "heart-outline"} size={24} color="#D81B60" />
             {favorites.length > 0 && (
-              <View className="absolute -top-1 -right-1 bg-[#C2477A] min-w-[16px] h-[16px] px-1 rounded-full items-center justify-center shadow-xs">
+              <View className="absolute -top-1 -right-1 bg-[#D81B60] min-w-[16px] h-[16px] px-1 rounded-full items-center justify-center shadow-xs">
                 <Text className="text-white text-[8px] font-black">{favorites.length}</Text>
               </View>
             )}
@@ -973,9 +1169,9 @@ export const HomeScreen = () => {
             onPress={() => setCurrentScreen('cart')}
             className="p-1 items-center justify-center relative bg-transparent"
           >
-            <Ionicons name="cart-outline" size={25} color="#C2477A" />
+            <Ionicons name="cart-outline" size={25} color="#D81B60" />
             {totalCartQuantity > 0 && (
-              <View className="absolute -top-1 -right-1 bg-[#C2477A] min-w-[16px] h-[16px] px-1 rounded-full items-center justify-center shadow-xs">
+              <View className="absolute -top-1 -right-1 bg-[#D81B60] min-w-[16px] h-[16px] px-1 rounded-full items-center justify-center shadow-xs">
                 <Text className="text-white text-[8px] font-black">
                   {totalCartQuantity > 9 ? '9+' : totalCartQuantity}
                 </Text>
@@ -994,8 +1190,8 @@ export const HomeScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#C2477A']}
-            tintColor="#C2477A"
+            colors={['#D81B60']}
+            tintColor="#D81B60"
           />
         }
       >
@@ -1047,208 +1243,276 @@ export const HomeScreen = () => {
                 setCurrentScreen('search');
               }}
             >
-              <Ionicons name="scan-outline" size={19} color="#C2477A" />
+              <Ionicons name="scan-outline" size={19} color="#D81B60" />
             </TouchableOpacity>
           </TouchableOpacity>
         </View>
 
         {/* ========================================================================= */}
-        {/* 3. SHOP BY CATEGORY WITH ANIMATED SLIDING ACTIVE TAB INDICATOR            */}
+        {/* 3. SHOP BY CATEGORIES SECTION                                             */}
         {/* ========================================================================= */}
-        {(homeSectionVisibility?.shopCategories !== false) && (displayCategories.length > 0 || isCatalogLoading) && (
-          <View className="mb-5">
-            <SectionHeader
-              title="Shop by Category"
-              subtitle="Select a category to explore authentic formulations"
-              ctaText="View All →"
-              onCtaPress={() => {
-                if (setSelectedCategory && activeCategoryHome) setSelectedCategory(activeCategoryHome.name);
-                setCurrentScreen('category');
-              }}
-            />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginTop: 4, marginBottom: 6 }}>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>
+            Shop by Categories
+          </Text>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('category')}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>
+              View All →
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-            {/* Horizontal Category Tabs Bar - Curved Tab Bar Container with Animated Sliding Indicator */}
-            <View
-              style={{
-                backgroundColor: '#FFFFFF',
-                borderBottomWidth: 1,
-                borderBottomColor: '#F0F1F3',
-                marginBottom: 10,
-                borderBottomLeftRadius: 18,
-                borderBottomRightRadius: 18,
-                shadowColor: '#C2477A',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.05,
-                shadowRadius: 8,
-                elevation: 2,
+        <View
+          style={{
+            backgroundColor: '#FFFFFF',
+            position: 'relative',
+            height: 94,
+            zIndex: 10,
+          }}
+        >
+          {/* Main Navigation Row: Soft Scrollable Category Tabs */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-end',
+              height: 94,
+              zIndex: 2,
+            }}
+          >
+            <ScrollView
+              ref={departmentTabsScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="normal"
+              scrollEventThrottle={16}
+              overScrollMode="never"
+              bounces={true}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{
+                flexDirection: 'row',
+                alignItems: 'flex-end',
+                height: 94,
+                position: 'relative',
               }}
+              style={{ flex: 1, height: 94 }}
             >
-              <ScrollView
-                ref={categoryTabsScrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{
+              {/* Far-Left 'All' Option */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  setActiveDepartmentTab('All');
+                  setSelectedCategoryFilter('All');
+                  const layout = departmentTabLayouts['All'];
+                  if (layout && typeof layout.x === 'number') {
+                    Animated.parallel([
+                      Animated.spring(departmentIndicatorX, { toValue: layout.x, friction: 8, tension: 65, useNativeDriver: false }),
+                      Animated.spring(departmentIndicatorWidth, { toValue: layout.width, friction: 8, tension: 65, useNativeDriver: false }),
+                    ]).start();
+                  }
+                }}
+                onLayout={(e) => {
+                  const layout = e.nativeEvent.layout;
+                  departmentTabLayouts['All'] = layout;
+                  if (activeDepartmentTab === 'All' && layout.width > 0) {
+                    departmentIndicatorX.setValue(layout.x);
+                    departmentIndicatorWidth.setValue(layout.width);
+                  }
+                }}
+                style={{
+                  height: 90,
                   paddingHorizontal: 16,
-                  paddingTop: 8,
-                  paddingBottom: 10,
                   alignItems: 'center',
+                  justifyContent: 'center',
+                  borderBottomWidth: 2,
+                  borderBottomColor: activeDepartmentTab === 'All' ? 'transparent' : '#D81B60',
+                  zIndex: 5,
                 }}
               >
-                {/* Curved Animated Active Sliding Indicator */}
-                <Animated.View
-                  pointerEvents="none"
+                <Text
                   style={{
-                    position: 'absolute',
-                    left: categoryIndicatorX,
-                    width: categoryIndicatorWidth,
-                    bottom: 0,
-                    height: 4.5,
-                    borderTopLeftRadius: 8,
-                    borderTopRightRadius: 8,
-                    borderBottomLeftRadius: 2,
-                    borderBottomRightRadius: 2,
-                    backgroundColor: '#C2477A',
-                    shadowColor: '#C2477A',
-                    shadowOffset: { width: 0, height: -2 },
-                    shadowOpacity: 0.35,
-                    shadowRadius: 4,
-                    elevation: 4,
-                    zIndex: 1,
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
+                    fontSize: 13,
+                    fontWeight: activeDepartmentTab === 'All' ? '800' : '700',
+                    color: activeDepartmentTab === 'All' ? '#D81B60' : '#111827',
                   }}
                 >
-                  {/* Curved light reflection on top edge */}
-                  <View
-                    style={{
-                      width: '45%',
-                      height: 1.5,
-                      borderRadius: 1,
-                      backgroundColor: '#FFFFFF',
-                      opacity: 0.75,
-                      marginTop: 0.5,
+                  All
+                </Text>
+              </TouchableOpacity>
+
+              {/* Animated Curved Raised-Border Sliding Tab Arch Indicator */}
+              <Animated.View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: departmentIndicatorX,
+                  width: departmentIndicatorWidth,
+                  bottom: 0,
+                  height: 90,
+                  borderTopLeftRadius: 24,
+                  borderTopRightRadius: 24,
+                  borderTopWidth: 2,
+                  borderLeftWidth: 2,
+                  borderRightWidth: 2,
+                  borderBottomWidth: 0,
+                  borderColor: '#D81B60',
+                  backgroundColor: '#FFFFFF',
+                  zIndex: 2,
+                  shadowColor: '#D81B60',
+                  shadowOffset: { width: 0, height: -2 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 5,
+                  elevation: 2,
+                }}
+              />
+
+              {/* Dynamic Interactive Category Tabs with Gold Rings & 3D Imagery */}
+              {categoryNavTabs.map((catTab) => {
+                const isSelected = activeDepartmentTab.toLowerCase() === catTab.label.toLowerCase();
+                const iconInfo = getCategoryFA5Icon(catTab.label);
+
+                return (
+                  <TouchableOpacity
+                    key={`cat_nav_${catTab.key || catTab.label}`}
+                    activeOpacity={0.85}
+                    onPress={() => handleDepartmentTabPress(catTab.label)}
+                    onLayout={(e) => {
+                      const layout = e.nativeEvent.layout;
+                      departmentTabLayouts[catTab.label] = layout;
+                      if (activeDepartmentTab.toLowerCase() === catTab.label.toLowerCase() && layout.width > 0) {
+                        departmentIndicatorX.setValue(layout.x);
+                        departmentIndicatorWidth.setValue(layout.width);
+                        departmentHasMeasured.current = true;
+                      }
                     }}
-                  />
-                </Animated.View>
-
-                {displayCategories.map((cat, idx) => {
-                  const currentName = (activeCategoryHome?.name || displayCategories[0]?.name || '').toLowerCase();
-                  const isSelected = (cat.name || '').toLowerCase() === currentName;
-                  const catIconInfo = getCategoryFA5Icon(cat.name);
-
-                  return (
-                    <TouchableOpacity
-                      key={cat.id || cat.name || idx}
-                      activeOpacity={0.8}
-                      onPress={() => handleCategoryTabPress(cat, idx)}
-                      onLayout={(e) => handleCategoryTabLayout(cat, e.nativeEvent.layout)}
+                    style={{
+                      height: 90,
+                      width: 76,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderBottomWidth: 2,
+                      borderBottomColor: isSelected ? 'transparent' : '#D81B60',
+                      zIndex: 5,
+                      paddingTop: 4,
+                      paddingBottom: 6,
+                    }}
+                  >
+                    {/* Perfectly Circular Image Container with Gold Ring */}
+                    <View
                       style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 26,
+                        borderWidth: 1.5,
+                        borderColor: isSelected ? '#D81B60' : '#E0A96D',
+                        backgroundColor: '#FFFFFF',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginRight: 16,
-                        minWidth: 64,
-                        paddingVertical: 2,
-                        zIndex: 2,
+                        overflow: 'hidden',
+                        shadowColor: isSelected ? '#D81B60' : '#000000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: isSelected ? 0.22 : 0.06,
+                        shadowRadius: 3,
+                        elevation: 2,
+                        marginBottom: 5,
                       }}
                     >
-                      {/* Top: Curved Story / Category Bubble */}
-                      <View
-                        style={{
-                          width: isSelected ? 60 : 56,
-                          height: isSelected ? 60 : 56,
-                          borderRadius: isSelected ? 30 : 28,
-                          backgroundColor: '#FFFFFF',
-                          borderColor: isSelected ? '#C2477A' : '#EAEAEC',
-                          borderWidth: isSelected ? 2.5 : 1,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: 6,
-                          overflow: 'hidden',
-                          shadowColor: isSelected ? '#C2477A' : '#000000',
-                          shadowOffset: { width: 0, height: isSelected ? 3 : 1 },
-                          shadowOpacity: isSelected ? 0.28 : 0.05,
-                          shadowRadius: isSelected ? 6 : 2,
-                          elevation: isSelected ? 4 : 1,
-                        }}
-                      >
-                        {(cat.imageUrl || cat.image) ? (
-                          <Image
-                            source={getSafeImageSource(cat.imageUrl || cat.image)}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              borderRadius: isSelected ? 30 : 28,
-                            }}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <FontAwesome5
-                            name={catIconInfo.icon || 'sparkles'}
-                            size={20}
-                            color={isSelected ? '#C2477A' : '#718096'}
-                          />
-                        )}
-                      </View>
+                      {catTab.image ? (
+                        <Image
+                          source={getSafeImageSource(catTab.image)}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            borderRadius: 26,
+                          }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <FontAwesome5
+                          name={iconInfo.icon || 'sparkles'}
+                          size={20}
+                          color={isSelected ? '#D81B60' : '#4B5563'}
+                        />
+                      )}
+                    </View>
 
-                      {/* Bottom: Myntra Clean Category Label */}
-                      <Text
-                        style={{
-                          color: isSelected ? '#C2477A' : '#282C3F',
-                          fontSize: 11,
-                          fontWeight: isSelected ? '700' : '500',
-                          textAlign: 'center',
-                          letterSpacing: 0.1,
-                          maxWidth: 66,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {cat.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
+                    {/* Category Name Label Directly Below Image */}
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: isSelected ? '800' : '700',
+                        color: isSelected ? '#D81B60' : '#111827',
+                        textAlign: 'center',
+                        letterSpacing: 0.2,
+                        maxWidth: 74,
+                        lineHeight: 14,
+                      }}
+                      numberOfLines={2}
+                    >
+                      {catTab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
 
-            {/* Animated Dynamic Subcategory Content (Fade / Slide Transition) - Only Text Pills */}
-            <Animated.View
-              style={{
-                opacity: categoryContentOpacity,
-                transform: [{ translateX: categoryContentTranslateX }],
-                marginBottom: 6,
-              }}
-            >
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 6,
-                  alignItems: 'center',
+              {/* Right Edge Baseline Spacer */}
+              <View
+                style={{
+                  width: 20,
+                  height: 90,
+                  borderBottomWidth: 2,
+                  borderBottomColor: '#D81B60',
                 }}
-              >
-                {/* "All" Category Text Pill */}
+              />
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* ========================================================================= */}
+        {/* 4. SUB CATEGORIES SECTION (HORIZONTAL PILL CHIPS)                         */}
+        {/* ========================================================================= */}
+        <View style={{ marginTop: 14, marginBottom: 12 }}>
+          {/* Sub Categories Section Header */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>
+              {activeDepartmentTab.toLowerCase() !== 'all' ? `${activeDepartmentTab} Sub Categories` : 'Beauty Sub Categories'}
+            </Text>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('category')}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Horizontal Scroll of Sub Category Pill Chips */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          >
+            {activeCategorySubcategories.map((sub, idx) => {
+              const isSelected = selectedCategoryFilter.toLowerCase() === (sub.name || '').toLowerCase();
+              return (
                 <TouchableOpacity
-                  activeOpacity={0.75}
+                  key={`sub_chip_${sub.id || idx}`}
+                  activeOpacity={0.8}
                   onPress={() => {
-                    if (setSelectedCategory && activeCategoryHome) setSelectedCategory(activeCategoryHome.name);
+                    const parentCatName = (activeDepartmentTab && activeDepartmentTab.toLowerCase() !== 'all')
+                      ? activeDepartmentTab
+                      : (sub.categoryName || (categories.find(c => c.id === sub.categoryId)?.name) || 'Makeup');
+                    if (setSelectedCategory) setSelectedCategory(parentCatName);
+                    if (setSelectedSubcategory) setSelectedSubcategory(sub.name);
                     setCurrentScreen('category');
                   }}
                   style={{
-                    backgroundColor: '#FFF0F5',
-                    borderColor: '#F8B4D9',
-                    borderWidth: 1.2,
-                    borderRadius: 20,
+                    paddingHorizontal: 16,
                     paddingVertical: 7,
-                    paddingHorizontal: 15,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: isSelected ? '#D81B60' : '#E5E7EB',
+                    backgroundColor: isSelected ? '#D81B60' : '#FFFFFF',
                     marginRight: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    shadowColor: '#C2477A',
+                    shadowColor: '#000',
                     shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.08,
+                    shadowOpacity: 0.04,
                     shadowRadius: 2,
                     elevation: 1,
                   }}
@@ -1256,161 +1520,94 @@ export const HomeScreen = () => {
                   <Text
                     style={{
                       fontSize: 12,
-                      fontWeight: '800',
-                      color: '#C2477A',
-                      letterSpacing: 0.1,
+                      fontWeight: '700',
+                      color: isSelected ? '#FFFFFF' : '#111827',
                     }}
                   >
-                    All {activeCategoryHome?.name || ''}
+                    {sub.name}
                   </Text>
                 </TouchableOpacity>
-
-                {activeSubcategoriesHome && activeSubcategoriesHome.length > 0 ? (
-                  activeSubcategoriesHome.map((sub, idx) => (
-                    <TouchableOpacity
-                      key={sub.id || sub.name || idx}
-                      activeOpacity={0.75}
-                      onPress={() => {
-                        if (setSelectedCategory) setSelectedCategory(activeCategoryHome?.name || displayCategories[0]?.name);
-                        setCurrentScreen('category');
-                      }}
-                      style={{
-                        backgroundColor: '#FFFFFF',
-                        borderColor: '#F0E3EA',
-                        borderWidth: 1.2,
-                        borderRadius: 20,
-                        paddingVertical: 7,
-                        paddingHorizontal: 15,
-                        marginRight: 8,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        shadowColor: '#C2477A',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.05,
-                        shadowRadius: 2,
-                        elevation: 1,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontWeight: '700',
-                          color: '#374151',
-                          letterSpacing: 0.1,
-                        }}
-                      >
-                        {sub.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
-                ) : null}
-              </ScrollView>
-            </Animated.View>
-          </View>
-        )}
+              );
+            })}
+          </ScrollView>
+        </View>
 
         {/* ========================================================================= */}
-        {/* 4. PROMOTIONAL BANNER CAROUSEL (COMPLETE IMAGE DISPLAY WITHOUT CROPPING)   */}
+        {/* 5. DYNAMIC FULL-WIDTH PROMOTIONAL BANNERS CAROUSEL (ADMIN PANEL DRIVEN)   */}
         {/* ========================================================================= */}
         {displayBanners.length > 0 && (
-          <View className="mb-6">
+          <View style={{ marginTop: 4, marginBottom: 18 }}>
             <ScrollView
               ref={bannerScrollRef}
               horizontal
+              pagingEnabled={false}
+              snapToInterval={BANNER_WIDTH + 12}
+              decelerationRate="fast"
               showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+              onScroll={(e) => {
+                const offsetX = e.nativeEvent.contentOffset.x;
+                const idx = Math.round(offsetX / (BANNER_WIDTH + 12));
+                if (idx !== activeSlide && idx >= 0 && idx < displayBanners.length) {
+                  setActiveSlide(idx);
+                }
+              }}
               onMomentumScrollEnd={(e) => {
                 const offsetX = e.nativeEvent.contentOffset.x;
-                const newIndex = Math.round(offsetX / (BANNER_WIDTH + 12));
-                setActiveSlide(Math.max(0, Math.min(newIndex, displayBanners.length - 1)));
+                const idx = Math.round(offsetX / (BANNER_WIDTH + 12));
+                if (idx >= 0 && idx < displayBanners.length) {
+                  activeSlideRef.current = idx;
+                  setActiveSlide(idx);
+                }
               }}
-              contentContainerStyle={{ paddingHorizontal: 16 }}
-              decelerationRate="fast"
-              snapToInterval={BANNER_WIDTH + 12}
-              snapToAlignment="start"
+              scrollEventThrottle={16}
             >
-              {displayBanners.map((banner, idx) => {
-                const rawUrl = (banner.imageUrl && typeof banner.imageUrl === 'string' && banner.imageUrl.trim().length > 0)
-                  ? banner.imageUrl.trim()
-                  : '';
-                const imageSource = rawUrl ? getSafeImageSource(rawUrl) : null;
+              {displayBanners.map((banner, index) => {
+                const imgUri = banner.imageUrl || banner.mobileImageUrl || 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&auto=format&fit=crop&q=80';
 
                 return (
-                  <View
-                    key={banner.id || idx}
+                  <TouchableOpacity
+                    key={banner.id || `banner_${index}`}
+                    activeOpacity={0.92}
+                    onPress={() => handleBannerClick(banner)}
                     style={{
                       width: BANNER_WIDTH,
                       height: BANNER_HEIGHT,
-                      marginRight: idx < displayBanners.length - 1 ? 12 : 0,
-                      borderRadius: 22,
+                      marginRight: 12,
+                      borderRadius: 18,
+                      borderWidth: 1.2,
+                      borderColor: '#E0A96D',
+                      backgroundColor: '#FFFDF9',
                       overflow: 'hidden',
-                      backgroundColor: '#FFFFFF',
-                      borderColor: '#F0E3EA',
-                      borderWidth: 1,
-                      elevation: 3,
-                      shadowColor: '#B64F7D',
+                      shadowColor: '#000',
                       shadowOffset: { width: 0, height: 2 },
                       shadowOpacity: 0.08,
                       shadowRadius: 6,
+                      elevation: 3,
                     }}
                   >
-                    <TouchableOpacity
-                      activeOpacity={0.92}
-                      onPress={() => handleBannerClick(banner)}
+                    <Image
+                      source={{ uri: imgUri }}
                       style={{ width: '100%', height: '100%' }}
-                    >
-                      {imageSource ? (
-                        /* Display complete banner image across container with crisp proportion and zero distortion */
-                        <View style={{ width: '100%', height: '100%', position: 'relative' }}>
-                          <Image
-                            source={imageSource}
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode="cover"
-                          />
-                        </View>
-                      ) : (
-                        /* Styled editorial fallback card */
-                        <View className="flex-1 flex-row items-center justify-between p-4 relative bg-white">
-                          <View className="flex-1 pr-3 justify-center z-10">
-                            <Text
-                              className="text-lg font-black text-[#3A2430] leading-tight mb-1"
-                              numberOfLines={2}
-                            >
-                              {banner.title || 'Healthy Hair Starts Here'}
-                            </Text>
-                            <Text
-                              className="text-xs font-semibold text-[#8C7078] mb-3"
-                              numberOfLines={1}
-                            >
-                              {banner.subtitle || 'Nourish • Repair • Shine'}
-                            </Text>
-                            <View className="bg-[#C2477A] px-3.5 py-1.5 rounded-full self-start flex-row items-center gap-1 shadow-xs">
-                              <Text className="text-white text-[11px] font-bold">
-                                {banner.ctaLabel || 'Shop Hair Care →'}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
                 );
               })}
             </ScrollView>
 
-            {/* Carousel Pagination Dots */}
+            {/* Dynamic Pagination Dots matching displayBanners count */}
             {displayBanners.length > 1 && (
-              <View className="flex-row items-center justify-center gap-1.5 mt-2.5">
-                {displayBanners.map((banner, idx) => (
-                  <TouchableOpacity
-                    key={`dot-${banner.id || idx}`}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setActiveSlide(idx);
-                      bannerScrollRef.current?.scrollTo({ x: idx * (BANNER_WIDTH + 12), animated: true });
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 5 }}>
+                {displayBanners.map((_, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      width: activeSlide === i ? 22 : 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: activeSlide === i ? '#D81B60' : '#F8BBD0',
                     }}
-                    className={`h-1.5 rounded-full ${activeSlide === idx ? 'w-5 bg-[#B64F7D]' : 'w-1.5 bg-[#B64F7D]/30'
-                      }`}
                   />
                 ))}
               </View>
@@ -1419,171 +1616,227 @@ export const HomeScreen = () => {
         )}
 
         {/* ========================================================================= */}
-        {/* 5. TRENDING NOW PRODUCT CAROUSEL                                          */}
+        {/* 6. SHOP BY BRAND — PREMIUM PINK CONTINUOUS SCROLLING                      */}
         {/* ========================================================================= */}
-        {(homeSectionVisibility?.heroPromoBanner !== false) && (trendingProducts.length > 0 || isCatalogLoading) && (
-          <View className="mb-6">
-            <SectionHeader
-              title="🔥 Trending Now"
-              ctaText="View All →"
-              onCtaPress={() => setCurrentScreen('search')}
-            />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
-              {trendingProducts.length > 0
-                ? trendingProducts.map((item) => (
-                  <HomeProductCard key={`trend_${item.id}`} product={item} badgeText="NEW" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
-                ))
-                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_trend_${k}`} />)}
-            </ScrollView>
+        <ContinuousBrandScroller
+          brands={topBrandsList}
+          onSelectBrand={(brandName) => {
+            if (setGlobalSearchQuery) setGlobalSearchQuery(brandName);
+            setCurrentScreen('search');
+          }}
+          onViewAll={() => setCurrentScreen('search')}
+        />
+
+        {/* ========================================================================= */}
+        {/* 7. TRUST / BENEFITS BAR (FREE DELIVERY | EXCITING OFFERS | AUTHENTIC)      */}
+        {/* ========================================================================= */}
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 18,
+            paddingVertical: 12,
+            paddingHorizontal: 6,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: '#F3F4F6',
+          }}
+        >
+          {/* 1. Free Delivery */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center' }}>
+            <Ionicons name="car-outline" size={22} color="#D81B60" />
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#111827', lineHeight: 12 }}>
+              {"Free\nDelivery"}
+            </Text>
+          </View>
+
+          <View style={{ width: 1, height: 22, backgroundColor: '#E5E7EB' }} />
+
+          {/* 2. Exciting Offers */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center' }}>
+            <Ionicons name="gift-outline" size={22} color="#D81B60" />
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#111827', lineHeight: 12 }}>
+              {"Exciting\nOffers"}
+            </Text>
+          </View>
+
+          <View style={{ width: 1, height: 22, backgroundColor: '#E5E7EB' }} />
+
+          {/* 3. 100% Authentic */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center' }}>
+            <Ionicons name="shield-checkmark-outline" size={22} color="#D81B60" />
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#111827', lineHeight: 12 }}>
+              {"100%\nAuthentic"}
+            </Text>
+          </View>
+
+          <View style={{ width: 1, height: 22, backgroundColor: '#E5E7EB' }} />
+
+          {/* 4. Easy Returns */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center' }}>
+            <Ionicons name="repeat-outline" size={22} color="#D81B60" />
+            <Text style={{ fontSize: 10, fontWeight: '700', color: '#111827', lineHeight: 12 }}>
+              {"Easy\nReturns"}
+            </Text>
+          </View>
+        </View>
+
+        {/* ========================================================================= */}
+        {/* 8. TRENDING PRODUCTS (2-COLUMN GRID)                                      */}
+        {/* ========================================================================= */}
+        {((filteredCategoryProducts.length > 0 ? filteredCategoryProducts : trendingProducts).length > 0) && (
+          <View style={{ marginBottom: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Trending Products</Text>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('search')}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 2-Column Standardized Product Cards Grid */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 }}>
+              {(filteredCategoryProducts.length > 0 ? filteredCategoryProducts : trendingProducts).slice(0, 8).map((product) => (
+                <View key={`trend_grid_${product.id}`} style={{ width: '50%', padding: 6 }}>
+                  <PurplleProductCard
+                    product={product}
+                    userRole={userRole}
+                    getRolePrice={getRolePrice}
+                    cartQuantityMap={cartQuantityMap}
+                    addToCart={addToCart}
+                    updateCartQuantity={updateCartQuantity}
+                    removeFromCart={removeFromCart}
+                    isFavorite={isFavorite}
+                    toggleFavorite={toggleFavorite}
+                    onPressProduct={handleProductSelect}
+                    onOpenShadeSheet={openShadeSheet}
+                  />
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
         {/* ========================================================================= */}
-        {/* 6. SHOP BY BRAND (UNIFORM CIRCULAR LOGOS WITH LABELS UNDERNEATH)          */}
+        {/* 8B. BEST SELLERS (ADMIN CATALOG SECTION - HORIZONTAL CAROUSEL)            */}
         {/* ========================================================================= */}
-        {(homeSectionVisibility?.featuredBrands !== false) && (topBrandsList.length > 0 || isCatalogLoading) && (
-          <View className="mb-6">
-            <SectionHeader
-              title="Shop by Brand"
-              ctaText="View All →"
-              onCtaPress={() => setCurrentScreen('search')}
-            />
+        {bestSellers.length > 0 && (
+          <View style={{ marginBottom: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="flame" size={18} color="#D81B60" />
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Best Sellers</Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('search')}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
+              </TouchableOpacity>
+            </View>
+
             <ScrollView
-              ref={brandScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              onTouchStart={pauseBrandScroll}
-              onTouchEnd={() => resumeBrandScroll(1800)}
-              onScrollBeginDrag={pauseBrandScroll}
-              onScrollEndDrag={() => resumeBrandScroll(1800)}
-              onMomentumScrollBegin={pauseBrandScroll}
-              onMomentumScrollEnd={() => resumeBrandScroll(1800)}
-              contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 4 }}
             >
-              {allBrandsList.length > 0
-                ? allBrandsList.map((brand, idx) => (
-                  <BrandCard
-                    key={`${brand.id || brand.name}_${idx}`}
-                    brand={brand}
-                    screenWidth={SCREEN_WIDTH}
-                    onInteractionStart={pauseBrandScroll}
-                    onInteractionEnd={() => resumeBrandScroll(1800)}
-                    onSelectBrand={(b) => {
-                      const brandQuery = (b.name || '').replace('\n', ' ');
-                      if (setGlobalSearchQuery) setGlobalSearchQuery(brandQuery);
-                      setSearchQuery(brandQuery);
-                      setCurrentScreen('search');
-                    }}
+              {bestSellers.slice(0, 10).map((product) => (
+                <View key={`bestseller_${product.id}`} style={{ marginRight: 12 }}>
+                  <PurplleProductCard
+                    product={product}
+                    cardWidth={165}
+                    userRole={userRole}
+                    getRolePrice={getRolePrice}
+                    cartQuantityMap={cartQuantityMap}
+                    addToCart={addToCart}
+                    updateCartQuantity={updateCartQuantity}
+                    removeFromCart={removeFromCart}
+                    isFavorite={isFavorite}
+                    toggleFavorite={toggleFavorite}
+                    onPressProduct={handleProductSelect}
+                    onOpenShadeSheet={openShadeSheet}
                   />
-                ))
-                : [1, 2, 3, 4, 5].map((k) => (
-                  <SkeletonBrandCard key={`sk_brand_${k}`} />
-                ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 7. NEW ARRIVALS CAROUSEL                                                  */}
-        {/* ========================================================================= */}
-        {(newArrivals.length > 0 || isCatalogLoading) && (
-          <View className="mb-6">
-            <SectionHeader
-              title="New Arrivals"
-              iconBadgeText="NEW"
-              ctaText="View All →"
-              onCtaPress={() => setCurrentScreen('search')}
-            />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
-              {newArrivals.length > 0
-                ? newArrivals.map((item) => (
-                  <HomeProductCard key={`na_${item.id}`} product={item} badgeText="NEW" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
-                ))
-                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_na_${k}`} />)}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 8A. BEST SELLERS (DYNAMICALLY RANKED BY REAL SALES AND ORDERS)            */}
-        {/* ========================================================================= */}
-        {(homeSectionVisibility?.bestSellers !== false) && (bestSellers.length > 0 || isCatalogLoading) && (
-          <View className="mb-6">
-            <SectionHeader
-              title="Best Sellers"
-              iconName="flame"
-              ctaText="View All →"
-              onCtaPress={() => setCurrentScreen('search')}
-            />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
-              {bestSellers.length > 0
-                ? bestSellers.map((item) => (
-                  <HomeProductCard key={`bs_${item.id}`} product={item} badgeText="BESTSELLER" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
-                ))
-                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_bs_${k}`} />)}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 8A2. TOP RECOMMENDATIONS (DYNAMICALLY MANAGED FROM ADMIN CATALOG MATRIX) */}
-        {/* ========================================================================= */}
-        {(topRecommendations.length > 0 || isCatalogLoading) && (
-          <View className="mb-6">
-            <SectionHeader
-              title="Top Recommendations"
-              iconName="star"
-              ctaText="View All →"
-              onCtaPress={() => setCurrentScreen('search')}
-            />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
-              {topRecommendations.length > 0
-                ? topRecommendations.map((item) => (
-                  <HomeProductCard key={`tr_${item.id}`} product={item} badgeText="RECOMMENDED" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
-                ))
-                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_tr_${k}`} />)}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 8B. RECENTLY VIEWED (CUSTOMER-SPECIFIC TRACKING & PERSISTENCE)            */}
-        {/* ========================================================================= */}
-        {recentlyViewedProducts.length > 0 && (
-          <View className="mb-6">
-            <SectionHeader
-              title="Recently Viewed"
-              iconName="time-outline"
-              ctaText="View All →"
-              onCtaPress={() => setCurrentScreen('search')}
-            />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
-              {recentlyViewedProducts.map((item) => (
-                <HomeProductCard key={`rv_${item.id}`} product={item} badgeText="" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
+                </View>
               ))}
             </ScrollView>
           </View>
         )}
 
         {/* ========================================================================= */}
-        {/* 8C. ESSENTIAL BEAUTY STAPLES (EVERYDAY CATALOG BEAUTY FORMULATIONS)       */}
+        {/* 8C. RECENT PRODUCTS (ADMIN CATALOG SECTION - HORIZONTAL CAROUSEL)         */}
         {/* ========================================================================= */}
-        {(beautyStaples.length > 0 || isCatalogLoading) && (
-          <View className="mb-6">
-            <SectionHeader
-              title="Essential Beauty Staples"
-              iconName="sparkles"
-              ctaText="View All →"
-              onCtaPress={() => setCurrentScreen('search')}
-            />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}>
-              {beautyStaples.length > 0
-                ? beautyStaples.map((item) => (
-                  <HomeProductCard key={`staple_${item.id}`} product={item} badgeText="STAPLE" userRole={userRole} getRolePrice={getRolePrice} isLiked={isFavorite(item.id)} onToggleFavorite={toggleFavorite} onSelectProduct={handleProductSelect} cartQuantityMap={cartQuantityMap} onAddToCart={(prod, qty, shade) => addToCart(prod, qty || 1, shade)} onUpdateCartQty={updateCartQuantity} onOpenShadeSheet={openShadeSheet} />
-                ))
-                : [1, 2, 3].map((k) => <SkeletonProductCard key={`sk_staple_${k}`} />)}
+        {newArrivals.length > 0 && (
+          <View style={{ marginBottom: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="sparkles" size={17} color="#D81B60" />
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Recent Products</Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('search')}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 4 }}
+            >
+              {newArrivals.slice(0, 10).map((product) => (
+                <View key={`recent_${product.id}`} style={{ marginRight: 12 }}>
+                  <PurplleProductCard
+                    product={product}
+                    cardWidth={165}
+                    userRole={userRole}
+                    getRolePrice={getRolePrice}
+                    cartQuantityMap={cartQuantityMap}
+                    addToCart={addToCart}
+                    updateCartQuantity={updateCartQuantity}
+                    removeFromCart={removeFromCart}
+                    isFavorite={isFavorite}
+                    toggleFavorite={toggleFavorite}
+                    onPressProduct={handleProductSelect}
+                    onOpenShadeSheet={openShadeSheet}
+                  />
+                </View>
+              ))}
             </ScrollView>
+          </View>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 8D. TOP RECOMMENDATIONS (ADMIN CATALOG SECTION - 2-COLUMN GRID)           */}
+        {/* ========================================================================= */}
+        {topRecommendations.length > 0 && (
+          <View style={{ marginBottom: 28 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="star" size={17} color="#D81B60" />
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Recommended for You</Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('search')}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 2-Column Standardized Product Cards Grid */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 }}>
+              {topRecommendations.slice(0, 8).map((product) => (
+                <View key={`rec_grid_${product.id}`} style={{ width: '50%', padding: 6 }}>
+                  <PurplleProductCard
+                    product={product}
+                    userRole={userRole}
+                    getRolePrice={getRolePrice}
+                    cartQuantityMap={cartQuantityMap}
+                    addToCart={addToCart}
+                    updateCartQuantity={updateCartQuantity}
+                    removeFromCart={removeFromCart}
+                    isFavorite={isFavorite}
+                    toggleFavorite={toggleFavorite}
+                    onPressProduct={handleProductSelect}
+                    onOpenShadeSheet={openShadeSheet}
+                  />
+                </View>
+              ))}
+            </View>
           </View>
         )}
       </ScrollView>
@@ -1599,8 +1852,8 @@ export const HomeScreen = () => {
             left: 14,
             right: 14,
             zIndex: 50,
-            backgroundColor: '#C2477A',
-            shadowColor: '#C2477A',
+            backgroundColor: '#D81B60',
+            shadowColor: '#D81B60',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.35,
             shadowRadius: 10,
@@ -1627,10 +1880,10 @@ export const HomeScreen = () => {
             onPress={() => setCurrentScreen('cart')}
             className="bg-white px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-xs"
           >
-            <Text className="text-[11px] font-black text-[#C2477A] uppercase tracking-wider">
+            <Text className="text-[11px] font-black text-[#D81B60] uppercase tracking-wider">
               View Cart
             </Text>
-            <Ionicons name="arrow-forward" size={12} color="#C2477A" />
+            <Ionicons name="arrow-forward" size={12} color="#D81B60" />
           </TouchableOpacity>
         </View>
       )}

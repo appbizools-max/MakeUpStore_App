@@ -33,11 +33,11 @@ export const ORDER_STAGES = [
 export const getStageIndex = (status) => {
   const s = (status || '').toLowerCase();
   if (s === 'completed' || s === 'delivered') return 6;
-  if (s === 'out_for_delivery') return 5;
-  if (s === 'ready_to_dispatch' || s === 'shipped') return 4;
-  if (s === 'packing') return 3;
-  if (s === 'processing') return 2;
-  if (s === 'confirmed') return 1;
+  if (s === 'out_for_delivery' || s === 'in_transit') return 5;
+  if (s === 'ready_to_dispatch' || s === 'shipped' || s === 'picked_up') return 4;
+  if (s === 'packing' || s === 'reached_pickup') return 3;
+  if (s === 'processing' || s === 'accepted') return 2;
+  if (s === 'confirmed' || s === 'assigned') return 1;
   if (s === 'placed') return 0;
   if (s.startsWith('partially_delivered')) return 5;
   if (s === 'cancelled' || s === 'rejected') return -1;
@@ -111,8 +111,8 @@ export const getStatusBadgeStyle = (status) => {
     };
   }
   return {
-    container: 'border border-[#B64F7D] bg-[#FFFFFF]',
-    text: 'text-[#B64F7D]',
+    container: 'border border-[#D81B60] bg-[#FFFFFF]',
+    text: 'text-[#D81B60]',
     label: 'ORDER PLACED',
     icon: 'time'
   };
@@ -150,7 +150,8 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
     showCancelWarningModal,
     setShowCancelWarningModal,
     pendingCancelOrderId,
-    refreshOrders
+    refreshOrders,
+    goBack
   } = useApp();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -289,7 +290,11 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
       onBack();
     } else {
       if (setSelectedOrderIdForDetails) setSelectedOrderIdForDetails(null);
-      setCurrentScreen('orders');
+      if (typeof goBack === 'function') {
+        goBack();
+      } else {
+        setCurrentScreen('orders');
+      }
     }
   };
 
@@ -359,7 +364,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
   if (isDirectLoading) {
     return (
       <View className="flex-1 bg-[#FFFFFF] items-center justify-center p-6">
-        <ActivityIndicator size="large" color="#B64F7D" />
+        <ActivityIndicator size="large" color="#D81B60" />
         <Text className="text-xs font-bold text-[#8A7B85] mt-3">Loading Order Details...</Text>
       </View>
     );
@@ -368,14 +373,14 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
   if (!order) {
     return (
       <View className="flex-1 bg-[#FFFFFF] items-center justify-center p-6">
-        <Ionicons name="document-text-outline" size={48} color="#B64F7D" />
+        <Ionicons name="document-text-outline" size={48} color="#D81B60" />
         <Text className="text-base font-bold text-[#352832] mt-3">Order Not Found</Text>
         <Text className="text-xs text-[#8A7B85] text-center mt-1 mb-4">
           The requested order details could not be loaded.
         </Text>
         <TouchableOpacity
           onPress={handleGoBack}
-          className="bg-[#B64F7D] px-5 py-2.5 rounded-xl"
+          className="bg-[#D81B60] px-5 py-2.5 rounded-xl"
         >
           <Text className="text-xs font-bold text-white">Back to My Orders</Text>
         </TouchableOpacity>
@@ -397,15 +402,6 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
   const remainingSeconds = Math.floor((remainingMs % 60000) / 1000);
   const countdownText = `${remainingMinutes}m ${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}s`;
 
-  // Delivery estimation text
-  const estimatedDeliveryText = useMemo(() => {
-    if (order.status === 'delivered' || order.status === 'completed') {
-      return `Delivered on ${new Date(order.date || order.placedAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
-    }
-    const d = new Date(orderTime + 3 * 24 * 60 * 60 * 1000);
-    return `Estimated by ${d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' })}`;
-  }, [order, orderTime]);
-
   // Financial calculations
   const itemsSubtotal = safeItems.reduce((sum, it) => {
     const price = Number(it?.unitPrice || it?.price || 0);
@@ -426,7 +422,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           backgroundColor: '#FFFFFF',
           borderBottomWidth: 1,
           borderBottomColor: '#F0E3EA',
-          shadowColor: '#B64F7D',
+          shadowColor: '#D81B60',
           shadowOffset: { width: 0, height: 1.5 },
           shadowOpacity: 0.04,
           shadowRadius: 4,
@@ -447,7 +443,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           }}
           className="items-center justify-center"
         >
-          <Ionicons name="chevron-back" size={20} color="#B64F7D" />
+          <Ionicons name="chevron-back" size={20} color="#D81B60" />
         </TouchableOpacity>
 
         <View className="items-center">
@@ -473,7 +469,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           }}
           className="items-center justify-center"
         >
-          <Ionicons name="help-buoy-outline" size={18} color="#B64F7D" />
+          <Ionicons name="help-buoy-outline" size={18} color="#D81B60" />
         </TouchableOpacity>
       </View>
 
@@ -490,8 +486,8 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
               try { await refreshOrders?.(); } catch (_) { }
               setIsRefreshing(false);
             }}
-            colors={['#CE4270']}
-            tintColor="#CE4270"
+            colors={['#D81B60']}
+            tintColor="#D81B60"
           />
         }
       >
@@ -516,7 +512,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                 Order Reference ID
               </Text>
               <View className="flex-row items-center mt-1">
-                <Text className="text-base font-extrabold text-[#B64F7D] mr-2">
+                <Text className="text-base font-extrabold text-[#D81B60] mr-2">
                   {order.id}
                 </Text>
                 <TouchableOpacity
@@ -524,8 +520,8 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                   activeOpacity={0.7}
                   className="bg-[#FFFFFF] border border-[#F0E3EA] px-2 py-0.5 rounded-md flex-row items-center gap-1"
                 >
-                  <Ionicons name="copy-outline" size={11} color="#B64F7D" />
-                  <Text className="text-[10px] font-bold text-[#B64F7D]">
+                  <Ionicons name="copy-outline" size={11} color="#D81B60" />
+                  <Text className="text-[10px] font-bold text-[#D81B60]">
                     {copiedToast ? 'Copied!' : 'Copy'}
                   </Text>
                 </TouchableOpacity>
@@ -533,7 +529,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
             </View>
 
             <View className={`px-2.5 py-1 rounded-full flex-row items-center gap-1 ${badge.container}`}>
-              <Ionicons name={badge.icon} size={11} color="#B64F7D" />
+              <Ionicons name={badge.icon} size={11} color="#D81B60" />
               <Text className={`text-[10px] font-black tracking-wider ${badge.text}`}>
                 {badge.label}
               </Text>
@@ -555,9 +551,9 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
             </View>
 
             <View className="items-end">
-              <Text className="text-[10px] font-bold text-[#8A7B85] uppercase">Delivery Status</Text>
-              <Text className="text-xs font-bold text-[#B64F7D] mt-0.5">
-                {estimatedDeliveryText}
+              <Text className="text-[10px] font-bold text-[#8A7B85] uppercase">Order Status</Text>
+              <Text className="text-xs font-black text-[#D81B60] mt-0.5">
+                {badge.label}
               </Text>
             </View>
           </View>
@@ -614,12 +610,12 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           >
             <View className="flex-row justify-between items-center pb-2 border-b border-[#F0E3EA] mb-3">
               <View className="flex-row items-center gap-1.5">
-                <Ionicons name="git-network-outline" size={15} color="#B64F7D" />
+                <Ionicons name="git-network-outline" size={15} color="#D81B60" />
                 <Text className="text-xs font-extrabold text-[#352832] uppercase tracking-wider">
                   Tracking Timeline
                 </Text>
               </View>
-              <Text className="text-[10px] font-bold text-[#B64F7D] bg-[#FFFFFF] px-2 py-0.5 rounded-full border border-[#F0E3EA]">
+              <Text className="text-[10px] font-bold text-[#D81B60] bg-[#FFFFFF] px-2 py-0.5 rounded-full border border-[#F0E3EA]">
                 Stage {Math.min(currentStageIdx + 1, ORDER_STAGES.length)} of {ORDER_STAGES.length}
               </Text>
             </View>
@@ -630,7 +626,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                 <View className="absolute top-3.5 left-4 right-4 h-1 bg-[#F0E3EA] rounded-full" />
                 {/* Filled Progress Bar */}
                 <View
-                  className="absolute top-3.5 left-4 h-1 bg-[#B64F7D] rounded-full"
+                  className="absolute top-3.5 left-4 h-1 bg-[#D81B60] rounded-full"
                   style={{
                     width: `${Math.min(100, (currentStageIdx / (ORDER_STAGES.length - 1)) * 100)}%`
                   }}
@@ -654,23 +650,23 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                       >
                         <View
                           className={`w-7 h-7 rounded-full items-center justify-center ${isPassed
-                              ? 'bg-[#B64F7D]'
+                              ? 'bg-[#D81B60]'
                               : isCurrent
-                                ? 'bg-white border-2 border-[#B64F7D]'
+                                ? 'bg-white border-2 border-[#D81B60]'
                                 : 'bg-white border border-gray-200'
                             }`}
                         >
                           {isPassed ? (
                             <Ionicons name="checkmark" size={13} color="#FFF" />
                           ) : isCurrent ? (
-                            <View className="w-2 h-2 rounded-full bg-[#B64F7D]" />
+                            <View className="w-2 h-2 rounded-full bg-[#D81B60]" />
                           ) : (
                             <Text className="text-[9px] font-bold text-gray-400">{idx + 1}</Text>
                           )}
                         </View>
                         <Text
                           className={`mt-1.5 text-[8.5px] font-extrabold text-center ${isCurrent
-                              ? 'text-[#B64F7D]'
+                              ? 'text-[#D81B60]'
                               : isPassed
                                 ? 'text-[#352832]'
                                 : 'text-gray-400'
@@ -719,23 +715,23 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           <View className="flex-row justify-between items-center pb-3 border-b border-[#F0E3EA] mb-3.5">
             <View className="flex-row items-center gap-2">
               <View className="w-7 h-7 rounded-lg bg-pink-50 items-center justify-center border border-[#FCE4EC]">
-                <Ionicons name="bag-handle-outline" size={15} color="#B64F7D" />
+                <Ionicons name="bag-handle-outline" size={15} color="#D81B60" />
               </View>
-              <div>
+              <View>
                 <Text className="text-xs font-black text-[#352832] uppercase tracking-wider">
                   Ordered Items ({safeItems.length})
                 </Text>
                 <Text className="text-[10px] text-[#8A7B85] font-semibold">
                   Itemized pricing & quantities
                 </Text>
-              </div>
+              </View>
             </View>
             <TouchableOpacity
               onPress={handleReorder}
               className="bg-white border border-[#F0E3EA] px-3 py-1.5 rounded-xl flex-row items-center gap-1.5 shadow-2xs active:bg-pink-50"
             >
-              <Ionicons name="repeat-outline" size={13} color="#B64F7D" />
-              <Text className="text-[10px] font-extrabold text-[#B64F7D]">Reorder All</Text>
+              <Ionicons name="repeat-outline" size={13} color="#D81B60" />
+              <Text className="text-[10px] font-extrabold text-[#D81B60]">Reorder All</Text>
             </TouchableOpacity>
           </View>
 
@@ -753,7 +749,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
               
               const shadeObj = it.shade || it.selectedShade;
               const shadeName = shadeObj ? (shadeObj.name || shadeObj.color_name || (typeof shadeObj === 'string' ? shadeObj : null)) : null;
-              const shadeColor = shadeObj ? (shadeObj.hexColor || shadeObj.hex || '#CE4270') : null;
+              const shadeColor = shadeObj ? (shadeObj.hexColor || shadeObj.hex || '#D81B60') : null;
 
               const mrp = Number(it.mrp || it.product?.mrp || 0);
               const hasDiscount = mrp > itemPrice;
@@ -794,19 +790,19 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                           resizeMode="contain"
                         />
                       ) : (
-                        <Ionicons name="sparkles" size={24} color="#B64F7D" />
+                        <Ionicons name="sparkles" size={24} color="#D81B60" />
                       )}
                     </View>
 
                     {/* Product Details - Full Name, Brand, Variant & Shade */}
                     <View className="flex-1 min-w-0">
                       <View className="flex-row items-center gap-1.5 flex-wrap">
-                        <Text className="text-[10px] font-black text-[#B64F7D] tracking-wider uppercase">
+                        <Text className="text-[10px] font-black text-[#D81B60] tracking-wider uppercase">
                           {brandName}
                         </Text>
                         {variantName && (
                           <View className="bg-pink-50 border border-pink-100 px-1.5 py-0.2 rounded-md">
-                            <Text className="text-[9px] font-extrabold text-[#B64F7D]">
+                            <Text className="text-[9px] font-extrabold text-[#D81B60]">
                               {variantName}
                             </Text>
                           </View>
@@ -825,7 +821,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                       {shadeName && (
                         <View className="flex-row items-center gap-1.5 mt-1 bg-gray-50/80 border border-gray-100 px-2 py-0.5 rounded-lg self-start">
                           <View
-                            style={{ backgroundColor: shadeColor || '#CE4270' }}
+                            style={{ backgroundColor: shadeColor || '#D81B60' }}
                             className="w-3 h-3 rounded-full border border-gray-300 shadow-2xs"
                           />
                           <Text className="text-[10px] font-bold text-[#554050]">
@@ -847,7 +843,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                     <View className="flex-row items-center gap-2 flex-wrap">
                       {/* Quantity booked */}
                       <View className="bg-pink-50/70 border border-pink-200/60 px-2 py-0.5 rounded-lg">
-                        <Text className="text-[10px] font-extrabold text-[#B64F7D]">
+                        <Text className="text-[10px] font-extrabold text-[#D81B60]">
                           Qty: {itemQty}
                         </Text>
                       </View>
@@ -882,7 +878,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                       <Text className="text-[10px] text-[#8A7B85] font-bold uppercase">
                         Total:
                       </Text>
-                      <Text className="text-sm font-black text-[#B64F7D]">
+                      <Text className="text-sm font-black text-[#D81B60]">
                         ₹{lineTotal.toLocaleString('en-IN')}
                       </Text>
                     </View>
@@ -895,7 +891,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                         onPress={() => cancelSpecificOrderItem(order.id, idx)}
                         className="bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 flex-row items-center gap-1 active:bg-rose-100"
                       >
-                        <Ionicons name="close-circle-outline" size={11} color="#E11D48" />
+                        <Ionicons name="close-circle-outline" size={11} color="#D81B60" />
                         <Text className="text-[9.5px] font-extrabold text-rose-600">
                           Cancel This Product
                         </Text>
@@ -925,7 +921,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
         >
           <View className="flex-row justify-between items-center pb-2 border-b border-[#F0E3EA] mb-2">
             <View className="flex-row items-center gap-1.5">
-              <Ionicons name="location-outline" size={15} color="#B64F7D" />
+              <Ionicons name="location-outline" size={15} color="#D81B60" />
               <Text className="text-xs font-extrabold text-[#352832] uppercase tracking-wider">
                 Delivery & Contact Details
               </Text>
@@ -935,8 +931,8 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                 onPress={openEditModal}
                 className="bg-[#FFFFFF] border border-[#F0E3EA] px-2.5 py-1 rounded-lg flex-row items-center gap-1"
               >
-                <Ionicons name="create-outline" size={11} color="#B64F7D" />
-                <Text className="text-[10px] font-bold text-[#B64F7D]">Edit</Text>
+                <Ionicons name="create-outline" size={11} color="#D81B60" />
+                <Text className="text-[10px] font-bold text-[#D81B60]">Edit</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -959,7 +955,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           {/* Contact Mobile Number */}
           <View className="py-2 border-t border-[#F0E3EA]">
             <Text className="text-[10px] font-bold text-[#8A7B85] uppercase">Contact Mobile Number:</Text>
-            <Text className="text-xs font-black text-[#B64F7D] mt-0.5">
+            <Text className="text-xs font-black text-[#D81B60] mt-0.5">
               {order.phone || order.mobileNumber || userProfile?.phone || 'Not provided'}
             </Text>
           </View>
@@ -1010,7 +1006,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
         >
           <View className="flex-row justify-between items-center pb-2 border-b border-[#F0E3EA] mb-3">
             <View className="flex-row items-center gap-1.5">
-              <Ionicons name="card-outline" size={15} color="#B64F7D" />
+              <Ionicons name="card-outline" size={15} color="#D81B60" />
               <Text className="text-xs font-extrabold text-[#352832] uppercase tracking-wider">
                 Payment & Collection
               </Text>
@@ -1036,7 +1032,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                 <Ionicons
                   name={order.paymentMethod === 'qr' ? 'qr-code-outline' : 'cash-outline'}
                   size={14}
-                  color="#B64F7D"
+                  color="#D81B60"
                 />
                 <Text className="text-xs font-bold text-[#352832]">
                   {order.paymentMethod === 'qr' ? 'QR / UPI Scanner Collection' : 'Cash on Delivery (Cash)'}
@@ -1075,7 +1071,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                   {order.paymentStatus === 'paid' ? 'Payment Verified & Collected' : 'Payable on Delivery'}
                 </Text>
               </View>
-              <Text className="text-lg font-black text-[#B64F7D]">
+              <Text className="text-lg font-black text-[#D81B60]">
                 ₹{totalAmount.toLocaleString('en-IN')}
               </Text>
             </View>
@@ -1087,8 +1083,8 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
           onPress={handleReorder}
           activeOpacity={0.85}
           style={{
-            backgroundColor: '#B64F7D',
-            shadowColor: '#B64F7D',
+            backgroundColor: '#D81B60',
+            shadowColor: '#D81B60',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.25,
             shadowRadius: 8,
@@ -1180,7 +1176,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
               <TouchableOpacity
                 disabled={isSubmittingEdit}
                 onPress={handleSaveEdit}
-                className="flex-1 py-2.5 rounded-xl bg-[#B64F7D] items-center shadow-md"
+                className="flex-1 py-2.5 rounded-xl bg-[#D81B60] items-center shadow-md"
               >
                 <Text className="text-xs font-bold text-white">
                   {isSubmittingEdit ? 'Saving...' : 'Save Changes'}

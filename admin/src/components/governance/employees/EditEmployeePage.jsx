@@ -122,7 +122,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
         <button
           type="button"
           onClick={() => onNavigate('employees')}
-          className="mt-4 px-4 py-2 bg-[#CE4270] text-white rounded-xl text-xs font-bold cursor-pointer"
+          className="mt-4 px-4 py-2 bg-[#D81B60] text-white rounded-xl text-xs font-bold cursor-pointer"
         >
           ← Return to All Employees
         </button>
@@ -137,7 +137,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
         <button
           type="button"
           onClick={() => onNavigate(`employees/${employee.id}`)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-pink-100 text-gray-700 hover:text-[#CE4270] font-bold text-xs transition-all shadow-2xs cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-pink-100 text-gray-700 hover:text-[#D81B60] font-bold text-xs transition-all shadow-2xs cursor-pointer"
         >
           <ArrowLeft size={16} />
           <span>← Back to Profile</span>
@@ -147,7 +147,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
       {/* Header Card */}
       <div className="bg-white p-6 rounded-3xl border border-pink-100 shadow-2xs flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#CE4270] to-[#E25586] text-white flex items-center justify-center font-bold shadow-md">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#D81B60] to-[#E25586] text-white flex items-center justify-center font-bold shadow-md">
             <Edit size={20} />
           </div>
           <div>
@@ -181,28 +181,28 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
           {/* Full Name */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              Full Name <span className="text-[#CE4270]">*</span>
+              Full Name <span className="text-[#D81B60]">*</span>
             </label>
             <input
               type="text"
               required
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#CE4270] outline-none shadow-2xs"
+              className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#D81B60] outline-none shadow-2xs"
             />
           </div>
 
           {/* Employee Code */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              Employee ID Code <span className="text-[#CE4270]">*</span>
+              Employee ID Code <span className="text-[#D81B60]">*</span>
             </label>
             <input
               type="text"
               required
               value={formData.employeeCode}
               onChange={(e) => setFormData({ ...formData, employeeCode: e.target.value.toUpperCase() })}
-              className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-900 focus:border-[#CE4270] outline-none shadow-2xs"
+              className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-900 focus:border-[#D81B60] outline-none shadow-2xs"
             />
           </div>
 
@@ -232,7 +232,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
               <button
                 type="button"
                 onClick={handleGeneratePassword}
-                className="text-[11px] font-bold text-[#CE4270] hover:text-[#b83760] flex items-center gap-1 cursor-pointer"
+                className="text-[11px] font-bold text-[#D81B60] hover:text-[#b83760] flex items-center gap-1 cursor-pointer"
               >
                 <Sparkles size={11} /> Auto-Generate
               </button>
@@ -244,7 +244,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
                 autoComplete="new-password"
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="Enter new password"
-                className="w-full p-3.5 pl-10 pr-10 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-900 focus:border-[#CE4270] outline-none shadow-2xs"
+                className="w-full p-3.5 pl-10 pr-10 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-900 focus:border-[#D81B60] outline-none shadow-2xs"
               />
               <Key size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <button
@@ -269,7 +269,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '') })}
                 placeholder="9876543210"
-                className="w-full p-3.5 pl-10 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#CE4270] outline-none shadow-2xs"
+                className="w-full p-3.5 pl-10 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#D81B60] outline-none shadow-2xs"
               />
               <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             </div>
@@ -283,7 +283,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
             <select
               value={formData.branch || ''}
               onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-              className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-white cursor-pointer shadow-2xs"
+              className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#D81B60] outline-none bg-white cursor-pointer shadow-2xs"
             >
               <option value="">Select Branch Assignment</option>
               {branches && branches.length > 0 ? (
@@ -301,12 +301,12 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
           {/* Designation (Dropdown with exact 4 options) */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              Designation <span className="text-[#CE4270]">*</span>
+              Designation <span className="text-[#D81B60]">*</span>
             </label>
             <select
               value={formData.designation}
               onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-              className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-white cursor-pointer shadow-2xs"
+              className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#D81B60] outline-none bg-white cursor-pointer shadow-2xs"
             >
               <option value="(admin)">1) (admin)</option>
               <option value="manager">2) manager</option>
@@ -323,7 +323,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#CE4270] outline-none bg-white shadow-2xs"
+              className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#D81B60] outline-none bg-white shadow-2xs"
             >
               <option value="active">Active (Full Portal Access)</option>
               <option value="inactive">Inactive (Temporarily Disabled)</option>
@@ -357,7 +357,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
           <button
             type="submit"
             disabled={isSaving}
-            className="px-6 py-2.5 bg-gradient-to-r from-[#CE4270] to-[#E25586] hover:from-[#b83760] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+            className="px-6 py-2.5 bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {isSaving ? (
               <>

@@ -57,7 +57,7 @@ export default function AttributesMasterPage({ categories = [] }) {
 
   // Modal states: Manage Values
   const [managingValuesAttr, setManagingValuesAttr] = useState(null);
-  const [newValueDraft, setNewValueDraft] = useState({ name: '', hexColor: '#C2477A', code: '' });
+  const [newValueDraft, setNewValueDraft] = useState({ name: '', hexColor: '#D81B60', code: '' });
 
   // Load data on mount
   useEffect(() => {
@@ -186,7 +186,7 @@ export default function AttributesMasterPage({ categories = [] }) {
 
     setAttributes(updated);
     setManagingValuesAttr(updated.find(a => a.id === managingValuesAttr.id));
-    setNewValueDraft({ name: '', hexColor: '#C2477A', code: '' });
+    setNewValueDraft({ name: '', hexColor: '#D81B60', code: '' });
     await saveAttributeMasterToDb(updated);
     showNotification(`Added value "${valName}"`);
   };
@@ -248,7 +248,7 @@ export default function AttributesMasterPage({ categories = [] }) {
       {/* Header Card */}
       <div className="bg-white p-5 rounded-3xl border border-pink-100/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#D81B60] flex items-center justify-center font-bold shadow-2xs shrink-0">
             <Layers size={20} />
           </div>
           <div>
@@ -256,7 +256,7 @@ export default function AttributesMasterPage({ categories = [] }) {
               <h2 className="font-extrabold text-base text-gray-900 tracking-tight">
                 Universal Attribute Master & Category Mappings
               </h2>
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#C2477A] border border-pink-100">
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#D81B60] border border-pink-100">
                 {attributes.length} Attributes
               </span>
             </div>
@@ -308,7 +308,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                   placeholder="Search attribute name or group..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl text-xs bg-[#F8FAFC] border border-pink-100/80 outline-none focus:border-[#C2477A] focus:bg-white font-medium"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl text-xs bg-[#F8FAFC] border border-pink-100/80 outline-none focus:border-[#D81B60] focus:bg-white font-medium"
                 />
               </div>
 
@@ -318,7 +318,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                   onClick={() => setSelectedGroup('All')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                     selectedGroup === 'All'
-                      ? 'bg-[#C2477A] text-white shadow-2xs'
+                      ? 'bg-[#D81B60] text-white shadow-2xs'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -331,7 +331,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                     onClick={() => setSelectedGroup(g)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                       selectedGroup === g
-                        ? 'bg-[#C2477A] text-white shadow-2xs'
+                        ? 'bg-[#D81B60] text-white shadow-2xs'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -345,7 +345,7 @@ export default function AttributesMasterPage({ categories = [] }) {
               <button
                 type="button"
                 onClick={handleOpenAddAttribute}
-                className="px-4 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                className="px-4 py-2 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
               >
                 <Plus size={14} />
                 <span>Add Attribute</span>
@@ -393,7 +393,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                         {attr.inputType || 'select'}
                       </td>
                       <td className="py-3 px-3 text-center">
-                        <span className="font-extrabold text-[#C2477A] bg-white px-2.5 py-0.5 rounded-full border border-pink-100">
+                        <span className="font-extrabold text-[#D81B60] bg-white px-2.5 py-0.5 rounded-full border border-pink-100">
                           {(attr.values || []).length} values
                         </span>
                       </td>
@@ -477,7 +477,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                 <div key={cat.id || catName} className="py-4 first:pt-0 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="font-black text-sm text-gray-900 flex items-center gap-2">
-                      <FolderPlus size={15} className="text-[#C2477A]" />
+                      <FolderPlus size={15} className="text-[#D81B60]" />
                       <span>{catName}</span>
                     </span>
                     <span className="text-[11px] font-bold text-gray-400">
@@ -535,14 +535,14 @@ export default function AttributesMasterPage({ categories = [] }) {
             <div className="space-y-3 text-xs">
               <div>
                 <label className="block text-gray-700 font-bold mb-1">
-                  Attribute Name <span className="text-[#C2477A]">*</span>
+                  Attribute Name <span className="text-[#D81B60]">*</span>
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. Finish, Shade, Coverage, Volume"
                   value={attrForm.name}
                   onChange={(e) => setAttrForm({ ...attrForm, name: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-gray-200 font-bold text-gray-900 outline-none focus:border-[#C2477A]"
+                  className="w-full p-2.5 rounded-xl border border-gray-200 font-bold text-gray-900 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
@@ -553,7 +553,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                 <select
                   value={attrForm.group}
                   onChange={(e) => setAttrForm({ ...attrForm, group: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-gray-200 font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full p-2.5 rounded-xl border border-gray-200 font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 >
                   {ATTRIBUTE_GROUPS.map(g => (
                     <option key={g} value={g}>{g}</option>
@@ -568,7 +568,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                 <select
                   value={attrForm.inputType}
                   onChange={(e) => setAttrForm({ ...attrForm, inputType: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-gray-200 font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full p-2.5 rounded-xl border border-gray-200 font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 >
                   <option value="select">Dropdown / Multi-Select</option>
                   <option value="color_swatch">Color Swatch (Hex / Shades)</option>
@@ -585,7 +585,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                 <select
                   value={attrForm.status}
                   onChange={(e) => setAttrForm({ ...attrForm, status: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-gray-200 font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full p-2.5 rounded-xl border border-gray-200 font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
@@ -605,7 +605,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                 type="button"
                 onClick={handleSaveAttribute}
                 disabled={!attrForm.name.trim()}
-                className="px-5 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
               >
                 Save Attribute
               </button>
@@ -697,13 +697,13 @@ export default function AttributesMasterPage({ categories = [] }) {
                     placeholder="Value name (e.g. Ruby Red, Matte, 100 ml)..."
                     value={newValueDraft.name}
                     onChange={(e) => setNewValueDraft({ ...newValueDraft, name: e.target.value })}
-                    className="flex-1 p-2 rounded-xl border border-gray-200 text-xs font-bold outline-none focus:border-[#C2477A]"
+                    className="flex-1 p-2 rounded-xl border border-gray-200 text-xs font-bold outline-none focus:border-[#D81B60]"
                   />
 
                   {managingValuesAttr.inputType === 'color_swatch' && (
                     <div className="w-36">
                       <HexColorPicker
-                        value={newValueDraft.hexColor || '#C2477A'}
+                        value={newValueDraft.hexColor || '#D81B60'}
                         onChange={(hex, autoName) => {
                           setNewValueDraft({
                             ...newValueDraft,
@@ -720,7 +720,7 @@ export default function AttributesMasterPage({ categories = [] }) {
                     type="button"
                     onClick={handleAddValueToAttr}
                     disabled={!newValueDraft.name.trim()}
-                    className="px-4 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white text-xs font-bold transition-all disabled:opacity-40 cursor-pointer shadow-2xs"
+                    className="px-4 py-2 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white text-xs font-bold transition-all disabled:opacity-40 cursor-pointer shadow-2xs"
                   >
                     Add
                   </button>

@@ -97,13 +97,13 @@ export const CartScreen = () => {
     return (
       <View className="flex-1 bg-white p-6 justify-center items-center">
         <View className="w-16 h-16 rounded-full bg-white items-center justify-center border border-[#FCE4EC] mb-4">
-          <Ionicons name="bag-handle-outline" size={32} color="#C2477A" />
+          <Ionicons name="bag-handle-outline" size={32} color="#D81B60" />
         </View>
         <Text className="text-lg font-extrabold text-[#3A2430] mb-1">Your Cart is Empty</Text>
         <Text className="text-xs text-[#8C7078] text-center mb-6">Explore our luxury beauty collections and add items to your cart.</Text>
         <TouchableOpacity
           onPress={() => setCurrentScreen('home')}
-          className="bg-[#C2477A] px-6 py-3.5 rounded-full shadow-md"
+          className="bg-[#D81B60] px-6 py-3.5 rounded-full shadow-md"
         >
           <Text className="text-xs font-bold text-white uppercase tracking-wider">Explore Products</Text>
         </TouchableOpacity>
@@ -171,7 +171,7 @@ export const CartScreen = () => {
               {/* Product Info & Controls Column */}
               <View className="flex-1">
                 {/* Brand Tag */}
-                <Text className="text-[9.5px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5">
+                <Text className="text-[9.5px] font-bold text-[#D81B60] uppercase tracking-wider mb-0.5">
                   {product.brandName || 'SALBEAU LUXE'}
                 </Text>
 
@@ -184,7 +184,7 @@ export const CartScreen = () => {
                 {shade ? (
                   <View className="flex-row items-center gap-1.5 mb-2">
                     <View
-                      style={{ backgroundColor: shade.hexColor || '#CE4270' }}
+                      style={{ backgroundColor: shade.hexColor || '#D81B60' }}
                       className="w-2.5 h-2.5 rounded-full border border-gray-200"
                     />
                     <Text className="text-[10px] font-bold text-violet-800">
@@ -203,7 +203,7 @@ export const CartScreen = () => {
                     <Text className="text-[9.5px] font-semibold text-[#8C7078] line-through">
                       MRP ₹{originalMrp}
                     </Text>
-                    <Text className="text-sm font-extrabold text-[#C2477A]">
+                    <Text className="text-sm font-extrabold text-[#D81B60]">
                       ₹{rolePrice}
                     </Text>
                   </View>
@@ -214,7 +214,7 @@ export const CartScreen = () => {
                       onPress={() => updateCartQuantity(cartItemId, quantity - 1)}
                       className="w-6 h-6 rounded-full bg-white items-center justify-center border border-[#FCE4EC]"
                     >
-                      <Ionicons name="remove" size={12} color="#C2477A" />
+                      <Ionicons name="remove" size={12} color="#D81B60" />
                     </TouchableOpacity>
 
                     <Text className="text-xs font-extrabold text-[#3A2430] px-2 min-w-[20px] text-center">
@@ -225,7 +225,7 @@ export const CartScreen = () => {
                       onPress={() => updateCartQuantity(cartItemId, quantity + 1)}
                       className="w-6 h-6 rounded-full bg-white items-center justify-center border border-[#FCE4EC]"
                     >
-                      <Ionicons name="add" size={12} color="#C2477A" />
+                      <Ionicons name="add" size={12} color="#D81B60" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -240,7 +240,7 @@ export const CartScreen = () => {
             <View className="px-4 flex-row items-center justify-between mb-3">
               <View className="flex-row items-center gap-1.5">
                 <View className="w-6 h-6 rounded-lg bg-white items-center justify-center border border-[#FCE4EC]">
-                  <Ionicons name="sparkles" size={13} color="#C2477A" />
+                  <Ionicons name="sparkles" size={13} color="#D81B60" />
                 </View>
                 <View>
                   <Text className="text-xs font-black text-[#3A2430] uppercase tracking-wide">
@@ -252,7 +252,7 @@ export const CartScreen = () => {
                 </View>
               </View>
               <View className="bg-white px-2 py-0.5 rounded-full border border-[#FCE4EC]">
-                <Text className="text-[10px] font-bold text-[#C2477A]">{cartAddOns.length}</Text>
+                <Text className="text-[10px] font-bold text-[#D81B60]">{cartAddOns.length}</Text>
               </View>
             </View>
 
@@ -294,7 +294,7 @@ export const CartScreen = () => {
                     </TouchableOpacity>
 
                     <View className="flex-1">
-                      <Text className="text-[8.5px] font-extrabold text-[#C2477A] uppercase tracking-wider" numberOfLines={1}>
+                      <Text className="text-[8.5px] font-extrabold text-[#D81B60] uppercase tracking-wider" numberOfLines={1}>
                         {p.brandName || p.category || 'Salbeau'}
                       </Text>
                       <Text className="text-[11px] font-bold text-[#3A2430] leading-tight mb-1" numberOfLines={2}>
@@ -325,7 +325,7 @@ export const CartScreen = () => {
                       })()}
 
                       <View className="flex-row items-baseline gap-1 mb-2">
-                        <Text className="text-xs font-black text-[#C2477A]">₹{pPrice}</Text>
+                        <Text className="text-xs font-black text-[#D81B60]">₹{pPrice}</Text>
                         {pMrp > pPrice && (
                           <Text className="text-[9px] text-[#8C7078] line-through">₹{pMrp}</Text>
                         )}
@@ -335,7 +335,7 @@ export const CartScreen = () => {
                     <TouchableOpacity
                       activeOpacity={0.85}
                       onPress={() => handleAddOnPress(p)}
-                      className="w-full py-1.5 rounded-xl bg-[#C2477A] active:bg-[#a83765] flex-row items-center justify-center gap-1 shadow-2xs"
+                      className="w-full py-1.5 rounded-xl bg-[#D81B60] active:bg-[#C2185B] flex-row items-center justify-center gap-1 shadow-2xs"
                     >
                       <Ionicons name="add" size={12} color="#FFFFFF" />
                       <Text className="text-[10px] font-black text-white">
@@ -385,13 +385,13 @@ export const CartScreen = () => {
 
             <View className="flex-row justify-between items-center pt-1">
               <Text className="text-sm font-extrabold text-[#3A2430]">Total Payable</Text>
-              <Text className="text-base font-black text-[#C2477A]">₹{totalPayable}</Text>
+              <Text className="text-base font-black text-[#D81B60]">₹{totalPayable}</Text>
             </View>
 
             {/* Savings Banner Pill */}
             {totalSavings > 0 && (
               <View className="bg-white border border-[#FCE4EC] p-2.5 rounded-2xl items-center justify-center mt-3">
-                <Text className="text-xs font-extrabold text-[#C2477A]">
+                <Text className="text-xs font-extrabold text-[#D81B60]">
                   🎉 You are saving ₹{totalSavings} on this order!
                 </Text>
               </View>
@@ -404,12 +404,12 @@ export const CartScreen = () => {
       <View className="absolute bottom-12 left-0 right-0 bg-white border-t border-[#FCE4EC] px-4 py-3 flex-row items-center justify-between shadow-lg">
         <View className="flex-col">
           <Text className="text-[10px] font-bold text-[#8C7078]">Grand Total</Text>
-          <Text className="text-base font-black text-[#C2477A]">₹{totalPayable}</Text>
+          <Text className="text-base font-black text-[#D81B60]">₹{totalPayable}</Text>
         </View>
 
         <TouchableOpacity
           onPress={() => setCurrentScreen('checkout')}
-          className="bg-[#C2477A] rounded-full py-3.5 px-6 flex-1 ml-4 items-center shadow-md"
+          className="bg-[#D81B60] rounded-full py-3.5 px-6 flex-1 ml-4 items-center shadow-md"
         >
           <Text className="text-xs font-extrabold text-white uppercase tracking-wider">
             Proceed to Checkout
@@ -419,7 +419,7 @@ export const CartScreen = () => {
 
       {/* Floating Success Toast */}
       {addedToastMessage && (
-        <View style={{ top: 56 }} className="absolute left-4 right-4 z-50 bg-[#3A2430] py-2.5 px-4 rounded-2xl flex-row items-center justify-between shadow-2xl border border-[#C2477A]/40">
+        <View style={{ top: 56 }} className="absolute left-4 right-4 z-50 bg-[#3A2430] py-2.5 px-4 rounded-2xl flex-row items-center justify-between shadow-2xl border border-[#D81B60]/40">
           <View className="flex-row items-center gap-2 flex-1 mr-2">
             <Ionicons name="sparkles" size={16} color="#FCE4EC" />
             <Text className="text-white text-xs font-bold" numberOfLines={1}>
@@ -446,7 +446,7 @@ export const CartScreen = () => {
               <View className="flex-row items-center justify-between pb-3 border-b border-[#FCE4EC]">
                 <View className="flex-row items-center gap-2">
                   <View className="w-8 h-8 rounded-full bg-white items-center justify-center border border-[#FCE4EC]">
-                    <Ionicons name="sparkles" size={15} color="#C2477A" />
+                    <Ionicons name="sparkles" size={15} color="#D81B60" />
                   </View>
                   <View>
                     <Text className="text-xs font-black text-[#3A2430] uppercase">Select Your Shade</Text>
@@ -485,7 +485,7 @@ export const CartScreen = () => {
                         {selectedQuickShade.name}
                       </Text>
                     </View>
-                    <Text className="text-sm font-black text-[#C2477A] mt-0.5">
+                    <Text className="text-sm font-black text-[#D81B60] mt-0.5">
                       ₹{getRolePrice(quickShadeModalItem, userRole, selectedQuickShade, 1)}
                     </Text>
                   </View>
@@ -506,7 +506,7 @@ export const CartScreen = () => {
                       activeOpacity={0.85}
                       onPress={() => setSelectedQuickShade(shade)}
                       className={`mr-2.5 p-2 rounded-2xl border items-center w-24 ${
-                        isSel ? 'bg-white border-[#C2477A]' : 'bg-white border-[#FCE4EC]'
+                        isSel ? 'bg-white border-[#D81B60]' : 'bg-white border-[#FCE4EC]'
                       }`}
                     >
                       <View className="relative w-16 h-16 rounded-xl overflow-hidden mb-1 bg-white border border-[#F0E3EA] items-center justify-center p-1">
@@ -522,15 +522,15 @@ export const CartScreen = () => {
                           />
                         )}
                         {isSel && (
-                          <View className="absolute top-1 left-1 bg-[#C2477A] w-4 h-4 rounded-full items-center justify-center">
+                          <View className="absolute top-1 left-1 bg-[#D81B60] w-4 h-4 rounded-full items-center justify-center">
                             <Ionicons name="checkmark" size={10} color="#FFF" />
                           </View>
                         )}
                       </View>
-                      <Text className={`text-[10px] font-bold text-center ${isSel ? 'text-[#C2477A]' : 'text-[#3A2430]'}`} numberOfLines={1}>
+                      <Text className={`text-[10px] font-bold text-center ${isSel ? 'text-[#D81B60]' : 'text-[#3A2430]'}`} numberOfLines={1}>
                         {shade.name}
                       </Text>
-                      <Text className="text-[10px] font-black text-[#C2477A] mt-0.5">₹{sPrice}</Text>
+                      <Text className="text-[10px] font-black text-[#D81B60] mt-0.5">₹{sPrice}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -540,7 +540,7 @@ export const CartScreen = () => {
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={handleConfirmQuickShadeAdd}
-                className="w-full py-3.5 rounded-2xl bg-[#C2477A] items-center justify-center shadow-md flex-row gap-2"
+                className="w-full py-3.5 rounded-2xl bg-[#D81B60] items-center justify-center shadow-md flex-row gap-2"
               >
                 <Ionicons name="bag-add" size={16} color="#FFFFFF" />
                 <Text className="text-xs font-black text-white uppercase tracking-wider">

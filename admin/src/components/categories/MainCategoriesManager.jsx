@@ -2248,10 +2248,10 @@ export default function MainCategoriesManager({
         <button
           type="button"
           onClick={handleBackToCategories}
-          className={`flex items-center gap-1.5 transition-colors cursor-pointer ${currentView === 'categories' ? 'text-[#C2477A] font-extrabold' : 'text-gray-600 hover:text-[#C2477A]'
+          className={`flex items-center gap-1.5 transition-colors cursor-pointer ${currentView === 'categories' ? 'text-[#D81B60] font-extrabold' : 'text-gray-600 hover:text-[#D81B60]'
             }`}
         >
-          <FolderPlus size={14} className="text-[#C2477A]" />
+          <FolderPlus size={14} className="text-[#D81B60]" />
           <span>Categories</span>
         </button>
 
@@ -2261,10 +2261,10 @@ export default function MainCategoriesManager({
             <button
               type="button"
               onClick={handleBackToSubcategories}
-              className={`flex items-center gap-1.5 transition-colors cursor-pointer ${currentView === 'subcategories' ? 'text-[#C2477A] font-extrabold' : 'text-gray-600 hover:text-[#C2477A]'
+              className={`flex items-center gap-1.5 transition-colors cursor-pointer ${currentView === 'subcategories' ? 'text-[#D81B60] font-extrabold' : 'text-gray-600 hover:text-[#D81B60]'
                 }`}
             >
-              <span className="px-2 py-0.5 rounded-md bg-white text-[#C2477A] border border-pink-100 text-[10px] uppercase font-bold">
+              <span className="px-2 py-0.5 rounded-md bg-white text-[#D81B60] border border-pink-100 text-[10px] uppercase font-bold">
                 Main
               </span>
               <span>{selectedCategory.name}</span>
@@ -2281,7 +2281,7 @@ export default function MainCategoriesManager({
           {/* Header Banner */}
           <div className="bg-white p-6 sm:p-7 rounded-2xl border border-pink-100/80 shadow-xs flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5">
             <div>
-              <div className="flex items-center gap-2 text-xs font-extrabold text-[#C2477A] uppercase tracking-wider mb-1">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-[#D81B60] uppercase tracking-wider mb-1">
                 <FolderPlus size={16} />
                 <span>Level 1 • Master Hierarchy</span>
               </div>
@@ -2293,7 +2293,7 @@ export default function MainCategoriesManager({
 
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full xl:w-auto">
               <div className="hidden lg:flex items-center gap-2 bg-white px-3.5 h-10 rounded-xl border border-pink-100/90 shadow-2xs">
-                <span className="text-xs font-extrabold text-[#C2477A]">{hierarchyStats.totalCategories} Main Categories</span>
+                <span className="text-xs font-extrabold text-[#D81B60]">{hierarchyStats.totalCategories} Main Categories</span>
                 <span className="text-pink-300">•</span>
                 <span className="text-xs font-bold text-gray-700">{hierarchyStats.totalSubcategories} Subcategories</span>
               </div>
@@ -2303,9 +2303,9 @@ export default function MainCategoriesManager({
                 onClick={() => loadHierarchyData()}
                 disabled={isLoading}
                 title="Refresh category hierarchy from database"
-                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#D81B60] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               >
-                <RefreshCw size={15} className={`text-[#C2477A] ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw size={15} className={`text-[#D81B60] ${isLoading ? 'animate-spin' : ''}`} />
                 <span>Refresh</span>
               </button>
 
@@ -2313,9 +2313,9 @@ export default function MainCategoriesManager({
                 type="button"
                 onClick={() => handleExportScope('all')}
                 title="Export complete 2-level category hierarchy to Excel"
-                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#D81B60] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               >
-                <Download size={15} className="text-[#C2477A]" />
+                <Download size={15} className="text-[#D81B60]" />
                 <span>Export Hierarchy</span>
               </button>
 
@@ -2328,16 +2328,16 @@ export default function MainCategoriesManager({
                       setIsImportModalOpen(true);
                     }}
                     title="Import category hierarchy from Excel (.xlsx)"
-                    className="bg-white hover:bg-pink-50 text-[#C2477A] border border-pink-300 hover:border-[#C2477A] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                    className="bg-white hover:bg-pink-50 text-[#D81B60] border border-pink-300 hover:border-[#D81B60] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
                   >
-                    <Upload size={15} className="text-[#C2477A]" />
+                    <Upload size={15} className="text-[#D81B60]" />
                     <span>Import Excel</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={openAddCategoryModal}
-                    className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                    className="bg-[#D81B60] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
                   >
                     <PlusCircle size={16} />
                     <span>+ Add Main Category</span>
@@ -2355,7 +2355,7 @@ export default function MainCategoriesManager({
           {/* Search & Filters */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-pink-100/80 shadow-xs flex flex-wrap items-center justify-between gap-3.5">
             <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100 flex-1 min-w-[260px]">
-              <Search size={16} className="text-[#C2477A] shrink-0" />
+              <Search size={16} className="text-[#D81B60] shrink-0" />
               <input
                 type="text"
                 placeholder="Search main categories by name..."
@@ -2376,7 +2376,7 @@ export default function MainCategoriesManager({
                 <select
                   value={catStatusFilter}
                   onChange={(e) => setCatStatusFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#D81B60] outline-none cursor-pointer"
                 >
                   <option value="all">All</option>
                   <option value="active">Active</option>
@@ -2389,7 +2389,7 @@ export default function MainCategoriesManager({
                 <select
                   value={catMobileFilter}
                   onChange={(e) => setCatMobileFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#D81B60] outline-none cursor-pointer"
                 >
                   <option value="all">All</option>
                   <option value="visible">Visible</option>
@@ -2403,7 +2403,7 @@ export default function MainCategoriesManager({
           {selectedCategoryIds.size > 0 && (
             <div className="p-3 bg-gradient-to-r from-pink-50 via-white to-pink-50 rounded-2xl border-2 border-pink-200/90 shadow-md flex flex-wrap items-center justify-between gap-3 animate-fade-in mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#C2477A] text-white flex items-center justify-center font-black text-xs shadow-xs">
+                <div className="w-8 h-8 rounded-xl bg-[#D81B60] text-white flex items-center justify-center font-black text-xs shadow-xs">
                   {selectedCategoryIds.size}
                 </div>
                 <div>
@@ -2421,7 +2421,7 @@ export default function MainCategoriesManager({
                   <button
                     type="button"
                     onClick={handleToggleSelectAllCategories}
-                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-100/70 border border-pink-200 text-[#C2477A] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-100/70 border border-pink-200 text-[#D81B60] text-xs font-bold transition-all cursor-pointer shadow-2xs"
                   >
                     Select All {filteredAndSortedCategories.length} Visible
                   </button>
@@ -2455,7 +2455,7 @@ export default function MainCategoriesManager({
           {/* Categories Table View: Clean Table without Slug, Display Order, Created At */}
           {isLoading ? (
             <div className="bg-white p-16 rounded-2xl border border-pink-100 text-center space-y-3">
-              <RefreshCw size={28} className="animate-spin mx-auto text-[#C2477A]" />
+              <RefreshCw size={28} className="animate-spin mx-auto text-[#D81B60]" />
               <p className="text-sm font-bold text-gray-700">Loading categories...</p>
             </div>
           ) : filteredAndSortedCategories.length === 0 ? (
@@ -2471,7 +2471,7 @@ export default function MainCategoriesManager({
                 <button
                   type="button"
                   onClick={() => setCatSearch('')}
-                  className="px-4 py-2 rounded-xl border border-pink-200 text-[#C2477A] text-xs font-bold cursor-pointer hover:bg-pink-50"
+                  className="px-4 py-2 rounded-xl border border-pink-200 text-[#D81B60] text-xs font-bold cursor-pointer hover:bg-pink-50"
                 >
                   Clear Search
                 </button>
@@ -2491,7 +2491,7 @@ export default function MainCategoriesManager({
                             if (el) el.indeterminate = filteredAndSortedCategories.some(c => selectedCategoryIds.has(c.id)) && !filteredAndSortedCategories.every(c => selectedCategoryIds.has(c.id));
                           }}
                           onChange={handleToggleSelectAllCategories}
-                          className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                          className="w-4 h-4 rounded border-gray-300 text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                           title="Select all visible categories"
                         />
                       </th>
@@ -2532,14 +2532,14 @@ export default function MainCategoriesManager({
                               type="checkbox"
                               checked={selectedCategoryIds.has(cat.id)}
                               onChange={(e) => handleToggleSelectCategory(cat.id, e)}
-                              className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                              className="w-4 h-4 rounded border-gray-300 text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                               title={`Select category ${cat.name}`}
                             />
                           </td>
                           {/* # Priority & Editable Sequence */}
                           <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
-                              <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A]" title="Drag to reorder">
+                              <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#D81B60]" title="Drag to reorder">
                                 <GripVertical size={14} />
                               </span>
                               <input
@@ -2550,7 +2550,7 @@ export default function MainCategoriesManager({
                                 key={`cat_seq_${cat.id}_${idx + 1}`}
                                 onBlur={(e) => handleCategorySequenceChange(cat.id, parseInt(e.target.value, 10))}
                                 onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
-                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-white text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
+                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-white text-xs font-black text-gray-800 focus:border-[#D81B60] focus:bg-white outline-none shadow-2xs"
                                 title="Edit priority sequence number directly"
                               />
                               {isAdmin && (
@@ -2559,7 +2559,7 @@ export default function MainCategoriesManager({
                                     type="button"
                                     disabled={idx === 0}
                                     onClick={() => handleCategorySwap(idx, -1)}
-                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#D81B60] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
                                     title="Move Category Up"
                                   >
                                     <ArrowUp size={8} />
@@ -2568,7 +2568,7 @@ export default function MainCategoriesManager({
                                     type="button"
                                     disabled={idx === filteredAndSortedCategories.length - 1}
                                     onClick={() => handleCategorySwap(idx, 1)}
-                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#D81B60] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
                                     title="Move Category Down"
                                   >
                                     <ArrowDown size={8} />
@@ -2593,7 +2593,7 @@ export default function MainCategoriesManager({
                                     }}
                                   />
                                 ) : (
-                                  <ImageIcon size={18} className="text-[#C2477A]" />
+                                  <ImageIcon size={18} className="text-[#D81B60]" />
                                 )}
                               </div>
                               <div>
@@ -2611,8 +2611,8 @@ export default function MainCategoriesManager({
 
                           {/* Subcategories Badge */}
                           <td className="py-3.5 px-4 text-center">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-white text-[#C2477A] border border-pink-200">
-                              <Layers size={12} className="text-[#C2477A]" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-white text-[#D81B60] border border-pink-200">
+                              <Layers size={12} className="text-[#D81B60]" />
                               <span>{childSubs.length} Subcategories</span>
                             </span>
                           </td>
@@ -2653,7 +2653,7 @@ export default function MainCategoriesManager({
                               <button
                                 type="button"
                                 onClick={() => handleOpenCategorySubcategories(cat)}
-                                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white border border-pink-200 font-extrabold text-xs transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1.5 group/btn"
+                                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white border border-pink-200 font-extrabold text-xs transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1.5 group/btn"
                                 title={`Show Subcategories for ${cat.name}`}
                               >
                                 <span>Show Subcategories</span>
@@ -2664,7 +2664,7 @@ export default function MainCategoriesManager({
                                   <button
                                     type="button"
                                     onClick={() => openEditCategoryModal(cat)}
-                                    className="p-2 rounded-xl border border-gray-200 hover:border-[#C2477A] hover:text-[#C2477A] text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
+                                    className="p-2 rounded-xl border border-gray-200 hover:border-[#D81B60] hover:text-[#D81B60] text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
                                     title="Edit Category"
                                   >
                                     <Edit2 size={13} />
@@ -2703,7 +2703,7 @@ export default function MainCategoriesManager({
               <button
                 type="button"
                 onClick={handleBackToCategories}
-                className="p-2.5 rounded-xl border border-pink-200 bg-white text-[#C2477A] hover:bg-[#FFF5F8] transition-colors cursor-pointer shrink-0 shadow-2xs"
+                className="p-2.5 rounded-xl border border-pink-200 bg-white text-[#D81B60] hover:bg-[#FFF5F8] transition-colors cursor-pointer shrink-0 shadow-2xs"
                 title="Back to Main Categories"
               >
                 <ArrowLeft size={18} />
@@ -2713,13 +2713,13 @@ export default function MainCategoriesManager({
                 {selectedCategory.image ? (
                   <img src={selectedCategory.image} alt={selectedCategory.name} className="w-full h-full object-cover rounded-xl" />
                 ) : (
-                  <FolderPlus size={26} className="text-[#C2477A]" />
+                  <FolderPlus size={26} className="text-[#D81B60]" />
                 )}
               </div>
 
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-pink-100 text-[#C2477A]">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-pink-100 text-[#D81B60]">
                     Parent Main Category
                   </span>
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${selectedCategory.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'
@@ -2742,9 +2742,9 @@ export default function MainCategoriesManager({
                 onClick={() => loadHierarchyData()}
                 disabled={isLoading}
                 title="Refresh subcategories from database"
-                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#D81B60] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               >
-                <RefreshCw size={15} className={`text-[#C2477A] ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw size={15} className={`text-[#D81B60] ${isLoading ? 'animate-spin' : ''}`} />
                 <span>Refresh</span>
               </button>
 
@@ -2752,9 +2752,9 @@ export default function MainCategoriesManager({
                 type="button"
                 onClick={() => handleExportScope('subcategories')}
                 title={`Export subcategories under ${selectedCategory?.name} to Excel`}
-                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                className="bg-white hover:bg-pink-50 text-gray-700 hover:text-[#D81B60] border border-pink-200 hover:border-pink-300 font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               >
-                <Download size={15} className="text-[#C2477A]" />
+                <Download size={15} className="text-[#D81B60]" />
                 <span>Export Subcategories</span>
               </button>
 
@@ -2766,9 +2766,9 @@ export default function MainCategoriesManager({
                     setIsImportModalOpen(true);
                   }}
                   title={`Import subcategories under ${selectedCategory?.name} from Excel`}
-                  className="bg-white hover:bg-pink-50 text-[#C2477A] border border-pink-300 hover:border-[#C2477A] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                  className="bg-white hover:bg-pink-50 text-[#D81B60] border border-pink-300 hover:border-[#D81B60] font-bold text-xs sm:text-sm px-4 h-10 rounded-xl shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
                 >
-                  <Upload size={15} className="text-[#C2477A]" />
+                  <Upload size={15} className="text-[#D81B60]" />
                   <span>Import Excel</span>
                 </button>
               )}
@@ -2777,7 +2777,7 @@ export default function MainCategoriesManager({
                 <button
                   type="button"
                   onClick={() => openAddSubcategoryModal(selectedCategory)}
-                  className="bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                  className="bg-[#D81B60] hover:bg-[#b83760] text-white font-extrabold text-xs sm:text-sm px-5 h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shrink-0"
                 >
                   <PlusCircle size={16} />
                   <span>+ Add Sub Category</span>
@@ -2794,7 +2794,7 @@ export default function MainCategoriesManager({
           {/* Subcategories Search & Filter Controls */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-pink-100/80 shadow-xs flex flex-wrap items-center justify-between gap-3.5">
             <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100 flex-1 min-w-[260px]">
-              <Search size={16} className="text-[#C2477A] shrink-0" />
+              <Search size={16} className="text-[#D81B60] shrink-0" />
               <input
                 type="text"
                 placeholder={`Search subcategories in ${selectedCategory.name}...`}
@@ -2815,7 +2815,7 @@ export default function MainCategoriesManager({
                 <select
                   value={subStatusFilter}
                   onChange={(e) => setSubStatusFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#D81B60] outline-none cursor-pointer"
                 >
                   <option value="all">All</option>
                   <option value="active">Active</option>
@@ -2828,7 +2828,7 @@ export default function MainCategoriesManager({
                 <select
                   value={subMobileFilter}
                   onChange={(e) => setSubMobileFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#D81B60] outline-none cursor-pointer"
                 >
                   <option value="all">All</option>
                   <option value="visible">Visible</option>
@@ -2842,7 +2842,7 @@ export default function MainCategoriesManager({
           {selectedSubcategoryIds.size > 0 && (
             <div className="p-3 bg-gradient-to-r from-pink-50 via-white to-pink-50 rounded-2xl border-2 border-pink-200/90 shadow-md flex flex-wrap items-center justify-between gap-3 animate-fade-in mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#C2477A] text-white flex items-center justify-center font-black text-xs shadow-xs">
+                <div className="w-8 h-8 rounded-xl bg-[#D81B60] text-white flex items-center justify-center font-black text-xs shadow-xs">
                   {selectedSubcategoryIds.size}
                 </div>
                 <div>
@@ -2860,7 +2860,7 @@ export default function MainCategoriesManager({
                   <button
                     type="button"
                     onClick={handleToggleSelectAllSubcategories}
-                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-100/70 border border-pink-200 text-[#C2477A] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-100/70 border border-pink-200 text-[#D81B60] text-xs font-bold transition-all cursor-pointer shadow-2xs"
                   >
                     Select All {filteredAndSortedSubcategories.length} Visible
                   </button>
@@ -2907,7 +2907,7 @@ export default function MainCategoriesManager({
                 <button
                   type="button"
                   onClick={() => setSubSearch('')}
-                  className="px-4 py-2 rounded-xl border border-pink-200 text-[#C2477A] text-xs font-bold cursor-pointer hover:bg-pink-50"
+                  className="px-4 py-2 rounded-xl border border-pink-200 text-[#D81B60] text-xs font-bold cursor-pointer hover:bg-pink-50"
                 >
                   Clear Search
                 </button>
@@ -2915,7 +2915,7 @@ export default function MainCategoriesManager({
                 <button
                   type="button"
                   onClick={() => openAddSubcategoryModal(selectedCategory)}
-                  className="px-4 py-2.5 rounded-xl bg-[#C2477A] text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-2"
+                  className="px-4 py-2.5 rounded-xl bg-[#D81B60] text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-2"
                 >
                   <PlusCircle size={14} />
                   <span>+ Add Sub Category</span>
@@ -2936,7 +2936,7 @@ export default function MainCategoriesManager({
                             if (el) el.indeterminate = filteredAndSortedSubcategories.some(s => selectedSubcategoryIds.has(s.id)) && !filteredAndSortedSubcategories.every(s => selectedSubcategoryIds.has(s.id));
                           }}
                           onChange={handleToggleSelectAllSubcategories}
-                          className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                          className="w-4 h-4 rounded border-gray-300 text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                           title="Select all visible subcategories"
                         />
                       </th>
@@ -2976,14 +2976,14 @@ export default function MainCategoriesManager({
                               type="checkbox"
                               checked={selectedSubcategoryIds.has(sub.id)}
                               onChange={(e) => handleToggleSelectSubcategory(sub.id, e)}
-                              className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                              className="w-4 h-4 rounded border-gray-300 text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                               title={`Select subcategory ${sub.name}`}
                             />
                           </td>
                           {/* # Priority & Editable Sequence */}
                           <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1">
-                              <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A]" title="Drag to reorder">
+                              <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#D81B60]" title="Drag to reorder">
                                 <GripVertical size={14} />
                               </span>
                               <input
@@ -2994,7 +2994,7 @@ export default function MainCategoriesManager({
                                 key={`sub_seq_${sub.id}_${idx + 1}`}
                                 onBlur={(e) => handleSubcategorySequenceChange(sub.id, parseInt(e.target.value, 10))}
                                 onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
-                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-white text-xs font-black text-gray-800 focus:border-[#C2477A] focus:bg-white outline-none shadow-2xs"
+                                className="w-10 h-7 text-center rounded-lg border border-pink-200 bg-white text-xs font-black text-gray-800 focus:border-[#D81B60] focus:bg-white outline-none shadow-2xs"
                                 title="Edit priority sequence number directly"
                               />
                               {isAdmin && (
@@ -3003,7 +3003,7 @@ export default function MainCategoriesManager({
                                     type="button"
                                     disabled={idx === 0}
                                     onClick={() => handleSubcategorySwap(idx, -1)}
-                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#D81B60] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
                                     title="Move Subcategory Up"
                                   >
                                     <ArrowUp size={8} />
@@ -3012,7 +3012,7 @@ export default function MainCategoriesManager({
                                     type="button"
                                     disabled={idx === filteredAndSortedSubcategories.length - 1}
                                     onClick={() => handleSubcategorySwap(idx, 1)}
-                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                                    className="w-4 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#D81B60] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
                                     title="Move Subcategory Down"
                                   >
                                     <ArrowDown size={8} />
@@ -3038,7 +3038,7 @@ export default function MainCategoriesManager({
 
                           {/* Main Category */}
                           <td className="py-3.5 px-4">
-                            <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold bg-white text-[#C2477A] border border-pink-100">
+                            <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold bg-white text-[#D81B60] border border-pink-100">
                               {selectedCategory.name}
                             </span>
                           </td>
@@ -3081,7 +3081,7 @@ export default function MainCategoriesManager({
                                   <button
                                     type="button"
                                     onClick={() => openEditSubcategoryModal(sub)}
-                                    className="p-2 rounded-xl border border-gray-200 hover:border-[#C2477A] hover:text-[#C2477A] text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
+                                    className="p-2 rounded-xl border border-gray-200 hover:border-[#D81B60] hover:text-[#D81B60] text-gray-600 transition-colors cursor-pointer bg-white shadow-2xs"
                                     title="Edit Subcategory"
                                   >
                                     <Edit2 size={13} />
@@ -3127,7 +3127,7 @@ export default function MainCategoriesManager({
             {/* Header - Sticky with prominent Close (✕) button */}
             <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-white via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
               <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="w-10 h-10 rounded-2xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-[#D81B60] text-white flex items-center justify-center shadow-xs shrink-0">
                   <FolderPlus size={20} />
                 </div>
                 <div className="min-w-0">
@@ -3168,7 +3168,7 @@ export default function MainCategoriesManager({
                       setCategoryFormData(prev => ({ ...prev, name: e.target.value }));
                       if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
                     }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-medium outline-none transition-all"
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#D81B60] focus:ring-2 focus:ring-pink-100 text-sm font-medium outline-none transition-all"
                   />
                 </div>
 
@@ -3179,7 +3179,7 @@ export default function MainCategoriesManager({
                     placeholder="Enter a clean, descriptive summary of products in this category..."
                     value={categoryFormData.description}
                     onChange={(e) => setCategoryFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#D81B60] focus:ring-2 focus:ring-pink-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
                   />
                 </div>
 
@@ -3190,13 +3190,13 @@ export default function MainCategoriesManager({
                     <button
                       type="button"
                       onClick={() => setCategoryFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${categoryFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${categoryFormData.show_in_mobile_app ? 'bg-[#D81B60]' : 'bg-gray-300'
                         }`}
                     >
                       <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${categoryFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
                         }`} />
                     </button>
-                    <span className={`text-[10px] font-extrabold ${categoryFormData.show_in_mobile_app ? 'text-[#C2477A]' : 'text-gray-400'}`}>
+                    <span className={`text-[10px] font-extrabold ${categoryFormData.show_in_mobile_app ? 'text-[#D81B60]' : 'text-gray-400'}`}>
                       {categoryFormData.show_in_mobile_app ? 'Yes' : 'No'}
                     </span>
                   </div>
@@ -3241,7 +3241,7 @@ export default function MainCategoriesManager({
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="px-6 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="px-6 py-2 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
                   >
                     {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                     <span>{modalMode === 'add_category' ? 'Create Main Category' : 'Save Changes'}</span>
@@ -3272,7 +3272,7 @@ export default function MainCategoriesManager({
             {/* Header - Sticky with prominent Close (✕) button */}
             <div className="p-4 sm:p-5 sm:px-6 bg-gradient-to-r from-white via-[#FFF9FB] to-white border-b border-pink-100 flex items-center justify-between shrink-0 sticky top-0 z-20">
               <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="w-10 h-10 rounded-2xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-[#D81B60] text-white flex items-center justify-center shadow-xs shrink-0">
                   <Layers size={20} />
                 </div>
                 <div className="min-w-0">
@@ -3313,7 +3313,7 @@ export default function MainCategoriesManager({
                       setSubFormData(prev => ({ ...prev, category_id: newCatId }));
                       if (formErrors.category_id) setFormErrors(prev => ({ ...prev, category_id: null }));
                     }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-bold text-gray-800 bg-white outline-none transition-all cursor-pointer"
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#D81B60] focus:ring-2 focus:ring-pink-100 text-sm font-bold text-gray-800 bg-white outline-none transition-all cursor-pointer"
                   >
                     <option value="" disabled>Select Parent Main Category...</option>
                     {categories.map(c => (
@@ -3339,7 +3339,7 @@ export default function MainCategoriesManager({
                       setSubFormData(prev => ({ ...prev, name: e.target.value }));
                       if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
                     }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 text-sm font-medium outline-none transition-all"
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#D81B60] focus:ring-2 focus:ring-pink-100 text-sm font-medium outline-none transition-all"
                   />
                 </div>
 
@@ -3351,7 +3351,7 @@ export default function MainCategoriesManager({
                     placeholder="Enter a descriptive summary for this subcategory..."
                     value={subFormData.description}
                     onChange={(e) => setSubFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#C2477A] focus:ring-2 focus:ring-pink-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
+                    className="w-full px-4 py-2.5 rounded-xl border border-pink-100 focus:border-[#D81B60] focus:ring-2 focus:ring-pink-100 outline-none text-xs sm:text-sm font-medium transition-all resize-none"
                   />
                 </div>
 
@@ -3362,13 +3362,13 @@ export default function MainCategoriesManager({
                     <button
                       type="button"
                       onClick={() => setSubFormData(prev => ({ ...prev, show_in_mobile_app: !prev.show_in_mobile_app }))}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${subFormData.show_in_mobile_app ? 'bg-[#C2477A]' : 'bg-gray-300'
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${subFormData.show_in_mobile_app ? 'bg-[#D81B60]' : 'bg-gray-300'
                         }`}
                     >
                       <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${subFormData.show_in_mobile_app ? 'translate-x-5' : 'translate-x-0'
                         }`} />
                     </button>
-                    <span className={`text-[10px] font-extrabold ${subFormData.show_in_mobile_app ? 'text-[#C2477A]' : 'text-gray-400'}`}>
+                    <span className={`text-[10px] font-extrabold ${subFormData.show_in_mobile_app ? 'text-[#D81B60]' : 'text-gray-400'}`}>
                       {subFormData.show_in_mobile_app ? 'Yes' : 'No'}
                     </span>
                   </div>
@@ -3403,7 +3403,7 @@ export default function MainCategoriesManager({
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="px-6 py-2 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="px-6 py-2 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-extrabold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
                   >
                     {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                     <span>{modalMode === 'add_subcategory' ? 'Create Sub Category' : 'Save Changes'}</span>
@@ -3478,7 +3478,7 @@ export default function MainCategoriesManager({
             <div className="p-6 space-y-4 text-xs sm:text-sm">
               {deleteModal.isChecking ? (
                 <div className="py-6 text-center space-y-2">
-                  <RefreshCw size={24} className="animate-spin mx-auto text-[#C2477A]" />
+                  <RefreshCw size={24} className="animate-spin mx-auto text-[#D81B60]" />
                   <p className="text-gray-500 font-medium text-xs">Checking database relationships...</p>
                 </div>
               ) : deleteModal.hasRelations ? (
@@ -3684,7 +3684,7 @@ export default function MainCategoriesManager({
                   if (isBulkDeleting) return;
                   setBulkDeleteCategoriesModalOpen(false);
                 }}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -3717,7 +3717,7 @@ export default function MainCategoriesManager({
                   return (
                     <div key={cid} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-100 text-xs font-bold text-gray-900">
                       <div className="flex items-center gap-2">
-                        <FolderPlus size={15} className="text-[#C2477A]" />
+                        <FolderPlus size={15} className="text-[#D81B60]" />
                         <span>{cat?.name || cid}</span>
                       </div>
                       <span className="text-[11px] font-medium text-gray-500 bg-pink-50 px-2 py-0.5 rounded-md">
@@ -3786,7 +3786,7 @@ export default function MainCategoriesManager({
                   if (isBulkDeleting) return;
                   setBulkDeleteSubcategoriesModalOpen(false);
                 }}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -3817,7 +3817,7 @@ export default function MainCategoriesManager({
                   const sub = subcategories.find(s => s.id === sid);
                   return (
                     <div key={sid} className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-gray-100 text-xs font-bold text-gray-900">
-                      <Layers size={14} className="text-[#C2477A]" />
+                      <Layers size={14} className="text-[#D81B60]" />
                       <span>{sub?.name || sid}</span>
                     </div>
                   );

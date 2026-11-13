@@ -490,7 +490,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#C2477A] to-white0 text-white flex items-center justify-center shadow-md">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#D81B60] to-white0 text-white flex items-center justify-center shadow-md">
               <ShieldCheck size={24} />
             </div>
             <div>
@@ -507,12 +507,12 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
         <div className="flex items-center gap-3 self-end sm:self-auto">
           <button
             onClick={() => setManageSpecsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[#C2477A] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            className="flex items-center gap-2 px-4 py-2.5 bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[#D81B60] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
           >
             <Sparkles size={14} />
             <span>Specializations Master</span>
             {pendingSpecsCount > 0 && (
-              <span className="bg-[#C2477A] text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">
+              <span className="bg-[#D81B60] text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">
                 {pendingSpecsCount} new
               </span>
             )}
@@ -522,7 +522,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
             disabled={b2bLoading}
             className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw size={14} className={b2bLoading ? 'animate-spin text-[#C2477A]' : ''} />
+            <RefreshCw size={14} className={b2bLoading ? 'animate-spin text-[#D81B60]' : ''} />
             Refresh
           </button>
         </div>
@@ -648,7 +648,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
               key={tab.key}
               onClick={() => setActiveSubTab(tab.key)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${activeSubTab === tab.key
-                ? 'bg-[#C2477A] text-white shadow-xs'
+                ? 'bg-[#D81B60] text-white shadow-xs'
                 : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
             >
@@ -673,7 +673,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by Name, Phone, Business Name, or City..."
-              className="w-full pl-10 pr-9 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#C2477A] focus:ring-1 focus:ring-[#C2477A] transition-all"
+              className="w-full pl-10 pr-9 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#D81B60] focus:ring-1 focus:ring-[#D81B60] transition-all"
             />
             {searchTerm && (
               <button
@@ -689,8 +689,8 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Role Filter */}
             {isPresetRole ? (
-              <div className="px-3 py-2 bg-white border border-pink-200 rounded-xl text-xs font-bold text-[#C2477A] flex items-center gap-1.5 shadow-2xs">
-                <Building2 size={13} className="text-[#C2477A]" />
+              <div className="px-3 py-2 bg-white border border-pink-200 rounded-xl text-xs font-bold text-[#D81B60] flex items-center gap-1.5 shadow-2xs">
+                <Building2 size={13} className="text-[#D81B60]" />
                 <span>
                   {normalizedRolePreset === 'salon' ? 'Salon Applications' : (normalizedRolePreset === 'artist' ? 'Makeup Artist Applications' : 'Beautician Applications')}
                 </span>
@@ -699,7 +699,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
               <select
                 value={selectedRoleFilter}
                 onChange={(e) => setSelectedRoleFilter(e.target.value)}
-                className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-hidden focus:border-[#C2477A] cursor-pointer"
+                className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-hidden focus:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">All Roles</option>
                 <option value="salon">Salon (B2B)</option>
@@ -713,7 +713,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
               <select
                 value={selectedCityFilter}
                 onChange={(e) => setSelectedCityFilter(e.target.value)}
-                className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-hidden focus:border-[#C2477A] cursor-pointer"
+                className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-hidden focus:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">All Cities</option>
                 {uniqueCities.map(city => (
@@ -726,7 +726,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
             <select
               value={selectedDateSort}
               onChange={(e) => setSelectedDateSort(e.target.value)}
-              className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-hidden focus:border-[#C2477A] cursor-pointer"
+              className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-hidden focus:border-[#D81B60] cursor-pointer"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -778,11 +778,11 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                       {/* Applicant Name */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-pink-100 to-rose-200 text-[#C2477A] font-black text-sm flex items-center justify-center shrink-0 border border-pink-200">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-pink-100 to-rose-200 text-[#D81B60] font-black text-sm flex items-center justify-center shrink-0 border border-pink-200">
                             {applicantName.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-extrabold text-[#3A2430] group-hover:text-[#C2477A] transition-colors">
+                            <div className="font-extrabold text-[#3A2430] group-hover:text-[#D81B60] transition-colors">
                               {applicantName}
                             </div>
                             <div className="text-[10px] text-gray-400">
@@ -878,7 +878,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setReviewApplication(app)}
-                            className="px-3 py-1.5 bg-[#C2477A] text-white rounded-lg text-xs font-bold hover:bg-[#a63563] transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
+                            className="px-3 py-1.5 bg-[#D81B60] text-white rounded-lg text-xs font-bold hover:bg-[#a63563] transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
                           >
                             <Eye size={12} />
                             Review
@@ -981,7 +981,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-2xs">
                   <div className="bg-gradient-to-r from-gray-50 to-white px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                     <span className="text-xs font-black text-[#3A2430] uppercase tracking-wider flex items-center gap-2">
-                      <CheckCircle2 size={15} className="text-[#C2477A]" />
+                      <CheckCircle2 size={15} className="text-[#D81B60]" />
                       B2B Verification Status Checklist
                     </span>
                     <span className="text-[11px] font-bold text-gray-500">
@@ -1044,7 +1044,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                                 href={getMapUrl(profCoords, profAddressFull)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-[#C2477A] font-bold hover:underline inline-flex items-center gap-1"
+                                className="text-[#D81B60] font-bold hover:underline inline-flex items-center gap-1"
                               >
                                 {profCoords} <ExternalLink size={10} />
                               </a>
@@ -1109,7 +1109,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
 
                 {/* SECTION 1: Personal & Professional Details */}
                 <div className="bg-gray-50/70 p-5 rounded-2xl border border-gray-200/70">
-                  <h3 className="text-xs font-black uppercase text-[#C2477A] tracking-wider mb-3.5 flex items-center gap-2">
+                  <h3 className="text-xs font-black uppercase text-[#D81B60] tracking-wider mb-3.5 flex items-center gap-2">
                     <User size={14} />
                     1. Professional Information
                   </h3>
@@ -1130,7 +1130,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                       <span className="text-gray-400 block text-[11px] font-semibold">Phone Number</span>
                       <a
                         href={`tel:${reviewApplication.phone}`}
-                        className="font-extrabold text-[#C2477A] hover:underline flex items-center gap-1 text-sm"
+                        className="font-extrabold text-[#D81B60] hover:underline flex items-center gap-1 text-sm"
                       >
                         <Phone size={12} />
                         {reviewApplication.phone || '—'}
@@ -1167,7 +1167,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                             return <span className="text-gray-400 text-xs italic">No specific specialization recorded</span>;
                           }
                           return specs.map(s => (
-                            <span key={s} className="px-2.5 py-0.5 rounded-full bg-pink-50 border border-pink-200 text-[#C2477A] text-xs font-bold">
+                            <span key={s} className="px-2.5 py-0.5 rounded-full bg-pink-50 border border-pink-200 text-[#D81B60] text-xs font-bold">
                               {s}
                             </span>
                           ));
@@ -1187,7 +1187,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                           href={reviewApplication.website_or_social_link.startsWith('http') ? reviewApplication.website_or_social_link : `https://${reviewApplication.website_or_social_link}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-bold text-[#C2477A] hover:underline flex items-center gap-1.5"
+                          className="font-bold text-[#D81B60] hover:underline flex items-center gap-1.5"
                         >
                           <Globe size={13} />
                           {reviewApplication.website_or_social_link}
@@ -1201,7 +1201,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                 {/* SECTION 2: Personal / Professional Address */}
                 <div className="bg-gray-50/70 p-5 rounded-2xl border border-gray-200/70">
                   <div className="flex items-center justify-between mb-3.5">
-                    <h3 className="text-xs font-black uppercase text-[#C2477A] tracking-wider flex items-center gap-2">
+                    <h3 className="text-xs font-black uppercase text-[#D81B60] tracking-wider flex items-center gap-2">
                       <MapPin size={14} />
                       2. Personal / Professional Address
                     </h3>
@@ -1210,7 +1210,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                         href={getMapUrl(profCoords, profAddressFull)}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[11px] font-bold text-[#C2477A] hover:underline flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-pink-200 shadow-2xs"
+                        className="text-[11px] font-bold text-[#D81B60] hover:underline flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-pink-200 shadow-2xs"
                       >
                         <Navigation size={12} />
                         Open Map Location
@@ -1267,7 +1267,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                 {/* SECTION 3: Business Address (Same or Different) */}
                 <div className="bg-gray-50/70 p-5 rounded-2xl border border-gray-200/70">
                   <div className="flex items-center justify-between mb-3.5">
-                    <h3 className="text-xs font-black uppercase text-[#C2477A] tracking-wider flex items-center gap-2">
+                    <h3 className="text-xs font-black uppercase text-[#D81B60] tracking-wider flex items-center gap-2">
                       <Building2 size={14} />
                       3. Business Address
                     </h3>
@@ -1351,7 +1351,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                             href={getMapUrl(bizCoords, bizAddressFull)}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-[11px] font-bold text-[#C2477A] hover:underline flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-lg border border-pink-200"
+                            className="text-[11px] font-bold text-[#D81B60] hover:underline flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-lg border border-pink-200"
                           >
                             <Navigation size={12} />
                             View on Google Maps
@@ -1367,7 +1367,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                 <div className="bg-gray-50/70 p-5 rounded-2xl border border-gray-200/70">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                     <div>
-                      <h3 className="text-xs font-black uppercase text-[#C2477A] tracking-wider flex items-center gap-2">
+                      <h3 className="text-xs font-black uppercase text-[#D81B60] tracking-wider flex items-center gap-2">
                         <FileText size={14} />
                         4. Verification Documents (Optional)
                       </h3>
@@ -1379,9 +1379,9 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
 
                   {/* Informational Callout (User requirement) */}
                   <div className="p-3.5 rounded-xl bg-white border border-pink-100 flex items-start gap-2.5 mb-4 text-xs text-gray-700">
-                    <Info size={16} className="text-[#C2477A] shrink-0 mt-0.5" />
+                    <Info size={16} className="text-[#D81B60] shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-[#C2477A]">Documents are optional at registration.</span>
+                      <span className="font-bold text-[#D81B60]">Documents are optional at registration.</span>
                       <p className="text-[11px] text-gray-600 mt-0.5">
                         Our verification team may request additional documents if required.
                       </p>
@@ -1479,7 +1479,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                                     });
                                   }
                                 }}
-                                className="font-bold text-[#C2477A] hover:underline flex items-center gap-1 cursor-pointer"
+                                className="font-bold text-[#D81B60] hover:underline flex items-center gap-1 cursor-pointer"
                               >
                                 <ExternalLink size={11} /> Open full size
                               </button>
@@ -1487,7 +1487,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                               <button
                                 type="button"
                                 onClick={() => openActionModal('request_documents', reviewApplication, slot.key)}
-                                className="text-[#C2477A] font-bold hover:underline flex items-center gap-1 text-[11px] cursor-pointer"
+                                className="text-[#D81B60] font-bold hover:underline flex items-center gap-1 text-[11px] cursor-pointer"
                               >
                                 + Request this document
                               </button>
@@ -1514,7 +1514,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                                   const url = doc.file_url || doc.url || doc.fileUrl;
                                   if (url) setPreviewImage({ url, title: doc.file_name || doc.document_type || 'Attachment' });
                                 }}
-                                className="text-[#C2477A] font-bold text-[10px] ml-2 hover:underline cursor-pointer"
+                                className="text-[#D81B60] font-bold text-[10px] ml-2 hover:underline cursor-pointer"
                               >
                                 View
                               </button>
@@ -1527,7 +1527,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
 
                 {/* SECTION 5: Verification History */}
                 <div className="bg-gray-50/70 p-5 rounded-2xl border border-gray-200/70">
-                  <h3 className="text-xs font-black uppercase text-[#C2477A] tracking-wider mb-3.5 flex items-center gap-2">
+                  <h3 className="text-xs font-black uppercase text-[#D81B60] tracking-wider mb-3.5 flex items-center gap-2">
                     <Clock size={14} />
                     5. Verification History
                   </h3>
@@ -1540,12 +1540,12 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                           className="bg-white p-3 rounded-xl border border-gray-200 text-xs flex items-start justify-between gap-3"
                         >
                           <div className="flex items-start gap-2.5">
-                            <div className="w-6 h-6 rounded-full bg-pink-100 text-[#C2477A] flex items-center justify-center shrink-0 mt-0.5">
+                            <div className="w-6 h-6 rounded-full bg-pink-100 text-[#D81B60] flex items-center justify-center shrink-0 mt-0.5">
                               <Clock size={12} />
                             </div>
                             <div>
                               <div className="font-bold text-gray-800">
-                                Action: <span className="uppercase text-[#C2477A]">{h.action || h.new_status}</span>
+                                Action: <span className="uppercase text-[#D81B60]">{h.action || h.new_status}</span>
                               </div>
                               {h.reason && (
                                 <div className="text-gray-600 mt-0.5 text-[11px]">
@@ -1597,7 +1597,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                       onClick={() => setShowContactDropdown(prev => !prev)}
                       className="px-3.5 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-all flex items-center gap-1.5 cursor-pointer"
                     >
-                      <PhoneCall size={13} className="text-[#C2477A]" />
+                      <PhoneCall size={13} className="text-[#D81B60]" />
                       Contact
                       <ChevronDown size={12} className={`transition-transform ${showContactDropdown ? 'rotate-180' : ''}`} />
                     </button>
@@ -1606,7 +1606,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                       <div className={`absolute ${contactPlacement.opensUpward ? 'bottom-full mb-2 origin-bottom' : 'top-full mt-2 origin-top'} right-0 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-1.5 z-50 animate-in fade-in zoom-in-95`}>
                         <a
                           href={`tel:${reviewApplication.phone}`}
-                          className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-[#C2477A]"
+                          className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-[#D81B60]"
                           onClick={() => setShowContactDropdown(false)}
                         >
                           <Phone size={13} className="text-emerald-600" />
@@ -1616,7 +1616,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                           href={`https://wa.me/${String(reviewApplication.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${reviewApplication.professional_name || 'there'}, this is Salbeau Professional Verification team regarding your B2B account application.`)}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-[#C2477A]"
+                          className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-[#D81B60]"
                           onClick={() => setShowContactDropdown(false)}
                         >
                           <MessageSquare size={13} className="text-emerald-500" />
@@ -1625,7 +1625,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                         {reviewApplication.email && (
                           <a
                             href={`mailto:${reviewApplication.email}?subject=${encodeURIComponent('Salbeau B2B Verification Inquiry')}`}
-                            className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-[#C2477A]"
+                            className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-gray-700 hover:bg-pink-50 hover:text-[#D81B60]"
                             onClick={() => setShowContactDropdown(false)}
                           >
                             <Mail size={13} className="text-blue-500" />
@@ -1785,7 +1785,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => { }} // Handled by div onClick
-                            className="w-4 h-4 text-[#C2477A] accent-[#C2477A] rounded cursor-pointer"
+                            className="w-4 h-4 text-[#D81B60] accent-[#D81B60] rounded cursor-pointer"
                           />
                           <div>
                             <span className="font-bold block">{slot.label}</span>
@@ -1817,7 +1817,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                       key={idx}
                       type="button"
                       onClick={() => setActionReason(preset)}
-                      className="text-[10px] bg-gray-100 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 px-2 py-1 rounded-lg border border-gray-200 transition-colors text-left cursor-pointer"
+                      className="text-[10px] bg-gray-100 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 px-2 py-1 rounded-lg border border-gray-200 transition-colors text-left cursor-pointer"
                     >
                       {preset}
                     </button>
@@ -1837,7 +1837,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                   value={actionReason}
                   onChange={(e) => setActionReason(e.target.value)}
                   placeholder={actionModal.type === 'request_documents' ? 'e.g. Please upload your GST Certificate and Business Registration Proof to complete verification.' : 'Enter detailed reason or instruction...'}
-                  className="w-full p-3 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#C2477A] focus:ring-1 focus:ring-[#C2477A]"
+                  className="w-full p-3 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#D81B60] focus:ring-1 focus:ring-[#D81B60]"
                 />
               </div>
             )}
@@ -1852,7 +1852,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
                 placeholder="e.g. Verified trade license via phone with owner on 7th Oct"
-                className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#C2477A]"
+                className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#D81B60]"
               />
             </div>
 
@@ -1899,7 +1899,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-pink-50/50 via-white to-purple-50/30 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#C2477A] text-white flex items-center justify-center shadow-md">
+                <div className="w-10 h-10 rounded-2xl bg-[#D81B60] text-white flex items-center justify-center shadow-md">
                   <Sparkles size={20} />
                 </div>
                 <div>
@@ -1926,7 +1926,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                     setNewSpecRole('salon');
                     setAddSpecModalOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-[#C2477A] hover:bg-[#9E2D5B] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-[#D81B60] hover:bg-[#9E2D5B] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
                 >
                   <Plus size={14} />
                   <span>Add Specialization</span>
@@ -1986,7 +1986,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                     type="button"
                     onClick={() => setSpecStatusFilter(st.key)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${specStatusFilter === st.key
-                        ? 'bg-[#C2477A] text-white shadow-xs'
+                        ? 'bg-[#D81B60] text-white shadow-xs'
                         : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
                       }`}
                   >
@@ -2003,7 +2003,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                   value={specSearchQuery}
                   onChange={(e) => setSpecSearchQuery(e.target.value)}
                   placeholder="Filter specializations..."
-                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-hidden focus:border-[#C2477A]"
+                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-hidden focus:border-[#D81B60]"
                 />
               </div>
             </div>
@@ -2012,7 +2012,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
               {specsLoading ? (
                 <div className="py-16 text-center">
-                  <RefreshCw size={24} className="animate-spin text-[#C2477A] mx-auto mb-2" />
+                  <RefreshCw size={24} className="animate-spin text-[#D81B60] mx-auto mb-2" />
                   <p className="text-xs text-gray-500 font-semibold">Loading specializations master...</p>
                 </div>
               ) : (
@@ -2029,7 +2029,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                   if (filtered.length === 0) {
                     return (
                       <div className="py-12 text-center text-gray-400">
-                        <Tag size={32} className="mx-auto mb-2 opacity-40 text-[#C2477A]" />
+                        <Tag size={32} className="mx-auto mb-2 opacity-40 text-[#D81B60]" />
                         <p className="text-sm font-bold text-gray-600">No specializations match the selected filter</p>
                         <p className="text-xs text-gray-400 mt-1">Try resetting filters or click "+ Add Specialization".</p>
                       </div>
@@ -2135,7 +2135,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                                   setNewSpecRole(spec.role);
                                   setAddSpecModalOpen(true);
                                 }}
-                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-pink-100 text-gray-600 hover:text-[#C2477A] flex items-center justify-center cursor-pointer transition-colors"
+                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-pink-100 text-gray-600 hover:text-[#D81B60] flex items-center justify-center cursor-pointer transition-colors"
                                 title="Edit name or role"
                               >
                                 <Edit2 size={12} />
@@ -2210,7 +2210,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                 <select
                   value={newSpecRole}
                   onChange={(e) => setNewSpecRole(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:outline-hidden focus:border-[#C2477A]"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:outline-hidden focus:border-[#D81B60]"
                 >
                   <option value="salon">Salon (B2B)</option>
                   <option value="artist">Makeup Artist (B2B)</option>
@@ -2227,7 +2227,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                   value={newSpecName}
                   onChange={(e) => setNewSpecName(e.target.value)}
                   placeholder="e.g. Bridal HD Airbrush, Korean Glass Skin..."
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-hidden focus:border-[#C2477A]"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-hidden focus:border-[#D81B60]"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
                   System verifies duplicate entries automatically (case-insensitive).
@@ -2274,7 +2274,7 @@ export default function B2BVerificationPage({ initialSubTab = 'all', rolePreset 
                     setIsSavingSpec(false);
                   }
                 }}
-                className="px-5 py-2.5 bg-[#C2477A] hover:bg-[#9E2D5B] text-white rounded-xl text-xs font-black shadow-md transition-all cursor-pointer disabled:opacity-50"
+                className="px-5 py-2.5 bg-[#D81B60] hover:bg-[#9E2D5B] text-white rounded-xl text-xs font-black shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
                 {isSavingSpec ? 'Saving...' : editingSpecItem ? 'Save Changes' : 'Create Specialization'}
               </button>

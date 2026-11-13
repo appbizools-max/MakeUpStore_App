@@ -19,6 +19,8 @@ import { useApp } from '../../context/AppContext';
 import { supabase } from '../../config/supabase';
 import {
   fetchStaffDeliveryOrders,
+  acceptOrderDelivery,
+  reachPickupLocation,
   startOrderDelivery,
   completeOrderDelivery,
   clearStaffSession,
@@ -117,6 +119,34 @@ export const DeliveryPartnerDashboard = () => {
         }
       ]
     );
+  };
+
+  // Action: Accept Delivery Task
+  const handleAcceptOrder = async (order) => {
+    if (!order || !order.id) return;
+    setIsLoading(true);
+    const success = await acceptOrderDelivery(order.id, staffProfile);
+    if (success) {
+      await loadOrders(false);
+      Alert.alert('Order Accepted 👍', `Order #${order.id} has been accepted. Proceed to pickup location.`);
+    } else {
+      Alert.alert('Update Failed', 'Unable to record order acceptance in database.');
+    }
+    setIsLoading(false);
+  };
+
+  // Action: Record Reached Store / Pickup Location
+  const handleReachPickup = async (order) => {
+    if (!order || !order.id) return;
+    setIsLoading(true);
+    const success = await reachPickupLocation(order.id, staffProfile);
+    if (success) {
+      await loadOrders(false);
+      Alert.alert('Reached Pickup Store 📍', `Recorded reached store location for order #${order.id}.`);
+    } else {
+      Alert.alert('Update Failed', 'Unable to record pickup arrival in database.');
+    }
+    setIsLoading(false);
   };
 
   // Action 1: Start Delivery / Pick up from Store (Captures Started Time)
@@ -324,7 +354,7 @@ export const DeliveryPartnerDashboard = () => {
         <View className="flex-row items-center justify-between mb-3">
           {/* Staff Identity & Role */}
           <View className="flex-row items-center flex-1 mr-3">
-            <View className="w-12 h-12 rounded-2xl bg-[#C2477A] items-center justify-center mr-3 border border-pink-300/30">
+            <View className="w-12 h-12 rounded-2xl bg-[#D81B60] items-center justify-center mr-3 border border-pink-300/30">
               <Ionicons name="bicycle" size={24} color="#FFFFFF" />
             </View>
 
@@ -396,7 +426,7 @@ export const DeliveryPartnerDashboard = () => {
             onPress={() => setActiveTab('assigned')}
             className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${
               activeTab === 'assigned'
-                ? 'bg-[#C2477A] border-[#C2477A]'
+                ? 'bg-[#D81B60] border-[#D81B60]'
                 : 'bg-stone-100 border-stone-200'
             }`}
           >
@@ -422,7 +452,7 @@ export const DeliveryPartnerDashboard = () => {
             onPress={() => setActiveTab('pending')}
             className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${
               activeTab === 'pending'
-                ? 'bg-[#C2477A] border-[#C2477A]'
+                ? 'bg-[#D81B60] border-[#D81B60]'
                 : 'bg-stone-100 border-stone-200'
             }`}
           >
@@ -448,7 +478,7 @@ export const DeliveryPartnerDashboard = () => {
             onPress={() => setActiveTab('ongoing')}
             className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${
               activeTab === 'ongoing'
-                ? 'bg-[#C2477A] border-[#C2477A]'
+                ? 'bg-[#D81B60] border-[#D81B60]'
                 : 'bg-stone-100 border-stone-200'
             }`}
           >
@@ -474,7 +504,7 @@ export const DeliveryPartnerDashboard = () => {
             onPress={() => setActiveTab('completed')}
             className={`flex-row items-center px-4 py-2 rounded-full mr-3 border ${
               activeTab === 'completed'
-                ? 'bg-[#C2477A] border-[#C2477A]'
+                ? 'bg-[#D81B60] border-[#D81B60]'
                 : 'bg-stone-100 border-stone-200'
             }`}
           >
@@ -499,11 +529,11 @@ export const DeliveryPartnerDashboard = () => {
       {/* ── ORDERS FEED LIST ── */}
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={['#C2477A']} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={['#D81B60']} />}
       >
         {isLoading ? (
           <View className="py-20 items-center justify-center">
-            <ActivityIndicator size="large" color="#C2477A" />
+            <ActivityIndicator size="large" color="#D81B60" />
             <Text className="text-xs font-bold text-stone-500 mt-3">Loading deliveries...</Text>
           </View>
         ) : currentTabOrders.length === 0 ? (
@@ -520,7 +550,7 @@ export const DeliveryPartnerDashboard = () => {
                     : 'checkmark-circle-outline'
                 }
                 size={32}
-                color="#C2477A"
+                color="#D81B60"
               />
             </View>
             <Text className="text-base font-black text-[#3A2430] text-center">
@@ -559,12 +589,12 @@ export const DeliveryPartnerDashboard = () => {
                 {/* Order Top Bar with B2C/B2B Tag */}
                 <View className="flex-row items-center justify-between pb-3 border-b border-stone-100">
                   <View className="flex-row items-center gap-2">
-                    <Text className="text-xs font-black text-[#C2477A]">
+                    <Text className="text-xs font-black text-[#D81B60]">
                       #{order.id}
                     </Text>
                     {/* B2B vs B2C Badge */}
                     <View className={`px-2 py-0.5 rounded-full ${isB2B ? 'bg-purple-100' : 'bg-pink-100'}`}>
-                      <Text className={`text-[9.5px] font-black uppercase ${isB2B ? 'text-purple-700' : 'text-[#C2477A]'}`}>
+                      <Text className={`text-[9.5px] font-black uppercase ${isB2B ? 'text-purple-700' : 'text-[#D81B60]'}`}>
                         {isB2B ? (order.user_role || order.userRole || 'B2B Trade') : 'B2C Retail'}
                       </Text>
                     </View>
@@ -637,7 +667,7 @@ export const DeliveryPartnerDashboard = () => {
                   {/* Delivery Address & Maps Button */}
                   <View className="flex-row items-start justify-between mt-2 bg-stone-50 p-2.5 rounded-xl border border-stone-200/80">
                     <View className="flex-row items-start flex-1 mr-2">
-                      <Ionicons name="location-outline" size={15} color="#C2477A" style={{ marginRight: 4, marginTop: 2 }} />
+                      <Ionicons name="location-outline" size={15} color="#D81B60" style={{ marginRight: 4, marginTop: 2 }} />
                       <Text className="text-xs font-semibold text-[#553846] leading-relaxed flex-1">
                         {deliveryAddress}
                       </Text>
@@ -728,16 +758,44 @@ export const DeliveryPartnerDashboard = () => {
                 <View className="mt-3 pt-3 border-t border-stone-100">
                   {/* Status is Assigned / Ready for pickup */}
                   {(activeTab === 'assigned' || activeTab === 'pending') && (
-                    <TouchableOpacity
-                      activeOpacity={0.9}
-                      onPress={() => handleStartDelivery(order)}
-                      className="w-full py-3 bg-[#C2477A] rounded-xl flex-row items-center justify-center shadow-xs active:opacity-90"
-                    >
-                      <Ionicons name="bicycle" size={17} color="#FFFFFF" style={{ marginRight: 6 }} />
-                      <Text className="text-white font-black text-xs tracking-wide">
-                        Pick Up & Start Delivery
-                      </Text>
-                    </TouchableOpacity>
+                    <View className="flex-row items-center gap-2">
+                      {order.status !== 'accepted' && order.status !== 'reached_pickup' && (
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => handleAcceptOrder(order)}
+                          className="flex-1 py-2.5 bg-pink-50 border border-pink-200 rounded-xl flex-row items-center justify-center shadow-xs"
+                        >
+                          <Ionicons name="checkmark-circle-outline" size={15} color="#D81B60" style={{ marginRight: 5 }} />
+                          <Text className="text-[#D81B60] font-bold text-xs">
+                            Accept Order
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {order.status === 'accepted' && (
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => handleReachPickup(order)}
+                          className="flex-1 py-2.5 bg-blue-50 border border-blue-200 rounded-xl flex-row items-center justify-center shadow-xs"
+                        >
+                          <Ionicons name="location-outline" size={15} color="#2563EB" style={{ marginRight: 5 }} />
+                          <Text className="text-blue-700 font-bold text-xs">
+                            Reached Store
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => handleStartDelivery(order)}
+                        className="flex-1 py-2.5 bg-[#D81B60] rounded-xl flex-row items-center justify-center shadow-xs active:opacity-90"
+                      >
+                        <Ionicons name="bicycle" size={16} color="#FFFFFF" style={{ marginRight: 5 }} />
+                        <Text className="text-white font-black text-xs tracking-wide">
+                          Pick Up & Start
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   )}
 
                   {/* Status is Ongoing (Out for Delivery) */}
@@ -803,7 +861,7 @@ export const DeliveryPartnerDashboard = () => {
                       <Text className="text-xs font-bold text-purple-900">
                         Order #{upiModalOrder.id}
                       </Text>
-                      <Text className="text-xs font-black text-[#C2477A]">
+                      <Text className="text-xs font-black text-[#D81B60]">
                         Expected: ₹{Number(upiModalOrder.total_amount || 0).toLocaleString('en-IN')}
                       </Text>
                     </View>
@@ -898,7 +956,7 @@ export const DeliveryPartnerDashboard = () => {
                   <View className="bg-amber-50 p-3 rounded-xl border border-amber-200 mb-4 flex-row items-start">
                     <Ionicons name="information-circle" size={16} color="#D97706" style={{ marginRight: 6, marginTop: 1 }} />
                     <Text className="text-[11px] text-amber-900 leading-relaxed flex-1 font-medium">
-                      Uploading this proof places the payment in <strong>PENDING_VERIFICATION</strong>. Only an authorized administrator who checks the bank credits can mark it <strong>VERIFIED</strong>.
+                      Uploading this proof places the payment in <Text className="font-bold">PENDING_VERIFICATION</Text>. Only an authorized administrator who checks the bank credits can mark it <Text className="font-bold">VERIFIED</Text>.
                     </Text>
                   </View>
 
@@ -907,7 +965,7 @@ export const DeliveryPartnerDashboard = () => {
                     disabled={isUploadingProof}
                     activeOpacity={0.8}
                     onPress={handleSubmitUpiVerification}
-                    className="w-full py-3.5 bg-[#C2477A] rounded-2xl items-center justify-center flex-row shadow-sm active:opacity-90 disabled:opacity-50"
+                    className="w-full py-3.5 bg-[#D81B60] rounded-2xl items-center justify-center flex-row shadow-sm active:opacity-90 disabled:opacity-50"
                   >
                     {isUploadingProof ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
@@ -961,7 +1019,7 @@ export const DeliveryPartnerDashboard = () => {
                         Order #{deliveryModalOrder.id}
                       </Text>
                       <View className={`px-2 py-0.5 rounded-full ${deliveryModalOrder.user_role !== 'general' ? 'bg-purple-100' : 'bg-pink-100'}`}>
-                        <Text className={`text-[9.5px] font-black uppercase ${deliveryModalOrder.user_role !== 'general' ? 'text-purple-700' : 'text-[#C2477A]'}`}>
+                        <Text className={`text-[9.5px] font-black uppercase ${deliveryModalOrder.user_role !== 'general' ? 'text-purple-700' : 'text-[#D81B60]'}`}>
                           {deliveryModalOrder.user_role !== 'general' ? 'B2B Trade' : 'B2C Retail'}
                         </Text>
                       </View>
@@ -969,7 +1027,7 @@ export const DeliveryPartnerDashboard = () => {
                     <Text className="text-sm font-black text-[#3A2430] mt-1">
                       {deliveryModalOrder.user_name || 'Customer'}
                     </Text>
-                    <Text className="text-xl font-black text-[#C2477A] mt-1.5">
+                    <Text className="text-xl font-black text-[#D81B60] mt-1.5">
                       Amount to Collect: ₹{modalOrderAmount.toLocaleString('en-IN')}
                     </Text>
                   </View>

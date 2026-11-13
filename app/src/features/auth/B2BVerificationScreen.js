@@ -328,14 +328,14 @@ export const B2BVerificationScreen = () => {
           onPress={() => setCurrentScreen('home')}
           className="w-10 h-10 rounded-full bg-white items-center justify-center"
         >
-          <Ionicons name="arrow-back" size={20} color="#C2477A" />
+          <Ionicons name="arrow-back" size={20} color="#D81B60" />
         </TouchableOpacity>
 
         <View className="items-center">
           <Text className="text-base font-black text-[#3A2430]">
             B2B Professional Verification
           </Text>
-          <Text className="text-[11px] font-bold text-[#C2477A] tracking-wider uppercase">
+          <Text className="text-[11px] font-bold text-[#D81B60] tracking-wider uppercase">
             {ROLE_SHORT_TITLES[effectiveRole] || effectiveRole} Account
           </Text>
         </View>
@@ -359,7 +359,7 @@ export const B2BVerificationScreen = () => {
             style={{
               fontFamily: fontsLoaded ? 'GreatVibes_400Regular' : (Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif'),
             }}
-            className="text-[34px] text-[#C2477A] text-center"
+            className="text-[34px] text-[#D81B60] text-center"
           >
             Salbeau Professional
           </Text>
@@ -437,9 +437,9 @@ export const B2BVerificationScreen = () => {
             <View className="flex-row items-center justify-between mb-3 border-b border-stone-100 pb-2.5">
               <View className="flex-row items-center gap-2">
                 <View className="w-6 h-6 rounded-full bg-white items-center justify-center">
-                  <Ionicons name="checkmark-circle" size={16} color="#C2477A" />
+                  <Ionicons name="checkmark-circle" size={16} color="#D81B60" />
                 </View>
-                <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+                <Text className="text-xs font-black text-[#D81B60] uppercase tracking-wider">
                   Registered Business Profile
                 </Text>
               </View>
@@ -447,8 +447,8 @@ export const B2BVerificationScreen = () => {
                 onPress={() => setIsEditingBusinessInfo(true)}
                 className="bg-white px-2.5 py-1 rounded-full border border-[#F8BBD0] flex-row items-center gap-1 active:opacity-80"
               >
-                <Ionicons name="create-outline" size={13} color="#C2477A" />
-                <Text className="text-[11px] font-bold text-[#C2477A]">Edit</Text>
+                <Ionicons name="create-outline" size={13} color="#D81B60" />
+                <Text className="text-[11px] font-bold text-[#D81B60]">Edit</Text>
               </TouchableOpacity>
             </View>
 
@@ -473,7 +473,7 @@ export const B2BVerificationScreen = () => {
               ) : null}
               <View className="flex-row justify-between items-start">
                 <Text className="text-xs text-stone-500 font-medium">Specializations:</Text>
-                <Text className="text-xs text-[#C2477A] font-bold text-right flex-1 ml-2">
+                <Text className="text-xs text-[#D81B60] font-bold text-right flex-1 ml-2">
                   {Array.isArray(userProfile?.specializations) && userProfile.specializations.length > 0
                     ? userProfile.specializations.join(', ')
                     : (userProfile?.businessType || 'General Professional')}
@@ -505,7 +505,7 @@ export const B2BVerificationScreen = () => {
         {/* 1. PROFESSIONAL INFORMATION */}
         {/* ======================================================== */}
         <View className="mb-6 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
-          <Text className="text-xs font-black text-[#C2477A] mb-3 uppercase tracking-wider flex-row items-center">
+          <Text className="text-xs font-black text-[#D81B60] mb-3 uppercase tracking-wider flex-row items-center">
             Professional Information
           </Text>
 
@@ -536,9 +536,9 @@ export const B2BVerificationScreen = () => {
                 <TouchableOpacity
                   key={rKey}
                   onPress={() => setUserRole(rKey)}
-                  className={`px-3 py-1.5 rounded-full border ${effectiveRole === rKey ? 'bg-white border-[#C2477A]' : 'bg-stone-50 border-stone-200'}`}
+                  className={`px-3 py-1.5 rounded-full border ${effectiveRole === rKey ? 'bg-white border-[#D81B60]' : 'bg-stone-50 border-stone-200'}`}
                 >
-                  <Text className={`text-xs font-bold ${effectiveRole === rKey ? 'text-[#C2477A]' : 'text-stone-600'}`}>
+                  <Text className={`text-xs font-bold ${effectiveRole === rKey ? 'text-[#D81B60]' : 'text-stone-600'}`}>
                     {ROLE_SHORT_TITLES[rKey]}
                   </Text>
                 </TouchableOpacity>
@@ -586,7 +586,7 @@ export const B2BVerificationScreen = () => {
         {/* ======================================================== */}
         <View className="mb-6 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+            <Text className="text-xs font-black text-[#D81B60] uppercase tracking-wider">
               Professional Address
             </Text>
 
@@ -597,11 +597,11 @@ export const B2BVerificationScreen = () => {
               className="bg-white border border-[#F8BBD0] px-3 py-1 rounded-full flex-row items-center gap-1.5 active:opacity-80"
             >
               {isLocatingProf ? (
-                <ActivityIndicator size="small" color="#C2477A" />
+                <ActivityIndicator size="small" color="#D81B60" />
               ) : (
-                <Ionicons name="locate" size={13} color="#C2477A" />
+                <Ionicons name="locate" size={13} color="#D81B60" />
               )}
-              <Text className="text-[11px] font-bold text-[#C2477A]">
+              <Text className="text-[11px] font-bold text-[#D81B60]">
                 {isLocatingProf ? 'Locating...' : 'Use Current Location'}
               </Text>
             </TouchableOpacity>
@@ -704,7 +704,7 @@ export const B2BVerificationScreen = () => {
         {/* 3. BUSINESS ADDRESS */}
         {/* ======================================================== */}
         <View className="mb-6 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
-          <Text className="text-xs font-black text-[#C2477A] mb-3 uppercase tracking-wider">
+          <Text className="text-xs font-black text-[#D81B60] mb-3 uppercase tracking-wider">
             Business Address
           </Text>
 
@@ -714,7 +714,7 @@ export const B2BVerificationScreen = () => {
             onPress={() => setIsBusinessAddressSame(prev => !prev)}
             className="flex-row items-center gap-2.5 bg-stone-50 border border-stone-200 p-3 rounded-xl mb-3.5"
           >
-            <View className={`w-5 h-5 rounded-md items-center justify-center border ${isBusinessAddressSame ? 'bg-[#C2477A] border-[#C2477A]' : 'bg-white border-stone-400'}`}>
+            <View className={`w-5 h-5 rounded-md items-center justify-center border ${isBusinessAddressSame ? 'bg-[#D81B60] border-[#D81B60]' : 'bg-white border-stone-400'}`}>
               {isBusinessAddressSame && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
             </View>
             <Text className="text-xs font-bold text-[#3A2430] flex-1">
@@ -759,11 +759,11 @@ export const B2BVerificationScreen = () => {
                   className="bg-white border border-[#F8BBD0] px-3 py-1 rounded-full flex-row items-center gap-1.5"
                 >
                   {isLocatingBiz ? (
-                    <ActivityIndicator size="small" color="#C2477A" />
+                    <ActivityIndicator size="small" color="#D81B60" />
                   ) : (
-                    <Ionicons name="locate" size={13} color="#C2477A" />
+                    <Ionicons name="locate" size={13} color="#D81B60" />
                   )}
-                  <Text className="text-[11px] font-bold text-[#C2477A]">
+                  <Text className="text-[11px] font-bold text-[#D81B60]">
                     {isLocatingBiz ? 'Locating...' : 'Use Current Location'}
                   </Text>
                 </TouchableOpacity>
@@ -870,7 +870,7 @@ export const B2BVerificationScreen = () => {
           onPress={() => setIsEditingBusinessInfo(false)}
           className="mb-6 bg-white py-3 rounded-xl items-center border border-[#F8BBD0] active:bg-pink-100"
         >
-          <Text className="text-xs font-bold text-[#C2477A]">Save & Collapse Information</Text>
+          <Text className="text-xs font-bold text-[#D81B60]">Save & Collapse Information</Text>
         </TouchableOpacity>
         </>
       )}
@@ -880,7 +880,7 @@ export const B2BVerificationScreen = () => {
         {/* ======================================================== */}
         <View className="mb-6 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
           <View className="flex-row items-center justify-between mb-1.5">
-            <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+            <Text className="text-xs font-black text-[#D81B60] uppercase tracking-wider">
               Verification Documents
             </Text>
             <View className="bg-stone-100 px-2.5 py-0.5 rounded-full">
@@ -913,7 +913,7 @@ export const B2BVerificationScreen = () => {
                       <Ionicons
                         name={uploadedDoc ? "checkmark-circle" : "document-text-outline"}
                         size={16}
-                        color={uploadedDoc ? "#059669" : "#C2477A"}
+                        color={uploadedDoc ? "#059669" : "#D81B60"}
                       />
                       <Text className="text-xs font-bold text-[#3A2430]">
                         {slot.label}
@@ -950,7 +950,7 @@ export const B2BVerificationScreen = () => {
                           />
                         ) : (
                           <View className="w-9 h-9 rounded bg-white items-center justify-center border border-[#FCE4EC]">
-                            <Ionicons name="document-text" size={18} color="#C2477A" />
+                            <Ionicons name="document-text" size={18} color="#D81B60" />
                           </View>
                         )}
                         <View className="flex-1">
@@ -972,7 +972,7 @@ export const B2BVerificationScreen = () => {
                           onPress={() => openUploadModal(slot)}
                           className="px-2 py-1 rounded bg-white"
                         >
-                          <Text className="text-[10.5px] font-bold text-[#C2477A]">Replace</Text>
+                          <Text className="text-[10.5px] font-bold text-[#D81B60]">Replace</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => handleRemoveDoc(slot.key)}
@@ -986,10 +986,10 @@ export const B2BVerificationScreen = () => {
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => openUploadModal(slot)}
-                      className="bg-white border border-dashed border-[#C2477A] py-2 px-3 rounded-lg flex-row items-center justify-center gap-1.5 active:bg-pink-50"
+                      className="bg-white border border-dashed border-[#D81B60] py-2 px-3 rounded-lg flex-row items-center justify-center gap-1.5 active:bg-pink-50"
                     >
-                      <Ionicons name="cloud-upload-outline" size={14} color="#C2477A" />
-                      <Text className="text-xs font-black text-[#C2477A]">
+                      <Ionicons name="cloud-upload-outline" size={14} color="#D81B60" />
+                      <Text className="text-xs font-black text-[#D81B60]">
                         {isRequestedByAdmin ? 'Upload Requested Document' : 'Upload Document'}
                       </Text>
                     </TouchableOpacity>
@@ -1005,7 +1005,7 @@ export const B2BVerificationScreen = () => {
           activeOpacity={0.9}
           disabled={isSubmitting}
           onPress={handleSubmit}
-          className="w-full bg-[#C2477A] py-4 rounded-full items-center justify-center shadow-lg active:opacity-90 mt-2"
+          className="w-full bg-[#D81B60] py-4 rounded-full items-center justify-center shadow-lg active:opacity-90 mt-2"
         >
           {isSubmitting ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -1071,7 +1071,7 @@ export const B2BVerificationScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSaveUploadedDoc}
-                className="flex-1 py-3 rounded-full bg-[#C2477A] items-center justify-center shadow-sm"
+                className="flex-1 py-3 rounded-full bg-[#D81B60] items-center justify-center shadow-sm"
               >
                 <Text className="text-xs font-black text-white">Save & Attach</Text>
               </TouchableOpacity>

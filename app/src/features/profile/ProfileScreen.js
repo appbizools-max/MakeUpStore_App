@@ -22,7 +22,7 @@ const PALETTE = {
   cardBg: '#FFFFFF',          // Clean white cards
   cardSurface: '#FFFFFF',     // Clean white surface
   cardInner: '#F9FAFB',       // Subtle neutral chip (non-pink)
-  logoPink: '#C2477A',        // Salbeau Logo Signature Rose Magenta for icons, primary actions & badges
+  logoPink: '#D81B60',        // Salbeau Logo Signature Rose Magenta for icons, primary actions & badges
   logoPinkDark: '#9E2D5B',    // Deep Plum Rose for active/pressed
   logoPinkLight: '#FDF2F8',   // Very soft subtle tag tint
   borderLight: '#F0E6EC',     // Ultra-light delicate border
@@ -726,7 +726,7 @@ export const ProfileScreen = () => {
                       {item.title}
                     </Text>
                     {item.badge != null && item.badge > 0 && (
-                      <View className="bg-[#C2477A] px-1.5 py-0.5 rounded-full">
+                      <View className="bg-[#D81B60] px-1.5 py-0.5 rounded-full">
                         <Text className="text-white text-[9px] font-black">{item.badge}</Text>
                       </View>
                     )}
@@ -801,7 +801,7 @@ export const ProfileScreen = () => {
                       {item.title}
                     </Text>
                     {item.badge != null && item.badge > 0 && (
-                      <View className="bg-[#C2477A] px-1.5 py-0.5 rounded-full">
+                      <View className="bg-[#D81B60] px-1.5 py-0.5 rounded-full">
                         <Text className="text-white text-[9px] font-black">{item.badge}</Text>
                       </View>
                     )}

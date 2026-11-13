@@ -336,7 +336,7 @@ export default function Security2FASettingsPage({ currentAuthUser, onBackToSetti
       {/* ── HEADER BANNER ── */}
       <div className="bg-white rounded-3xl border border-gray-200/80 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-700 to-[#C2477A] text-white flex items-center justify-center font-bold shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-700 to-[#D81B60] text-white flex items-center justify-center font-bold shadow-sm">
             <Shield size={24} />
           </div>
           <div>
@@ -420,7 +420,7 @@ export default function Security2FASettingsPage({ currentAuthUser, onBackToSetti
               <button
                 type="button"
                 onClick={handleInitiate2FASetup}
-                className="px-6 py-2.5 bg-gradient-to-r from-purple-700 to-[#C2477A] hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 bg-gradient-to-r from-purple-700 to-[#D81B60] hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer"
               >
                 <KeyRound size={15} />
                 <span>Enable Two-Factor Authentication (2FA)</span>

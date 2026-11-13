@@ -326,12 +326,12 @@ export const B2BRegistrationForm = () => {
           onPress={() => setCurrentScreen('onboarding')}
           className="w-10 h-10 rounded-full bg-white border border-[#FCE4EC] items-center justify-center shadow-2xs"
         >
-          <Ionicons name="arrow-back" size={20} color="#C2477A" />
+          <Ionicons name="arrow-back" size={20} color="#D81B60" />
         </TouchableOpacity>
 
         <View className="bg-white border border-[#F5A8C0] px-3.5 py-1.5 rounded-full flex-row items-center gap-1.5">
-          <Ionicons name="shield-checkmark" size={14} color="#C2477A" />
-          <Text className="text-xs font-black text-[#C2477A]">
+          <Ionicons name="shield-checkmark" size={14} color="#D81B60" />
+          <Text className="text-xs font-black text-[#D81B60]">
             {roleTitle} Partner
           </Text>
         </View>
@@ -357,8 +357,8 @@ export const B2BRegistrationForm = () => {
         {/* ── SECTION 1: BUSINESS IDENTITY ─────────────────────────── */}
         <View className="mb-5 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
           <View className="flex-row items-center gap-2 mb-3">
-            <Ionicons name="storefront-outline" size={16} color="#C2477A" />
-            <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+            <Ionicons name="storefront-outline" size={16} color="#D81B60" />
+            <Text className="text-xs font-black text-[#D81B60] uppercase tracking-wider">
               1. Business Identity
             </Text>
           </View>
@@ -407,8 +407,8 @@ export const B2BRegistrationForm = () => {
         {/* ── SECTION 2: DIRECT MOBILE & CREDENTIALS ───────────────── */}
         <View className="mb-5 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
           <View className="flex-row items-center gap-2 mb-3">
-            <Ionicons name="call-outline" size={16} color="#C2477A" />
-            <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+            <Ionicons name="call-outline" size={16} color="#D81B60" />
+            <Text className="text-xs font-black text-[#D81B60] uppercase tracking-wider">
               2. Mobile Verification & Contact
             </Text>
           </View>
@@ -494,13 +494,13 @@ export const B2BRegistrationForm = () => {
         <View className="mb-5 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2">
-              <Ionicons name="sparkles-outline" size={16} color="#C2477A" />
-              <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+              <Ionicons name="sparkles-outline" size={16} color="#D81B60" />
+              <Text className="text-xs font-black text-[#D81B60] uppercase tracking-wider">
                 3. Specialization & Experience
               </Text>
             </View>
             <View className="bg-pink-50 px-2 py-0.5 rounded-full border border-pink-100">
-              <Text className="text-[10px] font-bold text-[#C2477A]">
+              <Text className="text-[10px] font-bold text-[#D81B60]">
                 {selectedSpecs.length} Selected
               </Text>
             </View>
@@ -517,7 +517,7 @@ export const B2BRegistrationForm = () => {
               <Ionicons
                 name={suggestNotice.type === 'success' ? 'checkmark-circle' : 'alert-circle'}
                 size={16}
-                color={suggestNotice.type === 'success' ? '#059669' : '#C2477A'}
+                color={suggestNotice.type === 'success' ? '#059669' : '#D81B60'}
               />
               <Text className="text-xs font-bold text-[#3A2430] flex-1">
                 {suggestNotice.text}
@@ -534,16 +534,16 @@ export const B2BRegistrationForm = () => {
               {selectedSpecs.map(specName => (
                 <View
                   key={specName}
-                  className="flex-row items-center gap-1.5 bg-white border border-[#C2477A] px-2.5 py-1 rounded-full shadow-2xs"
+                  className="flex-row items-center gap-1.5 bg-white border border-[#D81B60] px-2.5 py-1 rounded-full shadow-2xs"
                 >
-                  <Text className="text-xs font-bold text-[#C2477A]">
+                  <Text className="text-xs font-bold text-[#D81B60]">
                     {specName}
                   </Text>
                   <TouchableOpacity
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     onPress={() => removeSpecialization(specName)}
                   >
-                    <Ionicons name="close-circle" size={15} color="#C2477A" />
+                    <Ionicons name="close-circle" size={15} color="#D81B60" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -586,18 +586,18 @@ export const B2BRegistrationForm = () => {
                       onPress={() => toggleSpecialization(spec.name)}
                       className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${
                         isSelected
-                          ? 'bg-[#FFF0F5] border-[#C2477A]'
+                          ? 'bg-[#FFF0F5] border-[#D81B60]'
                           : 'bg-white border-stone-200'
                       }`}
                     >
                       <Ionicons
                         name={isSelected ? 'checkmark-circle' : 'add-outline'}
                         size={14}
-                        color={isSelected ? '#C2477A' : '#705060'}
+                        color={isSelected ? '#D81B60' : '#705060'}
                       />
                       <Text
                         className={`text-xs font-bold ${
-                          isSelected ? 'text-[#C2477A]' : 'text-stone-700'
+                          isSelected ? 'text-[#D81B60]' : 'text-stone-700'
                         }`}
                       >
                         {spec.name}
@@ -612,18 +612,18 @@ export const B2BRegistrationForm = () => {
                 onPress={() => setShowOtherInput(prev => !prev)}
                 className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed ${
                   showOtherInput
-                    ? 'bg-[#C2477A] border-[#C2477A]'
+                    ? 'bg-[#D81B60] border-[#D81B60]'
                     : 'bg-stone-50 border-stone-400'
                 }`}
               >
                 <Ionicons
                   name={showOtherInput ? 'close-outline' : 'add-circle-outline'}
                   size={14}
-                  color={showOtherInput ? '#FFFFFF' : '#C2477A'}
+                  color={showOtherInput ? '#FFFFFF' : '#D81B60'}
                 />
                 <Text
                   className={`text-xs font-bold ${
-                    showOtherInput ? 'text-white' : 'text-[#C2477A]'
+                    showOtherInput ? 'text-white' : 'text-[#D81B60]'
                   }`}
                 >
                   + Other / Custom
@@ -654,7 +654,7 @@ export const B2BRegistrationForm = () => {
                     className={`px-3.5 py-2.5 rounded-xl flex-row items-center gap-1.5 ${
                       !customSpecName.trim() || isSuggesting
                         ? 'bg-stone-300'
-                        : 'bg-[#C2477A] active:bg-[#9E2D5B]'
+                        : 'bg-[#D81B60] active:bg-[#9E2D5B]'
                     }`}
                   >
                     {isSuggesting ? (
@@ -686,13 +686,13 @@ export const B2BRegistrationForm = () => {
                     onPress={() => setExperience(exp)}
                     className={`px-3 py-2 rounded-full border ${
                       isSelected
-                        ? 'bg-white border-[#C2477A]'
+                        ? 'bg-white border-[#D81B60]'
                         : 'bg-white border-stone-200'
                     }`}
                   >
                     <Text
                       className={`text-xs font-bold ${
-                        isSelected ? 'text-[#C2477A]' : 'text-stone-600'
+                        isSelected ? 'text-[#D81B60]' : 'text-stone-600'
                       }`}
                     >
                       {exp}
@@ -707,8 +707,8 @@ export const B2BRegistrationForm = () => {
         {/* ── SECTION 4: PREMISES & BUSINESS ADDRESS ────────────────── */}
         <View className="mb-5 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
           <View className="flex-row items-center gap-2 mb-3">
-            <Ionicons name="location-outline" size={16} color="#C2477A" />
-            <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+            <Ionicons name="location-outline" size={16} color="#D81B60" />
+            <Text className="text-xs font-black text-[#D81B60] uppercase tracking-wider">
               4. Commercial Premises Address
             </Text>
           </View>
@@ -741,8 +741,8 @@ export const B2BRegistrationForm = () => {
               </Text>
               {isDetectingPin && (
                 <View className="flex-row items-center gap-1">
-                  <ActivityIndicator size="small" color="#C2477A" />
-                  <Text className="text-[10px] font-bold text-[#C2477A]">Detecting City & State...</Text>
+                  <ActivityIndicator size="small" color="#D81B60" />
+                  <Text className="text-[10px] font-bold text-[#D81B60]">Detecting City & State...</Text>
                 </View>
               )}
             </View>
@@ -804,8 +804,8 @@ export const B2BRegistrationForm = () => {
         {/* ── SECTION 5: TAX & GSTIN (OPTIONAL) ─────────────────────── */}
         <View className="mb-6 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
           <View className="flex-row items-center gap-2 mb-3">
-            <Ionicons name="receipt-outline" size={16} color="#C2477A" />
-            <Text className="text-xs font-black text-[#C2477A] uppercase tracking-wider">
+            <Ionicons name="receipt-outline" size={16} color="#D81B60" />
+            <Text className="text-xs font-black text-[#D81B60] uppercase tracking-wider">
               5. Tax & Business Registration (Optional)
             </Text>
           </View>
@@ -834,7 +834,7 @@ export const B2BRegistrationForm = () => {
           activeOpacity={0.9}
           disabled={!isFormValid || isSubmitting}
           onPress={handleProceed}
-          style={{ backgroundColor: isFormValid ? '#C2477A' : '#E5E7EB' }}
+          style={{ backgroundColor: isFormValid ? '#D81B60' : '#E5E7EB' }}
           className="w-full py-4 rounded-full items-center justify-center shadow-lg active:opacity-90 mb-4 flex-row gap-2"
         >
           {isSubmitting ? (
@@ -860,8 +860,8 @@ export const B2BRegistrationForm = () => {
         <View className="items-center mb-2">
           <Text className="text-xs text-[#8C7078] text-center leading-relaxed">
             By proceeding, you agree to Salbeau's{' '}
-            <Text className="text-[#C2477A] font-bold underline">Partner Terms</Text> &{' '}
-            <Text className="text-[#C2477A] font-bold underline">Wholesale Policy</Text>
+            <Text className="text-[#D81B60] font-bold underline">Partner Terms</Text> &{' '}
+            <Text className="text-[#D81B60] font-bold underline">Wholesale Policy</Text>
           </Text>
         </View>
       </ScrollView>

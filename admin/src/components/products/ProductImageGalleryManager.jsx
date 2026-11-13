@@ -409,7 +409,7 @@ export default function ProductImageGalleryManager({
         {/* Header & Badges */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-pink-100/70">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#E11D48] to-[#C2477A] text-white flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#E11D48] to-[#D81B60] text-white flex items-center justify-center shrink-0 shadow-2xs">
               <ImageIcon size={16} />
             </div>
             <div>
@@ -417,7 +417,7 @@ export default function ProductImageGalleryManager({
                 <h3 className="text-sm font-extrabold text-gray-900 tracking-tight">
                   Product Images (Packshots & Gallery)
                 </h3>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-pink-50 text-[#C2477A] px-2 py-0.5 rounded-full border border-pink-200">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-pink-50 text-[#D81B60] px-2 py-0.5 rounded-full border border-pink-200">
                   {normalizedImages.length} {normalizedImages.length === 1 ? 'Image' : 'Images'}
                 </span>
               </div>
@@ -432,7 +432,7 @@ export default function ProductImageGalleryManager({
             <button
               type="button"
               onClick={() => setUrlModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl border border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              className="px-2.5 py-1.5 rounded-xl border border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               title="Add image via direct URL"
             >
               <LinkIcon size={12} />
@@ -453,18 +453,18 @@ export default function ProductImageGalleryManager({
         {/* URL Paste Drawer / Modal */}
         {urlModalOpen && (
           <div className="p-3 bg-pink-50/60 rounded-xl border border-pink-200/80 flex items-center gap-2 animate-in fade-in duration-150">
-            <LinkIcon size={14} className="text-[#C2477A] shrink-0" />
+            <LinkIcon size={14} className="text-[#D81B60] shrink-0" />
             <input
               type="url"
               placeholder="https://example.com/packshot-1200.webp"
               value={pastedUrl}
               onChange={(e) => setPastedUrl(e.target.value)}
-              className="flex-1 py-1.5 px-3 rounded-lg border border-pink-200 bg-white font-mono text-xs text-gray-900 outline-none focus:border-[#C2477A]"
+              className="flex-1 py-1.5 px-3 rounded-lg border border-pink-200 bg-white font-mono text-xs text-gray-900 outline-none focus:border-[#D81B60]"
             />
             <button
               type="button"
               onClick={handleAddFromUrl}
-              className="px-3 py-1.5 rounded-lg bg-[#C2477A] text-white text-xs font-bold shadow-2xs cursor-pointer hover:bg-[#a83664]"
+              className="px-3 py-1.5 rounded-lg bg-[#D81B60] text-white text-xs font-bold shadow-2xs cursor-pointer hover:bg-[#a83664]"
             >
               Add
             </button>
@@ -498,7 +498,7 @@ export default function ProductImageGalleryManager({
         {/* Upload Progress Bar */}
         {uploadingGeneral && (
           <div className="p-3 rounded-xl bg-pink-50 border border-pink-200 space-y-1.5 shadow-2xs animate-pulse">
-            <div className="flex items-center justify-between text-xs font-bold text-[#C2477A]">
+            <div className="flex items-center justify-between text-xs font-bold text-[#D81B60]">
               <span className="flex items-center gap-1.5">
                 <Loader2 size={13} className="animate-spin" />
                 Optimizing & uploading to Supabase Storage...
@@ -507,7 +507,7 @@ export default function ProductImageGalleryManager({
             </div>
             <div className="w-full h-1.5 bg-pink-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#C2477A] transition-all duration-300 rounded-full"
+                className="h-full bg-[#D81B60] transition-all duration-300 rounded-full"
                 style={{ width: `${uploadProgress || 25}%` }}
               />
             </div>
@@ -526,7 +526,7 @@ export default function ProductImageGalleryManager({
                 key={`${imgUrl}-${index}`}
                 className={`group relative w-32 h-32 aspect-square rounded-2xl border-2 overflow-hidden bg-white shrink-0 shadow-2xs transition-all ${
                   isPrimary
-                    ? 'border-[#C2477A] ring-2 ring-pink-200'
+                    ? 'border-[#D81B60] ring-2 ring-pink-200'
                     : 'border-pink-100 hover:border-pink-300'
                 }`}
               >
@@ -541,14 +541,14 @@ export default function ProductImageGalleryManager({
 
                 {/* Primary Tag or Make Primary Button */}
                 {isPrimary ? (
-                  <span className="absolute top-1.5 left-1.5 bg-[#C2477A] text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5 z-10">
+                  <span className="absolute top-1.5 left-1.5 bg-[#D81B60] text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5 z-10">
                     <Star size={9} className="fill-white" /> Primary
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => handleSetPrimary(index)}
-                    className="absolute top-1.5 left-1.5 bg-black/70 hover:bg-[#C2477A] text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
+                    className="absolute top-1.5 left-1.5 bg-black/70 hover:bg-[#D81B60] text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
                     title="Promote to Primary Packshot"
                   >
                     Set Primary
@@ -576,7 +576,7 @@ export default function ProductImageGalleryManager({
                     <button
                       type="button"
                       onClick={() => handleMoveImage(index, 'left')}
-                      className="w-6 h-6 rounded-lg bg-white hover:bg-pink-100 text-[#C2477A] flex items-center justify-center shadow-xs cursor-pointer transition-transform active:scale-95"
+                      className="w-6 h-6 rounded-lg bg-white hover:bg-pink-100 text-[#D81B60] flex items-center justify-center shadow-xs cursor-pointer transition-transform active:scale-95"
                       title="Move Left"
                     >
                       <ArrowLeft size={12} className="stroke-[2.5]" />
@@ -586,7 +586,7 @@ export default function ProductImageGalleryManager({
                   <button
                     type="button"
                     onClick={() => handleTriggerReplace(index)}
-                    className="w-6 h-6 rounded-lg bg-white hover:bg-pink-100 text-[#C2477A] flex items-center justify-center shadow-xs cursor-pointer transition-transform active:scale-95"
+                    className="w-6 h-6 rounded-lg bg-white hover:bg-pink-100 text-[#D81B60] flex items-center justify-center shadow-xs cursor-pointer transition-transform active:scale-95"
                     title="Replace with new file"
                   >
                     <RefreshCw size={11} className="stroke-[2.5]" />
@@ -596,7 +596,7 @@ export default function ProductImageGalleryManager({
                     <button
                       type="button"
                       onClick={() => handleMoveImage(index, 'right')}
-                      className="w-6 h-6 rounded-lg bg-white hover:bg-pink-100 text-[#C2477A] flex items-center justify-center shadow-xs cursor-pointer transition-transform active:scale-95"
+                      className="w-6 h-6 rounded-lg bg-white hover:bg-pink-100 text-[#D81B60] flex items-center justify-center shadow-xs cursor-pointer transition-transform active:scale-95"
                       title="Move Right"
                     >
                       <ArrowRight size={12} className="stroke-[2.5]" />
@@ -634,15 +634,15 @@ export default function ProductImageGalleryManager({
             }}
             className={`w-32 h-32 aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 p-2 text-center transition-all cursor-pointer shrink-0 ${
               isDraggingGeneral
-                ? 'border-[#C2477A] bg-pink-100/70 scale-[1.02]'
-                : 'border-pink-200/90 hover:border-[#C2477A] bg-pink-50/40 hover:bg-pink-50/80 text-[#C2477A]'
+                ? 'border-[#D81B60] bg-pink-100/70 scale-[1.02]'
+                : 'border-pink-200/90 hover:border-[#D81B60] bg-pink-50/40 hover:bg-pink-50/80 text-[#D81B60]'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             title="Drop packshots here or click to browse device"
           >
             {uploadingGeneral ? (
-              <Loader2 size={22} className="animate-spin text-[#C2477A]" />
+              <Loader2 size={22} className="animate-spin text-[#D81B60]" />
             ) : (
-              <div className="w-8 h-8 rounded-xl bg-white border border-pink-200 text-[#C2477A] flex items-center justify-center shadow-2xs">
+              <div className="w-8 h-8 rounded-xl bg-white border border-pink-200 text-[#D81B60] flex items-center justify-center shadow-2xs">
                 <Plus size={16} className="stroke-[2.5]" />
               </div>
             )}
@@ -666,7 +666,7 @@ export default function ProductImageGalleryManager({
             <button
               type="button"
               onClick={() => generalFileInputRef.current?.click()}
-              className="text-[#C2477A] font-bold text-[11px] hover:underline cursor-pointer shrink-0"
+              className="text-[#D81B60] font-bold text-[11px] hover:underline cursor-pointer shrink-0"
             >
               Browse Device Files →
             </button>

@@ -81,31 +81,57 @@ import {
   Settings,
   UserPlus
 } from 'lucide-react';
+// Resilient dynamic module loader with automatic retry and version-skew recovery
+function lazyWithRetry(componentImportFn) {
+  return React.lazy(async () => {
+    try {
+      return await componentImportFn();
+    } catch (err) {
+      console.warn('[Vite Lazy Import] Chunk fetch failed, attempting automatic retry...', err);
+      // Brief pause for dev server bundle / network recovery
+      await new Promise(resolve => setTimeout(resolve, 350));
+      try {
+        return await componentImportFn();
+      } catch (retryErr) {
+        // Guard against infinite reload loops
+        const lastReload = sessionStorage.getItem('salbeau_vite_chunk_reload');
+        const now = Date.now();
+        if (!lastReload || now - Number(lastReload) > 8000) {
+          sessionStorage.setItem('salbeau_vite_chunk_reload', String(now));
+          window.location.reload();
+          return new Promise(() => {}); // Wait for browser reload
+        }
+        throw retryErr;
+      }
+    }
+  });
+}
+
 // Lazy-loaded feature modules for code-splitting and rapid initial rendering
-const AllEmployeesPage = React.lazy(() => import('./components/governance/employees/AllEmployeesPage'));
-const AddEmployeePage = React.lazy(() => import('./components/governance/employees/AddEmployeePage'));
-const EmployeeProfilePage = React.lazy(() => import('./components/governance/employees/EmployeeProfilePage'));
-const EditEmployeePage = React.lazy(() => import('./components/governance/employees/EditEmployeePage'));
-const EmployeePermissionsPage = React.lazy(() => import('./components/governance/employees/EmployeePermissionsPage'));
-const ProductsCatalogMatrix = React.lazy(() => import('./components/products/ProductsCatalogMatrix'));
-const AddNewProductPage = React.lazy(() => import('./components/products/AddNewProductPage_Redesigned'));
-const AttributesMasterPage = React.lazy(() => import('./components/categories/AttributesMasterPage'));
-const MainCategoriesManager = React.lazy(() => import('./components/categories/MainCategoriesManager'));
-const CustomerSearchRequestsPage = React.lazy(() => import('./components/b2b/CustomerSearchRequestsPage'));
-const B2BVerificationPage = React.lazy(() => import('./components/b2b/B2BVerificationPage'));
-const ApprovalCenterPage = React.lazy(() => import('./components/governance/ApprovalCenterPage'));
-const BrandManagementPage = React.lazy(() => import('./components/brands/BrandManagementPage'));
-const CentralBannerManagementPage = React.lazy(() => import('./components/banners/BannerManagementPage'));
-const DeliveryPartnerManagementPage = React.lazy(() => import('./components/orders/DeliveryPartnerManagementPage'));
-const BranchManagementPage = React.lazy(() => import('./components/settings/BranchManagementPage'));
-const GeneralSettingsPage = React.lazy(() => import('./components/settings/GeneralSettingsPage'));
-const UpiPaymentVerificationPage = React.lazy(() => import('./components/payments/UpiPaymentVerificationPage'));
-const Security2FASettingsPage = React.lazy(() => import('./components/security/Security2FASettingsPage'));
+const AllEmployeesPage = lazyWithRetry(() => import('./components/governance/employees/AllEmployeesPage'));
+const AddEmployeePage = lazyWithRetry(() => import('./components/governance/employees/AddEmployeePage'));
+const EmployeeProfilePage = lazyWithRetry(() => import('./components/governance/employees/EmployeeProfilePage'));
+const EditEmployeePage = lazyWithRetry(() => import('./components/governance/employees/EditEmployeePage'));
+const EmployeePermissionsPage = lazyWithRetry(() => import('./components/governance/employees/EmployeePermissionsPage'));
+const ProductsCatalogMatrix = lazyWithRetry(() => import('./components/products/ProductsCatalogMatrix'));
+const AddNewProductPage = lazyWithRetry(() => import('./components/products/AddNewProductPage_Redesigned'));
+const AttributesMasterPage = lazyWithRetry(() => import('./components/categories/AttributesMasterPage'));
+const MainCategoriesManager = lazyWithRetry(() => import('./components/categories/MainCategoriesManager'));
+const CustomerSearchRequestsPage = lazyWithRetry(() => import('./components/b2b/CustomerSearchRequestsPage'));
+const B2BVerificationPage = lazyWithRetry(() => import('./components/b2b/B2BVerificationPage'));
+const ApprovalCenterPage = lazyWithRetry(() => import('./components/governance/ApprovalCenterPage'));
+import BrandManagementPage from './components/brands/BrandManagementPage';
+const CentralBannerManagementPage = lazyWithRetry(() => import('./components/banners/BannerManagementPage'));
+const DeliveryPartnerManagementPage = lazyWithRetry(() => import('./components/orders/DeliveryPartnerManagementPage'));
+const BranchManagementPage = lazyWithRetry(() => import('./components/settings/BranchManagementPage'));
+const GeneralSettingsPage = lazyWithRetry(() => import('./components/settings/GeneralSettingsPage'));
+const UpiPaymentVerificationPage = lazyWithRetry(() => import('./components/payments/UpiPaymentVerificationPage'));
+const Security2FASettingsPage = lazyWithRetry(() => import('./components/security/Security2FASettingsPage'));
 
 const PageLoadingFallback = () => (
   <div className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center animate-fade-in">
     <div className="w-12 h-12 rounded-2xl bg-white border border-[#FCE4EC] flex items-center justify-center mb-3 shadow-sm">
-      <Loader2 size={24} className="text-[#C2477A] animate-spin" />
+      <Loader2 size={24} className="text-[#D81B60] animate-spin" />
     </div>
     <span className="text-xs font-bold text-gray-800 tracking-wide">Loading Module...</span>
     <span className="text-[11px] text-gray-400 mt-0.5">Salbeau Executive Console</span>
@@ -602,7 +628,7 @@ const AdminDashboard = () => {
           label: 'Home Banners',
           icon: ImageIcon,
           badge: homeBanners ? `${homeBanners.filter(b => b.isActive !== false).length} Active` : '5 Active',
-          badgeClass: 'bg-white text-[#C2477A] font-bold border border-[#FCE4EC] px-1.5 py-0.5 text-[9.5px] rounded-full',
+          badgeClass: 'bg-white text-[#D81B60] font-bold border border-[#FCE4EC] px-1.5 py-0.5 text-[9.5px] rounded-full',
           isPillBadge: true,
         },
         {
@@ -668,7 +694,7 @@ const AdminDashboard = () => {
           label: 'Users',
           icon: Users,
           badge: users?.length > 0 ? String(users.length) : null,
-          badgeClass: 'min-w-[20px] h-5 px-1.5 bg-[#C2477A] text-white text-[10px] font-bold rounded-full flex items-center justify-center',
+          badgeClass: 'min-w-[20px] h-5 px-1.5 bg-[#D81B60] text-white text-[10px] font-bold rounded-full flex items-center justify-center',
           isPillBadge: true,
           subItems: [
             {
@@ -676,7 +702,7 @@ const AdminDashboard = () => {
               label: 'B2C Users',
               icon: User,
               badge: b2cUsersCount > 0 ? String(b2cUsersCount) : null,
-              badgeClass: 'bg-pink-100 text-[#C2477A] font-bold text-[9.5px] px-1.5 py-0.2 rounded-full'
+              badgeClass: 'bg-pink-100 text-[#D81B60] font-bold text-[9.5px] px-1.5 py-0.2 rounded-full'
             },
             {
               id: 'users/b2b',
@@ -692,7 +718,7 @@ const AdminDashboard = () => {
           label: 'Customer Search Activity',
           icon: Search,
           badge: (searchRequests || []).filter(r => !r.status || r.status === 'pending').length || null,
-          badgeClass: 'min-w-[20px] h-5 px-1.5 bg-[#C2477A] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs',
+          badgeClass: 'min-w-[20px] h-5 px-1.5 bg-[#D81B60] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs',
           isPillBadge: true,
         },
         {
@@ -765,7 +791,7 @@ const AdminDashboard = () => {
           label: 'Employees',
           icon: Users,
           badge: (employees || []).filter(e => e.status === 'active').length || null,
-          badgeClass: 'px-2 py-0.5 bg-[#C2477A] text-white text-[10px] font-bold rounded-full flex items-center justify-center',
+          badgeClass: 'px-2 py-0.5 bg-[#D81B60] text-white text-[10px] font-bold rounded-full flex items-center justify-center',
           isPillBadge: true,
           subItems: [
             { id: 'employees', label: 'All Employees' },
@@ -1591,7 +1617,7 @@ const AdminDashboard = () => {
   const [previewQty, setPreviewQty] = useState(3);
 
   // Shade/Color Variant Management State (Catalog Matrix)
-  const [shadeFormDraft, setShadeFormDraft] = useState({ name: '', hexColor: '#C2477A', priceOverride: '', active: true });
+  const [shadeFormDraft, setShadeFormDraft] = useState({ name: '', hexColor: '#D81B60', priceOverride: '', active: true });
   // Dynamic Variant Management State for Edit Product Modal
   const [editProductActiveAttributes, setEditProductActiveAttributes] = useState([]);
   const [showAddVariantForm, setShowAddVariantForm] = useState(false);
@@ -1600,7 +1626,7 @@ const AdminDashboard = () => {
   const [editVariantDraft, setEditVariantDraft] = useState({
     name: '',
     attributes: {},
-    hexColor: '#C2477A',
+    hexColor: '#D81B60',
     price: '',
     barcode: ''
   });
@@ -2328,7 +2354,7 @@ const AdminDashboard = () => {
     setEditVariantDraft({
       name: '',
       attributes: {},
-      hexColor: '#C2477A',
+      hexColor: '#D81B60',
       price: '',
       barcode: ''
     });
@@ -2838,7 +2864,7 @@ const AdminDashboard = () => {
                 placeholder="admin@salbeau.com or employee@salbeau.com"
                 value={loginCredentials.email}
                 onChange={(e) => setLoginCredentials({ ...loginCredentials, email: e.target.value })}
-                className="w-full p-3 rounded-xl border border-pink-100/90 outline-none focus:border-[#C2477A] bg-white font-medium shadow-2xs text-gray-900 text-xs"
+                className="w-full p-3 rounded-xl border border-pink-100/90 outline-none focus:border-[#D81B60] bg-white font-medium shadow-2xs text-gray-900 text-xs"
               />
             </div>
 
@@ -2849,14 +2875,14 @@ const AdminDashboard = () => {
                 required
                 value={loginCredentials.password}
                 onChange={(e) => setLoginCredentials({ ...loginCredentials, password: e.target.value })}
-                className="w-full p-3 rounded-xl border border-pink-100/90 outline-none focus:border-[#C2477A] bg-white font-medium shadow-2xs text-gray-900 text-xs"
+                className="w-full p-3 rounded-xl border border-pink-100/90 outline-none focus:border-[#D81B60] bg-white font-medium shadow-2xs text-gray-900 text-xs"
               />
             </div>
 
             <button
               type="submit"
               disabled={loginLoading}
-              className="w-full bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white py-3.5 rounded-xl font-bold text-xs shadow-md transition-all active:scale-[0.99] cursor-pointer mt-2 flex items-center justify-center gap-2 disabled:opacity-70"
+              className="w-full bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white py-3.5 rounded-xl font-bold text-xs shadow-md transition-all active:scale-[0.99] cursor-pointer mt-2 flex items-center justify-center gap-2 disabled:opacity-70"
             >
               {loginLoading ? (
                 <>
@@ -2920,19 +2946,19 @@ const AdminDashboard = () => {
           <button
             type="button"
             onClick={() => setIsMobileDrawerOpen(true)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-700 hover:text-[#C2477A] hover:bg-[#FFF5F8] border border-pink-100/70 transition-all cursor-pointer"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-700 hover:text-[#D81B60] hover:bg-[#FFF5F8] border border-pink-100/70 transition-all cursor-pointer"
             aria-label="Open menu"
             title="Open menu"
           >
             <Menu size={18} />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-[#C2477A] text-white flex items-center justify-center shadow-xs">
+            <div className="w-7 h-7 rounded-full bg-[#D81B60] text-white flex items-center justify-center shadow-xs">
               <Sparkles size={14} />
             </div>
             <span
               style={{ fontFamily: "'Great Vibes', cursive" }}
-              className="text-2xl text-[#C2477A] leading-none select-none"
+              className="text-2xl text-[#D81B60] leading-none select-none"
             >
               Salbeau
             </span>
@@ -2945,7 +2971,7 @@ const AdminDashboard = () => {
             type="button"
             onClick={() => refreshData && refreshData()}
             title="Refresh Admin Data"
-            className="p-2 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] shadow-2xs transition-all cursor-pointer flex items-center justify-center"
+            className="p-2 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#D81B60] shadow-2xs transition-all cursor-pointer flex items-center justify-center"
           >
             <RefreshCw size={15} />
           </button>
@@ -2963,7 +2989,7 @@ const AdminDashboard = () => {
           />
 
           {/* Current Active Section Badge on Mobile */}
-          <span className="text-[11px] font-bold text-[#C2477A] bg-white px-2.5 py-1 rounded-full border border-pink-200/50 truncate max-w-[130px]">
+          <span className="text-[11px] font-bold text-[#D81B60] bg-white px-2.5 py-1 rounded-full border border-pink-200/50 truncate max-w-[130px]">
             {getActiveTabLabel(activeTab)}
           </span>
         </div>
@@ -3016,7 +3042,7 @@ const AdminDashboard = () => {
                 <button
                   type="button"
                   onClick={toggleSidebar}
-                  className="hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-gray-600 hover:text-[#C2477A] hover:bg-pink-50 border border-pink-100/80 bg-white shadow-2xs transition-all cursor-pointer shrink-0"
+                  className="hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-gray-600 hover:text-[#D81B60] hover:bg-pink-50 border border-pink-100/80 bg-white shadow-2xs transition-all cursor-pointer shrink-0"
                   title="Expand sidebar"
                   aria-label="Expand sidebar"
                 >
@@ -3075,7 +3101,7 @@ const AdminDashboard = () => {
                 type="button"
                 onClick={() => refreshData && refreshData()}
                 title="Refresh Admin Data"
-                className="px-3.5 py-2 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#C2477A] shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl border border-pink-200 bg-white hover:bg-pink-50 text-gray-700 hover:text-[#D81B60] shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <RefreshCw size={15} />
                 <span className="text-xs font-bold">Refresh</span>
@@ -3098,13 +3124,13 @@ const AdminDashboard = () => {
                 onClick={() => navigateToTab('search_requests')}
                 title="Customer Search Requests"
                 className={`relative p-2.5 rounded-xl border transition-all cursor-pointer ${activeTab === 'search_requests'
-                    ? 'bg-[#C2477A] text-white border-[#C2477A]'
+                    ? 'bg-[#D81B60] text-white border-[#D81B60]'
                     : 'bg-white hover:bg-[#FFF5F8] text-black border-[#FCE4EC] shadow-2xs'
                   }`}
               >
                 <Search size={16} />
                 {(searchRequests || []).filter(r => !r.status || r.status === 'pending').length > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#C2477A] text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#D81B60] text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
                     {(searchRequests || []).filter(r => !r.status || r.status === 'pending').length}
                   </span>
                 )}
@@ -3115,7 +3141,7 @@ const AdminDashboard = () => {
                 onClick={() => navigateToTab('abandoned_carts')}
                 title="Abandoned Carts Tracking & Recovery"
                 className={`relative p-2.5 rounded-xl border transition-all cursor-pointer ${activeTab === 'abandoned_carts'
-                    ? 'bg-[#C2477A] text-white border-[#C2477A]'
+                    ? 'bg-[#D81B60] text-white border-[#D81B60]'
                     : 'bg-white hover:bg-pink-50 text-gray-700 border-pink-100 shadow-2xs'
                   }`}
               >
@@ -3135,7 +3161,7 @@ const AdminDashboard = () => {
           {/* Permission Guard for Employees */}
           {currentAuthUser?.role === 'employee' && !canAccessTab(activeTab, currentAuthUser) && (
             <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-pink-100 shadow-2xs max-w-lg mx-auto mt-6 animate-fade-in">
-              <div className="w-16 h-16 rounded-2xl bg-rose-50 text-[#C2477A] flex items-center justify-center mx-auto mb-4 border border-rose-100">
+              <div className="w-16 h-16 rounded-2xl bg-rose-50 text-[#D81B60] flex items-center justify-center mx-auto mb-4 border border-rose-100">
                 <ShieldAlert size={32} />
               </div>
               <h2 className="text-lg font-black text-gray-900">Restricted Workspace Section</h2>
@@ -3145,7 +3171,7 @@ const AdminDashboard = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab(getFirstAccessibleTab(currentAuthUser))}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#C2477A] to-[#E25586] text-white font-bold text-xs hover:opacity-90 transition-all shadow-sm cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] text-white font-bold text-xs hover:opacity-90 transition-all shadow-sm cursor-pointer"
               >
                 Go to My Authorized Section
               </button>
@@ -3181,7 +3207,7 @@ const AdminDashboard = () => {
                     <span className="text-xs font-semibold text-gray-500 tracking-wide">
                       Total Store Orders
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-white text-[#C2477A] flex items-center justify-center shadow-2xs">
+                    <div className="w-10 h-10 rounded-full bg-white text-[#D81B60] flex items-center justify-center shadow-2xs">
                       <ShoppingBag size={18} />
                     </div>
                   </div>
@@ -3215,7 +3241,7 @@ const AdminDashboard = () => {
                     <span className="text-xs font-semibold text-gray-500 tracking-wide">
                       Total Revenue
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-white text-[#C2477A] flex items-center justify-center shadow-2xs">
+                    <div className="w-10 h-10 rounded-full bg-white text-[#D81B60] flex items-center justify-center shadow-2xs">
                       <DollarSign size={18} />
                     </div>
                   </div>
@@ -3249,7 +3275,7 @@ const AdminDashboard = () => {
                     <span className="text-xs font-semibold text-gray-500 tracking-wide">
                       Active Brands Ratio
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-white text-[#C2477A] flex items-center justify-center shadow-2xs">
+                    <div className="w-10 h-10 rounded-full bg-white text-[#D81B60] flex items-center justify-center shadow-2xs">
                       <Star size={18} />
                     </div>
                   </div>
@@ -3279,10 +3305,10 @@ const AdminDashboard = () => {
                   className="bg-white border border-pink-100/70 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-gray-500 tracking-wide group-hover:text-[#C2477A] transition-colors">
+                    <span className="text-xs font-semibold text-gray-500 tracking-wide group-hover:text-[#D81B60] transition-colors">
                       Active Employees
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-white text-[#C2477A] flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 rounded-full bg-white text-[#D81B60] flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
                       <Users size={18} />
                     </div>
                   </div>
@@ -3291,7 +3317,7 @@ const AdminDashboard = () => {
                       {(employees || []).filter(e => e.status === 'active').length}
                       <span className="text-sm font-semibold text-gray-400 ml-1.5">/ {employees.length}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[#C2477A] text-xs font-semibold mt-2">
+                    <div className="flex items-center gap-1.5 text-[#D81B60] text-xs font-semibold mt-2">
                       <ShieldCheck size={14} />
                       <span>Manage Staff & Permissions →</span>
                     </div>
@@ -3313,7 +3339,7 @@ const AdminDashboard = () => {
                     <select
                       value={selectedBranch}
                       onChange={(e) => setSelectedBranch(e.target.value)}
-                      className="appearance-none bg-white text-[#C2477A] border border-pink-100 text-xs font-semibold px-4 py-1.5 pr-8 rounded-xl outline-none cursor-pointer"
+                      className="appearance-none bg-white text-[#D81B60] border border-pink-100 text-xs font-semibold px-4 py-1.5 pr-8 rounded-xl outline-none cursor-pointer"
                     >
                       {availableBranches.map((br) => (
                         <option key={br} value={br}>
@@ -3321,7 +3347,7 @@ const AdminDashboard = () => {
                         </option>
                       ))}
                     </select>
-                    <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#C2477A] pointer-events-none" />
+                    <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#D81B60] pointer-events-none" />
                   </div>
                 </div>
 
@@ -3391,7 +3417,7 @@ const AdminDashboard = () => {
                                     className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-2xs"
                                   />
                                 ) : (
-                                  <div className="w-10 h-10 rounded-full bg-pink-100 text-[#C2477A] font-bold flex items-center justify-center text-xs">
+                                  <div className="w-10 h-10 rounded-full bg-pink-100 text-[#D81B60] font-bold flex items-center justify-center text-xs">
                                     {(order.userName || 'U').slice(0, 2).toUpperCase()}
                                   </div>
                                 )}
@@ -3402,7 +3428,7 @@ const AdminDashboard = () => {
                                   </div>
                                   {order.deliveryType === 'delivery' && order.deliveryAddress && (
                                     <div className="text-[10px] text-gray-500 font-medium flex items-center gap-1 mt-1 max-w-xs truncate">
-                                      <MapPin size={10} className="text-[#C2477A] flex-shrink-0" />
+                                      <MapPin size={10} className="text-[#D81B60] flex-shrink-0" />
                                       <span className="truncate">{order.deliveryAddress}</span>
                                     </div>
                                   )}
@@ -3411,7 +3437,7 @@ const AdminDashboard = () => {
                             </td>
                             <td className="py-3.5 px-4">
                               <div className="space-y-1">
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#C2477A] whitespace-nowrap inline-block">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#D81B60] whitespace-nowrap inline-block">
                                   {order.userRole}
                                 </span>
                                 <div className="text-[11px] font-semibold text-gray-700 flex items-center gap-1">
@@ -3447,7 +3473,7 @@ const AdminDashboard = () => {
                                 onSuccessToast={(msg) => setDashboardToast(msg)}
                               />
                             </td>
-                            <td className="py-3.5 px-4 text-right font-bold text-sm text-[#C2477A] whitespace-nowrap">
+                            <td className="py-3.5 px-4 text-right font-bold text-sm text-[#D81B60] whitespace-nowrap">
                               ₹{typeof order.totalAmount === 'number' ? order.totalAmount.toLocaleString('en-IN') : order.totalAmount}
                             </td>
                             <td className="py-3.5 px-4 rounded-r-xl text-center whitespace-nowrap">
@@ -3456,7 +3482,7 @@ const AdminDashboard = () => {
                                   setSelectedInvoiceOrder(order);
                                   setIsInvoiceModalOpen(true);
                                 }}
-                                className="bg-white hover:bg-[#FFF5F8] text-[#C2477A] border border-pink-200 px-2.5 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1 mx-auto transition-colors cursor-pointer shadow-2xs"
+                                className="bg-white hover:bg-[#FFF5F8] text-[#D81B60] border border-pink-200 px-2.5 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1 mx-auto transition-colors cursor-pointer shadow-2xs"
                               >
                                 <FileText size={13} /> Receipt
                               </button>
@@ -3478,7 +3504,7 @@ const AdminDashboard = () => {
               <div className="bg-gradient-to-r from-white via-rose-50 to-white p-6 rounded-2xl border border-pink-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <Eye className="text-[#C2477A]" size={20} />
+                    <Eye className="text-[#D81B60]" size={20} />
                     <h2 className="text-base font-bold text-gray-900">Mobile Home Page Section Access</h2>
                   </div>
                   <p className="text-xs text-gray-600 max-w-2xl leading-relaxed">
@@ -3487,7 +3513,7 @@ const AdminDashboard = () => {
                 </div>
                 <button
                   onClick={resetHomeSectionVisibility}
-                  className="bg-white hover:bg-rose-50 text-[#C2477A] border border-pink-200 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs transition-colors flex items-center gap-2 cursor-pointer shrink-0"
+                  className="bg-white hover:bg-rose-50 text-[#D81B60] border border-pink-200 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs transition-colors flex items-center gap-2 cursor-pointer shrink-0"
                 >
                   <Sparkles size={14} />
                   <span>Reset All to Visible</span>
@@ -3552,7 +3578,7 @@ const AdminDashboard = () => {
                       >
                         <div className="flex items-start gap-3.5">
                           <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isVisible ? 'bg-white text-[#C2477A]' : 'bg-gray-100 text-gray-400'
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isVisible ? 'bg-white text-[#D81B60]' : 'bg-gray-100 text-gray-400'
                               }`}
                           >
                             <IconComp size={20} />
@@ -3571,7 +3597,7 @@ const AdminDashboard = () => {
                         {/* Toggle Switch */}
                         <button
                           onClick={() => toggleHomeSectionVisibility && toggleHomeSectionVisibility(sec.key)}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isVisible ? 'bg-[#C2477A]' : 'bg-gray-300'
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isVisible ? 'bg-[#D81B60]' : 'bg-gray-300'
                             }`}
                           role="switch"
                           aria-checked={isVisible}
@@ -3591,10 +3617,10 @@ const AdminDashboard = () => {
                   <div>
                     <div className="flex items-center justify-between mb-3 border-b border-pink-100 pb-3">
                       <div className="flex items-center gap-2">
-                        <Store size={16} className="text-[#C2477A]" />
+                        <Store size={16} className="text-[#D81B60]" />
                         <h3 className="text-xs font-bold text-gray-900">Mobile Home Page Layout Preview</h3>
                       </div>
-                      <span className="text-[10px] font-bold text-[#C2477A] bg-white px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold text-[#D81B60] bg-white px-2 py-0.5 rounded-full">
                         Live State
                       </span>
                     </div>
@@ -3606,7 +3632,7 @@ const AdminDashboard = () => {
                     <div className="w-full max-w-[260px] mx-auto border-4 border-gray-800 rounded-[28px] overflow-hidden bg-white shadow-md text-[10px]">
                       {/* Simulated Mobile Header */}
                       {(!homeSectionVisibility || homeSectionVisibility.branchBar !== false) ? (
-                        <div className="bg-white p-2 border-b border-pink-100 flex items-center justify-between text-[#C2477A] font-semibold">
+                        <div className="bg-white p-2 border-b border-pink-100 flex items-center justify-between text-[#D81B60] font-semibold">
                           <span className="flex items-center gap-1"><MapPin size={10} /> MG Road Branch</span>
                           <div className="flex items-center gap-1.5">
                             <Search size={10} />
@@ -3621,13 +3647,13 @@ const AdminDashboard = () => {
                       {(!homeSectionVisibility || homeSectionVisibility.pricingRoleBanner !== false) && (
                         <div className="bg-white px-2 py-1 flex items-center justify-between text-[#8C7078] text-[9px]">
                           <span>Role: Salon Owner</span>
-                          <span className="text-[#C2477A] font-bold">Change</span>
+                          <span className="text-[#D81B60] font-bold">Change</span>
                         </div>
                       )}
 
                       {/* Simulated Hero Promo */}
                       {(!homeSectionVisibility || homeSectionVisibility.heroPromoBanner !== false) ? (
-                        <div className="m-2 bg-gradient-to-r from-[#C2477A] to-[#E25586] p-2.5 rounded-xl text-white">
+                        <div className="m-2 bg-gradient-to-r from-[#D81B60] to-[#E25586] p-2.5 rounded-xl text-white">
                           <div className="font-bold text-[10px]">Salbeau Tier Savings</div>
                           <div className="text-[8px] text-white/80">Up to 35% discount</div>
                         </div>
@@ -3675,7 +3701,7 @@ const AdminDashboard = () => {
                             {[1, 2].map((i) => (
                               <div key={i} className="bg-white p-1 rounded-lg border border-pink-100">
                                 <div className="w-full h-8 bg-white rounded mb-1"></div>
-                                <div className="font-bold text-[8px] text-[#C2477A]">₹450</div>
+                                <div className="font-bold text-[8px] text-[#D81B60]">₹450</div>
                               </div>
                             ))}
                           </div>
@@ -3696,7 +3722,7 @@ const AdminDashboard = () => {
               <div className="mt-6 bg-white border border-pink-200/80 rounded-2xl p-6 shadow-2xs">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-pink-100 gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white text-[#C2477A] flex items-center justify-center border border-pink-200 shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-white text-[#D81B60] flex items-center justify-center border border-pink-200 shrink-0">
                       <Sparkles size={20} />
                     </div>
                     <div>
@@ -3746,7 +3772,7 @@ const AdminDashboard = () => {
                         await updateRecommendationConfig({ enabled: next });
                         setDashboardToast({ type: 'success', message: `Automatic recommendations ${next ? 'enabled' : 'disabled'}!` });
                       }}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${recommendationConfig?.enabled !== false ? 'bg-[#C2477A]' : 'bg-gray-300'
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${recommendationConfig?.enabled !== false ? 'bg-[#D81B60]' : 'bg-gray-300'
                         }`}
                     >
                       <span
@@ -3776,7 +3802,7 @@ const AdminDashboard = () => {
                               setDashboardToast({ type: 'success', message: `Max recommendations set to ${num}!` });
                             }}
                             className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${isCurrent
-                                ? 'bg-[#C2477A] text-white shadow-xs'
+                                ? 'bg-[#D81B60] text-white shadow-xs'
                                 : 'bg-gray-100 text-gray-600 hover:bg-pink-50'
                               }`}
                           >
@@ -3802,7 +3828,7 @@ const AdminDashboard = () => {
                         await updateRecommendationConfig({ frequentlyBoughtTogether: next });
                         setDashboardToast({ type: 'success', message: `Routine pairings ${next ? 'enabled' : 'disabled'}!` });
                       }}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${recommendationConfig?.frequentlyBoughtTogether !== false ? 'bg-[#C2477A]' : 'bg-gray-300'
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${recommendationConfig?.frequentlyBoughtTogether !== false ? 'bg-[#D81B60]' : 'bg-gray-300'
                         }`}
                     >
                       <span
@@ -3827,7 +3853,7 @@ const AdminDashboard = () => {
                         await updateRecommendationConfig({ popularProductsFallback: next });
                         setDashboardToast({ type: 'success', message: `Popular fallback ${next ? 'enabled' : 'disabled'}!` });
                       }}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${recommendationConfig?.popularProductsFallback !== false ? 'bg-[#C2477A]' : 'bg-gray-300'
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${recommendationConfig?.popularProductsFallback !== false ? 'bg-[#D81B60]' : 'bg-gray-300'
                         }`}
                     >
                       <span
@@ -4152,7 +4178,7 @@ const AdminDashboard = () => {
                       <button
                         type="button"
                         onClick={() => handleAddProductWithBarcode(productNotFoundModal.barcode, productNotFoundModal.format)}
-                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white text-xs font-black shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white text-xs font-black shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                       >
                         <PlusCircle size={15} />
                         <span>Add Product</span>
@@ -4195,13 +4221,13 @@ const AdminDashboard = () => {
                       setUserCurrentPage(1);
                     }}
                     className={`px-4 py-2 rounded-lg font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${!isB2BUserView
-                        ? 'bg-[#C2477A] text-white shadow-xs'
-                        : 'text-gray-600 hover:text-[#C2477A] hover:bg-white/60'
+                        ? 'bg-[#D81B60] text-white shadow-xs'
+                        : 'text-gray-600 hover:text-[#D81B60] hover:bg-white/60'
                       }`}
                   >
                     <User size={14} />
                     <span>B2C Users (General)</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${!isB2BUserView ? 'bg-white text-[#C2477A]' : 'bg-pink-100 text-[#C2477A]'}`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${!isB2BUserView ? 'bg-white text-[#D81B60]' : 'bg-pink-100 text-[#D81B60]'}`}>
                       {b2cUsersCount}
                     </span>
                   </button>
@@ -4212,13 +4238,13 @@ const AdminDashboard = () => {
                       setUserCurrentPage(1);
                     }}
                     className={`px-4 py-2 rounded-lg font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${isB2BUserView
-                        ? 'bg-[#C2477A] text-white shadow-xs'
-                        : 'text-gray-600 hover:text-[#C2477A] hover:bg-white/60'
+                        ? 'bg-[#D81B60] text-white shadow-xs'
+                        : 'text-gray-600 hover:text-[#D81B60] hover:bg-white/60'
                       }`}
                   >
                     <Building2 size={14} />
                     <span>B2B Users (Salon, Artist, Beautician)</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${isB2BUserView ? 'bg-white text-[#C2477A]' : 'bg-purple-100 text-purple-700'}`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${isB2BUserView ? 'bg-white text-[#D81B60]' : 'bg-purple-100 text-purple-700'}`}>
                       {b2bUsersCount}
                     </span>
                   </button>
@@ -4226,7 +4252,7 @@ const AdminDashboard = () => {
 
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-white px-4 py-2 rounded-xl border border-pink-100 shadow-2xs">
-                    <Users size={15} className="text-[#C2477A]" />
+                    <Users size={15} className="text-[#D81B60]" />
                     <span>
                       Total Registered: <strong className="text-gray-900 font-black">{users.length}</strong>
                     </span>
@@ -4266,13 +4292,13 @@ const AdminDashboard = () => {
                           </span>
                         </h3>
                         <p className="text-xs text-gray-600 mt-0.5">
-                          Role indicates customer type. <strong>B2B Wholesale Pricing is only activated when Admin approves verification</strong> (<code className="text-[#C2477A] font-bold">b2b_verified = true</code>).
+                          Role indicates customer type. <strong>B2B Wholesale Pricing is only activated when Admin approves verification</strong> (<code className="text-[#D81B60] font-bold">b2b_verified = true</code>).
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => navigateToTab('b2b-verification')}
-                      className="px-3.5 py-2 rounded-xl bg-[#C2477A] text-white text-xs font-bold hover:bg-[#a63563] transition-all flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-[#D81B60] text-white text-xs font-bold hover:bg-[#a63563] transition-all flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
                     >
                       <ShieldCheck size={14} />
                       <span>Open Verification Queue</span>
@@ -4288,7 +4314,7 @@ const AdminDashboard = () => {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-pink-100/70 shadow-xs">
                     <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                       <div className="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-pink-100 flex-1 sm:flex-initial min-w-[220px]">
-                        <Search size={14} className="text-[#C2477A]" />
+                        <Search size={14} className="text-[#D81B60]" />
                         <input
                           type="text"
                           placeholder="Search B2B name, phone, business, city..."
@@ -4314,7 +4340,7 @@ const AdminDashboard = () => {
 
                       {/* B2B Type Filter */}
                       <div className="flex items-center gap-2">
-                        <Filter size={14} className="text-[#C2477A]" />
+                        <Filter size={14} className="text-[#D81B60]" />
                         <span className="text-xs font-semibold text-gray-700">Type:</span>
                         <select
                           value={b2bTypeFilter}
@@ -4322,7 +4348,7 @@ const AdminDashboard = () => {
                             setB2bTypeFilter(e.target.value);
                             setUserCurrentPage(1);
                           }}
-                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#D81B60] outline-none cursor-pointer"
                         >
                           <option value="all">All B2B Types</option>
                           <option value="salon">Salon</option>
@@ -4340,7 +4366,7 @@ const AdminDashboard = () => {
                             setB2bVerificationStatusFilter(e.target.value);
                             setUserCurrentPage(1);
                           }}
-                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#C2477A] outline-none cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-pink-100 text-[#D81B60] outline-none cursor-pointer"
                         >
                           <option value="all">All Statuses</option>
                           <option value="pending">Pending</option>
@@ -4360,7 +4386,7 @@ const AdminDashboard = () => {
                             setB2bVerificationStatusFilter('all');
                             setUserCurrentPage(1);
                           }}
-                          className="text-xs font-bold text-[#C2477A] hover:underline cursor-pointer"
+                          className="text-xs font-bold text-[#D81B60] hover:underline cursor-pointer"
                         >
                           Reset Filters
                         </button>
@@ -4407,7 +4433,7 @@ const AdminDashboard = () => {
 
                               const typeLabel = u.role === 'salon' ? 'Salon' : (u.role === 'artist' ? 'Makeup Artist' : (u.role === 'beautician' ? 'Beautician' : u.role));
                               const typeBadgeClass = {
-                                salon: 'bg-pink-100 text-[#C2477A] border-pink-200',
+                                salon: 'bg-pink-100 text-[#D81B60] border-pink-200',
                                 artist: 'bg-blue-100 text-blue-700 border-blue-200',
                                 beautician: 'bg-emerald-100 text-emerald-700 border-emerald-200'
                               }[u.role?.toLowerCase()] || 'bg-gray-100 text-gray-700 border-gray-200';
@@ -4432,7 +4458,7 @@ const AdminDashboard = () => {
                                   {/* Customer Name */}
                                   <td className="py-3.5 px-5">
                                     <div className="flex items-center gap-3">
-                                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-[#C2477A] text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
+                                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-[#D81B60] text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
                                         {initial}
                                       </div>
                                       <div>
@@ -4449,7 +4475,7 @@ const AdminDashboard = () => {
                                   {/* Professional / Business Name */}
                                   <td className="py-3.5 px-5">
                                     <div className="font-bold text-gray-800 flex items-center gap-1.5">
-                                      <Store size={13} className="text-[#C2477A] shrink-0" />
+                                      <Store size={13} className="text-[#D81B60] shrink-0" />
                                       <span>{matchingV?.business_name || u.businessName || '—'}</span>
                                     </div>
                                     {matchingV?.gstin && (
@@ -4514,7 +4540,7 @@ const AdminDashboard = () => {
                                     <div className="flex items-center justify-end gap-1.5">
                                       <button
                                         onClick={() => setSelectedUserDetails(u)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white hover:bg-pink-50 text-[#C2477A] font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white hover:bg-pink-50 text-[#D81B60] font-bold text-xs shadow-2xs transition-all cursor-pointer"
                                         title="View Customer Profile"
                                       >
                                         <Info size={12} />
@@ -4525,7 +4551,7 @@ const AdminDashboard = () => {
                                           const roleRoute = u.role === 'salon' ? 'b2b-verification/salon' : (u.role === 'artist' ? 'b2b-verification/makeup-artist' : (u.role === 'beautician' ? 'b2b-verification/beautician' : 'b2b-verification'));
                                           navigateToTab(roleRoute);
                                         }}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#C2477A] text-white hover:bg-[#a63563] font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#D81B60] text-white hover:bg-[#a63563] font-bold text-xs shadow-2xs transition-all cursor-pointer"
                                         title="Inspect Verification Application"
                                       >
                                         <ShieldCheck size={12} />
@@ -4567,7 +4593,7 @@ const AdminDashboard = () => {
                               setUserRecordsPerPage(Number(e.target.value));
                               setUserCurrentPage(1);
                             }}
-                            className="px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white text-gray-800 font-bold outline-none cursor-pointer focus:border-[#C2477A]"
+                            className="px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white text-gray-800 font-bold outline-none cursor-pointer focus:border-[#D81B60]"
                           >
                             <option value={15}>15</option>
                             <option value={20}>20</option>
@@ -4588,7 +4614,7 @@ const AdminDashboard = () => {
                         <button
                           onClick={() => setUserCurrentPage((p) => Math.max(1, p - 1))}
                           disabled={userCurrentPage <= 1}
-                          className={`p-2 rounded-xl border flex items-center justify-center transition-all ${userCurrentPage <= 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'}`}
+                          className={`p-2 rounded-xl border flex items-center justify-center transition-all ${userCurrentPage <= 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'}`}
                           title="Previous Page"
                         >
                           <ChevronLeft size={16} />
@@ -4599,7 +4625,7 @@ const AdminDashboard = () => {
                         <button
                           onClick={() => setUserCurrentPage((p) => Math.min(totalUserPages, p + 1))}
                           disabled={userCurrentPage >= totalUserPages}
-                          className={`p-2 rounded-xl border flex items-center justify-center transition-all ${userCurrentPage >= totalUserPages ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'}`}
+                          className={`p-2 rounded-xl border flex items-center justify-center transition-all ${userCurrentPage >= totalUserPages ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'}`}
                           title="Next Page"
                         >
                           <ChevronRight size={16} />
@@ -4614,13 +4640,13 @@ const AdminDashboard = () => {
                   {/* B2C Info Banner */}
                   <div className="bg-gradient-to-r from-white via-white to-white p-4 rounded-2xl border border-pink-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-pink-100 text-[#C2477A] flex items-center justify-center shrink-0 border border-pink-200">
+                      <div className="w-10 h-10 rounded-xl bg-pink-100 text-[#D81B60] flex items-center justify-center shrink-0 border border-pink-200">
                         <User size={18} />
                       </div>
                       <div>
                         <h3 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
                           <span>General User (B2C) Accounts</span>
-                          <span className="text-[10px] px-2 py-0.2 rounded-full bg-pink-100 text-[#C2477A] font-bold normal-case">
+                          <span className="text-[10px] px-2 py-0.2 rounded-full bg-pink-100 text-[#D81B60] font-bold normal-case">
                             Standard Retail Customer
                           </span>
                         </h3>
@@ -4630,14 +4656,14 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                     <div className="text-xs font-bold text-gray-500 bg-white px-3 py-1.5 rounded-xl border border-pink-100 shrink-0">
-                      Pricing Mode: <strong className="text-[#C2477A]">General Retail</strong>
+                      Pricing Mode: <strong className="text-[#D81B60]">General Retail</strong>
                     </div>
                   </div>
 
                   {/* B2C Search Control Bar */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-pink-100/70 shadow-xs">
                     <div className="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-pink-100 w-full sm:w-auto min-w-[280px]">
-                      <Search size={14} className="text-[#C2477A]" />
+                      <Search size={14} className="text-[#D81B60]" />
                       <input
                         type="text"
                         placeholder="Search general customer name, phone, email, city..."
@@ -4704,7 +4730,7 @@ const AdminDashboard = () => {
                                   {/* Customer Details */}
                                   <td className="py-4 px-6">
                                     <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-[#C2477A] text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+                                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-[#D81B60] text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
                                         {initial}
                                       </div>
                                       <div>
@@ -4746,7 +4772,7 @@ const AdminDashboard = () => {
 
                                   {/* Pricing Mode */}
                                   <td className="py-4 px-6">
-                                    <span className="inline-block font-extrabold text-[11px] px-2.5 py-1 rounded-lg border uppercase tracking-wider bg-white text-[#C2477A] border-pink-200">
+                                    <span className="inline-block font-extrabold text-[11px] px-2.5 py-1 rounded-lg border uppercase tracking-wider bg-white text-[#D81B60] border-pink-200">
                                       General Retail
                                     </span>
                                   </td>
@@ -4761,10 +4787,10 @@ const AdminDashboard = () => {
                                     <div className="flex items-center justify-end gap-1.5">
                                       <button
                                         onClick={() => setSelectedUserDetails(u)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-pink-200 bg-white hover:bg-[#FFF5F8] hover:border-[#C2477A] text-[#C2477A] font-black text-xs shadow-2xs transition-all cursor-pointer group active:scale-95"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-pink-200 bg-white hover:bg-[#FFF5F8] hover:border-[#D81B60] text-[#D81B60] font-black text-xs shadow-2xs transition-all cursor-pointer group active:scale-95"
                                         title="View Customer Profile"
                                       >
-                                        <Info size={13} className="text-[#C2477A] group-hover:scale-110 transition-transform" />
+                                        <Info size={13} className="text-[#D81B60] group-hover:scale-110 transition-transform" />
                                         <span>Details</span>
                                       </button>
                                       <button
@@ -4803,7 +4829,7 @@ const AdminDashboard = () => {
                               setUserRecordsPerPage(Number(e.target.value));
                               setUserCurrentPage(1);
                             }}
-                            className="px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white text-gray-800 font-bold outline-none cursor-pointer focus:border-[#C2477A]"
+                            className="px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white text-gray-800 font-bold outline-none cursor-pointer focus:border-[#D81B60]"
                           >
                             <option value={15}>15</option>
                             <option value={20}>20</option>
@@ -4824,7 +4850,7 @@ const AdminDashboard = () => {
                         <button
                           onClick={() => setUserCurrentPage((p) => Math.max(1, p - 1))}
                           disabled={userCurrentPage <= 1}
-                          className={`p-2 rounded-xl border flex items-center justify-center transition-all ${userCurrentPage <= 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'}`}
+                          className={`p-2 rounded-xl border flex items-center justify-center transition-all ${userCurrentPage <= 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'}`}
                           title="Previous Page"
                         >
                           <ChevronLeft size={16} />
@@ -4835,7 +4861,7 @@ const AdminDashboard = () => {
                         <button
                           onClick={() => setUserCurrentPage((p) => Math.min(totalUserPages, p + 1))}
                           disabled={userCurrentPage >= totalUserPages}
-                          className={`p-2 rounded-xl border flex items-center justify-center transition-all ${userCurrentPage >= totalUserPages ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'}`}
+                          className={`p-2 rounded-xl border flex items-center justify-center transition-all ${userCurrentPage >= totalUserPages ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'}`}
                           title="Next Page"
                         >
                           <ChevronRight size={16} />
@@ -4862,7 +4888,7 @@ const AdminDashboard = () => {
                       {/* Modal Header */}
                       <div className="p-6 bg-gradient-to-r from-white via-white to-white border-b border-pink-100 flex items-start justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-400 to-[#C2477A] text-white flex items-center justify-center font-black text-xl shadow-md">
+                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-400 to-[#D81B60] text-white flex items-center justify-center font-black text-xl shadow-md">
                             {initial}
                           </div>
                           <div>
@@ -4870,7 +4896,7 @@ const AdminDashboard = () => {
                               <h2 className="text-xl font-extrabold text-gray-900">
                                 {selectedUserDetails.name || 'Customer'}
                               </h2>
-                              <span className="font-extrabold text-[10px] uppercase px-2.5 py-0.5 rounded-full bg-[#C2477A] text-white shadow-2xs">
+                              <span className="font-extrabold text-[10px] uppercase px-2.5 py-0.5 rounded-full bg-[#D81B60] text-white shadow-2xs">
                                 {meta.roleLabel}
                               </span>
                             </div>
@@ -4893,7 +4919,7 @@ const AdminDashboard = () => {
                       <div className="p-6 space-y-6 text-xs">
                         {/* Section 1: Contact & Personal Info */}
                         <div>
-                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#C2477A]">
+                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#D81B60]">
                             <User size={14} /> Personal & Contact Details
                           </h3>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#FDF8FA] p-4 rounded-2xl border border-pink-100/70">
@@ -4908,7 +4934,7 @@ const AdminDashboard = () => {
                               <span className="text-[10px] uppercase font-bold text-gray-400 block">Mobile Number</span>
                               <a
                                 href={`tel:${selectedUserDetails.phone}`}
-                                className="font-extrabold text-sm text-[#C2477A] hover:underline mt-0.5 flex items-center gap-1"
+                                className="font-extrabold text-sm text-[#D81B60] hover:underline mt-0.5 flex items-center gap-1"
                               >
                                 <Phone size={13} /> {selectedUserDetails.phone || 'Not provided'}
                               </a>
@@ -4918,7 +4944,7 @@ const AdminDashboard = () => {
                               <span className="text-[10px] uppercase font-bold text-gray-400 block">Email Address</span>
                               <span className="font-bold text-xs text-gray-800 mt-0.5 block break-all">
                                 {meta.email ? (
-                                  <a href={`mailto:${meta.email}`} className="text-[#C2477A] hover:underline">
+                                  <a href={`mailto:${meta.email}`} className="text-[#D81B60] hover:underline">
                                     {meta.email}
                                   </a>
                                 ) : (
@@ -4938,7 +4964,7 @@ const AdminDashboard = () => {
 
                         {/* Section 2: Role & Business Information */}
                         <div>
-                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#C2477A]">
+                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#D81B60]">
                             <Store size={14} /> Role & Business Profile
                           </h3>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#FDF8FA] p-4 rounded-2xl border border-pink-100/70">
@@ -4960,7 +4986,7 @@ const AdminDashboard = () => {
 
                         {/* Section 3: Address & Location Details */}
                         <div>
-                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#C2477A]">
+                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#D81B60]">
                             <MapPin size={14} /> Address & Location
                           </h3>
                           <div className="bg-[#FDF8FA] p-4 rounded-2xl border border-pink-100/70 space-y-3">
@@ -4992,7 +5018,7 @@ const AdminDashboard = () => {
 
                         {/* Section 4: Cancellation History & Account Standing */}
                         <div>
-                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#C2477A]">
+                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#D81B60]">
                             <ShieldAlert size={14} /> Cancellation History & Flags
                           </h3>
                           <div className={`p-4 rounded-2xl border ${isFlagged ? 'bg-red-50/80 border-red-200' : 'bg-emerald-50/70 border-emerald-200'}`}>
@@ -5029,7 +5055,7 @@ const AdminDashboard = () => {
 
                         {/* Section 5: Order Activity Summary */}
                         <div>
-                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#C2477A]">
+                          <h3 className="font-black text-gray-900 uppercase text-[11px] tracking-wider mb-3 flex items-center gap-1.5 text-[#D81B60]">
                             <ShoppingBag size={14} /> Order Activity Summary
                           </h3>
                           <div className="grid grid-cols-2 gap-3 bg-[#FDF8FA] p-4 rounded-2xl border border-pink-100/70">
@@ -5041,7 +5067,7 @@ const AdminDashboard = () => {
                             </div>
                             <div>
                               <span className="text-[10px] uppercase font-bold text-gray-400 block">Total Lifetime Spend</span>
-                              <span className="font-black text-lg text-[#C2477A] mt-0.5 block">
+                              <span className="font-black text-lg text-[#D81B60] mt-0.5 block">
                                 ₹{totalSpent.toLocaleString('en-IN')}
                               </span>
                             </div>
@@ -5053,7 +5079,7 @@ const AdminDashboard = () => {
                       <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
                         <button
                           onClick={() => setSelectedUserDetails(null)}
-                          className="px-6 py-2.5 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                          className="px-6 py-2.5 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
                         >
                           Close Details
                         </button>
@@ -5070,7 +5096,7 @@ const AdminDashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
               <div className="bg-white p-6 rounded-2xl border border-pink-100/70 shadow-xs h-fit">
                 <h3 className="font-bold text-sm text-gray-900 uppercase mb-4 flex items-center gap-2">
-                  <DollarSign size={18} className="text-[#C2477A]" /> Cancellation Rules
+                  <DollarSign size={18} className="text-[#D81B60]" /> Cancellation Rules
                 </h3>
 
                 {showFeeSuccess && (
@@ -5087,7 +5113,7 @@ const AdminDashboard = () => {
                       min="0"
                       value={feeForm.feeAmount}
                       onChange={(e) => setFeeForm({ ...feeForm, feeAmount: Math.max(0, Number(e.target.value)) })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] font-extrabold text-[#C2477A] bg-white"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] font-extrabold text-[#D81B60] bg-white"
                     />
                     <span className="text-[10px] text-gray-400 font-medium block mt-1">Deducted or billed after grace period.</span>
                   </div>
@@ -5099,7 +5125,7 @@ const AdminDashboard = () => {
                       min="0"
                       value={feeForm.graceWindowMinutes}
                       onChange={(e) => setFeeForm({ ...feeForm, graceWindowMinutes: Math.max(0, Number(e.target.value)) })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] font-extrabold text-[#C2477A] bg-white"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] font-extrabold text-[#D81B60] bg-white"
                     />
                     <span className="text-[10px] text-gray-400 font-medium block mt-1">Customer can edit/cancel free within this window.</span>
                   </div>
@@ -5111,14 +5137,14 @@ const AdminDashboard = () => {
                       min="1"
                       value={feeForm.maxAllowedCancels}
                       onChange={(e) => setFeeForm({ ...feeForm, maxAllowedCancels: Math.max(1, Number(e.target.value)) })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] font-extrabold text-[#C2477A] bg-white"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] font-extrabold text-[#D81B60] bg-white"
                     />
                     <span className="text-[10px] text-gray-400 font-medium block mt-1">Triggers Cancellation Warning Modal on customer app.</span>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-[#C2477A] text-white py-3 rounded-xl font-bold shadow-xs hover:bg-[#b83760] transition-colors flex items-center justify-center gap-2 mt-2 cursor-pointer"
+                    className="w-full bg-[#D81B60] text-white py-3 rounded-xl font-bold shadow-xs hover:bg-[#b83760] transition-colors flex items-center justify-center gap-2 mt-2 cursor-pointer"
                   >
                     <Save size={16} /> Save Cancellation Rules
                   </button>
@@ -5145,19 +5171,19 @@ const AdminDashboard = () => {
                     <tbody className="divide-y divide-gray-100">
                       {cancelledOrdersLog.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="p-3.5 font-bold text-[#C2477A]">{item.id}</td>
+                          <td className="p-3.5 font-bold text-[#D81B60]">{item.id}</td>
                           <td className="p-3.5">
                             <div className="font-bold text-gray-900">{item.userName}</div>
                             <span className="text-[10px] text-gray-400 uppercase font-semibold">{item.userRole}</span>
                           </td>
                           <td className="p-3.5 text-gray-500 font-medium">{item.cancelledAt}</td>
-                          <td className="p-3.5 font-extrabold text-[#C2477A] text-sm">₹{item.feeCharged}</td>
+                          <td className="p-3.5 font-extrabold text-[#D81B60] text-sm">₹{item.feeCharged}</td>
                           <td className="p-3.5">
                             <button
                               onClick={() => toggleFeeWaived(item.id)}
                               className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold border transition-colors cursor-pointer ${item.feeWaived
                                 ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                : 'bg-white text-[#C2477A] border-pink-200 hover:bg-[#FFF5F8]'
+                                : 'bg-white text-[#D81B60] border-pink-200 hover:bg-[#FFF5F8]'
                                 }`}
                             >
                               {item.feeWaived ? '✓ Fee Waived' : 'Waive Fee'}
@@ -5305,7 +5331,7 @@ const AdminDashboard = () => {
                     <div className="bg-white p-6 rounded-2xl border border-pink-100/80 shadow-sm">
                       <div className="flex items-center justify-between mb-5 pb-4 border-b border-pink-100/60">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center shadow-xs">
+                          <div className="w-9 h-9 rounded-xl bg-white text-[#D81B60] flex items-center justify-center shadow-xs">
                             <Sparkles size={18} />
                           </div>
                           <div>
@@ -5325,9 +5351,9 @@ const AdminDashboard = () => {
                         <p className="text-[10.5px] font-bold text-gray-700 flex items-center gap-1.5 flex-wrap">
                           <span className="bg-gray-200 px-1.5 py-0.5 rounded font-mono text-gray-600">MRP</span>
                           <span className="text-gray-400">→</span>
-                          <span className="bg-[#C2477A]/10 text-[#C2477A] px-1.5 py-0.5 rounded font-bold">Role Discount %</span>
+                          <span className="bg-[#D81B60]/10 text-[#D81B60] px-1.5 py-0.5 rounded font-bold">Role Discount %</span>
                           <span className="text-gray-400">→</span>
-                          <span className="bg-white text-[#C2477A] px-1.5 py-0.5 rounded font-bold">Role Base Price</span>
+                          <span className="bg-white text-[#D81B60] px-1.5 py-0.5 rounded font-bold">Role Base Price</span>
                           <span className="text-gray-400">→</span>
                           <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">Qty Tier Discount %</span>
                           <span className="text-gray-400">→</span>
@@ -5361,7 +5387,7 @@ const AdminDashboard = () => {
                                     step="1"
                                     value={discPct}
                                     onChange={(e) => handleRoleDiscountChange(role, e.target.value)}
-                                    className="w-full p-2.5 pr-7 rounded-xl border border-pink-100/80 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-extrabold text-[#C2477A] text-sm text-center shadow-xs"
+                                    className="w-full p-2.5 pr-7 rounded-xl border border-pink-100/80 outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 bg-white font-extrabold text-[#D81B60] text-sm text-center shadow-xs"
                                   />
                                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">%</span>
                                 </div>
@@ -5399,7 +5425,7 @@ const AdminDashboard = () => {
                     <div className="bg-white p-6 rounded-2xl border border-pink-100/80 shadow-sm">
                       <div className="flex items-center justify-between mb-5 pb-4 border-b border-pink-100/60">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center shadow-xs">
+                          <div className="w-9 h-9 rounded-xl bg-white text-[#D81B60] flex items-center justify-center shadow-xs">
                             <Layers size={18} />
                           </div>
                           <div>
@@ -5409,7 +5435,7 @@ const AdminDashboard = () => {
                         </div>
                         <button
                           onClick={handleAddTier}
-                          className="flex items-center gap-1.5 text-[11px] font-bold bg-white text-[#C2477A] border border-[#FCE4EC] px-3 py-1.5 rounded-xl hover:bg-[#FDF2F8] transition-all cursor-pointer"
+                          className="flex items-center gap-1.5 text-[11px] font-bold bg-white text-[#D81B60] border border-[#FCE4EC] px-3 py-1.5 rounded-xl hover:bg-[#FDF2F8] transition-all cursor-pointer"
                         >
                           <Plus size={13} /> Add Tier
                         </button>
@@ -5437,7 +5463,7 @@ const AdminDashboard = () => {
                                 type="text"
                                 value={tier.label}
                                 onChange={(e) => handleTierChange(idx, 'label', e.target.value)}
-                                className="w-full p-2 rounded-lg border border-pink-100/80 outline-none focus:border-[#C2477A] bg-white text-xs font-bold text-gray-800 shadow-xs"
+                                className="w-full p-2 rounded-lg border border-pink-100/80 outline-none focus:border-[#D81B60] bg-white text-xs font-bold text-gray-800 shadow-xs"
                                 placeholder="Label"
                               />
                             </div>
@@ -5447,7 +5473,7 @@ const AdminDashboard = () => {
                                 min="1"
                                 value={tier.minQty}
                                 onChange={(e) => handleTierChange(idx, 'minQty', e.target.value)}
-                                className="w-full p-2 rounded-lg border border-pink-100/80 outline-none focus:border-[#C2477A] bg-white text-xs font-bold text-gray-800 text-center shadow-xs"
+                                className="w-full p-2 rounded-lg border border-pink-100/80 outline-none focus:border-[#D81B60] bg-white text-xs font-bold text-gray-800 text-center shadow-xs"
                               />
                             </div>
                             <div className="col-span-2 text-center">
@@ -5456,7 +5482,7 @@ const AdminDashboard = () => {
                                 min="1"
                                 value={tier.maxQty === null || tier.maxQty === undefined ? '' : tier.maxQty}
                                 onChange={(e) => handleTierChange(idx, 'maxQty', e.target.value === '' ? null : e.target.value)}
-                                className="w-full p-2 rounded-lg border border-pink-100/80 outline-none focus:border-[#C2477A] bg-white text-xs font-bold text-gray-800 text-center shadow-xs"
+                                className="w-full p-2 rounded-lg border border-pink-100/80 outline-none focus:border-[#D81B60] bg-white text-xs font-bold text-gray-800 text-center shadow-xs"
                                 placeholder="∞"
                               />
                             </div>
@@ -5469,7 +5495,7 @@ const AdminDashboard = () => {
                                   step="0.5"
                                   value={tier.additionalDiscount}
                                   onChange={(e) => handleTierChange(idx, 'additionalDiscount', e.target.value)}
-                                  className="w-full p-2 pr-6 rounded-lg border border-[#FCE4EC]/80 outline-none focus:border-[#C2477A] bg-white text-xs font-extrabold text-[#C2477A] text-center shadow-xs"
+                                  className="w-full p-2 pr-6 rounded-lg border border-[#FCE4EC]/80 outline-none focus:border-[#D81B60] bg-white text-xs font-extrabold text-[#D81B60] text-center shadow-xs"
                                 />
                                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-violet-400 font-bold text-xs">%</span>
                               </div>
@@ -5519,7 +5545,7 @@ const AdminDashboard = () => {
                             min="1"
                             value={previewMrp}
                             onChange={(e) => setPreviewMrp(e.target.value)}
-                            className="w-full p-2.5 rounded-xl border border-pink-100/80 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-extrabold text-gray-900 text-sm shadow-xs"
+                            className="w-full p-2.5 rounded-xl border border-pink-100/80 outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 bg-white font-extrabold text-gray-900 text-sm shadow-xs"
                             placeholder="e.g. 500"
                           />
                         </div>
@@ -5530,7 +5556,7 @@ const AdminDashboard = () => {
                             min="1"
                             value={previewQty}
                             onChange={(e) => setPreviewQty(e.target.value)}
-                            className="w-full p-2.5 rounded-xl border border-pink-100/80 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-extrabold text-gray-900 text-sm shadow-xs"
+                            className="w-full p-2.5 rounded-xl border border-pink-100/80 outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 bg-white font-extrabold text-gray-900 text-sm shadow-xs"
                             placeholder="e.g. 3"
                           />
                         </div>
@@ -5538,7 +5564,7 @@ const AdminDashboard = () => {
 
                       {/* Active qty tier indicator */}
                       <div className="mb-4 p-2.5 rounded-xl bg-white border border-[#FCE4EC]">
-                        <p className="text-[10.5px] font-bold text-[#C2477A] flex items-center gap-1.5">
+                        <p className="text-[10.5px] font-bold text-[#D81B60] flex items-center gap-1.5">
                           <Layers size={11} />
                           Active Qty Tier: <span className="text-black">
                             {quantityTiers.find(t => {
@@ -5547,7 +5573,7 @@ const AdminDashboard = () => {
                               return Number(previewQty) >= min && Number(previewQty) <= max;
                             })?.label || quantityTiers[quantityTiers.length - 1]?.label || '—'}
                           </span>
-                          <span className="ml-auto font-extrabold text-[#C2477A]">+{preview.qtyDiscount}% off</span>
+                          <span className="ml-auto font-extrabold text-[#D81B60]">+{preview.qtyDiscount}% off</span>
                         </p>
                       </div>
 
@@ -5586,7 +5612,7 @@ const AdminDashboard = () => {
                                 )}
                               </div>
                               <div className="text-right">
-                                <span className="font-extrabold text-[#C2477A] text-base">₹{final}</span>
+                                <span className="font-extrabold text-[#D81B60] text-base">₹{final}</span>
                                 <p className="text-[9px] text-gray-400">per unit × {previewQty} = <span className="font-bold text-gray-700">₹{final * Number(previewQty)}</span></p>
                               </div>
                             </div>
@@ -5598,7 +5624,7 @@ const AdminDashboard = () => {
                     {/* SAVE / RESET ACTIONS */}
                     <div className="bg-white p-5 rounded-2xl border border-pink-100/80 shadow-sm space-y-3">
                       <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wide flex items-center gap-2">
-                        <Save size={15} className="text-[#C2477A]" /> Save Configuration
+                        <Save size={15} className="text-[#D81B60]" /> Save Configuration
                       </h3>
                       <p className="text-[10.5px] text-gray-400 font-medium">
                         All changes sync instantly and apply to all live pricing calculations in the User App.
@@ -5606,7 +5632,7 @@ const AdminDashboard = () => {
                       <button
                         onClick={handleSavePricingRules}
                         disabled={isSavingPricingRules}
-                        className="w-full bg-[#C2477A] hover:bg-[#b83760] text-white font-extrabold text-xs py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full bg-[#D81B60] hover:bg-[#b83760] text-white font-extrabold text-xs py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {isSavingPricingRules ? (
                           <><Loader2 size={15} className="animate-spin" /> Saving changes…</>
@@ -5657,10 +5683,10 @@ const AdminDashboard = () => {
             return (
               <div className="space-y-6 animate-fade-in pb-12">
                 {/* Executive Header Banner */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#170817] via-[#48082B] to-[#C2477A] p-7 md:p-8 text-white shadow-2xl border border-pink-500/20">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#170817] via-[#48082B] to-[#D81B60] p-7 md:p-8 text-white shadow-2xl border border-pink-500/20">
                   {/* Ambient background glow accents */}
                   <div className="absolute -top-24 -right-24 w-72 h-72 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
-                  <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-[#C2477A]/25 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-[#D81B60]/25 rounded-full blur-3xl pointer-events-none" />
 
                   <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="max-w-2xl">
@@ -5750,18 +5776,18 @@ const AdminDashboard = () => {
                   {/* 3. Catalog Products */}
                   <div
                     onClick={() => navigateToTab('products')}
-                    className="bg-white p-3.5 rounded-2xl border border-pink-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-[#C2477A]"
+                    className="bg-white p-3.5 rounded-2xl border border-pink-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-[#D81B60]"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Products</span>
-                      <div className="w-7 h-7 rounded-lg bg-pink-50 text-[#C2477A] flex items-center justify-center group-hover:scale-110 group-hover:bg-pink-100 transition-all shadow-xs">
+                      <div className="w-7 h-7 rounded-lg bg-pink-50 text-[#D81B60] flex items-center justify-center group-hover:scale-110 group-hover:bg-pink-100 transition-all shadow-xs">
                         <Package size={14} />
                       </div>
                     </div>
                     <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{resolvedProductsCount}</div>
                     <div className="text-[10px] text-gray-400 mt-1 font-semibold flex items-center justify-between">
                       <span>Catalog</span>
-                      <ChevronRight size={11} className="text-[#C2477A] group-hover:translate-x-0.5 transition-transform" />
+                      <ChevronRight size={11} className="text-[#D81B60] group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
 
@@ -5881,28 +5907,28 @@ const AdminDashboard = () => {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <button
                         onClick={() => navigateToTab('b2b-verification')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>All Applications</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{b2bPendingTotal}</span>
                       </button>
                       <button
                         onClick={() => navigateToTab('b2b-verification/salon')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Salon Desk</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{b2bPendingSalon}</span>
                       </button>
                       <button
                         onClick={() => navigateToTab('b2b-verification/makeup-artist')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Makeup Artist</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{b2bPendingArtist}</span>
                       </button>
                       <button
                         onClick={() => navigateToTab('b2b-verification/beautician')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Beautician</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{b2bPendingBeautician}</span>
@@ -5914,7 +5940,7 @@ const AdminDashboard = () => {
                   <div className="bg-white rounded-3xl p-5.5 border border-pink-100/80 shadow-xs hover:shadow-md transition-all">
                     <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-gray-100">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-pink-50 text-[#C2477A] flex items-center justify-center font-bold shadow-xs">
+                        <div className="w-10 h-10 rounded-2xl bg-pink-50 text-[#D81B60] flex items-center justify-center font-bold shadow-xs">
                           <Package size={20} />
                         </div>
                         <div>
@@ -5926,7 +5952,7 @@ const AdminDashboard = () => {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <button
                         onClick={() => navigateToTab('products')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Products Matrix</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{resolvedProductsCount}</span>
@@ -5940,14 +5966,14 @@ const AdminDashboard = () => {
                       </button>
                       <button
                         onClick={() => navigateToTab('categories')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Categories</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{resolvedCategoriesCount}</span>
                       </button>
                       <button
                         onClick={() => navigateToTab('add_brand')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Brand Partners</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{resolvedBrandsCount}</span>
@@ -5971,7 +5997,7 @@ const AdminDashboard = () => {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <button
                         onClick={() => navigateToTab('order_updated')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Orders</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{resolvedOrdersCount}</span>
@@ -6034,7 +6060,7 @@ const AdminDashboard = () => {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <button
                         onClick={() => navigateToTab('users/b2c')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>B2C Users</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{b2cUsersCount || 0}</span>
@@ -6048,7 +6074,7 @@ const AdminDashboard = () => {
                       </button>
                       <button
                         onClick={() => navigateToTab('search_requests')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Search Activity</span>
                         <ChevronRight size={13} className="text-gray-400" />
@@ -6067,7 +6093,7 @@ const AdminDashboard = () => {
                   <div className="bg-white rounded-3xl p-5.5 border border-pink-100/80 shadow-xs hover:shadow-md transition-all">
                     <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-gray-100">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-pink-50 text-[#C2477A] flex items-center justify-center font-bold shadow-xs">
+                        <div className="w-10 h-10 rounded-2xl bg-pink-50 text-[#D81B60] flex items-center justify-center font-bold shadow-xs">
                           <Settings size={20} />
                         </div>
                         <div>
@@ -6079,10 +6105,10 @@ const AdminDashboard = () => {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <button
                         onClick={() => navigateToTab('settings')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-pink-50/60 hover:bg-pink-100 hover:text-[#C2477A] text-gray-800 font-bold transition-all text-left cursor-pointer border border-pink-200/70"
+                        className="flex items-center justify-between p-3 rounded-xl bg-pink-50/60 hover:bg-pink-100 hover:text-[#D81B60] text-gray-800 font-bold transition-all text-left cursor-pointer border border-pink-200/70"
                       >
                         <span>General Settings</span>
-                        <ChevronRight size={13} className="text-[#C2477A]" />
+                        <ChevronRight size={13} className="text-[#D81B60]" />
                       </button>
                       <button
                         onClick={() => navigateToTab('branches')}
@@ -6093,14 +6119,14 @@ const AdminDashboard = () => {
                       </button>
                       <button
                         onClick={() => navigateToTab('home_banners')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Home Banners</span>
                         <ChevronRight size={13} className="text-gray-400" />
                       </button>
                       <button
                         onClick={() => navigateToTab('pricing_rules')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Pricing Rules</span>
                         <ChevronRight size={13} className="text-gray-400" />
@@ -6124,31 +6150,31 @@ const AdminDashboard = () => {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <button
                         onClick={() => navigateToTab('employees')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Employees List</span>
                         <span className="text-[11px] text-gray-400 font-semibold">{resolvedEmployeesCount}</span>
                       </button>
                       <button
                         onClick={() => navigateToTab('employees/new')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-pink-50/50 hover:bg-pink-100 hover:text-[#C2477A] text-gray-800 font-bold transition-all text-left cursor-pointer border border-pink-200/50"
+                        className="flex items-center justify-between p-3 rounded-xl bg-pink-50/50 hover:bg-pink-100 hover:text-[#D81B60] text-gray-800 font-bold transition-all text-left cursor-pointer border border-pink-200/50"
                       >
                         <span>+ Add Employee</span>
-                        <UserPlus size={13} className="text-[#C2477A]" />
+                        <UserPlus size={13} className="text-[#D81B60]" />
                       </button>
                       <button
                         onClick={() => navigateToTab('cancel_fee')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Cancel Fee Policy</span>
                         <ChevronRight size={13} className="text-gray-400" />
                       </button>
                       <button
                         onClick={() => navigateToTab('dashboard_visibility')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Dashboard Visibility</span>
-                        <Eye size={13} className="text-[#C2477A]" />
+                        <Eye size={13} className="text-[#D81B60]" />
                       </button>
                     </div>
                   </div>
@@ -6209,7 +6235,7 @@ const AdminDashboard = () => {
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-4 mb-5 border-b border-pink-100/70">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+                    <div className="w-9 h-9 rounded-xl bg-white text-[#D81B60] flex items-center justify-center font-bold shadow-2xs">
                       <FolderPlus size={20} />
                     </div>
                     <div>
@@ -6224,7 +6250,7 @@ const AdminDashboard = () => {
                   <button
                     type="button"
                     onClick={() => setIsAddCategoryModalOpen(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -6234,9 +6260,9 @@ const AdminDashboard = () => {
                 <form onSubmit={handleAddCategorySubmit} className="space-y-4 text-xs">
                   <div>
                     <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
-                      <Tag size={14} className="text-[#C2477A]" />
+                      <Tag size={14} className="text-[#D81B60]" />
                       <span>Category Name</span>
-                      <span className="text-[#C2477A]">*</span>
+                      <span className="text-[#D81B60]">*</span>
                     </label>
                     <input
                       type="text"
@@ -6244,7 +6270,7 @@ const AdminDashboard = () => {
                       placeholder="e.g. Body Care & Lotion"
                       value={newCategory.name}
                       onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all placeholder:text-gray-400 text-xs"
+                      className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all placeholder:text-gray-400 text-xs"
                     />
                   </div>
 
@@ -6254,10 +6280,10 @@ const AdminDashboard = () => {
                       id="enabledCheckCatModal"
                       checked={newCategory.enabled}
                       onChange={(e) => setNewCategory({ ...newCategory, enabled: e.target.checked })}
-                      className="w-4 h-4 text-[#C2477A] accent-[#C2477A] rounded-md cursor-pointer"
+                      className="w-4 h-4 text-[#D81B60] accent-[#D81B60] rounded-md cursor-pointer"
                     />
                     <label htmlFor="enabledCheckCatModal" className="text-gray-800 font-semibold text-xs cursor-pointer select-none flex items-center gap-1.5">
-                      <Eye size={14} className="text-[#C2477A]" />
+                      <Eye size={14} className="text-[#D81B60]" />
                       <span>Active in Mobile App</span>
                     </label>
                   </div>
@@ -6272,7 +6298,7 @@ const AdminDashboard = () => {
                     </button>
                     <button
                       type="submit"
-                      className="w-2/3 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
+                      className="w-2/3 bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
                     >
                       <FolderPlus size={16} /> Save Category Item
                     </button>
@@ -6289,7 +6315,7 @@ const AdminDashboard = () => {
                 {/* Modal Header */}
                 <div className="flex items-center justify-between pb-4 mb-5 border-b border-pink-100/70">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+                    <div className="w-9 h-9 rounded-xl bg-white text-[#D81B60] flex items-center justify-center font-bold shadow-2xs">
                       <Edit size={18} />
                     </div>
                     <div>
@@ -6304,7 +6330,7 @@ const AdminDashboard = () => {
                   <button
                     type="button"
                     onClick={() => setIsEditCategoryModalOpen(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -6314,9 +6340,9 @@ const AdminDashboard = () => {
                 <form onSubmit={handleSaveEditCategory} className="space-y-4 text-xs">
                   <div>
                     <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
-                      <Tag size={14} className="text-[#C2477A]" />
+                      <Tag size={14} className="text-[#D81B60]" />
                       <span>Category Name</span>
-                      <span className="text-[#C2477A]">*</span>
+                      <span className="text-[#D81B60]">*</span>
                     </label>
                     <input
                       type="text"
@@ -6324,7 +6350,7 @@ const AdminDashboard = () => {
                       placeholder="e.g. Hair Care"
                       value={editingCategory.name}
                       onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all placeholder:text-gray-400 text-xs"
+                      className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all placeholder:text-gray-400 text-xs"
                     />
                   </div>
 
@@ -6334,10 +6360,10 @@ const AdminDashboard = () => {
                       id="editEnabledCheckCatModal"
                       checked={editingCategory.enabled}
                       onChange={(e) => setEditingCategory({ ...editingCategory, enabled: e.target.checked })}
-                      className="w-4 h-4 text-[#C2477A] accent-[#C2477A] rounded-md cursor-pointer"
+                      className="w-4 h-4 text-[#D81B60] accent-[#D81B60] rounded-md cursor-pointer"
                     />
                     <label htmlFor="editEnabledCheckCatModal" className="text-gray-800 font-semibold text-xs cursor-pointer select-none flex items-center gap-1.5">
-                      <Eye size={14} className="text-[#C2477A]" />
+                      <Eye size={14} className="text-[#D81B60]" />
                       <span>Active in Mobile App</span>
                     </label>
                   </div>
@@ -6352,7 +6378,7 @@ const AdminDashboard = () => {
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2.5 rounded-xl bg-[#C2477A] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-all cursor-pointer active:scale-[0.98]"
+                      className="px-5 py-2.5 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-bold text-xs shadow-xs transition-all cursor-pointer active:scale-[0.98]"
                     >
                       Save Changes
                     </button>
@@ -6458,7 +6484,7 @@ const AdminDashboard = () => {
                       setIsDeleteCategoryModalOpen(false);
                       setCategoryToDelete(null);
                     }}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -6483,7 +6509,7 @@ const AdminDashboard = () => {
                     </div>
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="text-gray-500 font-medium">Linked Products:</span>
-                      <span className="font-bold text-[#C2477A]">{categoryToDelete.productsCount || 0} Products</span>
+                      <span className="font-bold text-[#D81B60]">{categoryToDelete.productsCount || 0} Products</span>
                     </div>
                   </div>
 
@@ -6539,7 +6565,7 @@ const AdminDashboard = () => {
               <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between pb-4 mb-4 border-b border-pink-100/70">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+                    <div className="w-9 h-9 rounded-xl bg-white text-[#D81B60] flex items-center justify-center font-bold shadow-2xs">
                       <ImageIcon size={20} />
                     </div>
                     <div>
@@ -6554,7 +6580,7 @@ const AdminDashboard = () => {
                   <button
                     type="button"
                     onClick={() => setIsAddBannerModalOpen(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -6569,7 +6595,7 @@ const AdminDashboard = () => {
                       placeholder="e.g. BEAUTY ESSENTIALS"
                       value={bannerFormData.theme}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, theme: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                     />
                   </div>
 
@@ -6581,7 +6607,7 @@ const AdminDashboard = () => {
                       placeholder="e.g. Glow Your Own Way"
                       value={bannerFormData.title}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, title: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                     />
                   </div>
 
@@ -6592,7 +6618,7 @@ const AdminDashboard = () => {
                       placeholder="e.g. Discover authentic beauty, salon & grooming formulations"
                       value={bannerFormData.subtitle}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, subtitle: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                     />
                   </div>
 
@@ -6605,7 +6631,7 @@ const AdminDashboard = () => {
                         placeholder="e.g. Shop Best Sellers →"
                         value={bannerFormData.ctaText}
                         onChange={(e) => setBannerFormData({ ...bannerFormData, ctaText: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                       />
                     </div>
 
@@ -6614,7 +6640,7 @@ const AdminDashboard = () => {
                       <select
                         value={bannerFormData.destinationType}
                         onChange={(e) => setBannerFormData({ ...bannerFormData, destinationType: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-bold text-xs text-gray-900 cursor-pointer shadow-2xs"
+                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-bold text-xs text-gray-900 cursor-pointer shadow-2xs"
                       >
                         <option value="BEST_SELLERS">Best Sellers Page</option>
                         <option value="CATEGORY">Category Screen</option>
@@ -6632,7 +6658,7 @@ const AdminDashboard = () => {
                       <select
                         value={bannerFormData.destinationId}
                         onChange={(e) => setBannerFormData({ ...bannerFormData, destinationId: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-bold text-xs text-gray-900 cursor-pointer shadow-2xs"
+                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-bold text-xs text-gray-900 cursor-pointer shadow-2xs"
                       >
                         {(categories || []).map((cat) => (
                           <option key={cat.id} value={cat.name}>
@@ -6651,7 +6677,7 @@ const AdminDashboard = () => {
                         placeholder="e.g. Skin Care or Brand Name"
                         value={bannerFormData.destinationId}
                         onChange={(e) => setBannerFormData({ ...bannerFormData, destinationId: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                       />
                     </div>
                   )}
@@ -6664,7 +6690,7 @@ const AdminDashboard = () => {
                       placeholder="https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_1.jpg"
                       value={bannerFormData.imageUrl}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, imageUrl: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs mb-2"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs mb-2"
                     />
 
                     {/* Quick Select Presets for the 5 official banners */}
@@ -6681,8 +6707,8 @@ const AdminDashboard = () => {
                               type="button"
                               onClick={() => setBannerFormData({ ...bannerFormData, imageUrl: url })}
                               className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${bannerFormData.imageUrl === url
-                                  ? 'bg-[#C2477A] text-white shadow-2xs'
-                                  : 'bg-white border border-[#FCE4EC] text-[#C2477A] hover:bg-pink-50'
+                                  ? 'bg-[#D81B60] text-white shadow-2xs'
+                                  : 'bg-white border border-[#FCE4EC] text-[#D81B60] hover:bg-pink-50'
                                 }`}
                             >
                               Banner {num}
@@ -6699,10 +6725,10 @@ const AdminDashboard = () => {
                       id="bannerActiveCheckAdd"
                       checked={bannerFormData.isActive}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, isActive: e.target.checked })}
-                      className="w-4 h-4 text-[#C2477A] accent-[#C2477A] rounded-md cursor-pointer"
+                      className="w-4 h-4 text-[#D81B60] accent-[#D81B60] rounded-md cursor-pointer"
                     />
                     <label htmlFor="bannerActiveCheckAdd" className="text-gray-800 font-semibold text-xs cursor-pointer select-none flex items-center gap-1.5">
-                      <Eye size={14} className="text-[#C2477A]" />
+                      <Eye size={14} className="text-[#D81B60]" />
                       <span>Active in Mobile App Carousel</span>
                     </label>
                   </div>
@@ -6717,7 +6743,7 @@ const AdminDashboard = () => {
                     </button>
                     <button
                       type="submit"
-                      className="w-2/3 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
+                      className="w-2/3 bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
                     >
                       <Plus size={16} /> Save Banner
                     </button>
@@ -6733,7 +6759,7 @@ const AdminDashboard = () => {
               <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between pb-4 mb-4 border-b border-pink-100/70">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+                    <div className="w-9 h-9 rounded-xl bg-white text-[#D81B60] flex items-center justify-center font-bold shadow-2xs">
                       <Edit size={20} />
                     </div>
                     <div>
@@ -6748,7 +6774,7 @@ const AdminDashboard = () => {
                   <button
                     type="button"
                     onClick={() => setIsEditBannerModalOpen(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -6763,7 +6789,7 @@ const AdminDashboard = () => {
                       placeholder="e.g. BEAUTY ESSENTIALS"
                       value={bannerFormData.theme}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, theme: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                     />
                   </div>
 
@@ -6775,7 +6801,7 @@ const AdminDashboard = () => {
                       placeholder="e.g. Glow Your Own Way"
                       value={bannerFormData.title}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, title: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                     />
                   </div>
 
@@ -6786,7 +6812,7 @@ const AdminDashboard = () => {
                       placeholder="e.g. Discover authentic beauty, salon & grooming formulations"
                       value={bannerFormData.subtitle}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, subtitle: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                     />
                   </div>
 
@@ -6799,7 +6825,7 @@ const AdminDashboard = () => {
                         placeholder="e.g. Shop Best Sellers →"
                         value={bannerFormData.ctaText}
                         onChange={(e) => setBannerFormData({ ...bannerFormData, ctaText: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                       />
                     </div>
 
@@ -6808,7 +6834,7 @@ const AdminDashboard = () => {
                       <select
                         value={bannerFormData.destinationType}
                         onChange={(e) => setBannerFormData({ ...bannerFormData, destinationType: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-bold text-xs text-gray-900 cursor-pointer shadow-2xs"
+                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-bold text-xs text-gray-900 cursor-pointer shadow-2xs"
                       >
                         <option value="BEST_SELLERS">Best Sellers Page</option>
                         <option value="CATEGORY">Category Screen</option>
@@ -6826,7 +6852,7 @@ const AdminDashboard = () => {
                       <select
                         value={bannerFormData.destinationId}
                         onChange={(e) => setBannerFormData({ ...bannerFormData, destinationId: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-bold text-xs text-gray-900 cursor-pointer shadow-2xs"
+                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-bold text-xs text-gray-900 cursor-pointer shadow-2xs"
                       >
                         {(categories || []).map((cat) => (
                           <option key={cat.id} value={cat.name}>
@@ -6845,7 +6871,7 @@ const AdminDashboard = () => {
                         placeholder="e.g. Skin Care or Brand Name"
                         value={bannerFormData.destinationId}
                         onChange={(e) => setBannerFormData({ ...bannerFormData, destinationId: e.target.value })}
-                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                       />
                     </div>
                   )}
@@ -6857,7 +6883,7 @@ const AdminDashboard = () => {
                       required
                       value={bannerFormData.imageUrl}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, imageUrl: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs mb-2"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs mb-2"
                     />
 
                     {/* Quick Select Presets for the 5 official banners */}
@@ -6874,8 +6900,8 @@ const AdminDashboard = () => {
                               type="button"
                               onClick={() => setBannerFormData({ ...bannerFormData, imageUrl: url })}
                               className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${bannerFormData.imageUrl === url
-                                  ? 'bg-[#C2477A] text-white shadow-2xs'
-                                  : 'bg-white border border-[#FCE4EC] text-[#C2477A] hover:bg-pink-50'
+                                  ? 'bg-[#D81B60] text-white shadow-2xs'
+                                  : 'bg-white border border-[#FCE4EC] text-[#D81B60] hover:bg-pink-50'
                                 }`}
                             >
                               Banner {num}
@@ -6892,10 +6918,10 @@ const AdminDashboard = () => {
                       id="bannerActiveCheckEdit"
                       checked={bannerFormData.isActive}
                       onChange={(e) => setBannerFormData({ ...bannerFormData, isActive: e.target.checked })}
-                      className="w-4 h-4 text-[#C2477A] accent-[#C2477A] rounded-md cursor-pointer"
+                      className="w-4 h-4 text-[#D81B60] accent-[#D81B60] rounded-md cursor-pointer"
                     />
                     <label htmlFor="bannerActiveCheckEdit" className="text-gray-800 font-semibold text-xs cursor-pointer select-none flex items-center gap-1.5">
-                      <Eye size={14} className="text-[#C2477A]" />
+                      <Eye size={14} className="text-[#D81B60]" />
                       <span>Active in Mobile App Carousel</span>
                     </label>
                   </div>
@@ -6910,7 +6936,7 @@ const AdminDashboard = () => {
                     </button>
                     <button
                       type="submit"
-                      className="w-2/3 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
+                      className="w-2/3 bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
                     >
                       <Save size={16} /> Save Changes
                     </button>
@@ -7038,7 +7064,7 @@ const AdminDashboard = () => {
                   <button
                     type="button"
                     onClick={() => setIsRejectionModalOpen(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -7050,7 +7076,7 @@ const AdminDashboard = () => {
                     <select
                       value={rejectionReasonText}
                       onChange={(e) => setRejectionReasonText(e.target.value)}
-                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 cursor-pointer shadow-2xs"
+                      className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 cursor-pointer shadow-2xs"
                     >
                       <option value="Out of stock">Out of stock</option>
                       <option value="Store closed for day">Store closed for day</option>
@@ -7069,7 +7095,7 @@ const AdminDashboard = () => {
                         placeholder="State custom reason..."
                         value={customRejectionReason}
                         onChange={(e) => setCustomRejectionReason(e.target.value)}
-                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#C2477A] bg-white font-medium text-xs text-gray-900 shadow-2xs"
+                        className="w-full p-3 rounded-xl border border-pink-100 outline-none focus:border-[#D81B60] bg-white font-medium text-xs text-gray-900 shadow-2xs"
                       />
                     </div>
                   )}
@@ -7116,7 +7142,7 @@ const AdminDashboard = () => {
                   <button
                     type="button"
                     onClick={() => setIsAcceptanceModalOpen(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -7165,7 +7191,7 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="px-2 py-0.5 rounded-full bg-white border border-pink-200 text-[#C2477A] font-extrabold text-[11px]">
+                            <span className="px-2 py-0.5 rounded-full bg-white border border-pink-200 text-[#D81B60] font-extrabold text-[11px]">
                               Qty: {item.quantity || 1}
                             </span>
                             <span className="block font-bold text-gray-800 text-[11px] mt-0.5">
@@ -7239,11 +7265,11 @@ const AdminDashboard = () => {
               <div className="bg-white rounded-3xl border border-pink-100/90 shadow-2xl w-full max-w-lg p-6 relative overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between pb-4 mb-4 border-b border-pink-100">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-[#C2477A] text-white flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-full bg-[#D81B60] text-white flex items-center justify-center font-bold">
                       <Sparkles size={16} />
                     </div>
                     <div>
-                      <h2 style={{ fontFamily: "'Great Vibes', cursive" }} className="text-2xl text-[#C2477A] font-normal leading-none">
+                      <h2 style={{ fontFamily: "'Great Vibes', cursive" }} className="text-2xl text-[#D81B60] font-normal leading-none">
                         Salbeau Executive Receipt
                       </h2>
                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
@@ -7253,7 +7279,7 @@ const AdminDashboard = () => {
                   </div>
                   <button
                     onClick={() => setIsInvoiceModalOpen(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -7278,7 +7304,7 @@ const AdminDashboard = () => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 font-semibold">Fulfillment Type:</span>
-                    <span className="font-extrabold text-[#C2477A]">
+                    <span className="font-extrabold text-[#D81B60]">
                       {selectedInvoiceOrder.deliveryType === 'delivery' ? '🚚 Home Delivery' : '🛍️ Store Pickup'}
                     </span>
                   </div>
@@ -7319,7 +7345,7 @@ const AdminDashboard = () => {
                           let itemBadgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
                           if (itemStatus === 'delivered') itemBadgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                           if (itemStatus === 'processing') itemBadgeColor = 'bg-sky-50 text-sky-700 border-sky-200';
-                          if (itemStatus === 'pending_fulfillment') itemBadgeColor = 'bg-white text-[#C2477A] border-[#FCE4EC]';
+                          if (itemStatus === 'pending_fulfillment') itemBadgeColor = 'bg-white text-[#D81B60] border-[#FCE4EC]';
                           if (itemStatus === 'rejected') itemBadgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
                           if (itemStatus === 'cancelled') itemBadgeColor = 'bg-gray-100 text-gray-500 border-gray-200';
 
@@ -7359,7 +7385,7 @@ const AdminDashboard = () => {
                               </td>
                               <td className="p-3 text-center font-bold text-gray-700">{item.quantity}</td>
                               <td className="p-3 text-right font-medium text-gray-700">₹{item.unitPrice}</td>
-                              <td className="p-3 text-right font-extrabold text-[#C2477A]">₹{item.quantity * item.unitPrice}</td>
+                              <td className="p-3 text-right font-extrabold text-[#D81B60]">₹{item.quantity * item.unitPrice}</td>
                             </tr>
                           );
                         })
@@ -7369,7 +7395,7 @@ const AdminDashboard = () => {
                           <td className="p-3 text-center font-bold text-gray-700">{selectedInvoiceOrder.status}</td>
                           <td className="p-3 text-center font-bold text-gray-700">1</td>
                           <td className="p-3 text-right font-medium text-gray-700">₹{selectedInvoiceOrder.totalAmount}</td>
-                          <td className="p-3 text-right font-extrabold text-[#C2477A]">₹{selectedInvoiceOrder.totalAmount}</td>
+                          <td className="p-3 text-right font-extrabold text-[#D81B60]">₹{selectedInvoiceOrder.totalAmount}</td>
                         </tr>
                       )}
                     </tbody>
@@ -7391,7 +7417,7 @@ const AdminDashboard = () => {
                   </div>
                   <div className="flex justify-between text-gray-900 font-black text-sm pt-2 border-t border-gray-200">
                     <span>Total Paid / Payable</span>
-                    <span className="text-[#C2477A]">₹{selectedInvoiceOrder.totalAmount}</span>
+                    <span className="text-[#D81B60]">₹{selectedInvoiceOrder.totalAmount}</span>
                   </div>
                 </div>
 
@@ -7404,7 +7430,7 @@ const AdminDashboard = () => {
                   </button>
                   <button
                     onClick={() => window.print()}
-                    className="w-2/3 bg-gradient-to-r from-[#C2477A] to-[#E25586] text-white py-2.5 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
+                    className="w-2/3 bg-gradient-to-r from-[#D81B60] to-[#E25586] text-white py-2.5 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer text-xs"
                   >
                     <Printer size={15} /> Print Official Invoice
                   </button>
@@ -7429,7 +7455,7 @@ const AdminDashboard = () => {
                   {/* Header */}
                   <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-pink-100/80 bg-white/95 backdrop-blur-xs shrink-0 z-10">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-white text-[#D81B60] flex items-center justify-center font-bold shadow-2xs shrink-0">
                         <Edit size={18} />
                       </div>
                       <div>
@@ -7447,7 +7473,7 @@ const AdminDashboard = () => {
                         setIsEditProductModalOpen(false);
                         setEditingProductData(null);
                       }}
-                      className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer shrink-0"
                       title="Close"
                     >
                       <X size={16} />
@@ -7485,14 +7511,14 @@ const AdminDashboard = () => {
                       <div className="sm:col-span-2">
                         <label className="block text-gray-800 font-bold mb-1.5 flex items-center gap-1.5">
                           <span>Product Name</span>
-                          <span className="text-[#C2477A]">*</span>
+                          <span className="text-[#D81B60]">*</span>
                         </label>
                         <input
                           type="text"
                           required
                           value={editingProductData.name}
                           onChange={(e) => setEditingProductData({ ...editingProductData, name: e.target.value })}
-                          className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all text-xs"
+                          className="w-full p-3 rounded-xl border border-pink-100/80 outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 bg-white font-medium shadow-2xs text-gray-900 transition-all text-xs"
                         />
                       </div>
 
@@ -7522,14 +7548,14 @@ const AdminDashboard = () => {
                       <div className="sm:col-span-2 space-y-2 p-3.5 rounded-2xl bg-gradient-to-br from-white to-white border border-pink-100">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                           <label className="text-gray-900 font-extrabold flex items-center gap-1.5 text-xs">
-                            <Barcode size={16} className="text-[#C2477A]" />
+                            <Barcode size={16} className="text-[#D81B60]" />
                             <span>Product Barcode Number</span>
-                            <span className="text-[#C2477A] font-black">*</span>
+                            <span className="text-[#D81B60] font-black">*</span>
                           </label>
                           <div className="flex items-center gap-2">
                             {editBarcodeStatus.isChecking && (
                               <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-gray-500">
-                                <Loader2 size={11} className="animate-spin text-[#C2477A]" />
+                                <Loader2 size={11} className="animate-spin text-[#D81B60]" />
                                 <span>Verifying barcode...</span>
                               </span>
                             )}
@@ -7569,7 +7595,7 @@ const AdminDashboard = () => {
                                     ? 'border-amber-400 bg-amber-50/40 text-amber-950 focus:border-amber-500 focus:ring-2 focus:ring-amber-200'
                                     : !editBarcodeStatus.isChecking && editBarcodeStatus.checkedBarcode && !editBarcodeStatus.exists
                                       ? 'border-emerald-400 bg-emerald-50/30 text-emerald-950 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200'
-                                      : 'border-pink-200 bg-white text-gray-900 focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20'
+                                      : 'border-pink-200 bg-white text-gray-900 focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20'
                                 }`}
                             />
                             {editingProductData.barcode && (
@@ -7591,7 +7617,7 @@ const AdminDashboard = () => {
                               setActiveBarcodeTarget('edit');
                               setIsBarcodeScannerOpen(true);
                             }}
-                            className="px-4 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white shadow-xs hover:shadow-sm cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                            className="px-4 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white shadow-xs hover:shadow-sm cursor-pointer transition-all active:scale-[0.98] shrink-0"
                             title="Scan product barcode with camera"
                           >
                             <ScanBarcode size={16} />
@@ -7726,7 +7752,7 @@ const AdminDashboard = () => {
                           id: 'var_' + Date.now(),
                           name: vName || `Variant ${productVariants.length + 1}`,
                           attributes: { ...editVariantDraft.attributes },
-                          hexColor: isColorVariantActive ? (editVariantDraft.hexColor || '#C2477A') : undefined,
+                          hexColor: isColorVariantActive ? (editVariantDraft.hexColor || '#D81B60') : undefined,
                           mrp: baseMrp,
                           generalPrice: baseMrp,
                           salonPrice,
@@ -7748,7 +7774,7 @@ const AdminDashboard = () => {
                         setEditVariantDraft({
                           name: '',
                           attributes: {},
-                          hexColor: '#C2477A',
+                          hexColor: '#D81B60',
                           price: '',
                           barcode: ''
                         });
@@ -7759,7 +7785,7 @@ const AdminDashboard = () => {
                           {!hasVariants && !showAddVariantForm ? (
                             /* Clean "No variants configured" state */
                             <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#FCE4EC] shadow-2xs text-center space-y-3">
-                              <div className="w-11 h-11 rounded-2xl bg-white text-[#C2477A] border border-pink-100 flex items-center justify-center mx-auto shadow-2xs">
+                              <div className="w-11 h-11 rounded-2xl bg-white text-[#D81B60] border border-pink-100 flex items-center justify-center mx-auto shadow-2xs">
                                 <Layers size={22} />
                               </div>
                               <div className="space-y-1">
@@ -7779,7 +7805,7 @@ const AdminDashboard = () => {
                                       setEditProductActiveAttributes(suggestions.defaultAutoSelect && suggestions.defaultAutoSelect.length > 0 ? suggestions.defaultAutoSelect : ['Size']);
                                     }
                                   }}
-                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white font-bold text-xs shadow-xs hover:shadow-sm cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
+                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white font-bold text-xs shadow-xs hover:shadow-sm cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
                                 >
                                   <Plus size={14} />
                                   <span>Configure Product Variants</span>
@@ -7791,7 +7817,7 @@ const AdminDashboard = () => {
                             <div className="p-4 rounded-2xl bg-white border border-[#FCE4EC]/80 space-y-3.5">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-extrabold text-xs text-[#C2477A] uppercase tracking-wider flex items-center gap-1.5">
+                                  <span className="font-extrabold text-xs text-[#D81B60] uppercase tracking-wider flex items-center gap-1.5">
                                     <Layers size={14} /> Product Variants ({productVariants.length})
                                   </span>
                                   <span className="text-[10px] text-gray-400 font-medium hidden sm:inline">
@@ -7801,7 +7827,7 @@ const AdminDashboard = () => {
                                 <button
                                   type="button"
                                   onClick={() => setShowAddVariantForm(prev => !prev)}
-                                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-50 text-[#C2477A] font-bold text-[11px] border border-pink-200 transition-all flex items-center gap-1 cursor-pointer self-start sm:self-auto active:scale-95 shadow-2xs"
+                                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-50 text-[#D81B60] font-bold text-[11px] border border-pink-200 transition-all flex items-center gap-1 cursor-pointer self-start sm:self-auto active:scale-95 shadow-2xs"
                                 >
                                   {showAddVariantForm ? <X size={12} /> : <Plus size={12} />}
                                   <span>{showAddVariantForm ? 'Close Add Form' : '+ Add Variant'}</span>
@@ -7827,7 +7853,7 @@ const AdminDashboard = () => {
                                           {isColor ? (
                                             <span
                                               className="w-5 h-5 rounded-full border border-gray-200 shadow-xs shrink-0"
-                                              style={{ background: shade.hexColor || '#C2477A' }}
+                                              style={{ background: shade.hexColor || '#D81B60' }}
                                             />
                                           ) : shade.image ? (
                                             <img
@@ -7836,7 +7862,7 @@ const AdminDashboard = () => {
                                               className="w-7 h-7 rounded-lg object-cover border border-pink-100 shrink-0"
                                             />
                                           ) : (
-                                            <span className="w-6 h-6 rounded-lg bg-white text-[#C2477A] border border-pink-200 flex items-center justify-center text-[10px] font-black shrink-0">
+                                            <span className="w-6 h-6 rounded-lg bg-white text-[#D81B60] border border-pink-200 flex items-center justify-center text-[10px] font-black shrink-0">
                                               #{idx + 1}
                                             </span>
                                           )}
@@ -7846,14 +7872,14 @@ const AdminDashboard = () => {
                                             {shade.attributes && Object.keys(shade.attributes).length > 0 && (
                                               <div className="flex flex-wrap items-center gap-1 mt-0.5">
                                                 {Object.entries(shade.attributes).map(([attrK, attrV]) => (
-                                                  <span key={attrK} className="px-1.5 py-0.2 rounded bg-white border border-pink-100 text-[#C2477A] text-[9.5px] font-bold">
+                                                  <span key={attrK} className="px-1.5 py-0.2 rounded bg-white border border-pink-100 text-[#D81B60] text-[9.5px] font-bold">
                                                     {attrK}: <strong className="text-gray-800 font-bold">{attrV}</strong>
                                                   </span>
                                                 ))}
                                               </div>
                                             )}
                                             <div className="text-[10px] text-gray-500 font-semibold flex items-center gap-1.5 flex-wrap mt-0.5">
-                                              <span className="text-[#C2477A] font-bold">₹{shadeMrp} MRP</span>
+                                              <span className="text-[#D81B60] font-bold">₹{shadeMrp} MRP</span>
                                               <span>•</span>
                                               <span className="text-amber-700 font-bold">{tiersCount} Tiers</span>
                                               {shade.barcode && (
@@ -7871,7 +7897,7 @@ const AdminDashboard = () => {
                                           <button
                                             type="button"
                                             onClick={() => handleOpenShadePricing(shade, editingProductData, 'edit')}
-                                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white font-bold text-[10.5px] border border-[#FCE4EC] transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white font-bold text-[10.5px] border border-[#FCE4EC] transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                                             title="Configure role pricing & quantity discount tiers for this variant"
                                           >
                                             <BadgePercent size={11} />
@@ -7899,7 +7925,7 @@ const AdminDashboard = () => {
                                   <div className="space-y-1.5 pb-2.5 border-b border-pink-100/60">
                                     <div className="flex items-center justify-between">
                                       <label className="text-[10px] font-black text-gray-700 uppercase tracking-wider flex items-center gap-1">
-                                        <Tag size={11} className="text-[#C2477A]" /> Configured Variant Attributes
+                                        <Tag size={11} className="text-[#D81B60]" /> Configured Variant Attributes
                                       </label>
                                       <span className="text-[10px] text-gray-400">
                                         {editProductActiveAttributes.length} active attribute{editProductActiveAttributes.length === 1 ? '' : 's'}
@@ -7910,7 +7936,7 @@ const AdminDashboard = () => {
                                       {editProductActiveAttributes.map(attr => (
                                         <span
                                           key={attr}
-                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-[#C2477A] border border-[#FCE4EC] font-bold text-[10.5px]"
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-[#D81B60] border border-[#FCE4EC] font-bold text-[10.5px]"
                                         >
                                           <span>{attr}</span>
                                           <button
@@ -7937,7 +7963,7 @@ const AdminDashboard = () => {
                                           key={attr}
                                           type="button"
                                           onClick={() => setEditProductActiveAttributes(prev => [...prev, attr])}
-                                          className="px-2 py-0.5 rounded-lg bg-gray-50 hover:bg-pink-50 text-gray-600 hover:text-[#C2477A] border border-dashed border-gray-200 hover:border-pink-300 font-semibold text-[10px] cursor-pointer transition-colors"
+                                          className="px-2 py-0.5 rounded-lg bg-gray-50 hover:bg-pink-50 text-gray-600 hover:text-[#D81B60] border border-dashed border-gray-200 hover:border-pink-300 font-semibold text-[10px] cursor-pointer transition-colors"
                                           title={`Add ${attr} attribute to this product`}
                                         >
                                           + {attr}
@@ -7984,7 +8010,7 @@ const AdminDashboard = () => {
                                               setCustomAttributeInput('');
                                               setShowCustomAttrInput(false);
                                             }}
-                                            className="p-1 px-2 rounded-lg bg-[#C2477A] text-white text-[10px] font-bold cursor-pointer"
+                                            className="p-1 px-2 rounded-lg bg-[#D81B60] text-white text-[10px] font-bold cursor-pointer"
                                           >
                                             Add
                                           </button>
@@ -8018,14 +8044,14 @@ const AdminDashboard = () => {
                                         }
                                       >
                                         <label className="block text-[10px] font-bold text-gray-700 mb-1">
-                                          {attr} <span className="text-[#C2477A]">*</span>
+                                          {attr} <span className="text-[#D81B60]">*</span>
                                         </label>
                                         <input
                                           type="text"
                                           placeholder={getDynamicAttributePlaceholder(attr)}
                                           value={editVariantDraft.attributes[attr] || ''}
                                           onChange={(e) => handleAttrValChange(attr, e.target.value)}
-                                          className="w-full p-2.5 rounded-xl border border-[#FCE4EC]/80 outline-none focus:border-[#C2477A] bg-white font-medium text-gray-900 text-xs shadow-xs"
+                                          className="w-full p-2.5 rounded-xl border border-[#FCE4EC]/80 outline-none focus:border-[#D81B60] bg-white font-medium text-gray-900 text-xs shadow-xs"
                                         />
                                       </div>
                                     ))}
@@ -8051,10 +8077,10 @@ const AdminDashboard = () => {
                                           />
                                           <input
                                             type="text"
-                                            placeholder="#C2477A"
+                                            placeholder="#D81B60"
                                             value={editVariantDraft.hexColor}
                                             onChange={(e) => setEditVariantDraft(prev => ({ ...prev, hexColor: e.target.value }))}
-                                            className="w-full p-2 rounded-xl border border-[#FCE4EC]/80 outline-none focus:border-[#C2477A] bg-white font-mono text-[10px] font-bold text-gray-700 shadow-xs"
+                                            className="w-full p-2 rounded-xl border border-[#FCE4EC]/80 outline-none focus:border-[#D81B60] bg-white font-mono text-[10px] font-bold text-gray-700 shadow-xs"
                                           />
                                         </div>
                                       </div>
@@ -8068,7 +8094,7 @@ const AdminDashboard = () => {
                                         placeholder="e.g. 50ml Gel"
                                         value={editVariantDraft.name}
                                         onChange={(e) => setEditVariantDraft(prev => ({ ...prev, name: e.target.value }))}
-                                        className="w-full p-2.5 rounded-xl border border-[#FCE4EC]/80 outline-none focus:border-[#C2477A] bg-white font-medium text-gray-900 text-xs shadow-xs"
+                                        className="w-full p-2.5 rounded-xl border border-[#FCE4EC]/80 outline-none focus:border-[#D81B60] bg-white font-medium text-gray-900 text-xs shadow-xs"
                                       />
                                     </div>
 
@@ -8080,7 +8106,7 @@ const AdminDashboard = () => {
                                         placeholder={`₹${editingProductData.mrp || 0}`}
                                         value={editVariantDraft.price}
                                         onChange={(e) => setEditVariantDraft(prev => ({ ...prev, price: e.target.value }))}
-                                        className="w-full p-2.5 rounded-xl border border-[#FCE4EC]/80 outline-none focus:border-[#C2477A] bg-white font-medium text-gray-900 text-xs shadow-xs"
+                                        className="w-full p-2.5 rounded-xl border border-[#FCE4EC]/80 outline-none focus:border-[#D81B60] bg-white font-medium text-gray-900 text-xs shadow-xs"
                                       />
                                     </div>
 
@@ -8088,7 +8114,7 @@ const AdminDashboard = () => {
                                       <button
                                         type="button"
                                         onClick={handleAddVariantSubmit}
-                                        className="w-full h-9 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white rounded-xl flex items-center justify-center gap-1 font-bold text-xs shadow-xs active:scale-95 cursor-pointer"
+                                        className="w-full h-9 bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white rounded-xl flex items-center justify-center gap-1 font-bold text-xs shadow-xs active:scale-95 cursor-pointer"
                                         title="Add variant"
                                       >
                                         <Plus size={14} />
@@ -8122,7 +8148,7 @@ const AdminDashboard = () => {
                       disabled={editBarcodeStatus.exists || !!editBarcodeStatus.formatError || editBarcodeStatus.isChecking}
                       className={`px-5 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 shadow-xs transition-all ${editBarcodeStatus.exists || !!editBarcodeStatus.formatError || editBarcodeStatus.isChecking
                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300'
-                          : 'bg-[#C2477A] hover:bg-[#b83760] text-white cursor-pointer active:scale-[0.98]'
+                          : 'bg-[#D81B60] hover:bg-[#b83760] text-white cursor-pointer active:scale-[0.98]'
                         }`}
                     >
                       <Save size={14} />
@@ -8186,7 +8212,7 @@ const AdminDashboard = () => {
                         setIsDeleteProductModalOpen(false);
                         setProductToDelete(null);
                       }}
-                      className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                      className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
                     >
                       <X size={16} />
                     </button>
@@ -8205,7 +8231,7 @@ const AdminDashboard = () => {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-black uppercase text-[#C2477A] tracking-wider block">
+                      <span className="text-[10px] font-black uppercase text-[#D81B60] tracking-wider block">
                         {productToDelete.brandName || 'Brand Item'}
                       </span>
                       <h4 className="font-extrabold text-xs text-gray-900 truncate mt-0.5">
@@ -8238,7 +8264,7 @@ const AdminDashboard = () => {
                             value="full"
                             checked={deleteModeChoice === 'full'}
                             onChange={() => setDeleteModeChoice('full')}
-                            className="accent-[#C2477A]"
+                            className="accent-[#D81B60]"
                           />
                           <span className="text-xs font-bold text-gray-900">
                             Delete entire product family ({productToDelete.shades.length} variants)
@@ -8252,7 +8278,7 @@ const AdminDashboard = () => {
                             value="variant"
                             checked={deleteModeChoice === 'variant'}
                             onChange={() => setDeleteModeChoice('variant')}
-                            className="accent-[#C2477A]"
+                            className="accent-[#D81B60]"
                           />
                           <span className="text-xs font-bold text-gray-900">
                             Delete only a specific variant
@@ -8271,7 +8297,7 @@ const AdminDashboard = () => {
                               const found = productToDelete.shades.find(s => (s.id || s.name) === e.target.value);
                               if (found) setSelectedVariantToDelete(found);
                             }}
-                            className="w-full p-2 bg-white rounded-xl border border-gray-300 text-xs font-medium text-gray-900 outline-none focus:border-[#C2477A]"
+                            className="w-full p-2 bg-white rounded-xl border border-gray-300 text-xs font-medium text-gray-900 outline-none focus:border-[#D81B60]"
                           >
                             {productToDelete.shades.map((s, idx) => (
                               <option key={s.id || idx} value={s.id || s.name}>

@@ -232,7 +232,7 @@ export const CategoryDetailView = ({
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              shadowColor: '#C2477A',
+              shadowColor: '#D81B60',
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.05,
               shadowRadius: 6,
@@ -252,7 +252,7 @@ export const CategoryDetailView = ({
                 justifyContent: 'center',
                 marginRight: 12,
                 flexShrink: 0,
-                shadowColor: '#C2477A',
+                shadowColor: '#D81B60',
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.12,
                 shadowRadius: 3,
@@ -270,7 +270,7 @@ export const CategoryDetailView = ({
                 <FontAwesome5
                   name={getCategoryFA5Icon(categoryName).icon || 'sparkles'}
                   size={20}
-                  color="#C2477A"
+                  color="#D81B60"
                 />
               )}
             </View>
@@ -297,7 +297,7 @@ export const CategoryDetailView = ({
               onPress={onViewAllProducts}
               style={{
                 backgroundColor: '#FFFFFF',
-                borderColor: '#C2477A',
+                borderColor: '#D81B60',
                 borderWidth: 1.3,
                 borderRadius: 20,
                 paddingVertical: 6,
@@ -308,10 +308,10 @@ export const CategoryDetailView = ({
                 flexShrink: 0,
               }}
             >
-              <Text style={{ color: '#C2477A', fontSize: 12, fontWeight: '800' }}>
+              <Text style={{ color: '#D81B60', fontSize: 12, fontWeight: '800' }}>
                 Explore All
               </Text>
-              <Ionicons name="arrow-forward" size={13} color="#C2477A" />
+              <Ionicons name="arrow-forward" size={13} color="#D81B60" />
             </TouchableOpacity>
           </View>
 
@@ -327,14 +327,14 @@ export const CategoryDetailView = ({
               flexDirection: 'row',
               alignItems: 'center',
               marginBottom: 16,
-              shadowColor: '#C2477A',
+              shadowColor: '#D81B60',
               shadowOffset: { width: 0, height: 1 },
               shadowOpacity: 0.03,
               shadowRadius: 3,
               elevation: 1,
             }}
           >
-            <Ionicons name="search" size={18} color="#C2477A" style={{ marginRight: 10 }} />
+            <Ionicons name="search" size={18} color="#D81B60" style={{ marginRight: 10 }} />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -381,7 +381,7 @@ export const CategoryDetailView = ({
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    shadowColor: '#C2477A',
+                    shadowColor: '#D81B60',
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.05,
                     shadowRadius: 5,
@@ -418,7 +418,7 @@ export const CategoryDetailView = ({
                       flexShrink: 0,
                     }}
                   >
-                    <Ionicons name="chevron-forward" size={16} color="#C2477A" />
+                    <Ionicons name="chevron-forward" size={16} color="#D81B60" />
                   </View>
                 </TouchableOpacity>
               );
@@ -439,7 +439,7 @@ export const CategoryDetailView = ({
                   marginBottom: 12,
                 }}
               >
-                <Ionicons name="search-outline" size={26} color="#C2477A" />
+                <Ionicons name="search-outline" size={26} color="#D81B60" />
               </View>
               <Text style={{ color: '#1F2937', fontSize: 15, fontWeight: '700' }}>
                 No subcategories match "{searchQuery}"
@@ -452,7 +452,7 @@ export const CategoryDetailView = ({
                 activeOpacity={0.7}
                 style={{
                   marginTop: 14,
-                  backgroundColor: '#C2477A',
+                  backgroundColor: '#D81B60',
                   borderRadius: 20,
                   paddingHorizontal: 16,
                   paddingVertical: 8,

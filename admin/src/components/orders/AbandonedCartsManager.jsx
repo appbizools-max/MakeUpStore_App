@@ -264,8 +264,8 @@ export const AbandonedCartsManager = ({
         {/* Conversion / Recovery Rate */}
         <div className="bg-white p-5 rounded-2xl border border-pink-100 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#C2477A] uppercase tracking-wider">Recovery Rate</span>
-            <div className="w-8 h-8 rounded-xl bg-white border border-pink-200 flex items-center justify-center text-[#C2477A]">
+            <span className="text-xs font-bold text-[#D81B60] uppercase tracking-wider">Recovery Rate</span>
+            <div className="w-8 h-8 rounded-xl bg-white border border-pink-200 flex items-center justify-center text-[#D81B60]">
               <DollarSign size={16} />
             </div>
           </div>
@@ -300,7 +300,7 @@ export const AbandonedCartsManager = ({
               type="checkbox"
               checked={filteredCarts.length > 0 && selectedCartIds.length === filteredCarts.length}
               onChange={handleToggleSelectAll}
-              className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+              className="w-4 h-4 rounded text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
             />
             <span>Select All</span>
           </label>
@@ -316,7 +316,7 @@ export const AbandonedCartsManager = ({
               onClick={() => setFilterStatus(tab.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 filterStatus === tab.id
-                  ? 'bg-[#C2477A] text-white shadow-xs'
+                  ? 'bg-[#D81B60] text-white shadow-xs'
                   : 'bg-gray-50 hover:bg-pink-50/50 text-gray-600'
               }`}
             >
@@ -360,7 +360,7 @@ export const AbandonedCartsManager = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search customer, phone, item..."
-              className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-pink-100 focus:border-[#C2477A] outline-none bg-white font-medium"
+              className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-pink-100 focus:border-[#D81B60] outline-none bg-white font-medium"
             />
           </div>
         </div>
@@ -369,7 +369,7 @@ export const AbandonedCartsManager = ({
       {/* 3. Abandoned Carts Feed / Cards */}
       {filteredCarts.length === 0 ? (
         <div className="bg-white rounded-3xl border border-pink-100 p-12 text-center shadow-2xs">
-          <div className="w-14 h-14 rounded-2xl bg-white text-[#C2477A] flex items-center justify-center mx-auto mb-3">
+          <div className="w-14 h-14 rounded-2xl bg-white text-[#D81B60] flex items-center justify-center mx-auto mb-3">
             <ShoppingCart size={28} />
           </div>
           <h3 className="text-base font-bold text-gray-900">No Carts Found</h3>
@@ -397,9 +397,9 @@ export const AbandonedCartsManager = ({
                       type="checkbox"
                       checked={selectedCartIds.includes(cart.id)}
                       onChange={() => handleToggleSelectCart(cart.id)}
-                      className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                      className="w-4 h-4 rounded text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                     />
-                    <div className="w-10 h-10 rounded-full bg-white border border-pink-200 text-[#C2477A] flex items-center justify-center font-black text-sm shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-white border border-pink-200 text-[#D81B60] flex items-center justify-center font-black text-sm shrink-0">
                       {(cart.user_name || 'C').charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -453,7 +453,7 @@ export const AbandonedCartsManager = ({
                             className="w-12 h-12 rounded-lg object-cover border border-pink-100 shrink-0 bg-white"
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded-lg bg-pink-100/50 border border-pink-200 flex items-center justify-center text-[#C2477A] font-bold text-xs shrink-0">
+                          <div className="w-12 h-12 rounded-lg bg-pink-100/50 border border-pink-200 flex items-center justify-center text-[#D81B60] font-bold text-xs shrink-0">
                             {it.quantity}x
                           </div>
                         )}
@@ -463,7 +463,7 @@ export const AbandonedCartsManager = ({
                             {it.name || 'Cosmetics Item'}
                           </span>
                           {it.brand && (
-                            <span className="text-[9.5px] font-bold text-[#C2477A] block uppercase tracking-wide">
+                            <span className="text-[9.5px] font-bold text-[#D81B60] block uppercase tracking-wide">
                               {it.brand}
                             </span>
                           )}
@@ -487,7 +487,7 @@ export const AbandonedCartsManager = ({
                             <span className="text-gray-500 text-[11px]">
                               Qty: <strong className="text-gray-800 font-bold">{it.quantity}</strong> × ₹{it.unitPrice || 0}
                             </span>
-                            <span className="font-extrabold text-[#C2477A]">
+                            <span className="font-extrabold text-[#D81B60]">
                               ₹{(it.totalPrice || (it.unitPrice || 0) * (it.quantity || 1)).toLocaleString('en-IN')}
                             </span>
                           </div>
@@ -501,7 +501,7 @@ export const AbandonedCartsManager = ({
                 <div className="pt-3 border-t border-pink-100/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600 font-medium">Total Cart Value:</span>
-                    <span className="text-base font-black text-[#C2477A]">
+                    <span className="text-base font-black text-[#D81B60]">
                       ₹{Number(cart.cart_value || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
@@ -514,7 +514,7 @@ export const AbandonedCartsManager = ({
                           href={`tel:${cart.phone}`}
                           className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs flex items-center gap-1 transition-all"
                         >
-                          <Phone size={12} className="text-[#C2477A]" />
+                          <Phone size={12} className="text-[#D81B60]" />
                           <span>Call</span>
                         </a>
 
@@ -535,7 +535,7 @@ export const AbandonedCartsManager = ({
                     {cart.status === 'converted' && cart.order_id && onNavigateToOrders && (
                       <button
                         onClick={() => onNavigateToOrders(cart.order_id)}
-                        className="px-3 py-1.5 rounded-xl bg-white text-[#C2477A] hover:bg-pink-100 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-white text-[#D81B60] hover:bg-pink-100 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
                       >
                         <ExternalLink size={12} />
                         <span>View Order</span>
@@ -588,7 +588,7 @@ export const AbandonedCartsManager = ({
                   <div key={c.id} className="p-2.5 bg-white rounded-xl border border-gray-200/70 space-y-1">
                     <div className="flex items-center justify-between font-bold text-gray-900">
                       <span>{c.user_name || 'Customer'} <span className="text-gray-400 font-normal">({c.phone || 'No phone'})</span></span>
-                      <span className="text-[#C2477A] font-black">₹{Number(c.cart_value || 0).toLocaleString('en-IN')}</span>
+                      <span className="text-[#D81B60] font-black">₹{Number(c.cart_value || 0).toLocaleString('en-IN')}</span>
                     </div>
                     <div className="text-[11px] text-gray-500">
                       Products: {cItems.length > 0 ? cItems.map(i => `${i.name || 'Item'} (Qty: ${i.quantity || 1})`).join(', ') : 'Empty Bag'}

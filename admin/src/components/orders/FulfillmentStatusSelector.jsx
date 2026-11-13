@@ -267,12 +267,12 @@ export default function FulfillmentStatusSelector({
                   <h3 className="font-extrabold text-sm sm:text-base text-gray-900 tracking-tight">
                     Update Fulfillment Status
                   </h3>
-                  <span className="font-mono text-xs font-bold text-[#CE4270] bg-white px-2 py-0.5 rounded-md border border-pink-100">
+                  <span className="font-mono text-xs font-bold text-[#D81B60] bg-white px-2 py-0.5 rounded-md border border-pink-100">
                     #{order.id}
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-500 font-medium mt-0.5">
-                  Customer: <span className="font-bold text-gray-800">{order.userName}</span> • Role: <span className="font-bold text-[#CE4270]">{order.userRole}</span> • Branch: <span className="font-semibold text-gray-700">{order.branch}</span>
+                  Customer: <span className="font-bold text-gray-800">{order.userName}</span> • Role: <span className="font-bold text-[#D81B60]">{order.userRole}</span> • Branch: <span className="font-semibold text-gray-700">{order.branch}</span>
                 </p>
               </div>
 
@@ -307,7 +307,7 @@ export default function FulfillmentStatusSelector({
               {/* 1. STANDARD ORDER LIFECYCLE (VERTICAL PROGRESSION TIMELINE) */}
               <div className="space-y-3">
                 <div className="text-xs font-black text-gray-900 uppercase tracking-wide flex items-center gap-1.5">
-                  <Clock size={14} className="text-[#CE4270]" />
+                  <Clock size={14} className="text-[#D81B60]" />
                   <span>Standard Fulfillment Lifecycle</span>
                 </div>
 
@@ -335,7 +335,7 @@ export default function FulfillmentStatusSelector({
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center font-bold z-10 transition-all shrink-0 ${
                             isCurrentOrderState
-                              ? 'bg-[#CE4270] text-white ring-4 ring-pink-100 shadow-xs'
+                              ? 'bg-[#D81B60] text-white ring-4 ring-pink-100 shadow-xs'
                               : isSelected
                               ? 'bg-violet-600 text-white ring-4 ring-violet-100'
                               : isPast
@@ -355,7 +355,7 @@ export default function FulfillmentStatusSelector({
                             isSelected
                               ? 'border-violet-500 bg-violet-50/60 shadow-xs'
                               : isCurrentOrderState
-                              ? 'border-[#CE4270]/40 bg-white'
+                              ? 'border-[#D81B60]/40 bg-white'
                               : 'border-gray-100 bg-white hover:border-gray-300 hover:bg-gray-50/50'
                           } ${isInvalidTransition ? 'opacity-40 cursor-not-allowed' : ''}`}
                         >
@@ -365,7 +365,7 @@ export default function FulfillmentStatusSelector({
                                 {stCfg.label}
                               </span>
                               {isCurrentOrderState && (
-                                <span className="text-[9.5px] font-black px-2 py-0.5 rounded-full bg-[#CE4270] text-white">
+                                <span className="text-[9.5px] font-black px-2 py-0.5 rounded-full bg-[#D81B60] text-white">
                                   Current
                                 </span>
                               )}
@@ -415,7 +415,7 @@ export default function FulfillmentStatusSelector({
                           isSelected
                             ? 'border-violet-500 bg-violet-50/70 shadow-xs'
                             : isCurrentOrderState
-                            ? 'border-[#CE4270]/40 bg-white'
+                            ? 'border-[#D81B60]/40 bg-white'
                             : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
@@ -425,7 +425,7 @@ export default function FulfillmentStatusSelector({
                             <span className="font-extrabold text-xs text-gray-900">{stCfg.label}</span>
                           </div>
                           {isCurrentOrderState && (
-                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-[#CE4270] text-white">Current</span>
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-[#D81B60] text-white">Current</span>
                           )}
                         </div>
                         <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed">
@@ -447,8 +447,8 @@ export default function FulfillmentStatusSelector({
                     <span className="text-xs font-bold text-gray-500 line-through">
                       {currentCfg.label}
                     </span>
-                    <ArrowRight size={13} className="text-[#CE4270]" />
-                    <span className="text-xs font-black text-[#CE4270] bg-pink-100/80 px-2.5 py-0.5 rounded-full">
+                    <ArrowRight size={13} className="text-[#D81B60]" />
+                    <span className="text-xs font-black text-[#D81B60] bg-pink-100/80 px-2.5 py-0.5 rounded-full">
                       {targetCfg.label}
                     </span>
                   </div>
@@ -603,7 +603,7 @@ export default function FulfillmentStatusSelector({
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300'
                     : targetStatus === 'rejected'
                     ? 'bg-rose-600 hover:bg-rose-700 text-white cursor-pointer active:scale-95'
-                    : 'bg-[#CE4270] hover:bg-[#b83760] text-white cursor-pointer active:scale-95'
+                    : 'bg-[#D81B60] hover:bg-[#b83760] text-white cursor-pointer active:scale-95'
                 }`}
               >
                 {isSubmitting ? (

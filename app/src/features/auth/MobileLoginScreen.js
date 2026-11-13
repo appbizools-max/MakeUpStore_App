@@ -10,7 +10,8 @@ export const MobileLoginScreen = () => {
     setCurrentScreen,
     prefetchUserProfile,
     lookupUserAccountsByPhone,
-    setVerifiedPhoneForRegistration
+    setVerifiedPhoneForRegistration,
+    resolvePostLoginDeepLink
   } = useApp();
 
   const [mobileNumber, setMobileNumber] = useState('');
@@ -18,6 +19,19 @@ export const MobileLoginScreen = () => {
   const [registrationStatus, setRegistrationStatus] = useState('idle'); // 'idle' | 'checking' | 'registered' | 'unregistered' | 'error'
   const [validationMessage, setValidationMessage] = useState('');
   const [lastCheckedDigits, setLastCheckedDigits] = useState('');
+
+  // Strict session safeguard: if user already has an active authenticated profile, redirect safely
+  useEffect(() => {
+    if (userProfile?.isProfileComplete) {
+      if (typeof resolvePostLoginDeepLink === 'function') {
+        resolvePostLoginDeepLink(userProfile).then((handled) => {
+          if (!handled) setCurrentScreen('home');
+        }).catch(() => setCurrentScreen('home'));
+      } else {
+        setCurrentScreen('home');
+      }
+    }
+  }, [userProfile?.isProfileComplete, setCurrentScreen, resolvePostLoginDeepLink]);
 
   const checkTimerRef = useRef(null);
   const inFlightRef = useRef(false);
@@ -180,9 +194,9 @@ export const MobileLoginScreen = () => {
             className="flex-col items-center"
           >
             <View className="w-11 h-11 rounded-full bg-[#FFF0F5] border border-[#FCD8E3] items-center justify-center shadow-xs">
-              <Ionicons name="bicycle" size={20} color="#C2477A" />
+              <Ionicons name="bicycle" size={20} color="#D81B60" />
             </View>
-            <Text className="text-[9px] font-black text-[#C2477A] mt-1 tracking-wider uppercase">
+            <Text className="text-[9px] font-black text-[#D81B60] mt-1 tracking-wider uppercase">
               Staff / Rider
             </Text>
           </TouchableOpacity>
@@ -196,8 +210,8 @@ export const MobileLoginScreen = () => {
             resizeMode="contain"
           />
           <View className="flex-row items-center gap-1.5 mt-2 bg-pink-50 border border-pink-100 px-3 py-1 rounded-full">
-            <Ionicons name="sparkles" size={12} color="#C2477A" />
-            <Text className="text-[11px] font-bold text-[#C2477A] tracking-wider uppercase">
+            <Ionicons name="sparkles" size={12} color="#D81B60" />
+            <Text className="text-[11px] font-bold text-[#D81B60] tracking-wider uppercase">
               Beauty & Professional Store
             </Text>
           </View>
@@ -208,11 +222,11 @@ export const MobileLoginScreen = () => {
           style={{
             borderColor:
               registrationStatus === 'unregistered'
-                ? '#E11D48'
+                ? '#D81B60'
                 : registrationStatus === 'registered'
                 ? '#059669'
                 : isValid
-                ? '#C2477A'
+                ? '#D81B60'
                 : '#FCE4EC'
           }}
           className="border bg-white rounded-full py-3.5 px-5 flex-row items-center shadow-2xs mb-3"
@@ -247,7 +261,7 @@ export const MobileLoginScreen = () => {
 
           {/* Right Status Indicators */}
           {isChecking && (
-            <ActivityIndicator size="small" color="#C2477A" style={{ marginLeft: 6 }} />
+            <ActivityIndicator size="small" color="#D81B60" style={{ marginLeft: 6 }} />
           )}
 
           {!isChecking && registrationStatus === 'registered' && (
@@ -258,7 +272,7 @@ export const MobileLoginScreen = () => {
 
           {!isChecking && registrationStatus === 'unregistered' && (
             <View className="flex-row items-center">
-              <Ionicons name="alert-circle" size={20} color="#E11D48" />
+              <Ionicons name="alert-circle" size={20} color="#D81B60" />
             </View>
           )}
         </View>
@@ -266,7 +280,7 @@ export const MobileLoginScreen = () => {
         {/* Realtime Status Feedback */}
         {isChecking && (
           <View className="flex-row items-center ml-2 mb-4">
-            <ActivityIndicator size="small" color="#C2477A" style={{ marginRight: 6, transform: [{ scale: 0.75 }] }} />
+            <ActivityIndicator size="small" color="#D81B60" style={{ marginRight: 6, transform: [{ scale: 0.75 }] }} />
             <Text className="text-xs font-semibold text-[#8C7078]">
               Checking account status in database...
             </Text>
@@ -288,10 +302,10 @@ export const MobileLoginScreen = () => {
           <View className="mt-1 mb-5 p-4 bg-[#FFF5F8] border border-[#FCE4EC] rounded-2xl shadow-2xs">
             <View className="flex-row items-start">
               <View className="w-8 h-8 rounded-full bg-[#FFE4EC] items-center justify-center mr-3 mt-0.5">
-                <Ionicons name="alert-circle" size={20} color="#C2477A" />
+                <Ionicons name="alert-circle" size={20} color="#D81B60" />
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-black text-[#C2477A]">
+                <Text className="text-sm font-black text-[#D81B60]">
                   This mobile number is not registered.
                 </Text>
                 <Text className="text-xs font-medium text-[#8C7078] mt-1 leading-relaxed">
@@ -304,7 +318,7 @@ export const MobileLoginScreen = () => {
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={handleContinueToRegister}
-              style={{ backgroundColor: '#C2477A' }}
+              style={{ backgroundColor: '#D81B60' }}
               className="w-full mt-4 py-3.5 rounded-full flex-row items-center justify-center shadow-md active:opacity-90"
             >
               <Ionicons name="person-add-outline" size={17} color="#FFFFFF" style={{ marginRight: 8 }} />
@@ -333,7 +347,7 @@ export const MobileLoginScreen = () => {
             disabled={!isValid || isChecking}
             onPress={handleContinueToOtp}
             style={{
-              backgroundColor: isValid && !isChecking ? '#C2477A' : '#E5E7EB'
+              backgroundColor: isValid && !isChecking ? '#D81B60' : '#E5E7EB'
             }}
             className="w-full py-4 rounded-full items-center justify-center shadow-lg active:opacity-90 mb-4"
           >
@@ -355,8 +369,8 @@ export const MobileLoginScreen = () => {
       <View className="items-center mb-2">
         <Text className="text-xs text-[#8C7078] text-center leading-relaxed">
           By continuing, you agree to our{' '}
-          <Text className="text-[#C2477A] font-bold underline">Terms</Text> &{' '}
-          <Text className="text-[#C2477A] font-bold underline">Privacy Policy</Text>
+          <Text className="text-[#D81B60] font-bold underline">Terms</Text> &{' '}
+          <Text className="text-[#D81B60] font-bold underline">Privacy Policy</Text>
         </Text>
       </View>
     </ScrollView>

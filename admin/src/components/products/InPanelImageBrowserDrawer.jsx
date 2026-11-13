@@ -423,7 +423,7 @@ export default function InPanelImageBrowserDrawer({
             onClick={() => setActiveTab('gallery')}
             className={`py-2.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'gallery'
-                ? 'border-[#CE4270] text-[#CE4270] bg-white'
+                ? 'border-[#D81B60] text-[#D81B60] bg-white'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -436,7 +436,7 @@ export default function InPanelImageBrowserDrawer({
             onClick={() => setActiveTab('url_paste')}
             className={`py-2.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'url_paste'
-                ? 'border-[#CE4270] text-[#CE4270] bg-white'
+                ? 'border-[#D81B60] text-[#D81B60] bg-white'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -449,7 +449,7 @@ export default function InPanelImageBrowserDrawer({
             onClick={() => setActiveTab('iframe_test')}
             className={`py-2.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'iframe_test'
-                ? 'border-[#CE4270] text-[#CE4270] bg-white'
+                ? 'border-[#D81B60] text-[#D81B60] bg-white'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -462,7 +462,7 @@ export default function InPanelImageBrowserDrawer({
             onClick={() => setActiveTab('companion')}
             className={`py-2.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'companion'
-                ? 'border-[#CE4270] text-[#CE4270] bg-white'
+                ? 'border-[#D81B60] text-[#D81B60] bg-white'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -523,7 +523,7 @@ export default function InPanelImageBrowserDrawer({
                       setSearchQuery(q);
                       performSearch(q);
                     }}
-                    className="text-[#CE4270] hover:underline font-bold text-[10px] cursor-pointer"
+                    className="text-[#D81B60] hover:underline font-bold text-[10px] cursor-pointer"
                   >
                     Reset to [Brand + Name + Shade + Category]
                   </button>
@@ -543,13 +543,13 @@ export default function InPanelImageBrowserDrawer({
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search cosmetics, brand, packshot, or shade..."
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:border-[#CE4270] focus:ring-1 focus:ring-[#CE4270] outline-none transition-all"
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:border-[#D81B60] focus:ring-1 focus:ring-[#D81B60] outline-none transition-all"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={isSearching}
-                    className="px-4 py-2 bg-[#CE4270] hover:bg-[#b0345d] text-white rounded-lg text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                    className="px-4 py-2 bg-[#D81B60] hover:bg-[#b0345d] text-white rounded-lg text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
                   >
                     {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                     Search API
@@ -568,7 +568,7 @@ export default function InPanelImageBrowserDrawer({
                         setSearchQuery(newQ);
                         performSearch(newQ);
                       }}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-pink-50 hover:text-[#CE4270] hover:border-pink-200 border border-slate-200 rounded-md text-[10px] font-semibold text-slate-600 transition-colors cursor-pointer"
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-pink-50 hover:text-[#D81B60] hover:border-pink-200 border border-slate-200 rounded-md text-[10px] font-semibold text-slate-600 transition-colors cursor-pointer"
                     >
                       + {kw}
                     </button>
@@ -595,7 +595,7 @@ export default function InPanelImageBrowserDrawer({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5 text-[#CE4270]" />
+                    <ImageIcon className="w-3.5 h-3.5 text-[#D81B60]" />
                     Live Image Search Results {searchResults.length > 0 && `(${searchResults.length})`}
                   </h4>
                   {hasSearched && (
@@ -607,7 +607,7 @@ export default function InPanelImageBrowserDrawer({
 
                 {isSearching ? (
                   <div className="bg-white rounded-xl border border-slate-200 p-12 text-center flex flex-col items-center justify-center gap-3">
-                    <Loader2 className="w-8 h-8 text-[#CE4270] animate-spin" />
+                    <Loader2 className="w-8 h-8 text-[#D81B60] animate-spin" />
                     <p className="text-xs font-bold text-slate-600">
                       Querying supported image-search API inside admin panel...
                     </p>
@@ -623,7 +623,7 @@ export default function InPanelImageBrowserDrawer({
                         <div
                           key={item.id || idx}
                           className={`group relative bg-white border rounded-xl overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col ${
-                            isAdded ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-[#CE4270]'
+                            isAdded ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-[#D81B60]'
                           }`}
                         >
                           <div className="relative aspect-square bg-slate-100 overflow-hidden">
@@ -665,7 +665,7 @@ export default function InPanelImageBrowserDrawer({
                               className={`w-full py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                                 isAdded
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                                  : 'bg-[#CE4270] hover:bg-[#b0345d] text-white shadow-2xs'
+                                  : 'bg-[#D81B60] hover:bg-[#b0345d] text-white shadow-2xs'
                               }`}
                             >
                               {isAdded ? (
@@ -734,12 +734,12 @@ export default function InPanelImageBrowserDrawer({
                         }
                       }}
                       placeholder="https://images.example.com/product-packshot.jpg"
-                      className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:border-[#CE4270] focus:ring-1 focus:ring-[#CE4270] outline-none"
+                      className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:border-[#D81B60] focus:ring-1 focus:ring-[#D81B60] outline-none"
                     />
                     <button
                       type="submit"
                       disabled={isProcessingUrl || !urlInput.trim()}
-                      className="px-4 py-2 bg-[#CE4270] hover:bg-[#b0345d] text-white rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="px-4 py-2 bg-[#D81B60] hover:bg-[#b0345d] text-white rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isProcessingUrl ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudUpload className="w-3.5 h-3.5" />}
                       Upload to Storage Bucket
@@ -780,11 +780,11 @@ export default function InPanelImageBrowserDrawer({
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-all bg-white cursor-pointer ${
                   isDragging
-                    ? 'border-[#CE4270] bg-white scale-[0.99]'
+                    ? 'border-[#D81B60] bg-white scale-[0.99]'
                     : 'border-slate-300 hover:border-slate-400'
                 }`}
               >
-                <div className="w-12 h-12 rounded-full bg-white text-[#CE4270] flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 rounded-full bg-white text-[#D81B60] flex items-center justify-center mx-auto mb-3">
                   <Clipboard className="w-6 h-6" />
                 </div>
                 <h4 className="text-xs font-extrabold text-slate-800">
@@ -842,7 +842,7 @@ export default function InPanelImageBrowserDrawer({
                 <button
                   type="button"
                   onClick={() => setActiveTab('gallery')}
-                  className="px-4 py-2 bg-[#CE4270] hover:bg-[#b0345d] text-white rounded-lg text-xs font-bold transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 bg-[#D81B60] hover:bg-[#b0345d] text-white rounded-lg text-xs font-bold transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <ImageIcon className="w-3.5 h-3.5" />
                   Return to Responsive Image Gallery
@@ -914,7 +914,7 @@ export default function InPanelImageBrowserDrawer({
         <div className="p-3 bg-white border-t border-slate-200 shrink-0">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-[#CE4270]" />
+              <Layers className="w-3.5 h-3.5 text-[#D81B60]" />
               Attached to this Product / Variant ({rowImages.length}/10)
             </span>
             {rowImages.length > 0 && (
@@ -1028,7 +1028,7 @@ export default function InPanelImageBrowserDrawer({
                     setPreviewImage(null);
                     handleAddImage(img.url, img.title);
                   }}
-                  className="px-4 py-1.5 bg-[#CE4270] hover:bg-[#b0345d] text-white rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-1.5 bg-[#D81B60] hover:bg-[#b0345d] text-white rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" /> Attach &amp; Upload
                 </button>

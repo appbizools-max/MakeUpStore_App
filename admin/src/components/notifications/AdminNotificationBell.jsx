@@ -322,8 +322,8 @@ export const AdminNotificationBell = ({
       case 'orders':
         return {
           icon: Package,
-          bg: 'bg-pink-100 text-[#C2477A] border-pink-200',
-          dot: 'bg-[#C2477A]'
+          bg: 'bg-pink-100 text-[#D81B60] border-pink-200',
+          dot: 'bg-[#D81B60]'
         };
       case 'b2b':
         return {
@@ -361,21 +361,21 @@ export const AdminNotificationBell = ({
         aria-label="Admin Notifications"
         className={`relative p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
           isOpen
-            ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-md ring-2 ring-pink-200'
+            ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-md ring-2 ring-pink-200'
             : unreadCount > 0
-            ? 'bg-white hover:bg-[#FFF5F8] text-slate-800 border-[#FCE4EC] shadow-2xs hover:border-[#C2477A]/40'
+            ? 'bg-white hover:bg-[#FFF5F8] text-slate-800 border-[#FCE4EC] shadow-2xs hover:border-[#D81B60]/40'
             : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
         }`}
       >
         {unreadCount > 0 ? (
-          <BellRing size={17} className={`${unreadCount > 0 ? 'animate-bounce text-[#C2477A]' : ''} ${isOpen ? 'text-white' : ''}`} />
+          <BellRing size={17} className={`${unreadCount > 0 ? 'animate-bounce text-[#D81B60]' : ''} ${isOpen ? 'text-white' : ''}`} />
         ) : (
           <Bell size={17} />
         )}
 
         {/* Live Counter Badge */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[19px] h-[19px] px-1 bg-gradient-to-r from-rose-600 to-[#C2477A] text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[19px] h-[19px] px-1 bg-gradient-to-r from-rose-600 to-[#D81B60] text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -398,7 +398,7 @@ export const AdminNotificationBell = ({
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-black tracking-tight text-white">Notifications</h3>
                   {unreadCount > 0 ? (
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#C2477A] text-white">
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#D81B60] text-white">
                       {unreadCount} New
                     </span>
                   ) : (
@@ -446,7 +446,7 @@ export const AdminNotificationBell = ({
                 <button
                   type="button"
                   onClick={markAllAsRead}
-                  className="text-[11px] font-extrabold text-[#C2477A] hover:text-pink-700 flex items-center gap-1 cursor-pointer transition-colors"
+                  className="text-[11px] font-extrabold text-[#D81B60] hover:text-pink-700 flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <CheckCheck size={13} />
                   <span>Mark all read</span>
@@ -480,7 +480,7 @@ export const AdminNotificationBell = ({
                 onClick={() => setFilterTab(tab.id)}
                 className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
                   filterTab === tab.id
-                    ? 'bg-[#C2477A] text-white shadow-2xs'
+                    ? 'bg-[#D81B60] text-white shadow-2xs'
                     : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
                 }`}
               >
@@ -500,7 +500,7 @@ export const AdminNotificationBell = ({
           <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100 bg-slate-50/50">
             {displayedNotifications.length === 0 ? (
               <div className="py-12 px-6 text-center">
-                <div className="w-14 h-14 rounded-full bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center mx-auto mb-3 shadow-2xs">
+                <div className="w-14 h-14 rounded-full bg-white border border-pink-100 text-[#D81B60] flex items-center justify-center mx-auto mb-3 shadow-2xs">
                   <Sparkles size={24} />
                 </div>
                 <h4 className="text-sm font-black text-slate-800">No Notifications</h4>
@@ -553,7 +553,7 @@ export const AdminNotificationBell = ({
                           {item.badge}
                         </span>
 
-                        <div className="flex items-center gap-1 text-[11px] font-extrabold text-[#C2477A] group-hover:underline">
+                        <div className="flex items-center gap-1 text-[11px] font-extrabold text-[#D81B60] group-hover:underline">
                           <span>View Details</span>
                           <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
                         </div>
@@ -578,7 +578,7 @@ export const AdminNotificationBell = ({
                 setIsOpen(false);
                 if (navigateToTab) navigateToTab('order_updated');
               }}
-              className="text-xs font-bold text-slate-600 hover:text-[#C2477A] transition-colors cursor-pointer py-1 block w-full"
+              className="text-xs font-bold text-slate-600 hover:text-[#D81B60] transition-colors cursor-pointer py-1 block w-full"
             >
               Go to Full Order Management →
             </button>
@@ -593,15 +593,15 @@ export const AdminNotificationBell = ({
             handleNotificationClick(liveToast);
             setLiveToast(null);
           }}
-          className="fixed top-5 right-5 z-[9999] max-w-sm w-full bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-2xl border-2 border-[#C2477A] animate-in slide-in-from-top-4 duration-200 cursor-pointer flex items-start gap-3 text-slate-900 group hover:bg-white"
+          className="fixed top-5 right-5 z-[9999] max-w-sm w-full bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-2xl border-2 border-[#D81B60] animate-in slide-in-from-top-4 duration-200 cursor-pointer flex items-start gap-3 text-slate-900 group hover:bg-white"
         >
-          <div className="w-10 h-10 rounded-xl bg-white border border-pink-200 text-[#C2477A] flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-white border border-pink-200 text-[#D81B60] flex items-center justify-center shrink-0 shadow-2xs">
             <BellRing size={20} className="animate-bounce" />
           </div>
 
           <div className="flex-1 min-w-0 pr-1">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#C2477A]">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#D81B60]">
                 Live Store Alert
               </span>
               <span className="text-[10px] text-slate-400 font-medium">Just now</span>
@@ -612,7 +612,7 @@ export const AdminNotificationBell = ({
             <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2 leading-tight font-medium">
               {liveToast.message}
             </p>
-            <div className="mt-2 flex items-center gap-1 text-[11px] font-black text-[#C2477A]">
+            <div className="mt-2 flex items-center gap-1 text-[11px] font-black text-[#D81B60]">
               <span>Tap to Open</span>
               <ChevronRight size={12} />
             </div>

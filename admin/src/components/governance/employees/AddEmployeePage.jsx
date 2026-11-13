@@ -303,7 +303,7 @@ export default function AddEmployeePage({ onNavigate }) {
               onNavigate('employees');
             }
           }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-pink-100 text-gray-700 hover:text-[#CE4270] font-bold text-xs transition-all shadow-2xs cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-pink-100 text-gray-700 hover:text-[#D81B60] font-bold text-xs transition-all shadow-2xs cursor-pointer"
         >
           <ArrowLeft size={16} />
           <span>{currentStep === 2 && !createdEmployeeResult ? '← Back to Identity Details' : '← Back to Employees'}</span>
@@ -314,23 +314,23 @@ export default function AddEmployeePage({ onNavigate }) {
           <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-full border border-pink-100 shadow-2xs text-xs font-bold text-gray-500">
             <span
               className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black ${
-                currentStep === 1 ? 'bg-[#CE4270] text-white shadow-2xs' : 'bg-emerald-100 text-emerald-800'
+                currentStep === 1 ? 'bg-[#D81B60] text-white shadow-2xs' : 'bg-emerald-100 text-emerald-800'
               }`}
             >
               1
             </span>
-            <span className={currentStep === 1 ? 'text-[#CE4270] font-black' : 'text-gray-700'}>
+            <span className={currentStep === 1 ? 'text-[#D81B60] font-black' : 'text-gray-700'}>
               Identity & Contact
             </span>
             <ChevronRight size={14} className="text-gray-300" />
             <span
               className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black ${
-                currentStep === 2 ? 'bg-[#CE4270] text-white shadow-2xs' : 'bg-gray-100 text-gray-400'
+                currentStep === 2 ? 'bg-[#D81B60] text-white shadow-2xs' : 'bg-gray-100 text-gray-400'
               }`}
             >
               2
             </span>
-            <span className={currentStep === 2 ? 'text-[#CE4270] font-black' : 'text-gray-400'}>
+            <span className={currentStep === 2 ? 'text-[#D81B60] font-black' : 'text-gray-400'}>
               Granular Access Matrix
             </span>
           </div>
@@ -374,7 +374,7 @@ export default function AddEmployeePage({ onNavigate }) {
               </div>
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                 <span className="text-gray-400 font-bold block text-[10px]">EMPLOYEE ID CODE</span>
-                <span className="font-mono font-bold text-[#CE4270] text-sm">{formData.employeeCode}</span>
+                <span className="font-mono font-bold text-[#D81B60] text-sm">{formData.employeeCode}</span>
               </div>
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                 <span className="text-gray-400 font-bold block text-[10px]">LOGIN EMAIL</span>
@@ -382,7 +382,7 @@ export default function AddEmployeePage({ onNavigate }) {
               </div>
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                 <span className="text-gray-400 font-bold block text-[10px]">DESIGNATION</span>
-                <span className="font-extrabold text-[#CE4270] uppercase text-xs">{formData.designation}</span>
+                <span className="font-extrabold text-[#D81B60] uppercase text-xs">{formData.designation}</span>
               </div>
               <div className="sm:col-span-2 p-3.5 rounded-xl bg-white border border-pink-200 flex items-center justify-between">
                 <div>
@@ -395,7 +395,7 @@ export default function AddEmployeePage({ onNavigate }) {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="p-2 rounded-lg bg-white border border-pink-200 text-gray-600 hover:text-[#CE4270] cursor-pointer"
+                    className="p-2 rounded-lg bg-white border border-pink-200 text-gray-600 hover:text-[#D81B60] cursor-pointer"
                     title={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -403,7 +403,7 @@ export default function AddEmployeePage({ onNavigate }) {
                   <button
                     type="button"
                     onClick={handleCopyPassword}
-                    className="px-3 py-2 rounded-lg bg-[#CE4270] text-white font-bold text-xs flex items-center gap-1 cursor-pointer hover:bg-[#b83760] transition-colors"
+                    className="px-3 py-2 rounded-lg bg-[#D81B60] text-white font-bold text-xs flex items-center gap-1 cursor-pointer hover:bg-[#b83760] transition-colors"
                   >
                     {isCopiedPassword ? (
                       <>
@@ -465,7 +465,7 @@ export default function AddEmployeePage({ onNavigate }) {
         <form onSubmit={handleProceedToStep2} autoComplete="off" className="space-y-6">
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-pink-100 shadow-2xs space-y-6">
             <div className="flex items-center gap-2 pb-4 border-b border-pink-100/60">
-              <Shield size={18} className="text-[#CE4270]" />
+              <Shield size={18} className="text-[#D81B60]" />
               <h2 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider">
                 1. Identity & Contact Information
               </h2>
@@ -475,7 +475,7 @@ export default function AddEmployeePage({ onNavigate }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Name <span className="text-[#CE4270]">*</span>
+                  Name <span className="text-[#D81B60]">*</span>
                 </label>
                 <input
                   type="text"
@@ -484,19 +484,19 @@ export default function AddEmployeePage({ onNavigate }) {
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   placeholder="Enter employee full name"
-                  className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#CE4270] focus:ring-2 focus:ring-[#CE4270]/20 outline-none bg-white transition-all shadow-2xs"
+                  className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 outline-none bg-white transition-all shadow-2xs"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-bold text-gray-700">
-                    Employee ID <span className="text-[#CE4270]">*</span>
+                    Employee ID <span className="text-[#D81B60]">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={handleRegenerateCode}
-                    className="text-[11px] font-bold text-[#CE4270] hover:text-[#b83760] flex items-center gap-1 cursor-pointer"
+                    className="text-[11px] font-bold text-[#D81B60] hover:text-[#b83760] flex items-center gap-1 cursor-pointer"
                     title="Generate next sequential ID"
                   >
                     <RefreshCw size={11} /> Auto-Generate
@@ -512,7 +512,7 @@ export default function AddEmployeePage({ onNavigate }) {
                   className={`w-full p-3.5 rounded-xl border text-xs font-mono font-bold outline-none bg-white transition-all shadow-2xs ${
                     isDuplicateCode
                       ? 'border-rose-400 text-rose-700 bg-rose-50/30'
-                      : 'border-gray-200 text-gray-900 focus:border-[#CE4270]'
+                      : 'border-gray-200 text-gray-900 focus:border-[#D81B60]'
                   }`}
                 />
                 {isDuplicateCode && (
@@ -527,7 +527,7 @@ export default function AddEmployeePage({ onNavigate }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Mail ID (Login Email) <span className="text-[#CE4270]">*</span>
+                  Mail ID (Login Email) <span className="text-[#D81B60]">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -540,7 +540,7 @@ export default function AddEmployeePage({ onNavigate }) {
                     className={`w-full p-3.5 pl-10 rounded-xl border text-xs font-semibold outline-none bg-white transition-all shadow-2xs ${
                       isDuplicateEmail
                         ? 'border-rose-400 text-rose-700 bg-rose-50/30'
-                        : 'border-gray-200 text-gray-900 focus:border-[#CE4270]'
+                        : 'border-gray-200 text-gray-900 focus:border-[#D81B60]'
                     }`}
                   />
                   <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -555,12 +555,12 @@ export default function AddEmployeePage({ onNavigate }) {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-bold text-gray-700">
-                    Password <span className="text-[#CE4270]">*</span>
+                    Password <span className="text-[#D81B60]">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={handleGenerateStrongPassword}
-                    className="text-[11px] font-bold text-[#CE4270] hover:text-[#b83760] flex items-center gap-1 cursor-pointer"
+                    className="text-[11px] font-bold text-[#D81B60] hover:text-[#b83760] flex items-center gap-1 cursor-pointer"
                   >
                     <Sparkles size={11} /> Auto-Generate
                   </button>
@@ -573,7 +573,7 @@ export default function AddEmployeePage({ onNavigate }) {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="Enter password (min 6 chars)"
-                    className="w-full p-3.5 pl-10 pr-10 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-900 focus:border-[#CE4270] outline-none bg-white shadow-2xs"
+                    className="w-full p-3.5 pl-10 pr-10 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-900 focus:border-[#D81B60] outline-none bg-white shadow-2xs"
                   />
                   <Key size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <button
@@ -597,7 +597,7 @@ export default function AddEmployeePage({ onNavigate }) {
                   <select
                     value={formData.countryCode}
                     onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
-                    className="w-24 p-3.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#CE4270] outline-none bg-white shrink-0 shadow-2xs"
+                    className="w-24 p-3.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#D81B60] outline-none bg-white shrink-0 shadow-2xs"
                   >
                     {COUNTRY_CODES.map((c) => (
                       <option key={c.code} value={c.code}>
@@ -610,19 +610,19 @@ export default function AddEmployeePage({ onNavigate }) {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '') })}
                     placeholder="9876543210"
-                    className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#CE4270] outline-none bg-white shadow-2xs"
+                    className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#D81B60] outline-none bg-white shadow-2xs"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Designation <span className="text-[#CE4270]">*</span>
+                  Designation <span className="text-[#D81B60]">*</span>
                 </label>
                 <select
                   value={formData.designation}
                   onChange={(e) => handleDesignationChange(e.target.value)}
-                  className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-white cursor-pointer shadow-2xs"
+                  className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#D81B60] outline-none bg-white cursor-pointer shadow-2xs"
                 >
                   <option value="(admin)">1) (admin)</option>
                   <option value="manager">2) manager</option>
@@ -630,7 +630,7 @@ export default function AddEmployeePage({ onNavigate }) {
                   <option value="employee">4) employee</option>
                 </select>
                 <span className="text-[11px] text-gray-400 font-medium block mt-1">
-                  Preset: <strong className="text-[#CE4270] font-bold">{formData.rolePreset.toUpperCase()}</strong> access level
+                  Preset: <strong className="text-[#D81B60] font-bold">{formData.rolePreset.toUpperCase()}</strong> access level
                 </span>
               </div>
             </div>
@@ -638,7 +638,7 @@ export default function AddEmployeePage({ onNavigate }) {
             {/* Branch Assignment */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                Store / Branch Assignment <span className="text-[#CE4270]">*</span>
+                Store / Branch Assignment <span className="text-[#D81B60]">*</span>
               </label>
               <select
                 value={formData.branch}
@@ -652,7 +652,7 @@ export default function AddEmployeePage({ onNavigate }) {
                     workLocation: val
                   });
                 }}
-                className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-white cursor-pointer shadow-2xs"
+                className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#D81B60] outline-none bg-white cursor-pointer shadow-2xs"
               >
                 <option value="">Select Branch Assignment</option>
                 {branches && branches.length > 0 ? (
@@ -685,7 +685,7 @@ export default function AddEmployeePage({ onNavigate }) {
             <div className="pt-4 border-t border-pink-100 flex justify-end">
               <button
                 type="submit"
-                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#CE4270] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Proceed to Granular Access Matrix (Step 2) →</span>
               </button>
@@ -706,7 +706,7 @@ export default function AddEmployeePage({ onNavigate }) {
                 {formData.profilePhoto ? (
                   <img src={formData.profilePhoto} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <User size={24} className="text-[#CE4270]" />
+                  <User size={24} className="text-[#D81B60]" />
                 )}
               </div>
               <div>
@@ -725,7 +725,7 @@ export default function AddEmployeePage({ onNavigate }) {
                     </>
                   )}
                   <span>•</span>
-                  <span className="text-[#CE4270] font-bold">Designation: {formData.designation}</span>
+                  <span className="text-[#D81B60] font-bold">Designation: {formData.designation}</span>
                 </div>
               </div>
             </div>
@@ -733,7 +733,7 @@ export default function AddEmployeePage({ onNavigate }) {
             <button
               type="button"
               onClick={() => setCurrentStep(1)}
-              className="text-xs font-bold text-[#CE4270] hover:underline cursor-pointer self-start md:self-auto"
+              className="text-xs font-bold text-[#D81B60] hover:underline cursor-pointer self-start md:self-auto"
             >
               ← Edit Details
             </button>
@@ -744,7 +744,7 @@ export default function AddEmployeePage({ onNavigate }) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-pink-100/60">
               <div>
                 <div className="flex items-center gap-2">
-                  <Shield size={18} className="text-[#CE4270]" />
+                  <Shield size={18} className="text-[#D81B60]" />
                   <h2 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider">
                     2. Granular Access Matrix
                   </h2>
@@ -758,7 +758,7 @@ export default function AddEmployeePage({ onNavigate }) {
               <button
                 type="button"
                 onClick={handleResetToPreset}
-                className="px-3.5 py-1.5 rounded-xl border border-pink-200 text-[#CE4270] font-bold text-xs hover:bg-[#FFF2F5] transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-3.5 py-1.5 rounded-xl border border-pink-200 text-[#D81B60] font-bold text-xs hover:bg-[#FFF2F5] transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
                 title="Reset matrix to default preset for this designation"
               >
                 <RotateCcw size={13} />
@@ -773,7 +773,7 @@ export default function AddEmployeePage({ onNavigate }) {
                 value={permissionSearchTerm}
                 onChange={(e) => setPermissionSearchTerm(e.target.value)}
                 placeholder="Search modules or specific actions (e.g. Products, Orders, Delete)..."
-                className="w-full p-3 pl-10 rounded-xl border border-gray-200 text-xs font-medium text-gray-900 focus:border-[#CE4270] outline-none bg-white shadow-2xs"
+                className="w-full p-3 pl-10 rounded-xl border border-gray-200 text-xs font-medium text-gray-900 focus:border-[#D81B60] outline-none bg-white shadow-2xs"
               />
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             </div>
@@ -786,7 +786,7 @@ export default function AddEmployeePage({ onNavigate }) {
                 </span>
                 <span>•</span>
                 <span>
-                  Granted Actions: <strong className="text-[#CE4270]">{permSummary.totalGrantedActions}</strong>
+                  Granted Actions: <strong className="text-[#D81B60]">{permSummary.totalGrantedActions}</strong>
                 </span>
               </div>
               <span className="text-[11px] font-bold text-gray-400">
@@ -819,7 +819,7 @@ export default function AddEmployeePage({ onNavigate }) {
                     <div className="flex items-start gap-3">
                       <div
                         className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs ${
-                          isModuleEnabled ? 'bg-[#CE4270] text-white' : 'bg-gray-200 text-gray-500'
+                          isModuleEnabled ? 'bg-[#D81B60] text-white' : 'bg-gray-200 text-gray-500'
                         }`}
                       >
                         {mod.name[0]}
@@ -848,7 +848,7 @@ export default function AddEmployeePage({ onNavigate }) {
                           <button
                             type="button"
                             onClick={() => handleModuleBulkActions(mod.key, true)}
-                            className="px-2 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:text-[#CE4270] font-bold cursor-pointer"
+                            className="px-2 py-1 rounded-md bg-white border border-gray-200 text-gray-600 hover:text-[#D81B60] font-bold cursor-pointer"
                           >
                             All
                           </button>
@@ -870,7 +870,7 @@ export default function AddEmployeePage({ onNavigate }) {
                           onChange={(e) => handleToggleModule(mod.key, e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#CE4270]" />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#D81B60]" />
                       </label>
                     </div>
                   </div>
@@ -895,7 +895,7 @@ export default function AddEmployeePage({ onNavigate }) {
                               type="checkbox"
                               checked={isChecked}
                               onChange={(e) => handleToggleAction(mod.key, act.key, e.target.checked)}
-                              className="w-4 h-4 text-[#CE4270] accent-[#CE4270] rounded cursor-pointer shrink-0"
+                              className="w-4 h-4 text-[#D81B60] accent-[#D81B60] rounded cursor-pointer shrink-0"
                             />
                           </label>
                         );
@@ -924,7 +924,7 @@ export default function AddEmployeePage({ onNavigate }) {
               type="button"
               disabled={isSubmitting}
               onClick={handleFinalSubmit}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#CE4270] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

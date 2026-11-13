@@ -6,28 +6,23 @@ import {
   Edit2,
   Trash2,
   CheckCircle2,
-  XCircle,
   Phone,
   MapPin,
   User,
-  ShieldAlert,
   Loader2,
   X,
   AlertCircle,
-  Building,
-  Check
+  Building
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 
 export default function BranchManagementPage() {
   const {
     branches = [],
-    employees = [],
     addBranch,
     updateBranch,
     deleteBranch,
-    toggleBranchStatus,
-    refreshBranches
+    toggleBranchStatus
   } = useAdmin();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,28 +33,20 @@ export default function BranchManagementPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Form State
+  // Form State — strictly 4 user fields:
+  // 1. Branch Name
+  // 2. Branch Location
+  // 3. Contact Person Name
+  // 4. Contact Number
   const initialFormState = {
     name: '',
+    address: '', // Branch Location
+    manager_name: '', // Contact Person Name
+    contact_number: '', // Contact Number
     code: '',
-    address: '',
-    city: '',
-    state: '',
-    pin_code: '',
-    contact_number: '',
-    manager_name: '',
-    manager_id: '',
     is_active: true
   };
   const [formData, setFormData] = useState(initialFormState);
-
-  // Available managers from employees
-  const managerEmployees = useMemo(() => {
-    return (employees || []).filter(e => {
-      const status = String(e.account_status || e.status || '').toLowerCase();
-      return status !== 'deactivated' && status !== 'inactive';
-    });
-  }, [employees]);
 
   // Filtered branches
   const filteredBranches = useMemo(() => {
@@ -67,9 +54,9 @@ export default function BranchManagementPage() {
       const matchSearch =
         !searchTerm ||
         (b.name && b.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (b.code && b.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (b.city && b.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (b.manager_name && b.manager_name.toLowerCase().includes(searchTerm.toLowerCase()));
+        (b.address && b.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (b.manager_name && b.manager_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (b.contact_number && b.contact_number.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchStatus =
         statusFilter === 'all' ||
@@ -92,14 +79,10 @@ export default function BranchManagementPage() {
     setEditingBranch(branch);
     setFormData({
       name: branch.name || '',
-      code: branch.code || '',
-      address: branch.address || '',
-      city: branch.city || '',
-      state: branch.state || '',
-      pin_code: branch.pin_code || '',
+      address: branch.address || branch.location || '',
+      manager_name: branch.manager_name || branch.contact_person || '',
       contact_number: branch.contact_number || '',
-      manager_name: branch.manager_name || '',
-      manager_id: branch.manager_id || '',
+      code: branch.code || '',
       is_active: branch.is_active !== false
     });
     setErrorMsg('');
@@ -116,15 +99,40 @@ export default function BranchManagementPage() {
       setErrorMsg('Branch Name is required.');
       return;
     }
-    if (!formData.code.trim()) {
-      setErrorMsg('Branch Code is required (e.g. BR-001).');
+    if (!formData.address.trim()) {
+      setErrorMsg('Branch Location is required.');
       return;
     }
+    if (!formData.manager_name.trim()) {
+      setErrorMsg('Contact Person Name is required.');
+      return;
+    }
+    if (!formData.contact_number.trim()) {
+      setErrorMsg('Contact Number is required.');
+      return;
+    }
+
+    // Auto-generate code if empty to satisfy DB constraint
+    const autoCode = editingBranch?.code || (
+      'BR-' +
+      formData.name.trim().replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase() +
+      '-' +
+      Date.now().toString().slice(-4)
+    );
+
+    const payload = {
+      name: formData.name.trim(),
+      address: formData.address.trim(),
+      manager_name: formData.manager_name.trim(),
+      contact_number: formData.contact_number.trim(),
+      code: autoCode,
+      is_active: formData.is_active !== false
+    };
 
     setIsSubmitting(true);
     try {
       if (editingBranch) {
-        const res = await updateBranch(editingBranch.id, formData);
+        const res = await updateBranch(editingBranch.id, payload);
         if (res.success) {
           setSuccessMsg('Branch details updated successfully.');
           setShowModal(false);
@@ -132,7 +140,7 @@ export default function BranchManagementPage() {
           setErrorMsg(res.error || 'Failed to update branch.');
         }
       } else {
-        const res = await addBranch(formData);
+        const res = await addBranch(payload);
         if (res.success) {
           setSuccessMsg('New branch created successfully.');
           setShowModal(false);
@@ -148,7 +156,7 @@ export default function BranchManagementPage() {
   };
 
   const handleDelete = async (branch) => {
-    if (window.confirm(`Are you sure you want to delete branch "${branch.name}" (${branch.code})? This action cannot be undone.`)) {
+    if (window.confirm(`Are you sure you want to delete branch "${branch.name}"? This action cannot be undone.`)) {
       try {
         const res = await deleteBranch(branch.id);
         if (!res.success) {
@@ -174,13 +182,13 @@ export default function BranchManagementPage() {
       <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-[#C2477A]/10 text-[#C2477A] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-[#D81B60]/10 text-[#D81B60] flex items-center justify-center">
               <Building2 size={22} />
             </div>
             <div>
               <h1 className="text-xl font-black text-gray-900 tracking-tight">Branch Management</h1>
               <p className="text-xs text-gray-500 font-medium">
-                Admin Settings — Configure and manage physical store branches and fulfillment centers.
+                Admin Settings — Configure and manage store branches.
               </p>
             </div>
           </div>
@@ -189,7 +197,7 @@ export default function BranchManagementPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={handleOpenAdd}
-            className="px-4 py-2.5 bg-[#C2477A] hover:bg-[#a63965] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2.5 bg-[#D81B60] hover:bg-[#a63965] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer"
           >
             <Plus size={16} />
             <span>Add New Branch</span>
@@ -213,8 +221,8 @@ export default function BranchManagementPage() {
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Search branches by name, code, city, or manager..."
-            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#C2477A] focus:bg-white"
+            placeholder="Search branches by name, location, contact..."
+            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#D81B60] focus:bg-white"
           />
         </div>
 
@@ -222,7 +230,7 @@ export default function BranchManagementPage() {
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C2477A]"
+            className="px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#D81B60]"
           >
             <option value="all">All Branches ({branches.length})</option>
             <option value="active">Active Only ({branches.filter(b => b.is_active !== false).length})</option>
@@ -242,13 +250,13 @@ export default function BranchManagementPage() {
           </h3>
           <p className="text-xs text-gray-500 max-w-sm mx-auto mb-5">
             {branches.length === 0
-              ? 'No branch records found in the database. Click below to add your first store branch or hub.'
+              ? 'No branch records found. Click below to add your first store branch.'
               : 'Try clearing your search query or status filter to see other branches.'}
           </p>
           {branches.length === 0 && (
             <button
               onClick={handleOpenAdd}
-              className="px-4 py-2 bg-[#C2477A] hover:bg-[#a63965] text-white text-xs font-bold rounded-xl shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 bg-[#D81B60] hover:bg-[#a63965] text-white text-xs font-bold rounded-xl shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Plus size={15} />
               <span>Create First Branch</span>
@@ -262,21 +270,18 @@ export default function BranchManagementPage() {
             return (
               <div
                 key={branch.id}
-                className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:border-[#C2477A]/40 transition-all flex flex-col justify-between"
+                className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:border-[#D81B60]/40 transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${
-                        isActive ? 'bg-[#C2477A]/10 text-[#C2477A]' : 'bg-gray-100 text-gray-400'
+                        isActive ? 'bg-[#D81B60]/10 text-[#D81B60]' : 'bg-gray-100 text-gray-400'
                       }`}>
                         <Building size={20} />
                       </div>
                       <div>
                         <h3 className="text-sm font-black text-gray-900 leading-tight">{branch.name}</h3>
-                        <span className="inline-block text-[10px] font-black tracking-wider uppercase text-gray-400">
-                          Code: {branch.code}
-                        </span>
                       </div>
                     </div>
 
@@ -287,35 +292,28 @@ export default function BranchManagementPage() {
                     </span>
                   </div>
 
-                  {/* Branch Details */}
+                  {/* Branch Details: Location, Contact Person, Contact Number */}
                   <div className="space-y-2 text-xs text-gray-600 mb-4 bg-gray-50/70 p-3 rounded-xl border border-gray-100">
-                    {branch.address && (
-                      <div className="flex items-start gap-2">
-                        <MapPin size={13} className="text-[#C2477A] shrink-0 mt-0.5" />
-                        <span className="leading-tight text-[11px] font-medium text-gray-700">
-                          {branch.address}
-                          {branch.city ? `, ${branch.city}` : ''}
-                          {branch.state ? `, ${branch.state}` : ''}
-                          {branch.pin_code ? ` - ${branch.pin_code}` : ''}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-start gap-2">
+                      <MapPin size={13} className="text-[#D81B60] shrink-0 mt-0.5" />
+                      <span className="leading-tight text-[11px] font-medium text-gray-700">
+                        {branch.address || branch.location || 'Location not specified'}
+                      </span>
+                    </div>
 
-                    {branch.contact_number && (
-                      <div className="flex items-center gap-2">
-                        <Phone size={13} className="text-[#C2477A] shrink-0" />
-                        <span className="text-[11px] font-semibold text-gray-700">{branch.contact_number}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <User size={13} className="text-[#D81B60] shrink-0" />
+                      <span className="text-[11px] font-semibold text-gray-700">
+                        Contact Person: <strong className="font-bold text-gray-900">{branch.manager_name || branch.contact_person || 'Not specified'}</strong>
+                      </span>
+                    </div>
 
-                    {branch.manager_name && (
-                      <div className="flex items-center gap-2">
-                        <User size={13} className="text-[#C2477A] shrink-0" />
-                        <span className="text-[11px] font-semibold text-gray-700">
-                          Manager: <strong className="font-bold text-gray-900">{branch.manager_name}</strong>
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Phone size={13} className="text-[#D81B60] shrink-0" />
+                      <span className="text-[11px] font-semibold text-gray-700">
+                        Contact: {branch.contact_number || 'Not specified'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -335,7 +333,7 @@ export default function BranchManagementPage() {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleOpenEdit(branch)}
-                      className="p-1.5 text-gray-500 hover:text-[#C2477A] hover:bg-[#C2477A]/10 rounded-lg transition-all cursor-pointer"
+                      className="p-1.5 text-gray-500 hover:text-[#D81B60] hover:bg-[#D81B60]/10 rounded-lg transition-all cursor-pointer"
                       title="Edit Branch"
                     >
                       <Edit2 size={14} />
@@ -355,13 +353,18 @@ export default function BranchManagementPage() {
         </div>
       )}
 
-      {/* Add / Edit Branch Modal */}
+      {/* Add / Edit Branch Modal — ONLY 4 FIELDS:
+          1. Branch Name
+          2. Branch Location
+          3. Contact Person Name
+          4. Contact Number
+      */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#C2477A]/10 text-[#C2477A] flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-[#D81B60]/10 text-[#D81B60] flex items-center justify-center">
                   <Building2 size={18} />
                 </div>
                 <h2 className="text-base font-black text-gray-900">
@@ -383,135 +386,65 @@ export default function BranchManagementPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Branch Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g. Hyderabad Central Store"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Branch Code <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.code}
-                    onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                    placeholder="e.g. BR-HYD-01"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A] uppercase"
-                  />
-                </div>
-              </div>
-
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* 1. Branch Name */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Branch Street Address</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Branch Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
-                  value={formData.address}
-                  onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Plot / Street / Area"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  required
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g. Hyderabad Central Store"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">City</label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={e => setFormData({ ...formData, city: e.target.value })}
-                    placeholder="City"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">State</label>
-                  <input
-                    type="text"
-                    value={formData.state}
-                    onChange={e => setFormData({ ...formData, state: e.target.value })}
-                    placeholder="State"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">PIN Code</label>
-                  <input
-                    type="text"
-                    value={formData.pin_code}
-                    onChange={e => setFormData({ ...formData, pin_code: e.target.value })}
-                    placeholder="500001"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Contact Number</label>
-                  <input
-                    type="tel"
-                    value={formData.contact_number}
-                    onChange={e => setFormData({ ...formData, contact_number: e.target.value })}
-                    placeholder="+91 98765 43210"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Branch Manager</label>
-                  <select
-                    value={formData.manager_id}
-                    onChange={e => {
-                      const selId = e.target.value;
-                      const emp = managerEmployees.find(m => m.id === selId);
-                      setFormData({
-                        ...formData,
-                        manager_id: selId,
-                        manager_name: emp ? (emp.name || emp.fullName || '') : ''
-                      });
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
-                  >
-                    <option value="">Select Manager (Optional)</option>
-                    {managerEmployees.map(emp => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name || emp.fullName} ({emp.employee_code || emp.employeeCode || emp.designation || 'Staff'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Status Toggle */}
-              <div className="pt-2 flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold text-gray-800 block">Branch Status</span>
-                  <span className="text-[11px] text-gray-400 font-medium">
-                    Inactive branches cannot be assigned to employees or orders
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_active}
-                    onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#C2477A]"></div>
+              {/* 2. Branch Location */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Branch Location <span className="text-rose-500">*</span>
                 </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.address}
+                  onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="e.g. Road No. 36, Jubilee Hills, Hyderabad"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
+                />
+              </div>
+
+              {/* 3. Contact Person Name */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Contact Person Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.manager_name}
+                  onChange={e => setFormData({ ...formData, manager_name: e.target.value })}
+                  placeholder="e.g. Rajesh Sharma"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
+                />
+              </div>
+
+              {/* 4. Contact Number */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Contact Number <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={formData.contact_number}
+                  onChange={e => setFormData({ ...formData, contact_number: e.target.value })}
+                  placeholder="+91 98765 43210"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
+                />
               </div>
 
               <div className="pt-4 flex items-center justify-end gap-2.5 border-t border-gray-100">
@@ -525,7 +458,7 @@ export default function BranchManagementPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-[#C2477A] hover:bg-[#a63965] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 bg-[#D81B60] hover:bg-[#a63965] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
@@ -544,4 +477,3 @@ export default function BranchManagementPage() {
     </div>
   );
 }
-

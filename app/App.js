@@ -33,6 +33,7 @@ import { SelectShadeBottomSheet } from './src/components/SelectShadeBottomSheet'
 import { StaffLoginScreen } from './src/features/staff/StaffLoginScreen';
 import { DeliveryPartnerDashboard } from './src/features/staff/DeliveryPartnerDashboard';
 import { CustomerUpiPaymentStatusScreen } from './src/features/cart/CustomerUpiPaymentStatusScreen';
+import { FloatingCenterTabBar } from './src/components/navigation/FloatingCenterTabBar';
 import { requestFCMToken } from './src/utils/fcmService';
 
 
@@ -72,6 +73,8 @@ const MainShell = () => {
     userProfile,
     isRestoringSession,
     setSelectedOrderIdForDetails,
+    navigationHistory = [],
+    goBack,
   } = useApp();
   const lastBackPressTimeRef = useRef(0);
 
@@ -82,58 +85,51 @@ const MainShell = () => {
   useEffect(() => {
     const onBackPress = () => {
       if (currentScreen === 'splash') return false;
-      if (userProfile?.isProfileComplete) {
-        if (currentScreen === 'home') {
-          const now = Date.now();
-          if (now - lastBackPressTimeRef.current < 2000) {
-            BackHandler.exitApp();
-            return true;
-          }
-          lastBackPressTimeRef.current = now;
-          if (Platform.OS === 'android') ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+
+      // Root screen double-tap exit check
+      const isRootScreen =
+        (currentScreen === 'home' && userProfile?.isProfileComplete) ||
+        currentScreen === 'login' ||
+        currentScreen === 'delivery_dashboard';
+
+      if (isRootScreen) {
+        const now = Date.now();
+        if (now - lastBackPressTimeRef.current < 2000) {
+          BackHandler.exitApp();
           return true;
-        } else {
-          setCurrentScreen('home');
+        }
+        lastBackPressTimeRef.current = now;
+        if (Platform.OS === 'android') {
+          const msg = currentScreen === 'delivery_dashboard'
+            ? 'Press back again to exit delivery app'
+            : 'Press back again to exit';
+          ToastAndroid.show(msg, ToastAndroid.SHORT);
+        }
+        return true;
+      }
+
+      // If navigation history has a stack of screens, cleanly pop to previous screen!
+      if (navigationHistory && navigationHistory.length > 1) {
+        if (typeof goBack === 'function') {
+          goBack();
           return true;
         }
       }
+
+      // Fallback transitions for onboarding flows
       if (currentScreen === 'complete_profile' || currentScreen === 'b2b_registration') {
         setCurrentScreen('onboarding');
         return true;
       }
-      if (currentScreen === 'onboarding') {
+      if (currentScreen === 'onboarding' || currentScreen === 'otp' || currentScreen === 'staff_login') {
         setCurrentScreen('login');
-        return true;
-      }
-      if (currentScreen === 'otp') {
-        setCurrentScreen('login');
-        return true;
-      }
-      if (currentScreen === 'login') {
-        const now = Date.now();
-        if (now - lastBackPressTimeRef.current < 2000) {
-          BackHandler.exitApp();
-          return true;
-        }
-        lastBackPressTimeRef.current = now;
-        if (Platform.OS === 'android') ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
-        return true;
-      }
-      if (currentScreen === 'staff_login') {
-        setCurrentScreen('login');
-        return true;
-      }
-      if (currentScreen === 'delivery_dashboard') {
-        const now = Date.now();
-        if (now - lastBackPressTimeRef.current < 2000) {
-          BackHandler.exitApp();
-          return true;
-        }
-        lastBackPressTimeRef.current = now;
-        if (Platform.OS === 'android') ToastAndroid.show('Press back again to exit delivery app', ToastAndroid.SHORT);
         return true;
       }
       if (currentScreen === 'b2b_verification' || currentScreen === 'verification_status') {
+        setCurrentScreen('home');
+        return true;
+      }
+      if (userProfile?.isProfileComplete) {
         setCurrentScreen('home');
         return true;
       }
@@ -141,7 +137,7 @@ const MainShell = () => {
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
-  }, [currentScreen, userProfile?.isProfileComplete, setCurrentScreen]);
+  }, [currentScreen, userProfile?.isProfileComplete, navigationHistory, goBack, setCurrentScreen]);
 
   const userOrdersCount = (orders || []).filter(o => {
     if (!o) return false;
@@ -214,37 +210,7 @@ const MainShell = () => {
 
       <View style={{ flex: 1 }} pointerEvents="box-none">{renderScreen()}</View>
 
-      {!hideBottomNav && (
-        <View style={{ backgroundColor: '#FFFFFF' }} className="flex-row bg-white border-t border-[#FCE4EC] py-2.5 px-1 justify-around shadow-lg items-center">
-          <TouchableOpacity className="items-center flex-1 py-1" activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }} onPress={() => setCurrentScreen('home')}>
-            <Ionicons name={currentScreen === 'home' ? 'home' : 'home-outline'} size={20} color={currentScreen === 'home' ? '#B64F7D' : '#8C7078'} />
-            <Text className={`text-[10px] mt-0.5 ${currentScreen === 'home' ? 'text-[#B64F7D] font-extrabold' : 'text-[#8C7078] font-semibold'}`}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="items-center flex-1 py-1" activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }} onPress={() => setCurrentScreen('search')}>
-            <Ionicons name={currentScreen === 'search' ? 'search' : 'search-outline'} size={20} color={currentScreen === 'search' ? '#B64F7D' : '#8C7078'} />
-            <Text className={`text-[10px] mt-0.5 ${currentScreen === 'search' ? 'text-[#B64F7D] font-extrabold' : 'text-[#8C7078] font-semibold'}`}>Search</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="items-center flex-1 py-1" activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }} onPress={() => setCurrentScreen('category')}>
-            <Ionicons name={currentScreen === 'category' ? 'grid' : 'grid-outline'} size={20} color={currentScreen === 'category' ? '#B64F7D' : '#8C7078'} />
-            <Text className={`text-[10px] mt-0.5 ${currentScreen === 'category' ? 'text-[#B64F7D] font-extrabold' : 'text-[#8C7078] font-semibold'}`}>Categories</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="items-center flex-1 py-1 relative" activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }} onPress={() => setCurrentScreen('orders')}>
-            <View className="relative">
-              <Ionicons name={currentScreen === 'orders' || currentScreen === 'order_details' ? 'cube' : 'cube-outline'} size={20} color={currentScreen === 'orders' || currentScreen === 'order_details' ? '#B64F7D' : '#8C7078'} />
-              {userOrdersCount > 0 && (
-                <View className="absolute -top-1 -right-2 bg-[#B64F7D] min-w-[15px] h-[15px] px-1 rounded-full items-center justify-center border border-white">
-                  <Text className="text-white text-[7.5px] font-bold">{userOrdersCount > 9 ? '9+' : userOrdersCount}</Text>
-                </View>
-              )}
-            </View>
-            <Text className={`text-[10px] mt-0.5 ${currentScreen === 'orders' || currentScreen === 'order_details' ? 'text-[#B64F7D] font-extrabold' : 'text-[#8C7078] font-semibold'}`}>Orders</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="items-center flex-1 py-1" activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }} onPress={() => setCurrentScreen('profile')}>
-            <Ionicons name={currentScreen === 'profile' ? 'person' : 'person-outline'} size={20} color={currentScreen === 'profile' ? '#B64F7D' : '#8C7078'} />
-            <Text className={`text-[10px] mt-0.5 ${currentScreen === 'profile' ? 'text-[#B64F7D] font-extrabold' : 'text-[#8C7078] font-semibold'}`}>Profile</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {!hideBottomNav && <FloatingCenterTabBar />}
 
       <SelectShadeBottomSheet />
     </SafeAreaView>

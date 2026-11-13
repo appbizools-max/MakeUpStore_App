@@ -221,7 +221,7 @@ export default function ProductFormRightPanel({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-pink-100/70">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold">
+            <div className="w-7 h-7 rounded-xl bg-white text-[#D81B60] flex items-center justify-center font-bold">
               <Eye size={15} />
             </div>
             <h3 className="font-extrabold text-xs uppercase tracking-wider text-gray-900">
@@ -259,7 +259,7 @@ export default function ProductFormRightPanel({
             </div>
             <div className="flex flex-wrap items-center gap-1 text-[10px]">
               {formData.brandName ? (
-                <span className="font-bold text-[#C2477A] bg-white px-1.5 py-0.5 rounded">
+                <span className="font-bold text-[#D81B60] bg-white px-1.5 py-0.5 rounded">
                   {formData.brandName}
                 </span>
               ) : (
@@ -312,7 +312,7 @@ export default function ProductFormRightPanel({
           <div className="space-y-2.5 text-xs">
             {summaryTab === 'all' && (
               <div className="text-[11px] font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-1.5 pt-1">
-                <Tag size={12} className="text-[#C2477A]" />
+                <Tag size={12} className="text-[#D81B60]" />
                 <span>Identifiers & Details</span>
               </div>
             )}
@@ -353,7 +353,7 @@ export default function ProductFormRightPanel({
 
               <div className="py-1.5 flex justify-between items-center">
                 <span className="text-gray-500">General Selling Price:</span>
-                <span className="font-mono font-black text-[#C2477A]">
+                <span className="font-mono font-black text-[#D81B60]">
                   ₹{formData.generalPrice
                     ? Number(formData.generalPrice).toLocaleString('en-IN')
                     : (numericMrp ? numericMrp.toLocaleString('en-IN') : '0')}
@@ -374,7 +374,7 @@ export default function ProductFormRightPanel({
         {(summaryTab === 'pricing' || summaryTab === 'all') && (
           <div className="space-y-2 text-xs">
             <div className="text-[11px] font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-1.5 pt-1">
-              <Calculator size={12} className="text-[#C2477A]" />
+              <Calculator size={12} className="text-[#D81B60]" />
               <span>Role Pricing Matrix</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -382,7 +382,7 @@ export default function ProductFormRightPanel({
                 <div key={r.id} className="p-2.5 rounded-xl bg-gray-50 border border-gray-200/80 space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-gray-800">{r.shortName}</span>
-                    <span className="text-[10px] font-bold text-[#C2477A] bg-white px-1 rounded">
+                    <span className="text-[10px] font-bold text-[#D81B60] bg-white px-1 rounded">
                       {r.discountPct}% OFF
                     </span>
                   </div>
@@ -407,7 +407,7 @@ export default function ProductFormRightPanel({
           <div className="space-y-2 text-xs">
             <div className="text-[11px] font-extrabold text-gray-900 uppercase tracking-wider flex items-center justify-between pt-1">
               <span className="flex items-center gap-1.5">
-                <Palette size={12} className="text-[#C2477A]" />
+                <Palette size={12} className="text-[#D81B60]" />
                 <span>Variants & Shades</span>
               </span>
               <span className="text-[10px] text-gray-500 font-bold">
@@ -429,7 +429,7 @@ export default function ProductFormRightPanel({
                     <div className="flex items-center gap-2 min-w-0">
                       <div
                         className="w-4 h-4 rounded-full border border-gray-300 shadow-2xs shrink-0"
-                        style={{ backgroundColor: shade.hexColor || '#C2477A' }}
+                        style={{ backgroundColor: shade.hexColor || '#D81B60' }}
                         title={shade.hexColor}
                       />
                       <div className="truncate">
@@ -508,13 +508,13 @@ export default function ProductFormRightPanel({
             {highlights.length > 0 && (
               <div className="space-y-1">
                 <div className="text-[11px] font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-[#C2477A]" />
+                  <Sparkles size={12} className="text-[#D81B60]" />
                   <span>Highlights ({highlights.length})</span>
                 </div>
                 <div className="p-2 rounded-xl bg-gray-50 border border-gray-200/70 space-y-1 text-[11px] text-gray-700">
                   {highlights.map((hl, i) => (
                     <div key={i} className="flex items-start gap-1.5">
-                      <span className="text-[#C2477A] font-bold">•</span>
+                      <span className="text-[#D81B60] font-bold">•</span>
                       <span className="leading-tight">{hl}</span>
                     </div>
                   ))}
@@ -526,7 +526,7 @@ export default function ProductFormRightPanel({
             {(searchKeywords.length > 0 || searchAliases.length > 0) && (
               <div className="space-y-1.5">
                 <div className="text-[11px] font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Search size={12} className="text-[#C2477A]" />
+                  <Search size={12} className="text-[#D81B60]" />
                   <span>Search Discovery ({searchKeywords.length + searchAliases.length})</span>
                 </div>
                 <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar">
@@ -592,7 +592,7 @@ export default function ProductFormRightPanel({
               min="1"
               value={previewQtyInput}
               onChange={(e) => setPreviewQtyInput(e.target.value)}
-              className="w-16 p-1 rounded-lg border border-gray-300 font-mono font-bold text-center bg-white text-gray-900 text-xs outline-none focus:border-[#C2477A]"
+              className="w-16 p-1 rounded-lg border border-gray-300 font-mono font-bold text-center bg-white text-gray-900 text-xs outline-none focus:border-[#D81B60]"
             />
             <span className="font-medium text-gray-500 text-[11px]">units</span>
           </div>
@@ -612,9 +612,9 @@ export default function ProductFormRightPanel({
           <div className="flex justify-between items-center text-gray-600">
             <span className="flex items-center gap-1">
               <span>Role Discount</span>
-              <span className="text-[10px] text-[#C2477A] font-bold">({roleDiscountPct}%):</span>
+              <span className="text-[10px] text-[#D81B60] font-bold">({roleDiscountPct}%):</span>
             </span>
-            <span className="font-mono font-bold text-[#C2477A]">
+            <span className="font-mono font-bold text-[#D81B60]">
               {roleDiscountSavings > 0 ? `-₹${roleDiscountSavings.toLocaleString('en-IN')}` : '₹0'}
             </span>
           </div>
@@ -647,7 +647,7 @@ export default function ProductFormRightPanel({
           )}
 
           {/* Final Unit Price */}
-          <div className="border-t-2 border-[#C2477A]/20 pt-2 flex justify-between items-center">
+          <div className="border-t-2 border-[#D81B60]/20 pt-2 flex justify-between items-center">
             <div>
               <span className="font-black text-xs uppercase text-gray-900 block">
                 FINAL PRICE / UNIT
@@ -702,7 +702,7 @@ export default function ProductFormRightPanel({
               >
                 <div>
                   <span className="font-extrabold text-gray-900 block">{range.rangeLabel}</span>
-                  <span className={`text-[10.5px] font-bold ${range.isBase ? 'text-gray-400' : 'text-[#C2477A]'}`}>
+                  <span className={`text-[10.5px] font-bold ${range.isBase ? 'text-gray-400' : 'text-[#D81B60]'}`}>
                     {range.isBase ? 'No additional discount' : `${range.discountPct}% additional discount`}
                   </span>
                 </div>
@@ -718,7 +718,7 @@ export default function ProductFormRightPanel({
         )}
 
         <div className="pt-1 text-[10.5px] text-gray-400 font-medium flex items-center gap-1 border-t border-gray-100">
-          <Info size={12} className="text-[#C2477A] shrink-0" />
+          <Info size={12} className="text-[#D81B60] shrink-0" />
           <span>Configured via the Quantity Tiers section on the left.</span>
         </div>
       </div>

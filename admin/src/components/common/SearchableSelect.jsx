@@ -260,7 +260,7 @@ export default function SearchableSelect({
         name={name}
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(prev => !prev)}
-        className={`w-full ${compact ? 'px-3 py-2 text-xs' : 'p-3 text-xs'} rounded-xl border border-pink-100 bg-white font-semibold text-gray-900 shadow-2xs transition-all cursor-pointer flex items-center justify-between text-left outline-none hover:border-[#CE4270]/40 focus:border-[#CE4270] focus:ring-2 focus:ring-[#CE4270]/20 disabled:bg-gray-100 disabled:cursor-not-allowed ${buttonClassName} ${className}`}
+        className={`w-full ${compact ? 'px-3 py-2 text-xs' : 'p-3 text-xs'} rounded-xl border border-pink-100 bg-white font-semibold text-gray-900 shadow-2xs transition-all cursor-pointer flex items-center justify-between text-left outline-none hover:border-[#D81B60]/40 focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 disabled:bg-gray-100 disabled:cursor-not-allowed ${buttonClassName} ${className}`}
       >
         {renderTrigger ? (
           renderTrigger(selectedOption)
@@ -286,7 +286,7 @@ export default function SearchableSelect({
           )}
           <ChevronDown
             size={compact ? 13 : 16}
-            className={`text-gray-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#CE4270]' : ''}`}
+            className={`text-gray-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#D81B60]' : ''}`}
           />
         </div>
       </button>
@@ -300,7 +300,7 @@ export default function SearchableSelect({
         >
           {/* Search Input Box */}
           <div className="p-2.5 border-b border-pink-100/80 bg-gray-50/60 flex items-center gap-2">
-            <Search size={14} className="text-[#CE4270] shrink-0" />
+            <Search size={14} className="text-[#D81B60] shrink-0" />
             <input
               ref={searchInputRef}
               type="text"
@@ -367,7 +367,7 @@ export default function SearchableSelect({
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     className={`w-full px-3 py-2 rounded-xl text-left font-bold text-xs flex items-center justify-between transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-white text-[#CE4270]'
+                        ? 'bg-white text-[#D81B60]'
                         : isHighlighted
                         ? 'bg-white text-gray-900'
                         : 'text-gray-700 hover:bg-gray-50'
@@ -379,7 +379,7 @@ export default function SearchableSelect({
                       <span className="truncate pr-2">{optLabel}</span>
                     )}
                     {isSelected && (
-                      <Check size={14} className="text-[#CE4270] shrink-0" strokeWidth={2.5} />
+                      <Check size={14} className="text-[#D81B60] shrink-0" strokeWidth={2.5} />
                     )}
                   </button>
                 );

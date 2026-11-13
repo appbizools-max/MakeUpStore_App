@@ -110,7 +110,7 @@ export default function ImageDropzoneUploader({
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#CE4270] bg-white border border-pink-200 rounded-xl hover:bg-pink-50 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#D81B60] bg-white border border-pink-200 rounded-xl hover:bg-pink-50 active:scale-95 transition-all shadow-2xs cursor-pointer"
               >
                 <RefreshCw size={13} />
                 <span>Replace Image</span>
@@ -137,11 +137,11 @@ export default function ImageDropzoneUploader({
           onClick={() => !disabled && setIsModalOpen(true)}
           className={`relative rounded-2xl border-2 border-dashed transition-all p-5 text-center flex flex-col items-center justify-center cursor-pointer select-none ${
             isDragging
-              ? 'border-[#CE4270] bg-white scale-[1.01]'
-              : 'border-pink-200/90 bg-[#FAF9F6]/60 hover:bg-[#FFF2F5]/50 hover:border-[#CE4270]'
+              ? 'border-[#D81B60] bg-white scale-[1.01]'
+              : 'border-pink-200/90 bg-[#FAF9F6]/60 hover:bg-[#FFF2F5]/50 hover:border-[#D81B60]'
           } ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
         >
-          <div className="w-12 h-12 rounded-2xl bg-white text-[#CE4270] flex items-center justify-center mb-2.5 shadow-2xs border border-pink-100 group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-white text-[#D81B60] flex items-center justify-center mb-2.5 shadow-2xs border border-pink-100 group-hover:scale-105 transition-transform">
             <Upload size={20} />
           </div>
           <div className="text-xs font-bold text-gray-800">
@@ -151,7 +151,7 @@ export default function ImageDropzoneUploader({
             {sublabel}
           </p>
           <div className="mt-3 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-[#CE4270] bg-white border border-pink-200/90 rounded-xl shadow-2xs hover:bg-pink-50">
+            <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-[#D81B60] bg-white border border-pink-200/90 rounded-xl shadow-2xs hover:bg-pink-50">
               <Sparkles size={13} />
               <span>+ Add Image</span>
             </span>

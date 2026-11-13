@@ -85,7 +85,7 @@ export const VerificationStatusScreen = () => {
           onPress={() => setCurrentScreen('home')}
           className="w-10 h-10 rounded-full bg-white items-center justify-center"
         >
-          <Ionicons name="arrow-back" size={20} color="#C2477A" />
+          <Ionicons name="arrow-back" size={20} color="#D81B60" />
         </TouchableOpacity>
 
         <Text className="text-base font-black text-[#3A2430]">
@@ -98,7 +98,7 @@ export const VerificationStatusScreen = () => {
           className="w-10 h-10 rounded-full bg-stone-100 items-center justify-center"
         >
           {isRefreshing ? (
-            <ActivityIndicator size="small" color="#C2477A" />
+            <ActivityIndicator size="small" color="#D81B60" />
           ) : (
             <Ionicons name="reload" size={18} color="#553846" />
           )}
@@ -115,7 +115,7 @@ export const VerificationStatusScreen = () => {
             style={{
               fontFamily: fontsLoaded ? 'GreatVibes_400Regular' : (Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif'),
             }}
-            className="text-[34px] text-[#C2477A] text-center"
+            className="text-[34px] text-[#D81B60] text-center"
           >
             Salbeau
           </Text>
@@ -198,7 +198,7 @@ export const VerificationStatusScreen = () => {
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() => setCurrentScreen('b2b_verification')}
-              className="w-full bg-[#C2477A] py-3.5 rounded-full items-center justify-center shadow-md mb-2"
+              className="w-full bg-[#D81B60] py-3.5 rounded-full items-center justify-center shadow-md mb-2"
             >
               <Text className="text-white font-black text-sm">
                 Update Details & Resubmit
@@ -243,7 +243,7 @@ export const VerificationStatusScreen = () => {
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() => setCurrentScreen('home')}
-              className="w-full bg-[#C2477A] py-3.5 rounded-full items-center justify-center shadow-md"
+              className="w-full bg-[#D81B60] py-3.5 rounded-full items-center justify-center shadow-md"
             >
               <Text className="text-white font-black text-sm">
                 Explore Products with {roleTitle} Pricing
@@ -305,7 +305,7 @@ export const VerificationStatusScreen = () => {
                     />
                   ) : (
                     <View className="w-10 h-10 rounded-lg bg-white items-center justify-center border border-[#FCE4EC]">
-                      <Ionicons name="document-text" size={20} color="#C2477A" />
+                      <Ionicons name="document-text" size={20} color="#D81B60" />
                     </View>
                   )}
                   <View className="flex-1">
@@ -335,10 +335,10 @@ export const VerificationStatusScreen = () => {
 
           <TouchableOpacity
             onPress={handleContactSupport}
-            className="border border-[#C2477A] py-2.5 px-4 rounded-full flex-row items-center justify-center gap-2"
+            className="border border-[#D81B60] py-2.5 px-4 rounded-full flex-row items-center justify-center gap-2"
           >
-            <Ionicons name="logo-whatsapp" size={16} color="#C2477A" />
-            <Text className="text-xs font-bold text-[#C2477A]">Chat with Salbeau Verification Team</Text>
+            <Ionicons name="logo-whatsapp" size={16} color="#D81B60" />
+            <Text className="text-xs font-bold text-[#D81B60]">Chat with Salbeau Verification Team</Text>
           </TouchableOpacity>
         </View>
 

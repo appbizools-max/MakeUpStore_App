@@ -26,7 +26,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
  *   - Category-Specific Top Brands with fast in-tab search and Nykaa-style tick checkboxes
  *   - Dynamically resolves available brands based on the active selected category
  * - Fixed Footer with "Reset" and prominent "Apply Filters (N)" CTA
- * - Strictly preserves the white-and-pink theme (#C2477A, #FFF0F5, #F0E3EA) and Manrope typography
+ * - Strictly preserves the white-and-pink theme (#D81B60, #FFF0F5, #F0E3EA) and Manrope typography
  */
 export const PremiumFilterBottomSheet = ({
   visible,
@@ -190,7 +190,7 @@ export const PremiumFilterBottomSheet = ({
                 <View style={styles.headerRow}>
                   <View style={styles.headerLeft}>
                     <View style={styles.iconCircle}>
-                      <Ionicons name="options-outline" size={16} color="#C2477A" />
+                      <Ionicons name="options-outline" size={16} color="#D81B60" />
                     </View>
                     <Text style={styles.headerTitle}>Filters</Text>
                     {activeFilterCount > 0 && (
@@ -274,7 +274,7 @@ export const PremiumFilterBottomSheet = ({
                     <View style={styles.rightContentContainer}>
                       {/* Brand Search Input */}
                       <View style={styles.searchBox}>
-                        <Ionicons name="search" size={14} color="#C2477A" style={{ marginRight: 6 }} />
+                        <Ionicons name="search" size={14} color="#D81B60" style={{ marginRight: 6 }} />
                         <TextInput
                           value={brandSearch}
                           onChangeText={setBrandSearch}
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.82,
     borderTopWidth: 1.5,
     borderTopColor: '#F0E3EA',
-    shadowColor: '#C2477A',
+    shadowColor: '#D81B60',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,
     shadowRadius: 14,
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   activePill: {
-    backgroundColor: '#C2477A',
+    backgroundColor: '#D81B60',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 10,
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   clearHeaderText: {
-    color: '#C2477A',
+    color: '#D81B60',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
   },
   leftRailTabActive: {
     backgroundColor: '#FFFFFF',
-    borderLeftColor: '#C2477A',
+    borderLeftColor: '#D81B60',
   },
   tabLabelRow: {
     flexDirection: 'row',
@@ -688,10 +688,10 @@ const styles = StyleSheet.create({
   },
   leftRailTabTextActive: {
     fontWeight: '800',
-    color: '#C2477A',
+    color: '#D81B60',
   },
   tabBadge: {
-    backgroundColor: '#C2477A',
+    backgroundColor: '#D81B60',
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
   },
   contextBannerText: {
     fontSize: 10,
-    color: '#C2477A',
+    color: '#D81B60',
   },
   optionsList: {
     padding: 12,
@@ -772,8 +772,8 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   checkboxSquareSelected: {
-    backgroundColor: '#C2477A',
-    borderColor: '#C2477A',
+    backgroundColor: '#D81B60',
+    borderColor: '#D81B60',
   },
   brandTitleText: {
     fontSize: 12,
@@ -814,13 +814,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   radioCircleSelected: {
-    borderColor: '#C2477A',
+    borderColor: '#D81B60',
   },
   radioInnerDot: {
     width: 9,
     height: 9,
     borderRadius: 4.5,
-    backgroundColor: '#C2477A',
+    backgroundColor: '#D81B60',
   },
   radioLabelText: {
     fontSize: 12.5,
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   radioLabelTextSelected: {
-    color: '#C2477A',
+    color: '#D81B60',
     fontWeight: '800',
   },
   sectionHeaderLabel: {
@@ -891,10 +891,10 @@ const styles = StyleSheet.create({
     flex: 2,
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#C2477A',
+    backgroundColor: '#D81B60',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#C2477A',
+    shadowColor: '#D81B60',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 5,

@@ -613,7 +613,7 @@ export default function ImageManagerModal({
               ) : (
                 <div className="p-3.5 bg-gradient-to-r from-pink-50/70 via-purple-50/40 to-white border border-pink-200/80 rounded-2xl flex items-center justify-between gap-3 text-pink-950">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-[#C2477A] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                    <div className="w-9 h-9 rounded-xl bg-[#D81B60] text-white flex items-center justify-center font-bold text-xs shadow-xs">
                       <Upload className="w-4 h-4" />
                     </div>
                     <div>
@@ -623,7 +623,7 @@ export default function ImageManagerModal({
                       </span>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 bg-white border border-pink-200 rounded-lg text-[10px] font-black text-[#C2477A] uppercase tracking-wider shrink-0 shadow-2xs">
+                  <span className="px-2.5 py-1 bg-white border border-pink-200 rounded-lg text-[10px] font-black text-[#D81B60] uppercase tracking-wider shrink-0 shadow-2xs">
                     Local File Only
                   </span>
                 </div>

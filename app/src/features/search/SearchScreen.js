@@ -19,7 +19,7 @@ import { trackCustomerSearch } from '../../utils/customerSearchService';
 import { storage } from '../../utils/storage';
 import { PurplleProductCard } from '../../components/PurplleProductCard';
 import { PremiumFilterBottomSheet } from '../../components/PremiumFilterBottomSheet';
-import { getCartQuantityMap } from '../../utils/cartKeyUtils';
+import { getCartKey, getSafeProductShadesList, getCartQuantityMap } from '../../utils/cartKeyUtils';
 import { cleanProductDisplayName } from '../../utils/productDisplayNameUtils';
 import { getBrandThemeColor } from '../home/HomeScreen';
 
@@ -55,7 +55,7 @@ const STORAGE_KEY_RECENT = 'salbeau_recent_searches_list';
  * 
  * Visual Design:
  * - Soft blush background (#FFFFFF)
- * - Primary rose pink (#B34D7D)
+ * - Primary rose pink (#D81B60)
  * - Dark text (#352832)
  * - Muted gray (#8A7B85)
  * - Border color (#F0E3EA)
@@ -76,10 +76,12 @@ export const SearchScreen = () => {
     setSelectedShade,
     rememberSelectedShade,
     setCurrentScreen,
+    goBack,
     cart = [],
     addToCart,
     updateCartQuantity,
     removeFromCart,
+    cartSubtotal = 0,
     isFavorite,
     toggleFavorite,
     openShadeSheet,
@@ -108,6 +110,9 @@ export const SearchScreen = () => {
   ]);
 
   const searchInputRef = useRef(null);
+
+  const totalCartQuantity = useMemo(() => cart.reduce((sum, item) => sum + (item.quantity || 1), 0), [cart]);
+  const totalCartPrice = useMemo(() => Number(cartSubtotal || 0), [cartSubtotal]);
 
   // Load persistent recent searches from storage
   useEffect(() => {
@@ -268,7 +273,7 @@ export const SearchScreen = () => {
         id: p.id,
         title: cleanProductDisplayName(p.name),
         brandName: p.brandName || p.brand || '',
-        price: p.generalPrice || p.mrp || 0,
+        price: typeof getRolePrice === 'function' ? getRolePrice(p, userRole) : (p.generalPrice || p.mrp || 0),
         mrp: p.mrp || 0,
         image: p.image || (Array.isArray(p.images) ? p.images[0] : ''),
         badge: 'Product',
@@ -427,7 +432,7 @@ export const SearchScreen = () => {
           backgroundColor: '#FFFFFF',
           borderBottomWidth: 1,
           borderBottomColor: '#F0E3EA',
-          shadowColor: '#B34D7D',
+          shadowColor: '#D81B60',
           shadowOffset: { width: 0, height: 1.5 },
           shadowOpacity: 0.04,
           shadowRadius: 4,
@@ -438,7 +443,10 @@ export const SearchScreen = () => {
         <View className="flex-row items-center gap-2.5">
           {/* Back Button */}
           <TouchableOpacity
-            onPress={() => setCurrentScreen('home')}
+            onPress={() => {
+              if (typeof goBack === 'function') goBack();
+              else setCurrentScreen('home');
+            }}
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={{
@@ -451,7 +459,7 @@ export const SearchScreen = () => {
             }}
             className="items-center justify-center shadow-2xs"
           >
-            <Ionicons name="chevron-back" size={20} color="#B34D7D" />
+            <Ionicons name="chevron-back" size={20} color="#D81B60" />
           </TouchableOpacity>
 
           {/* Prominent Rounded Search Input */}
@@ -465,7 +473,7 @@ export const SearchScreen = () => {
             }}
             className="flex-1 flex-row items-center px-3.5 shadow-2xs"
           >
-            <Ionicons name="search" size={17} color="#B34D7D" />
+            <Ionicons name="search" size={17} color="#D81B60" />
             <TextInput
               ref={searchInputRef}
               value={query}
@@ -501,8 +509,8 @@ export const SearchScreen = () => {
               width: 44,
               height: 44,
               borderRadius: 22,
-              backgroundColor: activeFilterCount > 0 ? '#B34D7D' : '#FFFFFF',
-              borderColor: activeFilterCount > 0 ? '#B34D7D' : '#F0E3EA',
+              backgroundColor: activeFilterCount > 0 ? '#D81B60' : '#FFFFFF',
+              borderColor: activeFilterCount > 0 ? '#D81B60' : '#F0E3EA',
               borderWidth: 1,
             }}
             className="items-center justify-center relative shadow-2xs"
@@ -510,7 +518,7 @@ export const SearchScreen = () => {
             <Ionicons
               name="options-outline"
               size={19}
-              color={activeFilterCount > 0 ? '#FFFFFF' : '#B34D7D'}
+              color={activeFilterCount > 0 ? '#FFFFFF' : '#D81B60'}
             />
             {activeFilterCount > 0 && (
               <View
@@ -552,8 +560,8 @@ export const SearchScreen = () => {
                 activeOpacity={0.8}
                 onPress={() => setSelectedCategory(catName)}
                 style={{
-                  backgroundColor: isSelected ? '#B34D7D' : '#FFFFFF',
-                  borderColor: isSelected ? '#B34D7D' : '#F0E3EA',
+                  backgroundColor: isSelected ? '#D81B60' : '#FFFFFF',
+                  borderColor: isSelected ? '#D81B60' : '#F0E3EA',
                   borderWidth: 1,
                   borderRadius: 18,
                   paddingHorizontal: 13,
@@ -590,7 +598,7 @@ export const SearchScreen = () => {
             borderColor: '#F0E3EA',
             borderWidth: 1.5,
             borderRadius: 20,
-            shadowColor: '#B34D7D',
+            shadowColor: '#D81B60',
             shadowOffset: { width: 0, height: 6 },
             shadowOpacity: 0.16,
             shadowRadius: 12,
@@ -602,7 +610,7 @@ export const SearchScreen = () => {
           {/* Header Bar */}
           <View className="px-4 py-2.5 bg-[#FFF7FA] border-b border-[#F0E3EA] flex-row items-center justify-between">
             <View className="flex-row items-center gap-1.5">
-              <Ionicons name="sparkles" size={14} color="#B34D7D" />
+              <Ionicons name="sparkles" size={14} color="#D81B60" />
               <Text className="text-[11px] font-black text-[#352832] uppercase tracking-wider">
                 Instant Suggestions
               </Text>
@@ -628,17 +636,19 @@ export const SearchScreen = () => {
               const isProduct = item.type === 'product';
 
               return (
-                <TouchableOpacity
+                <View
                   key={`${item.type}_${item.id}_${idx}`}
-                  onPress={() => handleSelectSuggestion(item)}
-                  activeOpacity={0.7}
                   style={{
                     borderBottomWidth: idx !== suggestions.all.length - 1 ? 1 : 0,
                     borderBottomColor: '#F5ECF0',
                   }}
-                  className="px-3.5 py-2.5 flex-row items-center justify-between bg-white active:bg-[#FFF7FA]"
+                  className="px-3.5 py-2.5 flex-row items-center justify-between bg-white"
                 >
-                  <View className="flex-row items-center gap-3 flex-1 pr-2">
+                  <TouchableOpacity
+                    onPress={() => handleSelectSuggestion(item)}
+                    activeOpacity={0.7}
+                    className="flex-row items-center gap-3 flex-1 pr-2"
+                  >
                     {/* Visual Media Thumbnail */}
                     {isProduct ? (
                       <View className="w-10 h-10 rounded-xl bg-[#FAFAFA] border border-gray-100 items-center justify-center overflow-hidden p-0.5">
@@ -693,7 +703,7 @@ export const SearchScreen = () => {
                     {/* Content Details */}
                     <View className="flex-1">
                       {isProduct && item.brandName ? (
-                        <Text className="text-[9.5px] font-bold text-[#B34D7D] uppercase tracking-wider mb-0.5" numberOfLines={1}>
+                        <Text className="text-[9.5px] font-bold text-[#D81B60] uppercase tracking-wider mb-0.5" numberOfLines={1}>
                           {item.brandName}
                         </Text>
                       ) : null}
@@ -713,44 +723,131 @@ export const SearchScreen = () => {
                         )}
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
 
-                  {/* Badge & Arrow Navigation Indicator */}
+                  {/* Action / Stepper / Badge */}
                   <View className="flex-row items-center gap-1.5 shrink-0">
-                    <View
-                      style={{
-                        backgroundColor: isBrand
-                          ? '#FCE7F3'
-                          : isCategory
-                            ? '#EEF2FF'
-                            : isSubcategory
-                              ? '#ECFDF5'
-                              : '#FFF1F2',
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        borderRadius: 6,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: isBrand
-                            ? '#BE185D'
-                            : isCategory
-                              ? '#4F46E5'
-                              : isSubcategory
-                                ? '#059669'
-                                : '#B34D7D',
-                          fontSize: 8.5,
-                          fontWeight: '800',
-                          textTransform: 'uppercase',
-                        }}
+                    {isProduct && item.product ? (
+                      (() => {
+                        const prod = item.product;
+                        const shadesList = getSafeProductShadesList(prod);
+                        const firstShade = shadesList[0] || null;
+                        const existingCartItem = (cart || []).find(ci => {
+                          const ciPid = ci.product?.id || ci.productId;
+                          return String(ciPid) === String(prod.id);
+                        });
+                        const pCartKey = existingCartItem ? existingCartItem.id : (getCartKey(prod.id, firstShade) || String(prod.id));
+                        const inCartQty = existingCartItem ? (existingCartItem.quantity || 1) : (cartQuantityMap?.get(pCartKey) || cartQuantityMap?.get(String(prod.id)) || 0);
+
+                        if (inCartQty > 0) {
+                          return (
+                            <View
+                              style={{ backgroundColor: '#D81B60' }}
+                              className="flex-row items-center rounded-lg px-2 py-1 gap-1.5 shadow-2xs"
+                            >
+                              <TouchableOpacity
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                onPress={(e) => {
+                                  e?.stopPropagation?.();
+                                  if (inCartQty > 1) {
+                                    updateCartQuantity?.(pCartKey, inCartQty - 1);
+                                  } else {
+                                    removeFromCart?.(pCartKey);
+                                  }
+                                }}
+                                className="w-4 h-4 items-center justify-center"
+                              >
+                                <Ionicons name="remove" size={12} color="#FFFFFF" />
+                              </TouchableOpacity>
+                              <Text className="text-white text-[11px] font-black min-w-[12px] text-center">
+                                {inCartQty}
+                              </Text>
+                              <TouchableOpacity
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                onPress={(e) => {
+                                  e?.stopPropagation?.();
+                                  updateCartQuantity?.(pCartKey, inCartQty + 1);
+                                }}
+                                className="w-4 h-4 items-center justify-center"
+                              >
+                                <Ionicons name="add" size={12} color="#FFFFFF" />
+                              </TouchableOpacity>
+                            </View>
+                          );
+                        }
+
+                        return (
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            onPress={(e) => {
+                              e?.stopPropagation?.();
+                              if (shadesList.length > 1 && openShadeSheet) {
+                                setShowSuggestions(false);
+                                openShadeSheet(prod, firstShade);
+                              } else if (addToCart) {
+                                addToCart(prod, 1, firstShade);
+                              }
+                            }}
+                            style={{
+                              backgroundColor: '#FFF0F5',
+                              borderColor: '#D81B60',
+                              borderWidth: 1.2,
+                              borderRadius: 8,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4.5,
+                            }}
+                            className="flex-row items-center justify-center gap-1 shadow-2xs"
+                          >
+                            <Ionicons name="bag-handle-outline" size={11} color="#D81B60" />
+                            <Text style={{ color: '#D81B60', fontSize: 10, fontWeight: '900' }}>
+                              + ADD
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })()
+                    ) : (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => handleSelectSuggestion(item)}
+                        className="flex-row items-center gap-1.5"
                       >
-                        {item.badge}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color="#C4B5BD" />
+                        <View
+                          style={{
+                            backgroundColor: isBrand
+                              ? '#FCE7F3'
+                              : isCategory
+                                ? '#EEF2FF'
+                                : isSubcategory
+                                  ? '#ECFDF5'
+                                  : '#FFF1F2',
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: isBrand
+                                ? '#D81B60'
+                                : isCategory
+                                  ? '#4F46E5'
+                                  : isSubcategory
+                                    ? '#059669'
+                                    : '#D81B60',
+                              fontSize: 8.5,
+                              fontWeight: '800',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {item.badge}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={14} color="#C4B5BD" />
+                      </TouchableOpacity>
+                    )}
                   </View>
-                </TouchableOpacity>
+                </View>
               );
             })}
           </ScrollView>
@@ -775,10 +872,10 @@ export const SearchScreen = () => {
               }}
               className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
             >
-              <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
+              <Text style={{ color: '#D81B60' }} className="text-[11px] font-bold">
                 Category: {selectedCategory}
               </Text>
-              <Ionicons name="close" size={13} color="#B34D7D" />
+              <Ionicons name="close" size={13} color="#D81B60" />
             </TouchableOpacity>
           )}
 
@@ -787,10 +884,10 @@ export const SearchScreen = () => {
               onPress={() => setSelectedSubcategory('All')}
               className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
             >
-              <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
+              <Text style={{ color: '#D81B60' }} className="text-[11px] font-bold">
                 Sub: {selectedSubcategory}
               </Text>
-              <Ionicons name="close" size={13} color="#B34D7D" />
+              <Ionicons name="close" size={13} color="#D81B60" />
             </TouchableOpacity>
           )}
 
@@ -800,10 +897,10 @@ export const SearchScreen = () => {
               onPress={() => setSelectedBrands(prev => prev.filter(b => b !== bName))}
               className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
             >
-              <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
+              <Text style={{ color: '#D81B60' }} className="text-[11px] font-bold">
                 Brand: {bName}
               </Text>
-              <Ionicons name="close" size={13} color="#B34D7D" />
+              <Ionicons name="close" size={13} color="#D81B60" />
             </TouchableOpacity>
           ))}
 
@@ -812,15 +909,15 @@ export const SearchScreen = () => {
               onPress={() => setSelectedPriceRange('all')}
               className="bg-white border border-[#F0E3EA] px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-2xs"
             >
-              <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
+              <Text style={{ color: '#D81B60' }} className="text-[11px] font-bold">
                 Price: {selectedPriceRange === 'u500' ? '< ₹500' : selectedPriceRange === '500_1000' ? '₹500-1k' : selectedPriceRange === '1000_2000' ? '₹1k-2k' : '> ₹2k'}
               </Text>
-              <Ionicons name="close" size={13} color="#B34D7D" />
+              <Ionicons name="close" size={13} color="#D81B60" />
             </TouchableOpacity>
           )}
 
           <TouchableOpacity onPress={resetAllFilters} className="ml-auto py-1 px-2">
-            <Text style={{ color: '#B34D7D' }} className="text-[11px] font-extrabold">
+            <Text style={{ color: '#D81B60' }} className="text-[11px] font-extrabold">
               Clear All
             </Text>
           </TouchableOpacity>
@@ -843,7 +940,7 @@ export const SearchScreen = () => {
             <View className="mb-5">
               <View className="flex-row items-center justify-between mb-2.5">
                 <View className="flex-row items-center gap-1.5">
-                  <Ionicons name="flame" size={16} color="#B34D7D" />
+                  <Ionicons name="flame" size={16} color="#D81B60" />
                   <Text style={{ color: '#352832' }} className="text-xs font-black uppercase tracking-wider">
                     Trending Searches
                   </Text>
@@ -857,7 +954,7 @@ export const SearchScreen = () => {
                   borderWidth: 1,
                   borderRadius: 18,
                   overflow: 'hidden',
-                  shadowColor: '#B34D7D',
+                  shadowColor: '#D81B60',
                   shadowOffset: { width: 0, height: 1 },
                   shadowOpacity: 0.04,
                   shadowRadius: 4,
@@ -887,7 +984,7 @@ export const SearchScreen = () => {
                         }}
                         className="items-center justify-center shrink-0"
                       >
-                        <Ionicons name={item.icon} size={15} color="#B34D7D" />
+                        <Ionicons name={item.icon} size={15} color="#D81B60" />
                       </View>
                       <View className="flex-1">
                         <Text style={{ color: '#352832' }} className="text-xs font-bold leading-snug">
@@ -901,7 +998,7 @@ export const SearchScreen = () => {
                     <Ionicons
                       name="arrow-up-outline"
                       size={15}
-                      color="#B34D7D"
+                      color="#D81B60"
                       style={{ transform: [{ rotate: '45deg' }] }}
                     />
                   </TouchableOpacity>
@@ -935,7 +1032,7 @@ export const SearchScreen = () => {
                         paddingLeft: 12,
                         paddingRight: 8,
                         paddingVertical: 6,
-                        shadowColor: '#B34D7D',
+                        shadowColor: '#D81B60',
                         shadowOffset: { width: 0, height: 1 },
                         shadowOpacity: 0.03,
                         shadowRadius: 3,
@@ -963,7 +1060,7 @@ export const SearchScreen = () => {
                     onPress={() => setIsRecentExpanded(!isRecentExpanded)}
                     className="self-center mt-2.5 py-1 px-3"
                   >
-                    <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
+                    <Text style={{ color: '#D81B60' }} className="text-[11px] font-bold">
                       {isRecentExpanded ? 'Show Less' : `+${recentSearches.length - 6} More Searches`}
                     </Text>
                   </TouchableOpacity>
@@ -979,7 +1076,7 @@ export const SearchScreen = () => {
                     Top Brands
                   </Text>
                   <TouchableOpacity onPress={() => setCurrentScreen('category')}>
-                    <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
+                    <Text style={{ color: '#D81B60' }} className="text-[11px] font-bold">
                       View All →
                     </Text>
                   </TouchableOpacity>
@@ -1014,12 +1111,12 @@ export const SearchScreen = () => {
                             paddingHorizontal: 14,
                             marginRight: 10,
                             backgroundColor: isSelected ? '#FFF0F5' : '#FFFFFF',
-                            borderColor: isSelected ? '#C2477A' : '#F0E3EA',
+                            borderColor: isSelected ? '#D81B60' : '#F0E3EA',
                             borderWidth: 1.5,
                             borderRadius: 14,
                             alignItems: 'center',
                             justifyContent: 'center',
-                            shadowColor: '#B64F7D',
+                            shadowColor: '#D81B60',
                             shadowOffset: { width: 0, height: 1 },
                             shadowOpacity: 0.05,
                             shadowRadius: 3,
@@ -1028,7 +1125,7 @@ export const SearchScreen = () => {
                         >
                           <Text
                             style={{
-                              color: isSelected ? '#C2477A' : '#3A2430',
+                              color: isSelected ? '#D81B60' : '#3A2430',
                               fontSize: 11.5,
                               fontWeight: isSelected ? '800' : '700',
                               textAlign: 'center',
@@ -1101,7 +1198,7 @@ export const SearchScreen = () => {
                 Search Results{query ? ` for "${query}"` : ''}
               </Text>
               {activeFilterCount > 0 && (
-                <Text style={{ color: '#B34D7D' }} className="text-[11px] font-bold">
+                <Text style={{ color: '#D81B60' }} className="text-[11px] font-bold">
                   {activeFilterCount} active filter{activeFilterCount > 1 ? 's' : ''}
                 </Text>
               )}
@@ -1110,7 +1207,7 @@ export const SearchScreen = () => {
             {results.length === 0 ? (
               isCatalogLoading ? (
                 <View className="items-center justify-center py-20 px-4">
-                  <Text style={{ color: '#C2477A' }} className="text-sm font-extrabold mb-1">
+                  <Text style={{ color: '#D81B60' }} className="text-sm font-extrabold mb-1">
                     Loading Products...
                   </Text>
                   <Text style={{ color: '#8A7B85' }} className="text-xs text-center">
@@ -1127,7 +1224,7 @@ export const SearchScreen = () => {
                     }}
                     className="w-16 h-16 rounded-full items-center justify-center mb-3 shadow-2xs"
                   >
-                    <Ionicons name="search-outline" size={28} color="#B34D7D" />
+                    <Ionicons name="search-outline" size={28} color="#D81B60" />
                   </View>
                   <Text style={{ color: '#352832' }} className="text-sm font-extrabold mb-1">
                     No products match your search
@@ -1140,7 +1237,7 @@ export const SearchScreen = () => {
                       setQuery('');
                       resetAllFilters();
                     }}
-                    style={{ backgroundColor: '#B34D7D' }}
+                    style={{ backgroundColor: '#D81B60' }}
                     className="px-5 py-2.5 rounded-full shadow-xs"
                   >
                     <Text className="text-xs font-bold text-white">Reset Search & Filters</Text>
@@ -1210,7 +1307,51 @@ export const SearchScreen = () => {
         totalMatchingCount={results?.length || 0}
       />
 
+      {/* ── 9. FLOATING STICKY VIEW CART BAR (When cart has items) ──── */}
+      {cart.length > 0 && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: 14,
+            right: 14,
+            zIndex: 50,
+            backgroundColor: '#D81B60',
+            shadowColor: '#D81B60',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+            elevation: 8,
+          }}
+          className="rounded-2xl px-4 py-2.5 flex-row items-center justify-between"
+        >
+          <View className="flex-row items-center gap-3">
+            <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
+              <Ionicons name="bag-handle" size={17} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text className="text-xs font-black text-white tracking-wide">
+                {totalCartQuantity} {totalCartQuantity === 1 ? 'Item' : 'Items'} • ₹{totalCartPrice.toFixed(2).replace(/\.00$/, '')}
+              </Text>
+              <Text className="text-[10px] font-medium text-pink-100">
+                Tap to review bag & checkout
+              </Text>
+            </View>
           </View>
+
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => setCurrentScreen('cart')}
+            className="bg-white px-3.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-xs"
+          >
+            <Text className="text-[11px] font-black text-[#D81B60] uppercase tracking-wider">
+              View Cart
+            </Text>
+            <Ionicons name="arrow-forward" size={12} color="#D81B60" />
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 };
 

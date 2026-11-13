@@ -46,12 +46,29 @@ async function getWebFcmMessaging() {
   return null;
 }
 
+// Memory caches to prevent duplicate executions & React Native bridge callback leaks
+const subscribedTopics = new Set();
+let isTokenRequested = false;
+let lastTokenRequestTime = 0;
+let cachedActiveToken = null;
+
 /**
  * Requests notification permission and retrieves device FCM Token.
  * Supports Native Android (via SalbeauFCM NativeModule) and Web.
  * Persists token to storage and syncs with Supabase public.users table.
  */
 export async function requestFCMToken(userId = null, phone = null) {
+  const now = Date.now();
+  if (isTokenRequested && (now - lastTokenRequestTime < 20000)) {
+    if (cachedActiveToken) return cachedActiveToken;
+    try {
+      const stored = await AsyncStorage.getItem('salbeau_fcm_token');
+      if (stored) return stored;
+    } catch (_) {}
+  }
+  isTokenRequested = true;
+  lastTokenRequestTime = now;
+
   try {
     // 0. Android 13+ (API 33+) Runtime Notification Permission Prompt
     if (Platform.OS === 'android' && Platform.Version >= 33) {
@@ -78,12 +95,23 @@ export async function requestFCMToken(userId = null, phone = null) {
       try {
         const token = await NativeModules.SalbeauFCM.getFCMToken();
         if (token) {
+          cachedActiveToken = token;
           await AsyncStorage.setItem('salbeau_fcm_token', token);
           console.log('[FCM Native] Device token registered:', token.slice(0, 15) + '...');
 
-          // Subscribe to general beauty announcements and order updates
-          NativeModules.SalbeauFCM.subscribeToTopic('salbeau_all_users').catch(() => { });
-          NativeModules.SalbeauFCM.subscribeToTopic('salbeau_announcements').catch(() => { });
+          // Subscribe to general beauty announcements and order updates (ONLY ONCE per session to prevent callback leaks)
+          if (!subscribedTopics.has('salbeau_all_users')) {
+            subscribedTopics.add('salbeau_all_users');
+            try {
+              NativeModules.SalbeauFCM.subscribeToTopic('salbeau_all_users');
+            } catch (_) {}
+          }
+          if (!subscribedTopics.has('salbeau_announcements')) {
+            subscribedTopics.add('salbeau_announcements');
+            try {
+              NativeModules.SalbeauFCM.subscribeToTopic('salbeau_announcements');
+            } catch (_) {}
+          }
 
           // Sync token to Supabase users profile
           const identifier = phone || userId;

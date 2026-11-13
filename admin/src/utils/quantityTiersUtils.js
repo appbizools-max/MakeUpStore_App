@@ -28,12 +28,12 @@ export const DISCOUNT_ROLES = [
     name: 'Salon Owner',
     shortName: 'Salon',
     basePriceLabel: 'Salon Base Price',
-    color: '#CE4270',
+    color: '#D81B60',
     badgeBg: 'bg-white',
-    badgeText: 'text-[#CE4270]',
+    badgeText: 'text-[#D81B60]',
     badgeBorder: 'border-pink-200',
-    tabActive: 'bg-[#CE4270] text-white shadow-xs',
-    accentBorder: 'border-[#CE4270]',
+    tabActive: 'bg-[#D81B60] text-white shadow-xs',
+    accentBorder: 'border-[#D81B60]',
     tag: 'B2B'
   },
   {

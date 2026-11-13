@@ -190,7 +190,7 @@ export default function HexColorPicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-9 h-9 rounded-xl border-2 border-white shadow-xs cursor-pointer p-0.5 shrink-0 transition-transform active:scale-95 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#CE4270]/30"
+        className="w-9 h-9 rounded-xl border-2 border-white shadow-xs cursor-pointer p-0.5 shrink-0 transition-transform active:scale-95 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#D81B60]/30"
         style={{ backgroundColor: currentHex }}
         title="Click to open HEX color palette"
       />
@@ -200,13 +200,13 @@ export default function HexColorPicker({
         <input
           type="text"
           maxLength={7}
-          placeholder="#CE4270"
+          placeholder="#D81B60"
           value={rawText}
           onChange={handleTextChange}
           onFocus={() => setIsOpen(true)}
           className={`w-full py-2 px-2.5 rounded-xl border font-mono text-xs font-bold transition-all outline-none uppercase ${
             isValidHex(normalizeHex(rawText))
-              ? 'border-gray-200 bg-white text-gray-800 focus:border-[#CE4270] focus:ring-2 focus:ring-[#CE4270]/20'
+              ? 'border-gray-200 bg-white text-gray-800 focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20'
               : 'border-rose-300 bg-rose-50 text-rose-800'
           }`}
         />
@@ -221,7 +221,7 @@ export default function HexColorPicker({
           {/* Header */}
           <div className="flex items-center justify-between pb-2 border-b border-gray-100">
             <div className="flex items-center gap-1.5">
-              <Palette size={14} className="text-[#CE4270]" />
+              <Palette size={14} className="text-[#D81B60]" />
               <span className="font-extrabold text-xs text-gray-800 uppercase tracking-wide">
                 Hex Color Swatch
               </span>
@@ -231,7 +231,7 @@ export default function HexColorPicker({
               <button
                 type="button"
                 onClick={handleEyeDropper}
-                className="p-1 rounded-lg hover:bg-pink-50 text-gray-500 hover:text-[#CE4270] transition-colors cursor-pointer flex items-center gap-1 text-[10.5px] font-bold"
+                className="p-1 rounded-lg hover:bg-pink-50 text-gray-500 hover:text-[#D81B60] transition-colors cursor-pointer flex items-center gap-1 text-[10.5px] font-bold"
                 title="Pick color from screen"
               >
                 <Pipette size={13} />
@@ -251,7 +251,7 @@ export default function HexColorPicker({
                 Selected Shade
               </span>
               <div className="flex items-baseline gap-2">
-                <span className="font-extrabold text-xs text-[#CE4270] truncate">
+                <span className="font-extrabold text-xs text-[#D81B60] truncate">
                   {detectedShadeName}
                 </span>
                 <span className="font-mono font-bold text-[11px] text-gray-500">
@@ -326,7 +326,7 @@ export default function HexColorPicker({
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="font-bold text-[#CE4270] hover:underline cursor-pointer"
+              className="font-bold text-[#D81B60] hover:underline cursor-pointer"
             >
               Done
             </button>

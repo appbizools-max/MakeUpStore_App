@@ -32,10 +32,10 @@ export const PRICING_ROLES = [
     tag: 'B2B Wholesale',
     icon: Building2,
     placeholderPct: 'e.g. 30',
-    colorText: 'text-[#C2477A]',
-    accentColor: '#C2477A',
-    ringColor: 'focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20',
-    badgeBg: 'bg-white text-[#C2477A] border border-pink-200',
+    colorText: 'text-[#D81B60]',
+    accentColor: '#D81B60',
+    ringColor: 'focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20',
+    badgeBg: 'bg-white text-[#D81B60] border border-pink-200',
     rowBg: 'hover:bg-rose-50/20'
   },
   {
@@ -47,7 +47,7 @@ export const PRICING_ROLES = [
     placeholderPct: 'e.g. 35',
     colorText: 'text-black',
     accentColor: '#7C3AED',
-    ringColor: 'focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20',
+    ringColor: 'focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20',
     badgeBg: 'bg-white text-black border border-[#FCE4EC]',
     rowBg: 'hover:bg-[#FFF5F8]/20'
   },
@@ -182,7 +182,7 @@ export default function RolePricingMatrix({
       {/* Table Header / Banner */}
       <div className="px-5 py-3.5 bg-gradient-to-r from-[#FFF5F7] via-white to-white border-b border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="w-7 h-7 rounded-xl bg-white text-[#C2477A] flex items-center justify-center font-bold shadow-2xs shrink-0">
+          <span className="w-7 h-7 rounded-xl bg-white text-[#D81B60] flex items-center justify-center font-bold shadow-2xs shrink-0">
             <Sparkles size={15} />
           </span>
           <div>
@@ -196,7 +196,7 @@ export default function RolePricingMatrix({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-pink-100/80 text-[#C2477A] border border-pink-200">
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-pink-100/80 text-[#D81B60] border border-pink-200">
             All 4 Roles Supported
           </span>
           <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
@@ -210,7 +210,7 @@ export default function RolePricingMatrix({
       {showBasePriceInput && (
         <div className="p-4 bg-[#FFF9FA] border-b border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <IndianRupee size={16} className="text-[#C2477A]" />
+            <IndianRupee size={16} className="text-[#D81B60]" />
             <label className="font-black text-xs text-gray-900 uppercase">
               Product Primary Base MRP (₹) *
             </label>
@@ -226,7 +226,7 @@ export default function RolePricingMatrix({
               placeholder="e.g. 1000"
               value={basePrice !== undefined && basePrice !== null ? basePrice : ''}
               onChange={handleBaseChange}
-              className="w-full pl-7 pr-3 py-2 rounded-xl border border-pink-300 outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-black text-gray-900 text-xs shadow-2xs text-center"
+              className="w-full pl-7 pr-3 py-2 rounded-xl border border-pink-300 outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 bg-white font-black text-gray-900 text-xs shadow-2xs text-center"
             />
           </div>
         </div>
@@ -237,7 +237,7 @@ export default function RolePricingMatrix({
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="bg-white border-b border-pink-100/90 text-gray-700">
-              <th className="py-3 px-4 sm:px-5 font-extrabold text-[11px] uppercase tracking-wider text-[#C2477A] w-2/5">
+              <th className="py-3 px-4 sm:px-5 font-extrabold text-[11px] uppercase tracking-wider text-[#D81B60] w-2/5">
                 User Type
               </th>
               <th className="py-3 px-4 font-extrabold text-[11px] uppercase tracking-wider text-gray-700 text-center w-1/5">
@@ -246,7 +246,7 @@ export default function RolePricingMatrix({
               <th className="py-3 px-4 font-extrabold text-[11px] uppercase tracking-wider text-gray-700 text-center w-1/5">
                 Discount %
               </th>
-              <th className="py-3 px-4 sm:px-5 font-extrabold text-[11px] uppercase tracking-wider text-[#C2477A] text-right w-1/5">
+              <th className="py-3 px-4 sm:px-5 font-extrabold text-[11px] uppercase tracking-wider text-[#D81B60] text-right w-1/5">
                 Calculated Price (₹)
               </th>
             </tr>
@@ -358,7 +358,7 @@ export default function RolePricingMatrix({
       {/* Footer Formula Banner */}
       <div className="px-5 py-2.5 bg-gray-50/80 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-gray-500">
         <div className="flex items-center gap-1.5 font-medium">
-          <Info size={13} className="text-[#C2477A] shrink-0" />
+          <Info size={13} className="text-[#D81B60] shrink-0" />
           <span>
             <strong>Formula:</strong> Role Price = Base MRP × (1 − Role Discount / 100). All role prices start from MRP, never ₹0.
           </span>

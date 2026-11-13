@@ -12,23 +12,6 @@ const DB_BACKUP_ID = 'app_banners_backup_snapshot';
 // Default home banners aligned 100% with Mobile App HomeScreen
 export const DEFAULT_CENTRAL_BANNERS = [
   {
-    id: 'banner_1',
-    name: 'Glow Your Own Way',
-    title: 'Glow Your Own Way',
-    subtitle: 'Discover authentic beauty, salon & grooming formulations',
-    bannerType: 'home',
-    type: 'home',
-    ctaText: 'Shop Best Sellers →',
-    ctaLabel: 'Shop Best Sellers →',
-    destinationType: 'BEST_SELLERS',
-    destinationId: 'best_sellers',
-    selectionId: 'best_sellers',
-    imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_1.jpg',
-    mobileImageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_1.jpg',
-    displayOrder: 1,
-    isActive: true
-  },
-  {
     id: 'banner_2',
     name: 'Healthy Skin, Happier You',
     title: 'Healthy Skin, Happier You',
@@ -43,7 +26,7 @@ export const DEFAULT_CENTRAL_BANNERS = [
     categoryName: 'Skin Care',
     imageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_2.jpg',
     mobileImageUrl: 'https://mlhlpslhrvwjasbttghw.supabase.co/storage/v1/object/public/products/home-banners/banner_2.jpg',
-    displayOrder: 2,
+    displayOrder: 1,
     isActive: true
   },
   {

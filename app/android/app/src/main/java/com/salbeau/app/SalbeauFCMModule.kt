@@ -212,14 +212,14 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
         try {
             FirebaseMessaging.getInstance().subscribeToTopic(topic)
                 .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        promise.resolve(true)
-                    } else {
-                        promise.reject("SUBSCRIBE_FAILED", task.exception?.message)
-                    }
+                    try {
+                        promise.resolve(task.isSuccessful)
+                    } catch (_: Exception) {}
                 }
         } catch (e: Exception) {
-            promise.reject("SUBSCRIBE_EXCEPTION", e.message)
+            try {
+                promise.resolve(false)
+            } catch (_: Exception) {}
         }
     }
 
@@ -228,14 +228,14 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
         try {
             FirebaseMessaging.getInstance().unsubscribeFromTopic(topic)
                 .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        promise.resolve(true)
-                    } else {
-                        promise.reject("UNSUBSCRIBE_FAILED", task.exception?.message)
-                    }
+                    try {
+                        promise.resolve(task.isSuccessful)
+                    } catch (_: Exception) {}
                 }
         } catch (e: Exception) {
-            promise.reject("UNSUBSCRIBE_EXCEPTION", e.message)
+            try {
+                promise.resolve(false)
+            } catch (_: Exception) {}
         }
     }
 

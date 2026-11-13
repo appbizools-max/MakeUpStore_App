@@ -227,13 +227,13 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
       <div className="bg-white border border-[#FCE4EC] rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-[#D81B60] text-white flex items-center justify-center shadow-xs">
               <Search size={18} />
             </div>
             <h1 className="text-xl font-bold text-black tracking-tight">
               Customer Search Requests & Search Activity
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-[#C2477A] border border-[#F8B4CB]">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-[#D81B60] border border-[#F8B4CB]">
               100% Real-Time Tracking
             </span>
           </div>
@@ -247,10 +247,10 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing || searchRequestsLoading}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#FCE4EC] hover:border-[#C2477A] hover:bg-[#FFF5F8] text-black text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#FCE4EC] hover:border-[#D81B60] hover:bg-[#FFF5F8] text-black text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
             title="Refresh requests"
           >
-            <RefreshCw size={14} className={`text-[#C2477A] ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw size={14} className={`text-[#D81B60] ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>Sync Live</span>
           </button>
         </div>
@@ -262,16 +262,16 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
         <div
           onClick={() => setSelectedScope('all')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            selectedScope === 'all' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            selectedScope === 'all' ? 'border-[#D81B60] ring-2 ring-[#D81B60]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#D81B60]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-black uppercase tracking-wider">Total Customer Searches</span>
-            <div className="w-7 h-7 rounded-lg bg-white text-[#C2477A] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-white text-[#D81B60] flex items-center justify-center">
               <TrendingUp size={14} />
             </div>
           </div>
-          <div className="text-2xl font-black text-[#C2477A]">{metrics.totalSearches}</div>
+          <div className="text-2xl font-black text-[#D81B60]">{metrics.totalSearches}</div>
           <p className="text-[11px] text-black font-normal mt-0.5">{metrics.uniqueTerms} distinct search queries</p>
         </div>
 
@@ -279,7 +279,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
         <div
           onClick={() => setSelectedScope('not_found')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            selectedScope === 'not_found' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            selectedScope === 'not_found' ? 'border-[#D81B60] ring-2 ring-[#D81B60]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#D81B60]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -296,7 +296,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
         <div
           onClick={() => setSelectedScope('found')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            selectedScope === 'found' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            selectedScope === 'found' ? 'border-[#D81B60] ring-2 ring-[#D81B60]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#D81B60]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -310,7 +310,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
         </div>
 
         {/* KPI 4: Action Needed */}
-        <div className="bg-white border border-[#FCE4EC] rounded-2xl p-4 shadow-sm hover:border-[#C2477A] transition-all">
+        <div className="bg-white border border-[#FCE4EC] rounded-2xl p-4 shadow-sm hover:border-[#D81B60] transition-all">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-black uppercase tracking-wider">Added To Catalog</span>
             <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
@@ -327,13 +327,13 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C2477A]" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D81B60]" />
             <input
               type="text"
               placeholder="Search keyword, barcode, customer name, phone..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 text-xs text-black font-medium bg-white border border-[#FCE4EC] rounded-xl focus:outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/15 placeholder:text-gray-400 transition-all"
+              className="w-full pl-9 pr-3.5 py-2 text-xs text-black font-medium bg-white border border-[#FCE4EC] rounded-xl focus:outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/15 placeholder:text-gray-400 transition-all"
             />
             {filterQuery && (
               <button
@@ -349,12 +349,12 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
           {/* Sort By Dropdown */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-black flex items-center gap-1 shrink-0">
-              <ArrowUpDown size={13} className="text-[#C2477A]" /> Sort:
+              <ArrowUpDown size={13} className="text-[#D81B60]" /> Sort:
             </span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-3 py-2 outline-none focus:border-[#C2477A] cursor-pointer"
+              className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-3 py-2 outline-none focus:border-[#D81B60] cursor-pointer"
             >
               <option value="count_desc">🔥 Most Searched (Highest Frequency)</option>
               <option value="latest_desc">🕒 Most Recent</option>
@@ -380,14 +380,14 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                   onClick={() => setSelectedScope(tab.id)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                     isActive
-                      ? 'bg-[#C2477A] text-white shadow-xs'
-                      : 'bg-white text-black border border-[#FCE4EC] hover:bg-[#FFF5F8] hover:border-[#C2477A]'
+                      ? 'bg-[#D81B60] text-white shadow-xs'
+                      : 'bg-white text-black border border-[#FCE4EC] hover:bg-[#FFF5F8] hover:border-[#D81B60]'
                   }`}
                 >
                   <span>{tab.label}</span>
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                      isActive ? 'bg-white/25 text-white' : 'bg-white text-[#C2477A]'
+                      isActive ? 'bg-white/25 text-white' : 'bg-white text-[#D81B60]'
                     }`}
                   >
                     {tab.count}
@@ -404,7 +404,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-2.5 py-1 outline-none focus:border-[#C2477A] cursor-pointer"
+                className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-2.5 py-1 outline-none focus:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">All Statuses</option>
                 <option value="pending">⏳ Needs Review</option>
@@ -446,7 +446,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
       <div className="bg-white border border-[#FCE4EC] rounded-2xl shadow-sm overflow-hidden">
         {filteredRequests.length === 0 ? (
           <div className="py-20 text-center flex flex-col items-center justify-center p-6">
-            <div className="w-16 h-16 rounded-full bg-white border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] mb-3">
+            <div className="w-16 h-16 rounded-full bg-white border border-[#FCE4EC] flex items-center justify-center text-[#D81B60] mb-3">
               <Search size={26} />
             </div>
             <h3 className="text-base font-bold text-black mb-1">No customer searches found</h3>
@@ -464,7 +464,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                       type="checkbox"
                       checked={filteredRequests.length > 0 && selectedRequestIds.length === filteredRequests.length}
                       onChange={handleToggleSelectAll}
-                      className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                      className="w-4 h-4 rounded text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                       title="Select All"
                     />
                   </th>
@@ -495,13 +495,13 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectOne(request.id)}
-                          className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                          className="w-4 h-4 rounded text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                         />
                       </td>
                       {/* Search Query */}
                       <td className="py-3.5 px-4 font-bold text-black">
                         <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-white text-[#C2477A] flex items-center justify-center shrink-0 border border-[#FCE4EC]">
+                          <span className="w-6 h-6 rounded-lg bg-white text-[#D81B60] flex items-center justify-center shrink-0 border border-[#FCE4EC]">
                             {request.barcode ? <Barcode size={13} /> : <Search size={12} />}
                           </span>
                           <div>
@@ -528,7 +528,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                               <button
                                 type="button"
                                 onClick={() => setInspectMatchedReq(request)}
-                                className="text-[10.5px] font-bold text-[#C2477A] hover:underline flex items-center gap-0.5 cursor-pointer"
+                                className="text-[10.5px] font-bold text-[#D81B60] hover:underline flex items-center gap-0.5 cursor-pointer"
                               >
                                 <Eye size={10} /> View
                               </button>
@@ -546,9 +546,9 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border ${
                             count >= 5
-                              ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-xs'
+                              ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-xs'
                               : count >= 2
-                              ? 'bg-white text-[#C2477A] border-[#F8B4CB]'
+                              ? 'bg-white text-[#D81B60] border-[#F8B4CB]'
                               : 'bg-gray-50 text-black border-gray-200'
                           }`}
                         >
@@ -561,7 +561,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                         <div className="text-black font-semibold">
                           {formatDateTime(request.latest_searched_at)}
                         </div>
-                        <div className="text-[10px] text-[#C2477A] font-bold">
+                        <div className="text-[10px] text-[#D81B60] font-bold">
                           {formatTimeAgo(request.latest_searched_at)}
                         </div>
                       </td>
@@ -571,7 +571,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                         {request.user_name || request.user_phone ? (
                           <div>
                             <div className="font-bold text-black flex items-center gap-1">
-                              <User size={11} className="text-[#C2477A]" />
+                              <User size={11} className="text-[#D81B60]" />
                               <span>{request.user_name || 'Customer'}</span>
                             </div>
                             {request.user_phone && (
@@ -593,7 +593,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                         <select
                           value={request.status || 'pending'}
                           onChange={(e) => updateSearchRequestStatus(request.id, e.target.value)}
-                          className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-2.5 py-1.5 outline-none focus:border-[#C2477A] cursor-pointer shadow-2xs hover:border-[#C2477A]"
+                          className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-2.5 py-1.5 outline-none focus:border-[#D81B60] cursor-pointer shadow-2xs hover:border-[#D81B60]"
                         >
                           <option value="pending">⏳ Needs Review</option>
                           <option value="reviewed">🔍 Under Review</option>
@@ -613,7 +613,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                                   onNavigateToNewProduct(request.query);
                                 }
                               }}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#C2477A] hover:bg-[#9E2D5B] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#D81B60] hover:bg-[#9E2D5B] text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
                               title="Add this product to store catalog"
                             >
                               <PackagePlus size={13} />
@@ -670,7 +670,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
                     <div className="text-[11px] text-gray-500">{p.brand} • {p.category}</div>
                   </div>
                   {p.price && (
-                    <div className="text-xs font-black text-[#C2477A]">₹{p.price}</div>
+                    <div className="text-xs font-black text-[#D81B60]">₹{p.price}</div>
                   )}
                 </div>
               ))}
@@ -713,7 +713,7 @@ export default function CustomerSearchRequestsPage({ onNavigateToNewProduct }) {
 
             <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 text-xs text-gray-700 space-y-1.5">
               <div className="font-semibold text-gray-900">
-                Target: <span className="font-bold text-[#C2477A]">{clearModal.title}</span>
+                Target: <span className="font-bold text-[#D81B60]">{clearModal.title}</span>
               </div>
               <p className="text-gray-500 text-[11px] leading-relaxed">
                 {clearModal.type === 'all'

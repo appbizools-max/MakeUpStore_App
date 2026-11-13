@@ -139,14 +139,14 @@ export default function RoleQuantityTiersManager({
       <div className="p-4 sm:p-5 border-b border-pink-100/80 bg-gradient-to-r from-white via-pink-50/40 to-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#CE4270] text-white flex items-center justify-center shadow-2xs shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-[#D81B60] text-white flex items-center justify-center shadow-2xs shrink-0">
               <BadgePercent size={18} />
             </div>
             <div>
               <h4 className="font-extrabold text-sm sm:text-base text-gray-900 flex items-center gap-2">
                 <span>{title || 'Per-Product Quantity Discount Tiers'}</span>
                 {product?.name && (
-                  <span className="text-[#CE4270] font-bold text-xs truncate max-w-[200px]">
+                  <span className="text-[#D81B60] font-bold text-xs truncate max-w-[200px]">
                     ({product.name})
                   </span>
                 )}
@@ -167,7 +167,7 @@ export default function RoleQuantityTiersManager({
               className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-extrabold text-xs shadow-xs transition-all cursor-pointer ${
                 isSaving || isAnyRoleInvalid
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-[#CE4270] hover:bg-[#b83760] text-white active:scale-95'
+                  : 'bg-[#D81B60] hover:bg-[#b83760] text-white active:scale-95'
               }`}
             >
               {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
@@ -275,7 +275,7 @@ export default function RoleQuantityTiersManager({
               onClick={handleAddTier}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs bg-white text-gray-800 border border-gray-300 hover:border-gray-400 shadow-2xs hover:shadow-xs transition-all active:scale-95 cursor-pointer"
             >
-              <Plus size={13} className="text-[#CE4270]" />
+              <Plus size={13} className="text-[#D81B60]" />
               <span>+ Add Tier to {activeRoleConfig.name}</span>
             </button>
           </div>
@@ -369,7 +369,7 @@ export default function RoleQuantityTiersManager({
                             className={`w-28 p-2 rounded-xl border font-mono font-bold text-gray-900 text-xs text-center outline-none transition-all ${
                               isDuplicateQty
                                 ? 'border-rose-400 bg-rose-50 text-rose-900 focus:ring-2 focus:ring-rose-200'
-                                : 'border-gray-300 bg-white focus:border-[#CE4270] focus:ring-2 focus:ring-[#CE4270]/20'
+                                : 'border-gray-300 bg-white focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20'
                             }`}
                           />
                           <span className="font-bold text-gray-400 text-xs">units+</span>
@@ -393,7 +393,7 @@ export default function RoleQuantityTiersManager({
                             placeholder="e.g. 5"
                             value={tier.additionalDiscount}
                             onChange={(e) => handleUpdateTierField(idx, 'additionalDiscount', e.target.value)}
-                            className="w-28 p-2 rounded-xl border border-gray-300 bg-white font-mono font-bold text-[#CE4270] text-xs text-center outline-none focus:border-[#CE4270] focus:ring-2 focus:ring-[#CE4270]/20 transition-all"
+                            className="w-28 p-2 rounded-xl border border-gray-300 bg-white font-mono font-bold text-[#D81B60] text-xs text-center outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 transition-all"
                           />
                           <span className="font-bold text-gray-500 text-xs">% OFF</span>
                         </div>
@@ -441,7 +441,7 @@ export default function RoleQuantityTiersManager({
         {/* Footer info tip */}
         <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
-            <Info size={13} className="text-[#CE4270] shrink-0" />
+            <Info size={13} className="text-[#D81B60] shrink-0" />
             <span>
               Orders for <strong>{activeRoleConfig.name}</strong> automatically evaluate tiers where <code>quantity ≥ minimum_quantity</code> and apply the highest matching discount.
             </span>

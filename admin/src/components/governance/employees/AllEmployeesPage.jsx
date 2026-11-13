@@ -138,7 +138,7 @@ export default function AllEmployeesPage({ onNavigate }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-pink-100 shadow-2xs">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-[#C2477A] uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#D81B60] uppercase tracking-wider mb-1">
             <ShieldCheck size={16} />
             <span>Role-Based Access Control</span>
           </div>
@@ -153,7 +153,7 @@ export default function AllEmployeesPage({ onNavigate }) {
         <button
           type="button"
           onClick={() => onNavigate('employees/new')}
-          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer shrink-0"
+          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer shrink-0"
         >
           <UserPlus size={16} />
           <span>+ Add Employee</span>
@@ -173,7 +173,7 @@ export default function AllEmployeesPage({ onNavigate }) {
         <div className="bg-white p-5 rounded-3xl border border-pink-100/80 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-gray-500">Total Employees</span>
-            <div className="w-8 h-8 rounded-xl bg-white text-[#C2477A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-white text-[#D81B60] flex items-center justify-center">
               <Users size={16} />
             </div>
           </div>
@@ -206,12 +206,12 @@ export default function AllEmployeesPage({ onNavigate }) {
         <div className="bg-white p-5 rounded-3xl border border-pink-100/80 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-black">Active in Last 24h</span>
-            <div className="w-8 h-8 rounded-xl bg-white text-[#C2477A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-white text-[#D81B60] flex items-center justify-center">
               <Clock size={16} />
             </div>
           </div>
           <div className="text-2xl font-black text-black mt-2">{stats.activeToday}</div>
-          <div className="text-[11px] text-[#C2477A] font-medium mt-0.5">Recent portal sessions</div>
+          <div className="text-[11px] text-[#D81B60] font-medium mt-0.5">Recent portal sessions</div>
         </div>
       </div>
 
@@ -224,7 +224,7 @@ export default function AllEmployeesPage({ onNavigate }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by employee name, code (EMP-...), email, phone, designation..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 outline-none bg-white text-gray-900"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-xs font-medium focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 outline-none bg-white text-gray-900"
           />
         </div>
 
@@ -232,7 +232,7 @@ export default function AllEmployeesPage({ onNavigate }) {
           <select
             value={designationFilter}
             onChange={(e) => setDesignationFilter(e.target.value)}
-            className="flex-1 md:flex-initial px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#C2477A] outline-none bg-white"
+            className="flex-1 md:flex-initial px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#D81B60] outline-none bg-white"
           >
             <option value="all">All Designations</option>
             <option value="(admin)">1) (admin)</option>
@@ -244,7 +244,7 @@ export default function AllEmployeesPage({ onNavigate }) {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="flex-1 md:flex-initial px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#C2477A] outline-none bg-white"
+            className="flex-1 md:flex-initial px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 focus:border-[#D81B60] outline-none bg-white"
           >
             <option value="all">All Statuses</option>
             <option value="active">Active Only</option>
@@ -282,7 +282,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                       <button
                         type="button"
                         onClick={() => onNavigate('employees/new')}
-                        className="mt-4 px-4 py-2 bg-[#C2477A] text-white rounded-xl text-xs font-bold hover:bg-[#b83760] transition-colors"
+                        className="mt-4 px-4 py-2 bg-[#D81B60] text-white rounded-xl text-xs font-bold hover:bg-[#b83760] transition-colors"
                       >
                         + Add First Employee
                       </button>
@@ -300,7 +300,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                       {/* Employee Photo & Name */}
                       <td className="py-3.5 px-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl overflow-hidden bg-pink-100 text-[#C2477A] flex items-center justify-center font-bold text-xs shrink-0 border border-pink-200">
+                          <div className="w-10 h-10 rounded-xl overflow-hidden bg-pink-100 text-[#D81B60] flex items-center justify-center font-bold text-xs shrink-0 border border-pink-200">
                             {emp.profile_photo ? (
                               <img src={emp.profile_photo} alt={emp.full_name} className="w-full h-full object-cover" />
                             ) : (
@@ -311,7 +311,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                             <button
                               type="button"
                               onClick={() => onNavigate(`employees/${emp.id}`)}
-                              className="font-bold text-gray-900 hover:text-[#C2477A] text-left truncate block transition-colors cursor-pointer"
+                              className="font-bold text-gray-900 hover:text-[#D81B60] text-left truncate block transition-colors cursor-pointer"
                             >
                               {emp.full_name}
                             </button>
@@ -332,7 +332,7 @@ export default function AllEmployeesPage({ onNavigate }) {
 
                       {/* Designation & Role */}
                       <td className="py-3.5 px-4">
-                        <div className="font-extrabold text-[#CE4270] uppercase tracking-wide text-xs">
+                        <div className="font-extrabold text-[#D81B60] uppercase tracking-wide text-xs">
                           {emp.designation || 'employee'}
                         </div>
                         <div className="text-[11px] text-gray-400 font-medium">
@@ -387,7 +387,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                           <button
                             type="button"
                             onClick={() => onNavigate(`employees/${emp.id}`)}
-                            className="p-1.5 rounded-lg text-gray-500 hover:text-[#C2477A] hover:bg-pink-50 transition-colors"
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-[#D81B60] hover:bg-pink-50 transition-colors"
                             title="View Profile & Assigned Work"
                           >
                             <Eye size={15} />
@@ -396,7 +396,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                           <button
                             type="button"
                             onClick={() => onNavigate(`employees/${emp.id}/edit`)}
-                            className="p-1.5 rounded-lg text-gray-500 hover:text-[#C2477A] hover:bg-[#FFF5F8] transition-colors"
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-[#D81B60] hover:bg-[#FFF5F8] transition-colors"
                             title="Edit Employee Information"
                           >
                             <Edit size={15} />
@@ -405,7 +405,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                           <button
                             type="button"
                             onClick={() => onNavigate(`employees/${emp.id}/permissions`)}
-                            className="p-1.5 rounded-lg text-gray-500 hover:text-[#C2477A] hover:bg-[#FFF5F8] transition-colors"
+                            className="p-1.5 rounded-lg text-gray-500 hover:text-[#D81B60] hover:bg-[#FFF5F8] transition-colors"
                             title="Configure Permissions"
                           >
                             <Sliders size={15} />
@@ -479,7 +479,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                     value={newTempPassword}
                     onChange={(e) => setNewTempPassword(e.target.value)}
                     placeholder="Enter min 8 characters"
-                    className="flex-1 p-2.5 rounded-xl border border-gray-200 text-xs font-mono font-bold focus:border-[#C2477A] outline-none"
+                    className="flex-1 p-2.5 rounded-xl border border-gray-200 text-xs font-mono font-bold focus:border-[#D81B60] outline-none"
                   />
                   <button
                     type="button"
@@ -510,7 +510,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                 <button
                   type="submit"
                   disabled={isResetting || !newTempPassword.trim()}
-                  className="px-5 py-2 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] text-white rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50"
+                  className="px-5 py-2 bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] text-white rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50"
                 >
                   {isResetting ? 'Updating...' : 'Save & Force Reset'}
                 </button>

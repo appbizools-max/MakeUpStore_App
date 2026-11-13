@@ -179,7 +179,7 @@ export const OtpScreen = () => {
             onPress={() => setCurrentScreen('login')}
             className="w-10 h-10 rounded-full bg-white border border-[#FCE4EC] items-center justify-center shadow-2xs"
           >
-            <Ionicons name="arrow-back" size={20} color="#C2477A" />
+            <Ionicons name="arrow-back" size={20} color="#D81B60" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -187,8 +187,8 @@ export const OtpScreen = () => {
             onPress={() => setCurrentScreen('login')}
             className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-50 border border-pink-100"
           >
-            <Ionicons name="create-outline" size={13} color="#C2477A" />
-            <Text className="text-xs font-bold text-[#C2477A]">Edit Number</Text>
+            <Ionicons name="create-outline" size={13} color="#D81B60" />
+            <Text className="text-xs font-bold text-[#D81B60]">Edit Number</Text>
           </TouchableOpacity>
         </View>
 
@@ -199,7 +199,7 @@ export const OtpScreen = () => {
         <Text className="text-xs font-medium text-[#8C7078] mb-1 leading-relaxed">
           Sent verification code to <Text className="font-bold text-[#3A2430]">{userProfile?.phone || ''}</Text>
         </Text>
-        <Text className="text-[11px] text-[#C2477A] font-semibold mb-6">
+        <Text className="text-[11px] text-[#D81B60] font-semibold mb-6">
           Enter 4-digit code (e.g. 1234)
         </Text>
 
@@ -208,7 +208,7 @@ export const OtpScreen = () => {
           {otp.map((digit, index) => (
             <View
               key={index}
-              style={{ borderColor: digit ? '#C2477A' : '#F5A8C0' }}
+              style={{ borderColor: digit ? '#D81B60' : '#F5A8C0' }}
               className="w-14 h-14 rounded-2xl border bg-white items-center justify-center shadow-xs"
             >
               <TextInput
@@ -228,7 +228,7 @@ export const OtpScreen = () => {
         {/* Error message notice */}
         {otpError ? (
           <View className="mb-5 p-3 rounded-xl bg-rose-50 border border-rose-200 flex-row items-center gap-2">
-            <Ionicons name="alert-circle" size={16} color="#E11D48" />
+            <Ionicons name="alert-circle" size={16} color="#D81B60" />
             <Text className="text-xs font-bold text-rose-800 flex-1">{otpError}</Text>
           </View>
         ) : null}
@@ -238,7 +238,7 @@ export const OtpScreen = () => {
           <View className="mb-6 p-5 rounded-2xl bg-[#FFF9FA] border border-[#FCE4EC] shadow-2xs animate-in fade-in duration-200">
             <View className="flex-row items-center gap-2.5 mb-2">
               <View className="w-8 h-8 rounded-full bg-pink-100 items-center justify-center">
-                <Ionicons name="person-add" size={16} color="#C2477A" />
+                <Ionicons name="person-add" size={16} color="#D81B60" />
               </View>
               <Text className="text-sm font-black text-[#3A2430]">
                 Your mobile number is not registered.
@@ -252,7 +252,7 @@ export const OtpScreen = () => {
             <TouchableOpacity
               activeOpacity={0.88}
               onPress={handleRegisterNow}
-              className="w-full py-3.5 rounded-full bg-[#C2477A] items-center justify-center flex-row gap-2 shadow-md active:opacity-90"
+              className="w-full py-3.5 rounded-full bg-[#D81B60] items-center justify-center flex-row gap-2 shadow-md active:opacity-90"
             >
               <Text className="text-white font-black text-sm tracking-wide">
                 Register Now
@@ -264,9 +264,9 @@ export const OtpScreen = () => {
 
         {/* ── MULTIPLE REGISTERED ACCOUNTS SELECTOR ─────────────────────── */}
         {multipleAccounts.length > 1 && (
-          <View className="mb-6 p-5 rounded-2xl bg-white border border-[#C2477A] shadow-md animate-in fade-in duration-200">
+          <View className="mb-6 p-5 rounded-2xl bg-white border border-[#D81B60] shadow-md animate-in fade-in duration-200">
             <View className="flex-row items-center gap-2 mb-1.5">
-              <Ionicons name="people" size={18} color="#C2477A" />
+              <Ionicons name="people" size={18} color="#D81B60" />
               <Text className="text-sm font-black text-[#3A2430]">
                 Multiple Registered Accounts Found
               </Text>
@@ -317,9 +317,9 @@ export const OtpScreen = () => {
                       </Text>
                     </View>
 
-                    <View className="flex-row items-center gap-1 text-[#C2477A]">
-                      <Text className="text-xs font-bold text-[#C2477A]">Sign In</Text>
-                      <Ionicons name="chevron-forward" size={14} color="#C2477A" />
+                    <View className="flex-row items-center gap-1 text-[#D81B60]">
+                      <Text className="text-xs font-bold text-[#D81B60]">Sign In</Text>
+                      <Ionicons name="chevron-forward" size={14} color="#D81B60" />
                     </View>
                   </TouchableOpacity>
                 );
@@ -332,9 +332,9 @@ export const OtpScreen = () => {
         <View className="items-center mb-6">
           {timerSeconds > 0 ? (
             <View className="bg-white border border-[#FCE4EC] px-4 py-2 rounded-full flex-row items-center gap-2 shadow-2xs">
-              <Ionicons name="time-outline" size={16} color="#C2477A" />
+              <Ionicons name="time-outline" size={16} color="#D81B60" />
               <Text className="text-xs font-semibold text-[#8C7078]">
-                Resend OTP in <Text className="text-sm font-black text-[#C2477A]">{formatTimer(timerSeconds)}</Text>
+                Resend OTP in <Text className="text-sm font-black text-[#D81B60]">{formatTimer(timerSeconds)}</Text>
               </Text>
             </View>
           ) : (
@@ -342,8 +342,8 @@ export const OtpScreen = () => {
               onPress={handleResendOtp}
               className="bg-white border border-[#F5A8C0] px-4.5 py-2 rounded-full flex-row items-center gap-1.5 shadow-2xs"
             >
-              <Ionicons name="refresh" size={14} color="#C2477A" />
-              <Text className="text-xs font-black text-[#C2477A]">Resend OTP</Text>
+              <Ionicons name="refresh" size={14} color="#D81B60" />
+              <Text className="text-xs font-black text-[#D81B60]">Resend OTP</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -355,7 +355,7 @@ export const OtpScreen = () => {
             disabled={!isOtpComplete || isVerifying}
             onPress={handleVerifyOtp}
             style={{
-              backgroundColor: isOtpComplete && !isVerifying ? '#C2477A' : '#E5E7EB'
+              backgroundColor: isOtpComplete && !isVerifying ? '#D81B60' : '#E5E7EB'
             }}
             className="w-full py-4 rounded-full items-center justify-center shadow-lg active:opacity-90 mb-4"
           >

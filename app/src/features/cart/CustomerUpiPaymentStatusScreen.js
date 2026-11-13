@@ -7,7 +7,8 @@ import {
   StatusBar,
   ActivityIndicator,
   Animated,
-  Easing
+  Easing,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
@@ -19,7 +20,8 @@ export const CustomerUpiPaymentStatusScreen = () => {
     setCurrentScreen,
     setSelectedOrder,
     orders = [],
-    setOrders
+    setOrders,
+    storeSettings
   } = useApp();
 
   const [paymentStatus, setPaymentStatus] = useState('PENDING_VERIFICATION');
@@ -181,7 +183,7 @@ export const CustomerUpiPaymentStatusScreen = () => {
       <View className="px-5 pt-12 pb-4 flex-row items-center justify-between border-b border-stone-100">
         <View className="flex-row items-center gap-2.5">
           <View className="w-9 h-9 rounded-xl bg-pink-50 items-center justify-center">
-            <Ionicons name="shield-checkmark" size={20} color="#C2477A" />
+            <Ionicons name="shield-checkmark" size={20} color="#D81B60" />
           </View>
           <Text className="text-base font-black text-[#3A2430]">
             UPI Payment Verification
@@ -194,7 +196,7 @@ export const CustomerUpiPaymentStatusScreen = () => {
           className="p-2 bg-stone-100 rounded-xl"
         >
           {isChecking ? (
-            <ActivityIndicator size="small" color="#C2477A" />
+            <ActivityIndicator size="small" color="#D81B60" />
           ) : (
             <Ionicons name="refresh" size={18} color="#553846" />
           )}
@@ -231,7 +233,7 @@ export const CustomerUpiPaymentStatusScreen = () => {
             <View className="w-full bg-stone-50 rounded-3xl border border-stone-200/80 p-5 mb-6 space-y-3">
               <View className="flex-row items-center justify-between py-1 border-b border-stone-200/60">
                 <Text className="text-xs font-bold text-stone-500">Order ID</Text>
-                <Text className="text-xs font-black text-[#C2477A]">#{orderId}</Text>
+                <Text className="text-xs font-black text-[#D81B60]">#{orderId}</Text>
               </View>
 
               <View className="flex-row items-center justify-between py-1 border-b border-stone-200/60">
@@ -258,8 +260,8 @@ export const CustomerUpiPaymentStatusScreen = () => {
 
             {/* Thank you message */}
             <View className="bg-pink-50/70 border border-pink-200/70 rounded-2xl p-4 w-full mb-8 items-center">
-              <Ionicons name="heart" size={20} color="#C2477A" style={{ marginBottom: 4 }} />
-              <Text className="text-base font-black text-[#C2477A] text-center tracking-tight">
+              <Ionicons name="heart" size={20} color="#D81B60" style={{ marginBottom: 4 }} />
+              <Text className="text-base font-black text-[#D81B60] text-center tracking-tight">
                 Thank You for Choosing Salbeau!
               </Text>
               <Text className="text-[11.5px] text-[#8C7078] text-center font-medium mt-1">
@@ -271,7 +273,7 @@ export const CustomerUpiPaymentStatusScreen = () => {
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={handleContinue}
-              className="w-full py-4 bg-[#C2477A] rounded-2xl items-center justify-center shadow-md active:opacity-90 flex-row gap-2"
+              className="w-full py-4 bg-[#D81B60] rounded-2xl items-center justify-center shadow-md active:opacity-90 flex-row gap-2"
             >
               <Text className="text-white font-black text-sm tracking-wide">
                 Continue to Order Details
@@ -326,7 +328,7 @@ export const CustomerUpiPaymentStatusScreen = () => {
               </View>
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-bold text-stone-500">Payable Amount</Text>
-                <Text className="text-sm font-black text-[#C2477A]">₹{verifiedAmount.toLocaleString('en-IN')}</Text>
+                <Text className="text-sm font-black text-[#D81B60]">₹{verifiedAmount.toLocaleString('en-IN')}</Text>
               </View>
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-bold text-stone-500">Payment Mode</Text>
@@ -355,7 +357,7 @@ export const CustomerUpiPaymentStatusScreen = () => {
             </View>
 
             <View className="flex-row items-center gap-2 mb-6">
-              <ActivityIndicator size="small" color="#C2477A" />
+              <ActivityIndicator size="small" color="#D81B60" />
               <Text className="text-xs text-stone-500 font-semibold">
                 Auto-refreshing status in real-time...
               </Text>

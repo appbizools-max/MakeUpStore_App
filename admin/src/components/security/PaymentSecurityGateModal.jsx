@@ -423,7 +423,7 @@ export default function PaymentSecurityGateModal({
                       onNavigateToSetup2FA();
                     }
                   }}
-                  className="w-full py-3 bg-gradient-to-r from-purple-700 to-[#C2477A] hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3 bg-gradient-to-r from-purple-700 to-[#D81B60] hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <KeyRound size={15} />
                   <span>Setup 2FA Now in Security Settings</span>
@@ -572,7 +572,7 @@ export default function PaymentSecurityGateModal({
                   type="button"
                   onClick={() => handleVerifyOtp()}
                   disabled={isVerifying || otpInput.join('').length !== 6}
-                  className="w-full py-2.5 bg-gradient-to-r from-purple-700 to-[#C2477A] hover:opacity-95 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2.5 bg-gradient-to-r from-purple-700 to-[#D81B60] hover:opacity-95 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {isVerifying ? (
                     <>

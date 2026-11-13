@@ -402,13 +402,13 @@ export default function BarcodeScannerModal({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-pink-100 bg-white">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#CE4270] text-white flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-[#D81B60] text-white flex items-center justify-center shadow-xs">
               <Barcode size={22} />
             </div>
             <div>
               <h3 className="font-extrabold text-sm sm:text-base text-gray-900 flex items-center gap-2">
                 <span>{title}</span>
-                <span className="text-[10px] uppercase font-bold bg-[#CE4270]/10 text-[#CE4270] px-2 py-0.5 rounded-full">
+                <span className="text-[10px] uppercase font-bold bg-[#D81B60]/10 text-[#D81B60] px-2 py-0.5 rounded-full">
                   Universal Scanner
                 </span>
               </h3>
@@ -420,7 +420,7 @@ export default function BarcodeScannerModal({
           <button
             type="button"
             onClick={handleClose}
-            className="w-8 h-8 rounded-full bg-white hover:bg-pink-100 text-gray-500 hover:text-[#CE4270] flex items-center justify-center transition-colors cursor-pointer border border-pink-100 shrink-0"
+            className="w-8 h-8 rounded-full bg-white hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer border border-pink-100 shrink-0"
             title="Close scanner"
           >
             <X size={16} />
@@ -442,15 +442,15 @@ export default function BarcodeScannerModal({
             {scannerState === 'SCANNING' && (
               <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
                 {/* Visual Viewfinder Box - Adaptive and spacious so any barcode or QR code fits easily */}
-                <div className="relative w-full max-w-[380px] h-[200px] sm:h-[220px] border-2 border-[#CE4270]/80 rounded-3xl bg-transparent transition-all shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
+                <div className="relative w-full max-w-[380px] h-[200px] sm:h-[220px] border-2 border-[#D81B60]/80 rounded-3xl bg-transparent transition-all shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
                   {/* Corner Target Accents */}
-                  <div className="absolute -top-1.5 -left-1.5 w-6 h-6 border-t-4 border-l-4 border-[#CE4270] rounded-tl-xl" />
-                  <div className="absolute -top-1.5 -right-1.5 w-6 h-6 border-t-4 border-r-4 border-[#CE4270] rounded-tr-xl" />
-                  <div className="absolute -bottom-1.5 -left-1.5 w-6 h-6 border-b-4 border-l-4 border-[#CE4270] rounded-bl-xl" />
-                  <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 border-b-4 border-r-4 border-[#CE4270] rounded-br-xl" />
+                  <div className="absolute -top-1.5 -left-1.5 w-6 h-6 border-t-4 border-l-4 border-[#D81B60] rounded-tl-xl" />
+                  <div className="absolute -top-1.5 -right-1.5 w-6 h-6 border-t-4 border-r-4 border-[#D81B60] rounded-tr-xl" />
+                  <div className="absolute -bottom-1.5 -left-1.5 w-6 h-6 border-b-4 border-l-4 border-[#D81B60] rounded-bl-xl" />
+                  <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 border-b-4 border-r-4 border-[#D81B60] rounded-br-xl" />
 
                   {/* Animated Red Laser Scanning Line */}
-                  <div className="absolute left-3 right-3 h-0.5 bg-gradient-to-r from-transparent via-[#CE4270] to-transparent shadow-[0_0_12px_3px_rgba(206,66,112,0.85)] animate-pulse top-1/2 -translate-y-1/2" />
+                  <div className="absolute left-3 right-3 h-0.5 bg-gradient-to-r from-transparent via-[#D81B60] to-transparent shadow-[0_0_12px_3px_rgba(206,66,112,0.85)] animate-pulse top-1/2 -translate-y-1/2" />
 
                   {/* Top Format Badge */}
                   <div className="absolute top-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-xs text-[10px] text-pink-200 font-semibold tracking-wide whitespace-nowrap border border-pink-500/20">
@@ -469,7 +469,7 @@ export default function BarcodeScannerModal({
             {/* Initializing Spinner */}
             {scannerState === 'INITIALIZING' && (
               <div className="absolute inset-0 bg-gray-950/90 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-3 z-20">
-                <RefreshCw size={32} className="animate-spin text-[#CE4270]" />
+                <RefreshCw size={32} className="animate-spin text-[#D81B60]" />
                 <div className="text-xs font-bold text-gray-200">Starting Camera & Scanner...</div>
                 <div className="text-[10px] text-gray-400">Please allow camera permissions if prompted</div>
               </div>
@@ -600,7 +600,7 @@ export default function BarcodeScannerModal({
                 <button
                   type="button"
                   onClick={handleScanAgain}
-                  className="flex-1 bg-[#CE4270] hover:bg-[#b83760] text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+                  className="flex-1 bg-[#D81B60] hover:bg-[#b83760] text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
                 >
                   <RefreshCw size={14} />
                   <span>Scan Different Product</span>
@@ -688,7 +688,7 @@ export default function BarcodeScannerModal({
                 <button
                   type="button"
                   onClick={() => startCamera()}
-                  className="flex-1 bg-[#CE4270] hover:bg-[#b83760] text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="flex-1 bg-[#D81B60] hover:bg-[#b83760] text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <RefreshCw size={14} />
                   <span>Retry Camera</span>
@@ -696,7 +696,7 @@ export default function BarcodeScannerModal({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="bg-white hover:bg-pink-50 text-[#CE4270] border border-pink-200 font-bold text-xs py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  className="bg-white hover:bg-pink-50 text-[#D81B60] border border-pink-200 font-bold text-xs py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                 >
                   <Upload size={14} />
                   <span>Upload Barcode Photo</span>
@@ -716,13 +716,13 @@ export default function BarcodeScannerModal({
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-2.5 rounded-2xl bg-white border border-pink-100 text-[11px]">
             <div className="flex items-center gap-1.5 text-gray-600 font-medium">
-              <Info size={13} className="text-[#CE4270] shrink-0" />
+              <Info size={13} className="text-[#D81B60] shrink-0" />
               <span>Scanning from gallery photo or screenshot?</span>
             </div>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-50 text-[#CE4270] font-bold text-[11px] border border-pink-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-50 text-[#D81B60] font-bold text-[11px] border border-pink-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-all"
             >
               <Upload size={13} />
               <span>Upload Image File</span>

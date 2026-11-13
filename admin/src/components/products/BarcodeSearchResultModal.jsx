@@ -75,7 +75,7 @@ export default function BarcodeSearchResultModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-pink-100 bg-white">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#CE4270] text-white flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-[#D81B60] text-white flex items-center justify-center shadow-xs">
               <ScanBarcode size={20} />
             </div>
             <div>
@@ -84,7 +84,7 @@ export default function BarcodeSearchResultModal({
             </div>
           </div>
           <button type="button" onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white hover:bg-pink-100 text-gray-500 hover:text-[#CE4270] flex items-center justify-center transition-colors cursor-pointer border border-pink-100 shrink-0">
+            className="w-8 h-8 rounded-full bg-white hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer border border-pink-100 shrink-0">
             <X size={16} />
           </button>
         </div>
@@ -92,7 +92,7 @@ export default function BarcodeSearchResultModal({
         {/* Scanned Barcode Badge */}
         <div className="px-5 pt-4 pb-2">
           <div className="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-            <Barcode size={16} className="text-[#CE4270] shrink-0" />
+            <Barcode size={16} className="text-[#D81B60] shrink-0" />
             <span className="font-mono font-black text-gray-900 text-sm tracking-wider flex-1 break-all">{barcode}</span>
             <span className="text-[10px] font-bold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full shrink-0">{barcodeFormat}</span>
           </div>
@@ -105,7 +105,7 @@ export default function BarcodeSearchResultModal({
           {isSearching && (
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <div className="w-14 h-14 rounded-2xl bg-white border border-pink-200 flex items-center justify-center">
-                <Loader2 size={26} className="animate-spin text-[#CE4270]" />
+                <Loader2 size={26} className="animate-spin text-[#D81B60]" />
               </div>
               <div className="text-center">
                 <p className="font-extrabold text-sm text-gray-900">Searching Catalog...</p>
@@ -166,14 +166,14 @@ export default function BarcodeSearchResultModal({
                       }
                     </div>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className="text-[11px] text-[#CE4270] font-bold">{brand}</span>
+                      <span className="text-[11px] text-[#D81B60] font-bold">{brand}</span>
                       {product.category && (
                         <><span className="text-gray-300">&bull;</span><span className="text-[11px] text-gray-500 font-medium">{product.category}</span></>
                       )}
                     </div>
                     <div className="mt-1.5">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 font-mono text-[10px] font-bold">
-                        <Barcode size={10} className="text-[#CE4270]" />
+                        <Barcode size={10} className="text-[#D81B60]" />
                         {product.barcode || barcode}
                       </span>
                     </div>
@@ -213,7 +213,7 @@ export default function BarcodeSearchResultModal({
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: 'Salon', value: salonPrice, cls: 'text-[#CE4270] bg-white border-pink-100' },
+                      { label: 'Salon', value: salonPrice, cls: 'text-[#D81B60] bg-white border-pink-100' },
                       { label: 'Artist', value: artistPrice, cls: 'text-purple-700 bg-purple-50 border-purple-100' },
                       { label: 'Beautician', value: beauticianPrice, cls: 'text-emerald-700 bg-emerald-50 border-emerald-100' }
                     ].map(({ label, value, cls }) => (
@@ -230,7 +230,7 @@ export default function BarcodeSearchResultModal({
                   <div className="px-4 pb-4">
                     <div className="border-t border-pink-100 pt-3 space-y-2">
                       <div className="text-[10px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                        <Palette size={11} className="text-[#CE4270]" />
+                        <Palette size={11} className="text-[#D81B60]" />
                         Shades / Variants ({shades.length})
                       </div>
                       <div className="flex flex-wrap gap-1.5">
@@ -246,7 +246,7 @@ export default function BarcodeSearchResultModal({
                         ))}
                         {hasMoreShades && (
                           <button type="button" onClick={() => setShowAllShades(true)}
-                            className="px-2.5 py-1 rounded-lg bg-white text-[#CE4270] text-[10.5px] font-bold border border-pink-200 cursor-pointer hover:bg-pink-100 transition-all flex items-center gap-1">
+                            className="px-2.5 py-1 rounded-lg bg-white text-[#D81B60] text-[10.5px] font-bold border border-pink-200 cursor-pointer hover:bg-pink-100 transition-all flex items-center gap-1">
                             +{shades.length - 4} more <ChevronDown size={10} />
                           </button>
                         )}
@@ -259,12 +259,12 @@ export default function BarcodeSearchResultModal({
               {/* Actions */}
               <div className="flex gap-2">
                 <button type="button" onClick={() => { onViewProduct && onViewProduct(product); onClose(); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-[#CE4270] text-[#CE4270] hover:text-white border border-pink-200 font-bold text-xs cursor-pointer transition-all active:scale-[0.98]">
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white border border-pink-200 font-bold text-xs cursor-pointer transition-all active:scale-[0.98]">
                   <Eye size={14} />
                   <span>View in Catalog</span>
                 </button>
                 <button type="button" onClick={() => { onEditProduct && onEditProduct(product); onClose(); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#CE4270] hover:bg-[#b83760] text-white font-bold text-xs cursor-pointer transition-all shadow-xs active:scale-[0.98]">
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-bold text-xs cursor-pointer transition-all shadow-xs active:scale-[0.98]">
                   <Edit size={14} />
                   <span>Edit Product</span>
                 </button>
@@ -308,7 +308,7 @@ export default function BarcodeSearchResultModal({
               <div className="flex gap-2">
                 <button type="button"
                   onClick={() => { onAddProduct && onAddProduct(barcode, barcodeFormat); onClose(); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white font-extrabold text-xs cursor-pointer transition-all shadow-xs active:scale-[0.98]">
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white font-extrabold text-xs cursor-pointer transition-all shadow-xs active:scale-[0.98]">
                   <PlusCircle size={15} />
                   <span>Add New Product</span>
                 </button>
@@ -329,7 +329,7 @@ export default function BarcodeSearchResultModal({
         {/* Footer */}
         {!isSearching && (
           <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60 text-[11px] text-gray-400 font-medium flex items-center gap-2">
-            <ScanBarcode size={12} className="text-[#CE4270]" />
+            <ScanBarcode size={12} className="text-[#D81B60]" />
             <span>Live catalog lookup — includes product &amp; variant barcodes</span>
           </div>
         )}

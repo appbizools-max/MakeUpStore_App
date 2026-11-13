@@ -5,7 +5,7 @@
 
 // Popular cosmetics / beauty shade presets (HEX format)
 export const MAKEUP_SWATCH_PRESETS = [
-  { name: 'Salbeau Pink', hex: '#CE4270' },
+  { name: 'Salbeau Pink', hex: '#D81B60' },
   { name: 'Ruby Red', hex: '#C2185B' },
   { name: 'Crimson', hex: '#B71C1C' },
   { name: 'Berry Wine', hex: '#880E4F' },
@@ -99,7 +99,7 @@ export const EXTENDED_BEAUTY_SHADES = [
 ];
 
 /**
- * Validates and formats a hex color string (e.g. 'ce4270' -> '#CE4270')
+ * Validates and formats a hex color string (e.g. 'ce4270' -> '#D81B60')
  */
 export function normalizeHex(input) {
   if (!input) return '';

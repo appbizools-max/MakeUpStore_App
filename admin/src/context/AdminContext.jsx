@@ -757,12 +757,21 @@ export const DEFAULT_GENERAL_SETTINGS = {
     currencySymbol: '₹'
   },
   delivery: {
+    pricingModel: 'default_free', // 'default_free' | 'always_free' | 'per_km' | 'order_value' | 'fixed'
+    isDefaultFree: true,
+    isFreeDeliveryAll: false,
+    fixedDeliveryFee: 49,
     standardFee: 49,
     standardDeliveryFee: 49,
-    freeDeliveryThreshold: 499,
+    perKmRate: 3, // ₹3 per km
+    baseDistanceKm: 2, // First 2 km
+    baseDeliveryCharge: 20, // ₹20 for first baseDistanceKm
+    maxDeliveryDistanceKm: 50,
+    freeDeliveryThreshold: 500, // Free delivery on orders above ₹500
+    enableFreeDeliveryThreshold: true,
     estimatedTimeText: 'Same Day / 24-48 Hours',
     estimatedDeliveryTime: 'Same Day / 24-48 Hours',
-    minOrderAmount: 99,
+    minOrderAmount: 0,
     maxItemsPerOrder: 50,
   },
   payments: {
@@ -917,7 +926,7 @@ export const AdminProvider = ({ children }) => {
     try {
       const safeDbFetch = async (queryBuilder, fallback = { data: [] }) => {
         try {
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000));
           const res = await Promise.race([Promise.resolve(queryBuilder), timeoutPromise]);
           if (res && !res.error && Array.isArray(res.data)) {
             return res;
@@ -934,10 +943,12 @@ export const AdminProvider = ({ children }) => {
       const adminClient = supabaseAdmin || supabase;
 
       // Parallelize all queries into a single concurrent batch to eliminate sequential waterfalls
+      // Note: Partner brands are explicitly separated from large system config rows (which store 18MB of hierarchy JSON in the logo column)
       const [
         ordersRes,
         usersRes,
         brandsRes,
+        brandConfigsRes,
         productsRes,
         categoriesRes,
         subcategoriesRes,
@@ -945,11 +956,15 @@ export const AdminProvider = ({ children }) => {
         directReqs,
         empRes,
         logsRes,
-        backupRes
+        backupRes,
+        branchesRes,
+        branchesBackupRes,
+        upiRes
       ] = await Promise.all([
         safeDbFetch(adminClient.from('orders').select('*').order('date', { ascending: false }).limit(300)),
         safeDbFetch(adminClient.from('users').select('*').limit(500)),
-        safeDbFetch(adminClient.from('brands').select('*')),
+        safeDbFetch(adminClient.from('brands').select('id, name, enabled, logo, created_at, category, sort_order, updated_at').not('id', 'like', 'app_%').not('id', 'like', 'salbeau_%')),
+        safeDbFetch(adminClient.from('brands').select('id, logo, name').or('id.like.app_%,id.like.salbeau_%')),
         safeDbFetch(adminClient.from('products').select('*').order('created_at', { ascending: false })),
         safeDbFetch(adminClient.from('categories').select('*').order('sort_order', { ascending: true })),
         safeDbFetch(adminClient.from('subcategories').select('*').order('sort_order', { ascending: true })),
@@ -998,8 +1013,9 @@ export const AdminProvider = ({ children }) => {
         setCategories(deduplicatedCats);
         setCachedData('salbeau_admin_cache_categories', deduplicatedCats);
       }
-      if (brandsRes.data) {
-        const configRow = brandsRes.data.find(b => b.id === 'app_category_order_config');
+      const configsData = Array.isArray(brandConfigsRes?.data) ? brandConfigsRes.data : [];
+      if (configsData.length > 0) {
+        const configRow = configsData.find(b => b.id === 'app_category_order_config');
         if (configRow && configRow.logo) {
           try {
             const parsedCatList = JSON.parse(configRow.logo);
@@ -1011,7 +1027,7 @@ export const AdminProvider = ({ children }) => {
           }
         }
 
-        const mapRow = brandsRes.data.find(b => b.id === 'app_brand_category_map');
+        const mapRow = configsData.find(b => b.id === 'app_brand_category_map');
         let categoryDict = {};
         if (mapRow && mapRow.logo) {
           try {
@@ -1019,7 +1035,7 @@ export const AdminProvider = ({ children }) => {
           } catch (e) { }
         }
 
-        const visibilityRow = brandsRes.data.find(b => b.id === 'app_home_section_visibility');
+        const visibilityRow = configsData.find(b => b.id === 'app_home_section_visibility');
         if (visibilityRow && visibilityRow.logo) {
           try {
             const parsedVisibility = JSON.parse(visibilityRow.logo);
@@ -1034,7 +1050,7 @@ export const AdminProvider = ({ children }) => {
           }
         }
 
-        const recRow = brandsRes.data.find(b => b.id === 'app_recommendation_config');
+        const recRow = configsData.find(b => b.id === 'app_recommendation_config');
         if (recRow && recRow.logo) {
           try {
             const parsedRec = JSON.parse(recRow.logo);
@@ -1049,7 +1065,7 @@ export const AdminProvider = ({ children }) => {
           }
         }
 
-        const pricingRow = brandsRes.data.find(b => b.id === 'app_pricing_discount_config');
+        const pricingRow = configsData.find(b => b.id === 'app_pricing_discount_config');
         if (pricingRow && pricingRow.logo) {
           try {
             const parsedPricing = JSON.parse(pricingRow.logo);
@@ -1070,7 +1086,7 @@ export const AdminProvider = ({ children }) => {
           }
         }
 
-        const searchRequestsRow = brandsRes.data.find(b => b.id === 'salbeau_customer_search_requests');
+        const searchRequestsRow = configsData.find(b => b.id === 'salbeau_customer_search_requests');
         if (searchRequestsRow && searchRequestsRow.logo) {
           try {
             const parsedRequests = JSON.parse(searchRequestsRow.logo);
@@ -1082,7 +1098,7 @@ export const AdminProvider = ({ children }) => {
           }
         }
 
-        const bannersRow = brandsRes.data.find(b => b.id === 'app_home_banners');
+        const bannersRow = configsData.find(b => b.id === 'app_home_banners');
         if (bannersRow && bannersRow.logo) {
           try {
             const parsedBanners = JSON.parse(bannersRow.logo);
@@ -1096,8 +1112,11 @@ export const AdminProvider = ({ children }) => {
             console.warn('Error parsing home banners from brands:', e);
           }
         }
+      }
 
-        const metaConfigRow = brandsRes.data.find(b => b.id === 'app_brand_metadata_config');
+      // Process Partner Brands (Fast 1.2s query, decoupled from 18MB config payloads)
+      if (brandsRes && Array.isArray(brandsRes.data) && brandsRes.data.length > 0) {
+        const metaConfigRow = configsData.find(b => b.id === 'app_brand_metadata_config');
         let brandMetaDict = {};
         if (metaConfigRow && metaConfigRow.logo) {
           try {
@@ -1105,13 +1124,24 @@ export const AdminProvider = ({ children }) => {
           } catch (e) { }
         }
 
+        const mapRow = configsData.find(b => b.id === 'app_brand_category_map');
+        let categoryDict = {};
+        if (mapRow && mapRow.logo) {
+          try {
+            categoryDict = JSON.parse(mapRow.logo);
+          } catch (e) { }
+        }
+
         const regularBrands = brandsRes.data
-          .filter(b =>
-            !b.id.startsWith('app_') &&
-            !b.id.startsWith('salbeau_') &&
-            b.category !== 'SystemConfig' &&
-            b.category !== 'System Config'
-          )
+          .filter(b => {
+            const idStr = String(b.id || '');
+            return (
+              !idStr.startsWith('app_') &&
+              !idStr.startsWith('salbeau_') &&
+              b.category !== 'SystemConfig' &&
+              b.category !== 'System Config'
+            );
+          })
           .map(b => {
             const mapped = mapBrandFromDb(b, brandMetaDict);
             const primaryCat = mapped.categories?.[0] || categoryDict[b.name] || b.category || '';
@@ -1131,8 +1161,10 @@ export const AdminProvider = ({ children }) => {
             return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
           });
 
-        setBrands(regularBrands);
-        setCachedData('salbeau_admin_cache_brands', regularBrands);
+        if (regularBrands.length > 0) {
+          setBrands(regularBrands);
+          setCachedData('salbeau_admin_cache_brands', regularBrands);
+        }
       }
       if (productsRes.data && Array.isArray(productsRes.data)) {
         const dbList = productsRes.data.map(mapProductFromDb);
@@ -2985,6 +3017,68 @@ export const AdminProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn('Error updating order payment status in Supabase:', err);
+    }
+  };
+
+  // ── UPI PAYMENT VERIFICATION BY ADMIN ──────────────────────────────────
+  const verifyUpiPayment = async (orderId, isApproved = true, rejectionReason = '') => {
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (!targetOrder) return;
+
+    const newPayStatus = isApproved ? 'paid' : 'failed';
+    const newVerifStatus = isApproved ? 'VERIFIED' : 'REJECTED';
+
+    const currentShipments = (typeof targetOrder.shipments === 'object' && !Array.isArray(targetOrder.shipments))
+      ? targetOrder.shipments
+      : {};
+
+    const updatedShipments = {
+      ...currentShipments,
+      paymentStatus: newPayStatus,
+      paymentVerified: isApproved,
+      verificationStatus: newVerifStatus,
+      adminVerifiedAt: new Date().toISOString(),
+      adminVerifiedBy: currentAuthUser?.fullName || currentAuthUser?.name || 'Administrator',
+      rejectionReason: !isApproved ? rejectionReason : null,
+      paidAt: isApproved ? new Date().toISOString() : null
+    };
+
+    const updatedFields = {
+      paymentStatus: newPayStatus,
+      verificationStatus: newVerifStatus,
+      internalStatus: newPayStatus,
+      shipments: updatedShipments,
+      updated_at: new Date().toISOString()
+    };
+
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o)));
+
+    try {
+      const client = supabaseAdmin || supabase;
+      await client.from('orders').update({
+        internal_status: newPayStatus,
+        payment_status: newPayStatus,
+        shipments: updatedShipments,
+        updated_at: new Date().toISOString()
+      }).eq('id', orderId);
+
+      // Also update upi_payment_verifications table if present
+      await client.from('upi_payment_verifications').update({
+        verification_status: newVerifStatus,
+        verified_by: currentAuthUser?.fullName || currentAuthUser?.name || 'Administrator',
+        verified_at: new Date().toISOString(),
+        rejection_reason: !isApproved ? rejectionReason : null
+      }).eq('order_id', orderId);
+
+      // Audit log
+      recordAdminAuditLog(isApproved ? 'VERIFY_UPI_PAYMENT' : 'REJECT_UPI_PAYMENT', {
+        orderId,
+        isApproved,
+        rejectionReason,
+        amount: targetOrder.totalAmount
+      });
+    } catch (e) {
+      console.warn('Error in verifyUpiPayment:', e);
     }
   };
 
@@ -5995,16 +6089,22 @@ export const AdminProvider = ({ children }) => {
   const addBranch = async (branchData) => {
     try {
       const branchId = 'br_' + Date.now();
+      const generatedCode = (branchData.code || '').trim().toUpperCase() || (
+        'BR-' +
+        (branchData.name || 'STORE').replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase() +
+        '-' +
+        Date.now().toString().slice(-4)
+      );
       const payload = {
         id: branchId,
         name: (branchData.name || '').trim(),
-        code: (branchData.code || '').trim().toUpperCase(),
-        address: branchData.address || '',
+        code: generatedCode,
+        address: branchData.address || branchData.location || '',
         city: branchData.city || '',
         state: branchData.state || '',
         pin_code: branchData.pin_code || '',
         contact_number: branchData.contact_number || '',
-        manager_name: branchData.manager_name || '',
+        manager_name: branchData.manager_name || branchData.contact_person || '',
         manager_id: branchData.manager_id || '',
         is_active: branchData.is_active !== false,
         created_at: new Date().toISOString(),
@@ -6375,6 +6475,7 @@ export const AdminProvider = ({ children }) => {
         updateOrderStatus,
         updateOrderPaymentStatus,
         updateOrderPaymentMethod,
+        verifyUpiPayment,
         deleteOrder,
         bulkDeleteOrders,
         clearTestOrders,
@@ -6424,6 +6525,7 @@ export const AdminProvider = ({ children }) => {
         fetchError,
         refreshData: fetchData,
         employees,
+        setEmployees,
         employeeActivityLogs,
         employeeOperations,
         stageEmployeeOperation,

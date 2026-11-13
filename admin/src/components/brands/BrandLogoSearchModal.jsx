@@ -122,7 +122,7 @@ export default function BrandLogoSearchModal({
         {/* Header */}
         <div className="p-5 border-b border-pink-100 flex items-center justify-between bg-gradient-to-r from-white via-white to-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#C2477A] flex items-center justify-center font-bold shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-white border border-pink-100 text-[#D81B60] flex items-center justify-center font-bold shadow-2xs">
               <Globe size={20} />
             </div>
             <div>
@@ -139,7 +139,7 @@ export default function BrandLogoSearchModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -154,8 +154,8 @@ export default function BrandLogoSearchModal({
             }}
             className="flex items-center gap-2"
           >
-            <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white focus-within:ring-2 focus-within:ring-[#C2477A]/20 focus-within:border-[#C2477A] transition-all">
-              <Search size={16} className="text-[#C2477A] shrink-0" />
+            <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white focus-within:ring-2 focus-within:ring-[#D81B60]/20 focus-within:border-[#D81B60] transition-all">
+              <Search size={16} className="text-[#D81B60] shrink-0" />
               <input
                 type="text"
                 value={query}
@@ -176,7 +176,7 @@ export default function BrandLogoSearchModal({
             <button
               type="submit"
               disabled={loading || !query.trim()}
-              className="px-5 py-2.5 rounded-xl bg-[#C2477A] hover:bg-[#b83760] disabled:bg-gray-200 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+              className="px-5 py-2.5 rounded-xl bg-[#D81B60] hover:bg-[#b83760] disabled:bg-gray-200 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
               <span>Search</span>
@@ -194,7 +194,7 @@ export default function BrandLogoSearchModal({
                 if (e.target.value) setSelectedImage(null);
               }}
               placeholder="https://example.com/brand-logo.png"
-              className="flex-1 px-3 py-1.5 rounded-lg border border-pink-100 bg-white text-xs outline-none focus:border-[#C2477A]"
+              className="flex-1 px-3 py-1.5 rounded-lg border border-pink-100 bg-white text-xs outline-none focus:border-[#D81B60]"
             />
           </div>
         </div>
@@ -211,7 +211,7 @@ export default function BrandLogoSearchModal({
           {loading ? (
             <div className="py-16 flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 rounded-2xl bg-white border border-pink-100 flex items-center justify-center mb-3">
-                <Loader2 size={24} className="text-[#C2477A] animate-spin" />
+                <Loader2 size={24} className="text-[#D81B60] animate-spin" />
               </div>
               <p className="text-xs font-bold text-gray-800">Retrieving Brand Logo Previews...</p>
               <p className="text-[11px] text-gray-400 mt-0.5">Searching high-resolution image providers</p>
@@ -229,7 +229,7 @@ export default function BrandLogoSearchModal({
                     }}
                     className={`relative p-3 rounded-2xl border transition-all cursor-pointer flex flex-col items-center text-center group ${
                       isSelected
-                        ? 'border-[#C2477A] bg-white ring-2 ring-[#C2477A]/30 shadow-md'
+                        ? 'border-[#D81B60] bg-white ring-2 ring-[#D81B60]/30 shadow-md'
                         : 'border-pink-100/80 bg-white hover:border-pink-300 hover:shadow-xs'
                     }`}
                   >
@@ -255,7 +255,7 @@ export default function BrandLogoSearchModal({
 
                     {/* Checkmark Badge */}
                     {isSelected && (
-                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#C2477A] text-white flex items-center justify-center shadow-xs">
+                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#D81B60] text-white flex items-center justify-center shadow-xs">
                         <Check size={12} strokeWidth={3} />
                       </div>
                     )}
@@ -297,7 +297,7 @@ export default function BrandLogoSearchModal({
               type="button"
               disabled={!selectedImage && !customUrl.trim()}
               onClick={handleApplyLogo}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
               <Check size={14} />
               <span>Use This Logo</span>

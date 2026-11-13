@@ -16,7 +16,13 @@ import {
   Sparkles,
   Percent,
   Check,
-  Upload
+  Upload,
+  Navigation,
+  MapPin,
+  Gift,
+  ShoppingBag,
+  Info,
+  Calculator
 } from 'lucide-react';
 import ImageField from '../media/ImageField';
 import PaymentSecurityGateModal from '../security/PaymentSecurityGateModal';
@@ -24,6 +30,7 @@ import Security2FASettingsPage from '../security/Security2FASettingsPage';
 import { isPaymentSessionValid } from '../../utils/totpSecurityEngine';
 import { Lock, ShieldCheck } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
+import { calculateDeliveryCharge, DELIVERY_MODELS, DEFAULT_DELIVERY_CONFIG } from '../../utils/deliveryChargeCalculator';
 
 export const DEFAULT_GENERAL_SETTINGS = {
   storeName: 'Salbeau MakeUpStore',
@@ -34,11 +41,21 @@ export const DEFAULT_GENERAL_SETTINGS = {
   gstin: '37AAAAA0000A1Z5',
   currency: '₹',
   delivery: {
+    pricingModel: 'default_free', // 'default_free' | 'always_free' | 'per_km' | 'order_value' | 'fixed'
+    isDefaultFree: true,
+    isFreeDeliveryAll: false,
+    fixedDeliveryFee: 49,
     standardFee: 49,
-    freeDeliveryThreshold: 499,
-    estimatedTimeText: 'Same Day / 24-48 Hours',
-    minOrderAmount: 99,
+    standardDeliveryFee: 49,
+    perKmRate: 3, // ₹3 per km
+    baseDistanceKm: 2, // First 2 km
+    baseDeliveryCharge: 20, // ₹20 for first 2 km
+    maxDeliveryDistanceKm: 50,
+    freeDeliveryThreshold: 500, // Free above ₹500
+    enableFreeDeliveryThreshold: true,
+    minOrderAmount: 0,
     maxItemsPerOrder: 50,
+    estimatedTimeText: 'Same Day / 24-48 Hours'
   },
   payments: {
     upiId: 'salbeau.store@okaxis',
@@ -98,11 +115,21 @@ export default function GeneralSettingsPage() {
       delivery: {
         ...DEFAULT_GENERAL_SETTINGS.delivery,
         ...(raw.delivery || {}),
-        standardFee: raw.delivery?.standardFee ?? raw.delivery?.standardDeliveryFee ?? DEFAULT_GENERAL_SETTINGS.delivery.standardFee,
-        freeDeliveryThreshold: raw.delivery?.freeDeliveryThreshold ?? DEFAULT_GENERAL_SETTINGS.delivery.freeDeliveryThreshold,
+        pricingModel: raw.delivery?.pricingModel || (raw.delivery?.isDefaultFree ? 'default_free' : (raw.delivery?.isFreeDeliveryAll ? 'always_free' : (raw.delivery?.perKmRate ? 'per_km' : 'order_value'))),
+        isDefaultFree: raw.delivery?.isDefaultFree ?? (raw.delivery?.pricingModel === 'default_free' || !raw.delivery?.pricingModel),
+        isFreeDeliveryAll: raw.delivery?.isFreeDeliveryAll ?? (raw.delivery?.pricingModel === 'always_free'),
+        perKmRate: Number(raw.delivery?.perKmRate ?? 3),
+        baseDistanceKm: Number(raw.delivery?.baseDistanceKm ?? 2),
+        baseDeliveryCharge: Number(raw.delivery?.baseDeliveryCharge ?? 20),
+        maxDeliveryDistanceKm: Number(raw.delivery?.maxDeliveryDistanceKm ?? 50),
+        freeDeliveryThreshold: Number(raw.delivery?.freeDeliveryThreshold ?? 500),
+        enableFreeDeliveryThreshold: raw.delivery?.enableFreeDeliveryThreshold !== false,
+        fixedDeliveryFee: Number(raw.delivery?.fixedDeliveryFee ?? raw.delivery?.standardFee ?? 49),
+        standardFee: Number(raw.delivery?.standardFee ?? raw.delivery?.fixedDeliveryFee ?? 49),
+        standardDeliveryFee: Number(raw.delivery?.standardDeliveryFee ?? raw.delivery?.standardFee ?? 49),
         estimatedTimeText: raw.delivery?.estimatedTimeText || raw.delivery?.estimatedDeliveryTime || DEFAULT_GENERAL_SETTINGS.delivery.estimatedTimeText,
-        minOrderAmount: raw.delivery?.minOrderAmount ?? DEFAULT_GENERAL_SETTINGS.delivery.minOrderAmount,
-        maxItemsPerOrder: raw.delivery?.maxItemsPerOrder ?? DEFAULT_GENERAL_SETTINGS.delivery.maxItemsPerOrder,
+        minOrderAmount: Number(raw.delivery?.minOrderAmount ?? 0),
+        maxItemsPerOrder: Number(raw.delivery?.maxItemsPerOrder ?? 50),
       },
       payments: {
         ...DEFAULT_GENERAL_SETTINGS.payments,
@@ -134,6 +161,8 @@ export default function GeneralSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [simCartValue, setSimCartValue] = useState(450);
+  const [simDistance, setSimDistance] = useState(6);
 
   // Sync state when context updates
   useEffect(() => {
@@ -215,11 +244,23 @@ export default function GeneralSettingsPage() {
         },
         delivery: {
           ...formData?.delivery,
-          standardDeliveryFee: Number(formData?.delivery?.standardFee),
-          freeDeliveryThreshold: Number(formData?.delivery?.freeDeliveryThreshold),
-          estimatedDeliveryTime: formData?.delivery?.estimatedTimeText,
-          minOrderAmount: Number(formData?.delivery?.minOrderAmount),
-          maxOrderItems: Number(formData?.delivery?.maxItemsPerOrder),
+          pricingModel: formData?.delivery?.pricingModel || 'default_free',
+          isDefaultFree: Boolean(formData?.delivery?.isDefaultFree),
+          isFreeDeliveryAll: Boolean(formData?.delivery?.isFreeDeliveryAll),
+          perKmRate: Number(formData?.delivery?.perKmRate ?? 3),
+          baseDistanceKm: Number(formData?.delivery?.baseDistanceKm ?? 2),
+          baseDeliveryCharge: Number(formData?.delivery?.baseDeliveryCharge ?? 20),
+          maxDeliveryDistanceKm: Number(formData?.delivery?.maxDeliveryDistanceKm ?? 50),
+          freeDeliveryThreshold: Number(formData?.delivery?.freeDeliveryThreshold ?? 500),
+          enableFreeDeliveryThreshold: formData?.delivery?.enableFreeDeliveryThreshold !== false,
+          fixedDeliveryFee: Number(formData?.delivery?.fixedDeliveryFee ?? formData?.delivery?.standardFee ?? 49),
+          standardFee: Number(formData?.delivery?.standardFee ?? formData?.delivery?.fixedDeliveryFee ?? 49),
+          standardDeliveryFee: Number(formData?.delivery?.standardDeliveryFee ?? formData?.delivery?.standardFee ?? 49),
+          estimatedTimeText: formData?.delivery?.estimatedTimeText || 'Same Day / 24-48 Hours',
+          estimatedDeliveryTime: formData?.delivery?.estimatedTimeText || 'Same Day / 24-48 Hours',
+          minOrderAmount: Number(formData?.delivery?.minOrderAmount ?? 0),
+          maxItemsPerOrder: Number(formData?.delivery?.maxItemsPerOrder ?? 50),
+          maxOrderItems: Number(formData?.delivery?.maxItemsPerOrder ?? 50),
         },
         payments: {
           ...formData?.payments,
@@ -272,7 +313,7 @@ export default function GeneralSettingsPage() {
       <div className="bg-white rounded-3xl border border-gray-200/80 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#C2477A]/10 text-[#C2477A] flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#D81B60]/10 text-[#D81B60] flex items-center justify-center font-bold">
               <SlidersHorizontal size={22} />
             </div>
             <div>
@@ -298,7 +339,7 @@ export default function GeneralSettingsPage() {
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-5 py-2.5 bg-[#C2477A] hover:bg-[#a63965] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-5 py-2.5 bg-[#D81B60] hover:bg-[#a63965] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             {isSaving ? (
               <>
@@ -337,7 +378,7 @@ export default function GeneralSettingsPage() {
           onClick={() => setActiveTab('store_info')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'store_info'
-              ? 'bg-[#C2477A] text-white shadow-sm'
+              ? 'bg-[#D81B60] text-white shadow-sm'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
           }`}
         >
@@ -350,7 +391,7 @@ export default function GeneralSettingsPage() {
           onClick={() => setActiveTab('delivery')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'delivery'
-              ? 'bg-[#C2477A] text-white shadow-sm'
+              ? 'bg-[#D81B60] text-white shadow-sm'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
           }`}
         >
@@ -363,7 +404,7 @@ export default function GeneralSettingsPage() {
           onClick={() => handleTabSelect('payments')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'payments'
-              ? 'bg-[#C2477A] text-white shadow-sm'
+              ? 'bg-[#D81B60] text-white shadow-sm'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
           }`}
         >
@@ -380,7 +421,7 @@ export default function GeneralSettingsPage() {
           onClick={() => setActiveTab('security_2fa')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'security_2fa'
-              ? 'bg-[#C2477A] text-white shadow-sm'
+              ? 'bg-[#D81B60] text-white shadow-sm'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
           }`}
         >
@@ -393,7 +434,7 @@ export default function GeneralSettingsPage() {
           onClick={() => setActiveTab('broadcast')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'broadcast'
-              ? 'bg-[#C2477A] text-white shadow-sm'
+              ? 'bg-[#D81B60] text-white shadow-sm'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
           }`}
         >
@@ -409,7 +450,7 @@ export default function GeneralSettingsPage() {
           onClick={() => setActiveTab('policies')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'policies'
-              ? 'bg-[#C2477A] text-white shadow-sm'
+              ? 'bg-[#D81B60] text-white shadow-sm'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
           }`}
         >
@@ -438,7 +479,7 @@ export default function GeneralSettingsPage() {
                   value={currentData?.storeName || ''}
                   onChange={e => handleChange('storeName', e.target.value)}
                   placeholder="e.g. Salbeau MakeUpStore"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
@@ -449,7 +490,7 @@ export default function GeneralSettingsPage() {
                   value={currentData?.tagline || ''}
                   onChange={e => handleChange('tagline', e.target.value)}
                   placeholder="e.g. Luxury Beauty & Professional Cosmetics"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
@@ -460,7 +501,7 @@ export default function GeneralSettingsPage() {
                   value={currentData?.supportEmail || ''}
                   onChange={e => handleChange('supportEmail', e.target.value)}
                   placeholder="contact@salbeau.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
@@ -471,7 +512,7 @@ export default function GeneralSettingsPage() {
                   value={currentData?.supportPhone || ''}
                   onChange={e => handleChange('supportPhone', e.target.value)}
                   placeholder="+91 98765 43210"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
@@ -482,7 +523,7 @@ export default function GeneralSettingsPage() {
                   value={currentData?.headquartersAddress || ''}
                   onChange={e => handleChange('headquartersAddress', e.target.value)}
                   placeholder="Enter corporate / central store address"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A] resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60] resize-none"
                 />
               </div>
 
@@ -493,7 +534,7 @@ export default function GeneralSettingsPage() {
                   value={currentData?.gstin || ''}
                   onChange={e => handleChange('gstin', e.target.value.toUpperCase())}
                   placeholder="37AAAAA0000A1Z5"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
@@ -504,86 +545,603 @@ export default function GeneralSettingsPage() {
                   value={currentData?.currency || '₹'}
                   onChange={e => handleChange('currency', e.target.value)}
                   placeholder="₹"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
             </div>
           </div>
         )}
 
-        {/* 2. DELIVERY RATES TAB */}
+        {/* 2. DYNAMIC DELIVERY CHARGE MANAGEMENT TAB */}
         {activeTab === 'delivery' && (
-          <div className="space-y-6 max-w-3xl">
-            <div>
-              <h2 className="text-base font-black text-gray-900">Delivery Rates & Fulfillment Rules</h2>
-              <p className="text-xs text-gray-500 font-medium">
-                Configure standard shipping rates, free shipping thresholds, and order size requirements.
-              </p>
+          <div className="space-y-6 max-w-4xl">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-black text-gray-900">Dynamic Delivery Charge Management</h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#D81B60]/10 text-[#D81B60] uppercase tracking-wider">
+                    Instant App Sync
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 font-medium mt-0.5">
+                  Configure delivery pricing models. Changes reflect instantly in customer checkout without app updates.
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200">
-                <label className="block text-xs font-bold text-gray-800 mb-1">Standard Delivery Fee (₹)</label>
-                <p className="text-[11px] text-gray-500 mb-2">Applied when order total is below free delivery threshold.</p>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">₹</span>
+            {/* ── 5 Pricing Model Selector Cards ── */}
+            <div>
+              <label className="block text-xs font-black text-gray-800 uppercase tracking-wider mb-2.5">
+                Select Delivery Pricing Model
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* 1. Default Free Delivery */}
+                <div
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      delivery: {
+                        ...prev.delivery,
+                        pricingModel: 'default_free',
+                        isDefaultFree: true,
+                        isFreeDeliveryAll: false
+                      }
+                    }));
+                  }}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                    (currentData?.delivery?.pricingModel === 'default_free' || (!currentData?.delivery?.pricingModel && currentData?.delivery?.isDefaultFree))
+                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="w-7 h-7 rounded-xl bg-pink-100 text-[#D81B60] flex items-center justify-center font-bold">
+                      <Sparkles size={15} />
+                    </span>
+                    {(currentData?.delivery?.pricingModel === 'default_free' || (!currentData?.delivery?.pricingModel && currentData?.delivery?.isDefaultFree)) && (
+                      <span className="w-5 h-5 rounded-full bg-[#D81B60] text-white flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-xs font-black text-gray-900">Default Free Delivery</h3>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                    Standard free delivery default. 100% free for all customer orders across store.
+                  </p>
+                </div>
+
+                {/* 2. Free Delivery for All Orders */}
+                <div
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      delivery: {
+                        ...prev.delivery,
+                        pricingModel: 'always_free',
+                        isDefaultFree: false,
+                        isFreeDeliveryAll: true
+                      }
+                    }));
+                  }}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                    (currentData?.delivery?.pricingModel === 'always_free' || currentData?.delivery?.isFreeDeliveryAll)
+                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                      <Gift size={15} />
+                    </span>
+                    {(currentData?.delivery?.pricingModel === 'always_free' || currentData?.delivery?.isFreeDeliveryAll) && (
+                      <span className="w-5 h-5 rounded-full bg-[#D81B60] text-white flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-xs font-black text-gray-900">100% Free for All Orders</h3>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                    Complimentary free shipping for all customers regardless of distance or order total.
+                  </p>
+                </div>
+
+                {/* 3. Per-Kilometre Charges */}
+                <div
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      delivery: {
+                        ...prev.delivery,
+                        pricingModel: 'per_km',
+                        isDefaultFree: false,
+                        isFreeDeliveryAll: false
+                      }
+                    }));
+                  }}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                    currentData?.delivery?.pricingModel === 'per_km'
+                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="w-7 h-7 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                      <Navigation size={15} />
+                    </span>
+                    {currentData?.delivery?.pricingModel === 'per_km' && (
+                      <span className="w-5 h-5 rounded-full bg-[#D81B60] text-white flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-xs font-black text-gray-900">Per-Kilometre Charges</h3>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                    Dynamic distance-based fee (e.g. ₹3/km) calculated from dispatch branch location.
+                  </p>
+                </div>
+
+                {/* 4. Free Delivery Above Order Value */}
+                <div
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      delivery: {
+                        ...prev.delivery,
+                        pricingModel: 'order_value',
+                        isDefaultFree: false,
+                        isFreeDeliveryAll: false
+                      }
+                    }));
+                  }}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                    currentData?.delivery?.pricingModel === 'order_value'
+                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="w-7 h-7 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                      <ShoppingBag size={15} />
+                    </span>
+                    {currentData?.delivery?.pricingModel === 'order_value' && (
+                      <span className="w-5 h-5 rounded-full bg-[#D81B60] text-white flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-xs font-black text-gray-900">Free Above Order Value</h3>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                    Free shipping on orders above minimum cart amount (e.g. free on orders above ₹500).
+                  </p>
+                </div>
+
+                {/* 5. Fixed Delivery Charges */}
+                <div
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      delivery: {
+                        ...prev.delivery,
+                        pricingModel: 'fixed',
+                        isDefaultFree: false,
+                        isFreeDeliveryAll: false
+                      }
+                    }));
+                  }}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                    currentData?.delivery?.pricingModel === 'fixed'
+                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="w-7 h-7 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                      <CreditCard size={15} />
+                    </span>
+                    {currentData?.delivery?.pricingModel === 'fixed' && (
+                      <span className="w-5 h-5 rounded-full bg-[#D81B60] text-white flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-xs font-black text-gray-900">Fixed Delivery Charges</h3>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                    Standard flat delivery fee (e.g. ₹49) charged uniformly on every customer order.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Active Model Detailed Configuration Fields ── */}
+            <div className="p-5 rounded-2xl bg-gray-50/80 border border-gray-200 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-gray-800 uppercase tracking-wider">
+                  Model Configuration:
+                </span>
+                <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-white border border-gray-200 text-[#D81B60]">
+                  {currentData?.delivery?.pricingModel === 'per_km' && 'Per-Kilometre Distance Charges'}
+                  {currentData?.delivery?.pricingModel === 'order_value' && 'Free Delivery Above Order Value'}
+                  {currentData?.delivery?.pricingModel === 'fixed' && 'Fixed Delivery Charges'}
+                  {(currentData?.delivery?.pricingModel === 'always_free' || currentData?.delivery?.isFreeDeliveryAll) && '100% Free Delivery for All Orders'}
+                  {(currentData?.delivery?.pricingModel === 'default_free' || (!currentData?.delivery?.pricingModel && currentData?.delivery?.isDefaultFree)) && 'Default Free Delivery'}
+                </span>
+              </div>
+
+              {/* A. If Per-Kilometre Charges */}
+              {currentData?.delivery?.pricingModel === 'per_km' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white p-3.5 rounded-xl border border-gray-200">
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                        Charge Per Km (₹/km) <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={currentData?.delivery?.perKmRate ?? 3}
+                          onChange={e => handleNestedChange('delivery', 'perKmRate', Number(e.target.value))}
+                          className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#D81B60]"
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">e.g. ₹3 per km</p>
+                    </div>
+
+                    <div className="bg-white p-3.5 rounded-xl border border-gray-200">
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                        Base Free Distance (km)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={currentData?.delivery?.baseDistanceKm ?? 2}
+                          onChange={e => handleNestedChange('delivery', 'baseDistanceKm', Number(e.target.value))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#D81B60]"
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">Covered in base fee</p>
+                    </div>
+
+                    <div className="bg-white p-3.5 rounded-xl border border-gray-200">
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                        Base Distance Charge (₹)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={currentData?.delivery?.baseDeliveryCharge ?? 20}
+                          onChange={e => handleNestedChange('delivery', 'baseDeliveryCharge', Number(e.target.value))}
+                          className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#D81B60]"
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">Initial base fee</p>
+                    </div>
+
+                    <div className="bg-white p-3.5 rounded-xl border border-gray-200">
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                        Max Service Radius (km)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="1"
+                          value={currentData?.delivery?.maxDeliveryDistanceKm ?? 50}
+                          onChange={e => handleNestedChange('delivery', 'maxDeliveryDistanceKm', Number(e.target.value))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#D81B60]"
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">Delivery cutoff radius</p>
+                    </div>
+                  </div>
+
+                  {/* Free Delivery Threshold override toggle */}
+                  <div className="p-3.5 rounded-xl bg-white border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-bold text-gray-800 block">
+                        Allow Free Delivery on High-Value Orders
+                      </span>
+                      <span className="text-[11px] text-gray-500">
+                        Orders above this amount enjoy 100% Free Delivery even on long-distance deliveries.
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={currentData?.delivery?.enableFreeDeliveryThreshold !== false}
+                          onChange={e => handleNestedChange('delivery', 'enableFreeDeliveryThreshold', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#D81B60]"></div>
+                      </label>
+                      {currentData?.delivery?.enableFreeDeliveryThreshold !== false && (
+                        <div className="relative w-28">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={currentData?.delivery?.freeDeliveryThreshold ?? 500}
+                            onChange={e => handleNestedChange('delivery', 'freeDeliveryThreshold', Number(e.target.value))}
+                            className="w-full pl-6 pr-2 py-1.5 rounded-lg border border-gray-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#D81B60]"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* B. If Free Delivery Above Order Value */}
+              {currentData?.delivery?.pricingModel === 'order_value' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-white border border-pink-200">
+                    <label className="block text-xs font-bold text-pink-900 mb-1">
+                      Free Delivery Minimum Order Amount (₹) <span className="text-rose-500">*</span>
+                    </label>
+                    <p className="text-[11px] text-pink-700/80 mb-2">Orders equal to or above this amount receive 100% Free Shipping.</p>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#D81B60] font-bold text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={currentData?.delivery?.freeDeliveryThreshold ?? 500}
+                        onChange={e => handleNestedChange('delivery', 'freeDeliveryThreshold', Number(e.target.value))}
+                        className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white border border-pink-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#D81B60]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-white border border-gray-200">
+                    <label className="block text-xs font-bold text-gray-800 mb-1">
+                      Standard Delivery Fee Below Threshold (₹) <span className="text-rose-500">*</span>
+                    </label>
+                    <p className="text-[11px] text-gray-500 mb-2">Delivery charge applied when order subtotal is below the threshold.</p>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={currentData?.delivery?.standardFee ?? 49}
+                        onChange={e => {
+                          const val = Number(e.target.value);
+                          setFormData(prev => ({
+                            ...prev,
+                            delivery: {
+                              ...prev.delivery,
+                              standardFee: val,
+                              standardDeliveryFee: val,
+                              fixedDeliveryFee: val
+                            }
+                          }));
+                        }}
+                        className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#D81B60]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* C. If Fixed Delivery Charges */}
+              {currentData?.delivery?.pricingModel === 'fixed' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-white border border-gray-200">
+                    <label className="block text-xs font-bold text-gray-800 mb-1">
+                      Fixed Flat Delivery Fee (₹) <span className="text-rose-500">*</span>
+                    </label>
+                    <p className="text-[11px] text-gray-500 mb-2">Standard flat fee charged uniformly on customer orders.</p>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={currentData?.delivery?.fixedDeliveryFee ?? currentData?.delivery?.standardFee ?? 49}
+                        onChange={e => {
+                          const val = Number(e.target.value);
+                          setFormData(prev => ({
+                            ...prev,
+                            delivery: {
+                              ...prev.delivery,
+                              fixedDeliveryFee: val,
+                              standardFee: val,
+                              standardDeliveryFee: val
+                            }
+                          }));
+                        }}
+                        className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#D81B60]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-white border border-gray-200 flex flex-col justify-between">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-800 mb-1">
+                        Optional Free Delivery Threshold (₹)
+                      </label>
+                      <p className="text-[11px] text-gray-500 mb-2">Enable free shipping if order exceeds this amount (0 to disable).</p>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#D81B60] font-bold text-xs">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={currentData?.delivery?.freeDeliveryThreshold ?? 500}
+                        onChange={e => handleNestedChange('delivery', 'freeDeliveryThreshold', Number(e.target.value))}
+                        className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#D81B60]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* D. If 100% Free or Default Free */}
+              {(currentData?.delivery?.pricingModel === 'always_free' ||
+                currentData?.delivery?.pricingModel === 'default_free' ||
+                currentData?.delivery?.isFreeDeliveryAll ||
+                (!currentData?.delivery?.pricingModel && currentData?.delivery?.isDefaultFree)) && (
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3 text-emerald-800">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={20} className="text-emerald-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black">Zero Delivery Fees Active</h4>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                      All customers enjoy 100% complimentary Free Delivery on every order. No shipping charges will be added at checkout.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Interactive Live Customer Checkout Bill Simulator ── */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 text-white shadow-lg space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-700/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#D81B60] flex items-center justify-center text-white font-bold">
+                    <Calculator size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black tracking-wide text-white">Live Customer Checkout Simulator</h3>
+                    <p className="text-[10px] text-gray-300">Test how the customer mobile app calculates delivery fees in real-time</p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                  Realtime Preview
+                </span>
+              </div>
+
+              {/* Controls */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gray-800/80 p-3.5 rounded-xl border border-gray-700">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[11px] font-bold text-gray-300">Test Cart Value:</span>
+                    <span className="text-xs font-mono font-black text-pink-400">₹{simCartValue}</span>
+                  </div>
                   <input
-                    type="number"
-                    min="0"
-                    value={currentData?.delivery?.standardFee ?? 49}
-                    onChange={e => handleNestedChange('delivery', 'standardFee', Number(e.target.value))}
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#C2477A]"
+                    type="range"
+                    min="50"
+                    max="1500"
+                    step="25"
+                    value={simCartValue}
+                    onChange={e => setSimCartValue(Number(e.target.value))}
+                    className="w-full accent-[#D81B60] cursor-pointer"
                   />
+                  <div className="flex justify-between text-[9px] text-gray-400 mt-1 font-mono">
+                    <span>₹50</span>
+                    <span>₹500</span>
+                    <span>₹1500</span>
+                  </div>
+                </div>
+
+                <div className="bg-gray-800/80 p-3.5 rounded-xl border border-gray-700">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[11px] font-bold text-gray-300">Test Delivery Distance:</span>
+                    <span className="text-xs font-mono font-black text-blue-400">{simDistance} km</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="30"
+                    step="1"
+                    value={simDistance}
+                    onChange={e => setSimDistance(Number(e.target.value))}
+                    className="w-full accent-blue-500 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[9px] text-gray-400 mt-1 font-mono">
+                    <span>1 km</span>
+                    <span>15 km</span>
+                    <span>30 km</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-pink-50/50 border border-pink-200/80">
-                <label className="block text-xs font-bold text-pink-900 mb-1">Free Delivery Threshold (₹)</label>
-                <p className="text-[11px] text-pink-700/80 mb-2">Orders equal to or above this amount receive 100% Free Shipping.</p>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C2477A] font-bold text-xs">₹</span>
+              {/* Simulation Result Output */}
+              {(() => {
+                const simResult = calculateDeliveryCharge({
+                  orderAmount: simCartValue,
+                  distanceKm: simDistance,
+                  config: { delivery: currentData?.delivery }
+                });
+                const totalPayable = simCartValue + (simResult.fee || 0);
+
+                return (
+                  <div className="p-4 rounded-xl bg-gray-950/70 border border-gray-700/80 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-400 font-medium">Bag Subtotal:</span>
+                      <span className="font-bold font-mono">₹{simCartValue}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-gray-400 font-medium">Delivery Charge:</span>
+                        <span className="text-[10px] text-gray-400">({simResult.detailText})</span>
+                      </div>
+                      <span className={`font-bold font-mono ${simResult.isFree ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {simResult.isFree ? 'FREE' : `₹${simResult.fee}`}
+                      </span>
+                    </div>
+
+                    {simResult.shortfallForFreeDelivery > 0 && (
+                      <div className="text-[10.5px] font-bold text-amber-300 bg-amber-950/50 border border-amber-800/50 rounded-lg px-2.5 py-1 flex items-center gap-1.5">
+                        <Info size={12} className="shrink-0" />
+                        <span>Add ₹{simResult.shortfallForFreeDelivery} more to enjoy FREE Delivery!</span>
+                      </div>
+                    )}
+
+                    <div className="pt-2 border-t border-gray-800 flex justify-between items-center text-sm font-black">
+                      <span className="text-white">Customer Total Payable:</span>
+                      <span className="text-[#F08080] font-mono text-base">₹{totalPayable}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* ── Additional Order Fulfillment Rules ── */}
+            <div className="pt-2 border-t border-gray-100">
+              <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider mb-3">
+                General Fulfillment Rules
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Estimated Delivery Time Display</label>
+                  <input
+                    type="text"
+                    value={currentData?.delivery?.estimatedTimeText || ''}
+                    onChange={e => handleNestedChange('delivery', 'estimatedTimeText', e.target.value)}
+                    placeholder="e.g. Same Day / 24-48 Hours"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Minimum Order Amount (₹)</label>
                   <input
                     type="number"
                     min="0"
-                    value={currentData?.delivery?.freeDeliveryThreshold ?? 499}
-                    onChange={e => handleNestedChange('delivery', 'freeDeliveryThreshold', Number(e.target.value))}
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white border border-pink-200 text-xs font-extrabold text-gray-900 outline-none focus:border-[#C2477A]"
+                    value={currentData?.delivery?.minOrderAmount ?? 0}
+                    onChange={e => handleNestedChange('delivery', 'minOrderAmount', Number(e.target.value))}
+                    placeholder="0 for no minimum"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Estimated Delivery Time Display</label>
-                <input
-                  type="text"
-                  value={currentData?.delivery?.estimatedTimeText || ''}
-                  onChange={e => handleNestedChange('delivery', 'estimatedTimeText', e.target.value)}
-                  placeholder="e.g. Same Day / 24-48 Hours"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Minimum Order Amount (₹)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={currentData?.delivery?.minOrderAmount ?? 0}
-                  onChange={e => handleNestedChange('delivery', 'minOrderAmount', Number(e.target.value))}
-                  placeholder="0 for no minimum"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Max Items Per Order (Optional)</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={currentData?.delivery?.maxItemsPerOrder ?? 50}
-                  onChange={e => handleNestedChange('delivery', 'maxItemsPerOrder', Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
-                />
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Max Items Per Order (Optional)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={currentData?.delivery?.maxItemsPerOrder ?? 50}
+                    onChange={e => handleNestedChange('delivery', 'maxItemsPerOrder', Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -604,7 +1162,7 @@ export default function GeneralSettingsPage() {
             <button
               type="button"
               onClick={() => setIs2FAGateOpen(true)}
-              className="w-full py-3 bg-gradient-to-r from-purple-700 to-[#C2477A] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3 bg-gradient-to-r from-purple-700 to-[#D81B60] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <ShieldCheck size={16} />
               <span>Verify Password & Authenticator Code</span>
@@ -758,7 +1316,7 @@ export default function GeneralSettingsPage() {
                   type="checkbox"
                   checked={currentData?.payments?.acceptUpi !== false}
                   onChange={e => handleNestedChange('payments', 'acceptUpi', e.target.checked)}
-                  className="w-5 h-5 accent-[#C2477A] cursor-pointer"
+                  className="w-5 h-5 accent-[#D81B60] cursor-pointer"
                 />
               </label>
 
@@ -778,7 +1336,7 @@ export default function GeneralSettingsPage() {
                   type="checkbox"
                   checked={currentData?.payments?.acceptCod !== false}
                   onChange={e => handleNestedChange('payments', 'acceptCod', e.target.checked)}
-                  className="w-5 h-5 accent-[#C2477A] cursor-pointer"
+                  className="w-5 h-5 accent-[#D81B60] cursor-pointer"
                 />
               </label>
 
@@ -792,7 +1350,7 @@ export default function GeneralSettingsPage() {
                     min="0"
                     value={currentData?.payments?.maxCodAmount ?? 5000}
                     onChange={e => handleNestedChange('payments', 'maxCodAmount', Number(e.target.value))}
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                   />
                 </div>
               </div>
@@ -845,7 +1403,7 @@ export default function GeneralSettingsPage() {
                   type="checkbox"
                   checked={currentData?.announcement?.enabled === true}
                   onChange={e => handleNestedChange('announcement', 'enabled', e.target.checked)}
-                  className="w-5 h-5 accent-[#C2477A] cursor-pointer"
+                  className="w-5 h-5 accent-[#D81B60] cursor-pointer"
                 />
               </div>
 
@@ -856,7 +1414,7 @@ export default function GeneralSettingsPage() {
                   value={currentData?.announcement?.message || ''}
                   onChange={e => handleNestedChange('announcement', 'message', e.target.value)}
                   placeholder="e.g. ✨ Grand Festive Sale! Flat 20% off on all luxury lipstick shades this week."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A] resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60] resize-none"
                 />
               </div>
 
@@ -864,7 +1422,7 @@ export default function GeneralSettingsPage() {
               {currentData?.announcement?.enabled && currentData?.announcement?.message && (
                 <div className="mt-3">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Customer App Preview:</span>
-                  <div className="p-3 rounded-2xl bg-gradient-to-r from-[#CE4270] to-[#E25586] border border-pink-200 shadow-xs flex items-center gap-2.5 text-white">
+                  <div className="p-3 rounded-2xl bg-gradient-to-r from-[#D81B60] to-[#E25586] border border-pink-200 shadow-xs flex items-center gap-2.5 text-white">
                     <Sparkles size={16} className="shrink-0" />
                     <span className="text-xs font-bold tracking-tight">{currentData.announcement.message}</span>
                   </div>
@@ -901,7 +1459,7 @@ export default function GeneralSettingsPage() {
                   min="0"
                   value={currentData?.policies?.graceWindowMinutes ?? 30}
                   onChange={e => handleNestedChange('policies', 'graceWindowMinutes', Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
 
@@ -915,7 +1473,7 @@ export default function GeneralSettingsPage() {
                     min="0"
                     value={currentData?.policies?.cancelFeeAmount ?? 0}
                     onChange={e => handleNestedChange('policies', 'cancelFeeAmount', Number(e.target.value))}
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#C2477A]"
+                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                   />
                 </div>
               </div>
@@ -933,7 +1491,7 @@ export default function GeneralSettingsPage() {
                   type="checkbox"
                   checked={currentData?.policies?.allowSelfCancel !== false}
                   onChange={e => handleNestedChange('policies', 'allowSelfCancel', e.target.checked)}
-                  className="w-5 h-5 accent-[#C2477A] cursor-pointer"
+                  className="w-5 h-5 accent-[#D81B60] cursor-pointer"
                 />
               </label>
 
@@ -948,7 +1506,7 @@ export default function GeneralSettingsPage() {
                   type="checkbox"
                   checked={currentData?.policies?.requireB2BVerification !== false}
                   onChange={e => handleNestedChange('policies', 'requireB2BVerification', e.target.checked)}
-                  className="w-5 h-5 accent-[#C2477A] cursor-pointer"
+                  className="w-5 h-5 accent-[#D81B60] cursor-pointer"
                 />
               </label>
             </div>

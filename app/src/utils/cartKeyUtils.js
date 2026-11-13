@@ -24,8 +24,15 @@ export const getCartQuantityMap = (cart = []) => {
       if (!item) continue;
       const pid = item.product?.id || item.productId;
       const key = item.id || getCartKey(pid, item.shade);
+      const qty = item.quantity || 0;
       if (key) {
-        map.set(key, (map.get(key) || 0) + (item.quantity || 0));
+        map.set(key, (map.get(key) || 0) + qty);
+      }
+      if (pid) {
+        map.set(String(pid), (map.get(String(pid)) || 0) + qty);
+      }
+      if (item.id && item.id !== key) {
+        map.set(String(item.id), (map.get(String(item.id)) || 0) + qty);
       }
     }
   }

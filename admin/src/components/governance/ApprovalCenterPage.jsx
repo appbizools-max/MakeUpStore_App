@@ -130,7 +130,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
     switch (m) {
       case 'products':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white text-[#C2477A] border border-pink-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white text-[#D81B60] border border-pink-200">
             <Package size={11} /> Products
           </span>
         );
@@ -212,13 +212,13 @@ export default function ApprovalCenterPage({ onNavigate }) {
       <div className="bg-white border border-[#FCE4EC] rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-[#C2477A] text-white flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-[#D81B60] text-white flex items-center justify-center shadow-xs">
               <ShieldCheck size={20} />
             </div>
             <h1 className="text-xl font-bold text-black tracking-tight">
               Employee Operations & Approval Center
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-[#C2477A] border border-[#F8B4CB]">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-[#D81B60] border border-[#F8B4CB]">
               Production Gatekeeper
             </span>
           </div>
@@ -232,9 +232,9 @@ export default function ApprovalCenterPage({ onNavigate }) {
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#FCE4EC] hover:border-[#C2477A] hover:bg-[#FFF5F8] text-black text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#FCE4EC] hover:border-[#D81B60] hover:bg-[#FFF5F8] text-black text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
           >
-            <RefreshCw size={14} className={`text-[#C2477A] ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw size={14} className={`text-[#D81B60] ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>Sync Live</span>
           </button>
         </div>
@@ -245,7 +245,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
         <div
           onClick={() => setFilterStatus('pending')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            filterStatus === 'pending' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            filterStatus === 'pending' ? 'border-[#D81B60] ring-2 ring-[#D81B60]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#D81B60]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -261,7 +261,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
         <div
           onClick={() => setFilterStatus('approved')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            filterStatus === 'approved' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            filterStatus === 'approved' ? 'border-[#D81B60] ring-2 ring-[#D81B60]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#D81B60]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -277,7 +277,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
         <div
           onClick={() => setFilterStatus('rejected')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            filterStatus === 'rejected' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            filterStatus === 'rejected' ? 'border-[#D81B60] ring-2 ring-[#D81B60]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#D81B60]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -293,16 +293,16 @@ export default function ApprovalCenterPage({ onNavigate }) {
         <div
           onClick={() => setFilterStatus('all')}
           className={`bg-white border rounded-2xl p-4 shadow-sm cursor-pointer transition-all ${
-            filterStatus === 'all' ? 'border-[#C2477A] ring-2 ring-[#C2477A]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#C2477A]'
+            filterStatus === 'all' ? 'border-[#D81B60] ring-2 ring-[#D81B60]/10 bg-white' : 'border-[#FCE4EC] hover:border-[#D81B60]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-black uppercase tracking-wider">Total Operations</span>
-            <div className="w-7 h-7 rounded-lg bg-white text-[#C2477A] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-white text-[#D81B60] flex items-center justify-center">
               <FileText size={14} />
             </div>
           </div>
-          <div className="text-2xl font-black text-[#C2477A]">{metrics.total}</div>
+          <div className="text-2xl font-black text-[#D81B60]">{metrics.total}</div>
           <p className="text-[11px] text-black font-normal mt-0.5">Full operation history</p>
         </div>
       </div>
@@ -311,24 +311,24 @@ export default function ApprovalCenterPage({ onNavigate }) {
       <div className="bg-white border border-[#FCE4EC] rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C2477A]" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D81B60]" />
             <input
               type="text"
               placeholder="Search by employee name, operation type, record title, or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 text-xs text-black font-medium bg-white border border-[#FCE4EC] rounded-xl focus:outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/15 placeholder:text-gray-400 transition-all"
+              className="w-full pl-9 pr-3.5 py-2 text-xs text-black font-medium bg-white border border-[#FCE4EC] rounded-xl focus:outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/15 placeholder:text-gray-400 transition-all"
             />
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-black flex items-center gap-1 shrink-0">
-              <Filter size={13} className="text-[#C2477A]" /> Module:
+              <Filter size={13} className="text-[#D81B60]" /> Module:
             </span>
             <select
               value={filterModule}
               onChange={(e) => setFilterModule(e.target.value)}
-              className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-3 py-2 outline-none focus:border-[#C2477A] cursor-pointer"
+              className="text-xs font-bold text-black bg-white border border-[#FCE4EC] rounded-xl px-3 py-2 outline-none focus:border-[#D81B60] cursor-pointer"
             >
               <option value="all">All Modules</option>
               <option value="products">Products</option>
@@ -356,14 +356,14 @@ export default function ApprovalCenterPage({ onNavigate }) {
                 onClick={() => setFilterStatus(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                   isActive
-                    ? 'bg-[#C2477A] text-white shadow-xs'
-                    : 'bg-white text-black border border-[#FCE4EC] hover:bg-[#FFF5F8] hover:border-[#C2477A]'
+                    ? 'bg-[#D81B60] text-white shadow-xs'
+                    : 'bg-white text-black border border-[#FCE4EC] hover:bg-[#FFF5F8] hover:border-[#D81B60]'
                 }`}
               >
                 <span>{tab.label}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                    isActive ? 'bg-white/25 text-white' : 'bg-white text-[#C2477A]'
+                    isActive ? 'bg-white/25 text-white' : 'bg-white text-[#D81B60]'
                   }`}
                 >
                   {tab.count}
@@ -378,7 +378,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
       <div className="bg-white border border-[#FCE4EC] rounded-2xl shadow-sm overflow-hidden">
         {filteredOperations.length === 0 ? (
           <div className="py-20 text-center flex flex-col items-center justify-center p-6">
-            <div className="w-16 h-16 rounded-full bg-white border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] mb-3">
+            <div className="w-16 h-16 rounded-full bg-white border border-[#FCE4EC] flex items-center justify-center text-[#D81B60] mb-3">
               <ShieldCheck size={28} />
             </div>
             <h3 className="text-base font-bold text-black mb-1">
@@ -403,7 +403,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     {/* Operation Info */}
                     <div className="flex items-start gap-3 flex-1">
-                      <div className="w-9 h-9 rounded-xl bg-white border border-[#FCE4EC] flex items-center justify-center text-[#C2477A] shrink-0 font-bold">
+                      <div className="w-9 h-9 rounded-xl bg-white border border-[#FCE4EC] flex items-center justify-center text-[#D81B60] shrink-0 font-bold">
                         <User size={16} />
                       </div>
                       <div className="space-y-1">
@@ -441,9 +441,9 @@ export default function ApprovalCenterPage({ onNavigate }) {
                       <button
                         type="button"
                         onClick={() => setExpandedOpId(isExpanded ? null : op.id)}
-                        className="px-3 py-1.5 rounded-xl border border-[#FCE4EC] hover:border-[#C2477A] text-xs font-bold text-black bg-white flex items-center gap-1 cursor-pointer transition-all"
+                        className="px-3 py-1.5 rounded-xl border border-[#FCE4EC] hover:border-[#D81B60] text-xs font-bold text-black bg-white flex items-center gap-1 cursor-pointer transition-all"
                       >
-                        <Eye size={12} className="text-[#C2477A]" />
+                        <Eye size={12} className="text-[#D81B60]" />
                         <span>{isExpanded ? 'Hide Diff' : 'View Diff'}</span>
                         {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                       </button>
@@ -488,7 +488,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
                   {isExpanded && (
                     <div className="mt-3 pt-3 border-t border-[#FCE4EC]/60 animate-fade-in">
                       <div className="text-xs font-bold text-black mb-1 flex items-center gap-1">
-                        <FileText size={13} className="text-[#C2477A]" />
+                        <FileText size={13} className="text-[#D81B60]" />
                         <span>Data Payload Diff Inspection:</span>
                       </div>
                       {renderDataDiff(op.old_data, op.new_data)}
@@ -536,7 +536,7 @@ export default function ApprovalCenterPage({ onNavigate }) {
                 placeholder="e.g. Price too low, Incorrect brand specification, Duplicate SKU..."
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                className="w-full text-xs p-3 border border-[#FCE4EC] rounded-xl focus:border-[#C2477A] focus:outline-none placeholder:text-gray-400"
+                className="w-full text-xs p-3 border border-[#FCE4EC] rounded-xl focus:border-[#D81B60] focus:outline-none placeholder:text-gray-400"
               />
             </div>
 

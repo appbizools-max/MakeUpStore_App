@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import SearchableSelect from '../common/SearchableSelect';
 import RoleQuantityTiersManager from './RoleQuantityTiersManager';
+import ImageManagerModal from '../media/ImageManagerModal';
 import { getBeautyShadeName } from '../common/HexColorPicker';
 import { getDefaultQuantityTiers } from '../../utils/quantityTiersUtils';
 import { getSafeActiveVariants } from '../../utils/productSearchEngine';
@@ -115,7 +116,7 @@ export default function ProductsCatalogMatrix({
   isSavingShades = false,
   shadesSaveSuccess = false,
   handleOpenShadePricing,
-  shadeFormDraft = { name: '', hexColor: '#C2477A', priceOverride: '', active: true },
+  shadeFormDraft = { name: '', hexColor: '#D81B60', priceOverride: '', active: true },
   setShadeFormDraft,
   updateProduct,
   updateProductsOrder,
@@ -281,6 +282,241 @@ export default function ProductsCatalogMatrix({
     }
   };
 
+  // ── Drag & Drop Image Handlers (Desktop Files & Google Images) ──────────────
+  const [dragOverVariantIdx, setDragOverVariantIdx] = useState(null);
+  const [uploadingVariantIdx, setUploadingVariantIdx] = useState(null);
+  const [dragOverProductThumbId, setDragOverProductThumbId] = useState(null);
+  const [imageModalTarget, setImageModalTarget] = useState(null);
+
+  const extractDroppedImageSource = async (e) => {
+    if (!e || !e.dataTransfer) return null;
+
+    // 1. Local files dragged from file explorer or desktop
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const imgFile = Array.from(files).find(f => f.type.startsWith('image/')) || files[0];
+      if (imgFile && (imgFile.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg|bmp|avif)$/i.test(imgFile.name))) {
+        return { type: 'file', file: imgFile };
+      }
+    }
+
+    // 2. HTML content dragged from another browser tab / Google Images
+    const html = e.dataTransfer.getData('text/html');
+    if (html) {
+      // 2a. Priority: extract high-res original image from Google's imgurl query parameter
+      const imgurlMatch = html.match(/imgurl=([^&"'>\s]+)/i);
+      if (imgurlMatch && imgurlMatch[1]) {
+        try {
+          const decoded = decodeURIComponent(imgurlMatch[1]);
+          if (/^https?:\/\//i.test(decoded)) {
+            return { type: 'url', url: decoded };
+          }
+        } catch (_) {}
+      }
+
+      // 2b. Extract from <img> src attribute
+      const match = html.match(/<img[^>]+src=["']([^"']+)["']/i) || html.match(/src=["'](.*?)["']/i);
+      if (match && match[1]) {
+        let src = match[1];
+        if (src.includes('imgurl=')) {
+          try {
+            const parsed = new URL(src);
+            const actual = parsed.searchParams.get('imgurl');
+            if (actual) src = decodeURIComponent(actual);
+          } catch (_) {}
+        }
+        if (src.startsWith('//')) src = 'https:' + src;
+        if (/^https?:\/\//i.test(src) || src.startsWith('data:image/')) {
+          return { type: 'url', url: src };
+        }
+      }
+
+      // 2c. Check for direct href links to images
+      const linkMatch = html.match(/href=["'](https?:\/\/[^"']+\.(?:png|jpe?g|webp|gif|svg|avif)[^"']*)["']/i);
+      if (linkMatch && linkMatch[1]) {
+        return { type: 'url', url: linkMatch[1] };
+      }
+    }
+
+    // 3. URI List dragged from browser address bar or image link
+    const uriList = e.dataTransfer.getData('text/uri-list');
+    if (uriList) {
+      let clean = uriList.split(/[\r\n]+/)[0].trim();
+      if (clean && /^https?:\/\//i.test(clean)) {
+        if (clean.includes('imgurl=')) {
+          try {
+            const parsed = new URL(clean);
+            const actual = parsed.searchParams.get('imgurl');
+            if (actual) clean = decodeURIComponent(actual);
+          } catch (_) {}
+        }
+        return { type: 'url', url: clean };
+      }
+    }
+
+    // 4. Plain text containing URL
+    const plainText = e.dataTransfer.getData('text/plain');
+    if (plainText) {
+      let clean = plainText.trim();
+      if (clean.includes('imgurl=')) {
+        try {
+          const parsed = new URL(clean);
+          const actual = parsed.searchParams.get('imgurl');
+          if (actual) clean = decodeURIComponent(actual);
+        } catch (_) {}
+      }
+      if (/^https?:\/\//i.test(clean) || clean.startsWith('data:image/')) {
+        return { type: 'url', url: clean };
+      }
+    }
+
+    return null;
+  };
+
+  const handleApplyImageUrlToVariant = (url, sIdx) => {
+    if (!url) return;
+    setProductShadesLocal((prev) => {
+      const next = prev.map((s, idx) => {
+        if (idx !== sIdx) return s;
+        const newImages = [url, ...(s.images || []).filter(u => u !== url)];
+        return {
+          ...s,
+          image: url,
+          imageUrl: url,
+          images: newImages
+        };
+      });
+      // Auto-persist immediately to parent product if panel is open
+      if (editingShadeProductId) {
+        const updateFn = updateProduct || adminCtx?.updateProduct;
+        if (typeof updateFn === 'function') {
+          updateFn(editingShadeProductId, { shades: next }).catch(() => {});
+        }
+      }
+      return next;
+    });
+    setBulkToastMessage('Variant image updated & saved!');
+    setTimeout(() => setBulkToastMessage(null), 3000);
+  };
+
+  const handleVariantFileSelect = async (file, sIdx, shade) => {
+    if (!file) return;
+    setUploadingVariantIdx(sIdx);
+    try {
+      let uploadedUrl = null;
+      if (adminCtx?.uploadImage) {
+        uploadedUrl = await adminCtx.uploadImage(file, 'products', `var_${shade?.sku || shade?.id || Date.now()}`);
+      }
+      if (!uploadedUrl) {
+        uploadedUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(file);
+        });
+      }
+      if (uploadedUrl) {
+        handleApplyImageUrlToVariant(uploadedUrl, sIdx);
+      }
+    } catch (err) {
+      console.error('Failed to upload image file:', err);
+      try {
+        const dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+        if (dataUrl) handleApplyImageUrlToVariant(dataUrl, sIdx);
+      } catch (_) {}
+    } finally {
+      setUploadingVariantIdx(null);
+    }
+  };
+
+  const handleVariantImageDrop = async (e, sIdx, shade, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverVariantIdx(null);
+
+    const extracted = await extractDroppedImageSource(e);
+    if (!extracted) {
+      setBulkToastMessage('Please drop an image file or drag an image directly from Google Images!');
+      setTimeout(() => setBulkToastMessage(null), 3500);
+      return;
+    }
+
+    if (extracted.type === 'file') {
+      await handleVariantFileSelect(extracted.file, sIdx, shade);
+    } else if (extracted.type === 'url') {
+      handleApplyImageUrlToVariant(extracted.url, sIdx);
+    }
+  };
+
+  const handleVariantClipboardPaste = async (e, sIdx, shade) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            await handleVariantFileSelect(file, sIdx, shade);
+            return;
+          }
+        }
+      }
+    }
+    const text = e.clipboardData?.getData('text');
+    if (text && (/^https?:\/\//i.test(text.trim()) || text.trim().startsWith('data:image/'))) {
+      e.preventDefault();
+      handleApplyImageUrlToVariant(text.trim(), sIdx);
+    }
+  };
+
+  const handleProductThumbnailDrop = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverProductThumbId(null);
+
+    const extracted = await extractDroppedImageSource(e);
+    if (!extracted) return;
+
+    let finalUrl = null;
+    if (extracted.type === 'file') {
+      try {
+        if (adminCtx?.uploadImage) {
+          finalUrl = await adminCtx.uploadImage(extracted.file, 'products', `prod_${product.sku || product.id || Date.now()}`);
+        }
+        if (!finalUrl) {
+          finalUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(extracted.file);
+          });
+        }
+      } catch (err) {
+        console.error('Error uploading product dropped image:', err);
+      }
+    } else if (extracted.type === 'url') {
+      finalUrl = extracted.url;
+    }
+
+    if (finalUrl) {
+      const updateFn = updateProduct || adminCtx?.updateProduct;
+      if (typeof updateFn === 'function') {
+        const curImages = Array.isArray(product.images) ? product.images : (product.imageUrl ? [product.imageUrl] : []);
+        const newImages = [finalUrl, ...curImages.filter(u => u !== finalUrl)];
+        await updateFn(product.id, {
+          image: finalUrl,
+          imageUrl: finalUrl,
+          images: newImages
+        });
+        setBulkToastMessage(`Product photo for "${product.name}" updated!`);
+        setTimeout(() => setBulkToastMessage(null), 3500);
+      }
+    }
+  };
+
   const pageProductIds = useMemo(() => (effectiveDisplayProducts || []).map(p => p.id).filter(Boolean), [effectiveDisplayProducts]);
   const isAllPageSelected = pageProductIds.length > 0 && pageProductIds.every(id => selectedProductIds.has(id));
   const isSomePageSelected = pageProductIds.some(id => selectedProductIds.has(id)) && !isAllPageSelected;
@@ -399,13 +635,13 @@ export default function ProductsCatalogMatrix({
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3.5 border-b border-pink-100/70">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-7 h-7 rounded-xl bg-pink-100 text-[#C2477A] flex items-center justify-center shadow-2xs shrink-0">
+            <div className="w-7 h-7 rounded-xl bg-pink-100 text-[#D81B60] flex items-center justify-center shadow-2xs shrink-0">
               <Package size={16} />
             </div>
             <h3 className="font-black text-sm sm:text-base text-gray-900 tracking-tight">
               Products Catalog Matrix
             </h3>
-            <span className="text-[10px] font-extrabold text-[#C2477A] bg-white border border-pink-200 px-2 py-0.5 rounded-full shadow-2xs">
+            <span className="text-[10px] font-extrabold text-[#D81B60] bg-white border border-pink-200 px-2 py-0.5 rounded-full shadow-2xs">
               {isFiltered
                 ? `${filteredProducts.length} of ${catalogViewMode === 'variants' ? totalVariantsCount : totalFamiliesCount} ${catalogViewMode === 'variants' ? 'Variants' : 'Families'}`
                 : `${filteredProducts.length} ${catalogViewMode === 'variants' ? 'Sellable Variants' : 'Product Families'}`}
@@ -427,7 +663,7 @@ export default function ProductsCatalogMatrix({
               }}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 catalogViewMode === 'all'
-                  ? 'bg-white text-[#C2477A] shadow-xs'
+                  ? 'bg-white text-[#D81B60] shadow-xs'
                   : 'text-gray-500 hover:text-gray-900'
               }`}
               title="View parent product families and standalone items"
@@ -458,7 +694,7 @@ export default function ProductsCatalogMatrix({
             <button
               type="button"
               onClick={handleOpenAddProduct}
-              className="bg-gradient-to-r from-[#C2477A] to-[#9E2D5B] hover:from-[#9E2D5B] hover:to-[#cc0052] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              className="bg-gradient-to-r from-[#D81B60] to-[#9E2D5B] hover:from-[#9E2D5B] hover:to-[#cc0052] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               title="Add a new product with complete variants and details"
             >
               <PlusCircle size={14} />
@@ -483,7 +719,7 @@ export default function ProductsCatalogMatrix({
             <button
               type="button"
               onClick={expandAllDetails}
-              className="bg-white hover:bg-pink-100 border border-pink-200 text-[#C2477A] font-extrabold text-xs px-2.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+              className="bg-white hover:bg-pink-100 border border-pink-200 text-[#D81B60] font-extrabold text-xs px-2.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
               title="Expand/collapse full details for all products on current page"
             >
               <Eye size={13} />
@@ -496,8 +732,8 @@ export default function ProductsCatalogMatrix({
       {/* 2. Search & Filters Bar */}
       <div className="p-2.5 bg-white rounded-2xl border border-pink-100/90 flex flex-wrap items-center gap-2">
         {/* Search Bar */}
-        <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100 shadow-2xs flex-1 min-w-[220px] focus-within:border-[#C2477A] transition-colors">
-          <Search size={15} className="text-[#C2477A] shrink-0" />
+        <div className="flex items-center gap-2.5 bg-white px-3.5 py-2.5 rounded-xl border border-pink-100 shadow-2xs flex-1 min-w-[220px] focus-within:border-[#D81B60] transition-colors">
+          <Search size={15} className="text-[#D81B60] shrink-0" />
           <input
             type="text"
             placeholder="Search by product name, brand, barcode, category or attributes..."
@@ -526,7 +762,7 @@ export default function ProductsCatalogMatrix({
         <button
           type="button"
           onClick={() => setIsCatalogScannerOpen(true)}
-          className="px-3.5 py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-[#C2477A] to-[#9E2D5B] hover:from-[#9E2D5B] text-white shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-all active:scale-95"
+          className="px-3.5 py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-[#D81B60] to-[#9E2D5B] hover:from-[#9E2D5B] text-white shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-all active:scale-95"
           title="Scan physical product barcode with camera"
         >
           <ScanBarcode size={15} />
@@ -575,7 +811,7 @@ export default function ProductsCatalogMatrix({
               setProductCategoryFilter('all');
               setProductCurrentPage(1);
             }}
-            className="px-3 py-2 rounded-xl text-gray-500 hover:text-[#C2477A] hover:bg-pink-50 border border-transparent hover:border-pink-200 text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1"
+            className="px-3 py-2 rounded-xl text-gray-500 hover:text-[#D81B60] hover:bg-pink-50 border border-transparent hover:border-pink-200 text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1"
             title="Clear search and filters"
           >
             <RotateCcw size={13} />
@@ -592,7 +828,7 @@ export default function ProductsCatalogMatrix({
             onClick={() => setActiveSectionFilter('all')}
             className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
               activeSectionFilter === 'all'
-                ? 'bg-[#C2477A] text-white shadow-2xs'
+                ? 'bg-[#D81B60] text-white shadow-2xs'
                 : 'bg-white text-gray-700 hover:bg-pink-50 border border-pink-100'
             }`}
           >
@@ -652,7 +888,7 @@ export default function ProductsCatalogMatrix({
 
         <div className="flex items-center gap-2 text-xs">
           {activeSectionFilter !== 'all' ? (
-            <span className="text-xs font-bold text-[#C2477A] bg-pink-50 border border-pink-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+            <span className="text-xs font-bold text-[#D81B60] bg-pink-50 border border-pink-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
               <GripVertical size={13} />
               <span>Section Priority Mode Active: Drag or use ↑ ↓ to set User App order</span>
             </span>
@@ -685,7 +921,7 @@ export default function ProductsCatalogMatrix({
       {selectedProductIds.size > 0 && (
         <div className="p-3 bg-gradient-to-r from-pink-50 via-white to-pink-50 rounded-2xl border-2 border-pink-200/90 shadow-md flex flex-wrap items-center justify-between gap-3 animate-fade-in">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#C2477A] text-white flex items-center justify-center font-black text-xs shadow-xs">
+            <div className="w-8 h-8 rounded-xl bg-[#D81B60] text-white flex items-center justify-center font-black text-xs shadow-xs">
               {selectedProductIds.size}
             </div>
             <div>
@@ -736,7 +972,7 @@ export default function ProductsCatalogMatrix({
               <button
                 type="button"
                 onClick={handleSelectAllFiltered}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-100/70 border border-pink-200 text-[#C2477A] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-pink-100/70 border border-pink-200 text-[#D81B60] text-xs font-bold transition-all cursor-pointer shadow-2xs"
               >
                 Select All {filteredProducts.length}
               </button>
@@ -787,31 +1023,31 @@ export default function ProductsCatalogMatrix({
                 {showBrandHeader && (
                   <div className="bg-gradient-to-r from-white via-white to-white p-2.5 rounded-xl border border-pink-200 flex items-center justify-between shadow-2xs mt-1">
                     <div className="flex items-center gap-2">
-                      <Building2 size={14} className="text-[#C2477A]" />
+                      <Building2 size={14} className="text-[#D81B60]" />
                       <span className="font-black text-xs uppercase tracking-wider text-gray-900">
                         {currentBrand || 'Unbranded Products'}
                       </span>
                     </div>
-                    <span className="text-[10px] font-extrabold text-[#C2477A] bg-white px-2 py-0.5 rounded-md border border-pink-100 shadow-2xs">
+                    <span className="text-[10px] font-extrabold text-[#D81B60] bg-white px-2 py-0.5 rounded-md border border-pink-100 shadow-2xs">
                       Brand Group
                     </span>
                   </div>
                 )}
-                <div key={`m_${p.id || p._id || p.barcode || pIdx}`} className={`bg-white rounded-2xl border ${selectedProductIds.has(p.id) ? 'border-[#C2477A] bg-pink-50/20 ring-1 ring-[#C2477A]/30' : 'border-pink-100'} p-4 shadow-sm space-y-3`}>
+                <div key={`m_${p.id || p._id || p.barcode || pIdx}`} className={`bg-white rounded-2xl border ${selectedProductIds.has(p.id) ? 'border-[#D81B60] bg-pink-50/20 ring-1 ring-[#D81B60]/30' : 'border-pink-100'} p-4 shadow-sm space-y-3`}>
                   <div className="flex items-center justify-between pb-2 border-b border-pink-50">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={selectedProductIds.has(p.id)}
                         onChange={(e) => handleToggleSelectProduct(p.id, e)}
-                        className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                        className="w-4 h-4 rounded border-gray-300 text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                       />
                       <span className="text-[11px] font-bold text-gray-700">Select product</span>
                     </label>
 
                     {/* Priority & Swap Controls */}
                     <div className="flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded bg-pink-50 text-[#C2477A] font-mono font-bold text-[10px] flex items-center justify-center border border-pink-200">
+                      <span className="w-5 h-5 rounded bg-pink-50 text-[#D81B60] font-mono font-bold text-[10px] flex items-center justify-center border border-pink-200">
                         #{pIdx + 1}
                       </span>
                       <button
@@ -849,7 +1085,7 @@ export default function ProductsCatalogMatrix({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {p.brandName && (
-                        <span className="px-2 py-0.5 rounded-full bg-pink-100 text-[#C2477A] text-[9.5px] font-extrabold uppercase">
+                        <span className="px-2 py-0.5 rounded-full bg-pink-100 text-[#D81B60] text-[9.5px] font-extrabold uppercase">
                           {p.brandName}
                         </span>
                       )}
@@ -929,8 +1165,8 @@ export default function ProductsCatalogMatrix({
                     <span className="font-bold text-gray-900">₹{p.generalPrice ?? p.mrp ?? 0}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-[#C2477A] font-semibold block">Salon Owner (30%)</span>
-                    <span className="font-extrabold text-[#C2477A]">₹{p.salonPrice ?? p.mrp ?? 0}</span>
+                    <span className="text-[10px] text-[#D81B60] font-semibold block">Salon Owner (30%)</span>
+                    <span className="font-extrabold text-[#D81B60]">₹{p.salonPrice ?? p.mrp ?? 0}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-purple-700 font-semibold block">Makeup Artist (35%)</span>
@@ -956,7 +1192,7 @@ export default function ProductsCatalogMatrix({
                         handleStartEditProduct(p);
                       }
                     }}
-                    className="flex-1 py-1.5 px-2 bg-white hover:bg-pink-100 text-[#C2477A] font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 border border-pink-200 cursor-pointer"
+                    className="flex-1 py-1.5 px-2 bg-white hover:bg-pink-100 text-[#D81B60] font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 border border-pink-200 cursor-pointer"
                   >
                     <Edit size={12} /> Edit
                   </button>
@@ -969,7 +1205,7 @@ export default function ProductsCatalogMatrix({
                         handleStartEditProduct(p);
                       }
                     }}
-                    className="flex-1 py-1.5 px-2 bg-[#C2477A] hover:bg-[#9E2D5B] text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                    className="flex-1 py-1.5 px-2 bg-[#D81B60] hover:bg-[#9E2D5B] text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <DollarSign size={12} /> Prices
                   </button>
@@ -994,7 +1230,7 @@ export default function ProductsCatalogMatrix({
                     if (el) el.indeterminate = isSomePageSelected;
                   }}
                   onChange={handleToggleSelectAllVisible}
-                  className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                  className="w-4 h-4 rounded border-gray-300 text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                   title={isAllPageSelected ? "Deselect all visible products" : "Select all visible products on current page"}
                   aria-label="Select all visible products"
                 />
@@ -1007,7 +1243,7 @@ export default function ProductsCatalogMatrix({
               <th className="py-3 px-2 text-left whitespace-nowrap">BRAND</th>
               <th className="py-3 px-1.5 text-right whitespace-nowrap">ORIGINAL MRP (₹)</th>
               <th className="py-3 px-1.5 text-right whitespace-nowrap">GENERAL USER (₹)</th>
-              <th className="py-3 px-1.5 text-right whitespace-nowrap text-[#C2477A]">SALON OWNER (₹)</th>
+              <th className="py-3 px-1.5 text-right whitespace-nowrap text-[#D81B60]">SALON OWNER (₹)</th>
               <th className="py-3 px-1.5 text-right whitespace-nowrap text-purple-700">ARTIST PRICE (₹)</th>
               <th className="py-3 px-1.5 text-right whitespace-nowrap text-indigo-700">BEAUTICIAN (₹)</th>
               <th className="py-3 px-3 text-right whitespace-nowrap">ACTIONS</th>
@@ -1019,7 +1255,7 @@ export default function ProductsCatalogMatrix({
                 <td colSpan={13} className="py-14 px-6 text-center">
                   {isBarcodeQuery && isBarcodeQuery(productSearch) ? (
                     <div className="max-w-md mx-auto p-6 bg-white border border-pink-200 rounded-3xl shadow-xs space-y-3">
-                      <div className="w-12 h-12 rounded-2xl bg-pink-100 text-[#C2477A] flex items-center justify-center mx-auto shadow-2xs">
+                      <div className="w-12 h-12 rounded-2xl bg-pink-100 text-[#D81B60] flex items-center justify-center mx-auto shadow-2xs">
                         <ScanBarcode size={24} />
                       </div>
                       <h4 className="font-black text-base text-gray-900">Product Not Found</h4>
@@ -1033,7 +1269,7 @@ export default function ProductsCatalogMatrix({
                         <button
                           type="button"
                           onClick={() => handleAddProductWithBarcode(productSearch)}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#C2477A] to-[#9E2D5B] text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#9E2D5B] text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
                         >
                           <PlusCircle size={15} />
                           <span>Add New Product</span>
@@ -1060,7 +1296,7 @@ export default function ProductsCatalogMatrix({
                             setProductCategoryFilter('all');
                             setProductCurrentPage(1);
                           }}
-                          className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-[#C2477A] border border-pink-200 font-bold text-xs hover:bg-pink-100 transition-all cursor-pointer"
+                          className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-[#D81B60] border border-pink-200 font-bold text-xs hover:bg-pink-100 transition-all cursor-pointer"
                         >
                           <RotateCcw size={12} />
                           <span>Clear Filters</span>
@@ -1105,11 +1341,11 @@ export default function ProductsCatalogMatrix({
                         <td colSpan={13} className="py-2 px-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Building2 size={13} className="text-[#C2477A]" />
+                              <Building2 size={13} className="text-[#D81B60]" />
                               <span className="font-black text-xs uppercase tracking-wider text-gray-900">
                                 {currentBrand || 'Unbranded Products'}
                               </span>
-                              <span className="bg-[#C2477A]/10 text-[#C2477A] font-extrabold text-[9.5px] px-2 py-0.5 rounded-full border border-pink-200 shadow-2xs">
+                              <span className="bg-[#D81B60]/10 text-[#D81B60] font-extrabold text-[9.5px] px-2 py-0.5 rounded-full border border-pink-200 shadow-2xs">
                                 Brand Group
                               </span>
                             </div>
@@ -1127,7 +1363,7 @@ export default function ProductsCatalogMatrix({
                         draggedProductIndex === index
                           ? 'opacity-40 bg-pink-100/60'
                           : dragOverProductIndex === index
-                            ? 'bg-pink-100/40 border-t-2 border-[#C2477A]'
+                            ? 'bg-pink-100/40 border-t-2 border-[#D81B60]'
                             : selectedProductIds.has(p.id)
                               ? 'bg-pink-50/80 border-pink-200'
                               : isExpandedDetails
@@ -1145,7 +1381,7 @@ export default function ProductsCatalogMatrix({
                           type="checkbox"
                           checked={selectedProductIds.has(p.id)}
                           onChange={(e) => handleToggleSelectProduct(p.id, e)}
-                          className="w-4 h-4 rounded border-gray-300 text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                          className="w-4 h-4 rounded border-gray-300 text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                           title="Select product for bulk action"
                           aria-label={`Select ${p.name}`}
                         />
@@ -1154,10 +1390,10 @@ export default function ProductsCatalogMatrix({
                       {/* ORDER: Drag Grip & Swap Buttons */}
                       <td className="py-2.5 px-1.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center justify-center gap-1">
-                          <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#C2477A] p-0.5" title="Drag to reorder priority">
+                          <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#D81B60] p-0.5" title="Drag to reorder priority">
                             <GripVertical size={13} />
                           </span>
-                          <span className="w-5 h-5 rounded-md bg-pink-50 text-[#C2477A] font-mono font-bold text-[10px] flex items-center justify-center border border-pink-200 shadow-2xs">
+                          <span className="w-5 h-5 rounded-md bg-pink-50 text-[#D81B60] font-mono font-bold text-[10px] flex items-center justify-center border border-pink-200 shadow-2xs">
                             {index + 1}
                           </span>
                           <div className="flex flex-col gap-0.5 ml-0.5">
@@ -1165,7 +1401,7 @@ export default function ProductsCatalogMatrix({
                               type="button"
                               disabled={index === 0}
                               onClick={() => handleProductSwap(index, -1)}
-                              className="w-3.5 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+                              className="w-3.5 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#D81B60] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
                               title="Move Product Up (higher priority)"
                             >
                               <ArrowUp size={8} />
@@ -1174,7 +1410,7 @@ export default function ProductsCatalogMatrix({
                               type="button"
                               disabled={index === effectiveDisplayProducts.length - 1}
                               onClick={() => handleProductSwap(index, 1)}
-                              className="w-3.5 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#C2477A] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+                              className="w-3.5 h-3 bg-white hover:bg-pink-100 border border-pink-200 text-gray-600 hover:text-[#D81B60] rounded flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
                               title="Move Product Down (lower priority)"
                             >
                               <ArrowDown size={8} />
@@ -1183,17 +1419,47 @@ export default function ProductsCatalogMatrix({
                         </div>
                       </td>
 
-                      {/* 1. Thumbnail Image & Gallery Indicator */}
-                      <td className="py-2.5 px-2 text-center">
+                      {/* 1. Thumbnail Image & Gallery Indicator with Drag & Drop */}
+                      <td className="py-2.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
                         <div
                           onClick={() => {
                             if (pImage) setActiveImagePreview(pImage);
                             else if (typeof handleOpenEditProduct === 'function') handleOpenEditProduct(p);
                           }}
-                          className="relative w-10 h-10 rounded-xl overflow-hidden bg-white border border-pink-100 hover:border-[#C2477A] flex items-center justify-center mx-auto shadow-2xs group cursor-pointer transition-colors"
-                          title={pImage ? "Click to view full image (or click Edit to manage gallery)" : "No image - Click to upload images"}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (dragOverProductThumbId !== p.id) setDragOverProductThumbId(p.id);
+                          }}
+                          onDragEnter={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDragOverProductThumbId(p.id);
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (e.currentTarget.contains(e.relatedTarget)) return;
+                            setDragOverProductThumbId(null);
+                          }}
+                          onDrop={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            await handleProductThumbnailDrop(e, p);
+                          }}
+                          className={`relative w-10 h-10 rounded-xl overflow-hidden bg-white border flex items-center justify-center mx-auto shadow-2xs group cursor-pointer transition-all ${
+                            dragOverProductThumbId === p.id
+                              ? 'border-2 border-dashed border-[#D81B60] bg-pink-100/80 scale-110 shadow-md ring-2 ring-[#D81B60]/40'
+                              : 'border-pink-100 hover:border-[#D81B60]'
+                          }`}
+                          title={pImage ? "Click to view full image (or drag & drop new image here)" : "Drag & drop image from Google or device here to set product photo"}
                         >
-                          {pImage ? (
+                          {dragOverProductThumbId === p.id ? (
+                            <div className="flex flex-col items-center justify-center text-[#D81B60] font-extrabold text-[8px] animate-pulse">
+                              <Upload size={14} className="animate-bounce" />
+                              <span>Drop</span>
+                            </div>
+                          ) : pImage ? (
                             <img
                               src={pImage}
                               alt={p.name}
@@ -1203,12 +1469,12 @@ export default function ProductsCatalogMatrix({
                               }}
                             />
                           ) : (
-                            <div className="flex flex-col items-center justify-center text-pink-300 group-hover:text-[#C2477A] transition-colors">
+                            <div className="flex flex-col items-center justify-center text-pink-300 group-hover:text-[#D81B60] transition-colors">
                               <Package size={16} />
                               <span className="text-[8px] font-black leading-none mt-0.5">+Add</span>
                             </div>
                           )}
-                          {allImages.length > 1 && (
+                          {allImages.length > 1 && dragOverProductThumbId !== p.id && (
                             <span className="absolute bottom-0 right-0 bg-black/70 text-white text-[8px] font-black px-1 rounded-tl shadow-xs">
                               +{allImages.length - 1}
                             </span>
@@ -1224,7 +1490,7 @@ export default function ProductsCatalogMatrix({
                             <div className="font-extrabold text-xs text-gray-900 flex items-center gap-1.5 flex-wrap">
                               <span
                                 onClick={() => toggleProductDetails(p.id)}
-                                className="hover:text-[#C2477A] transition-colors cursor-pointer"
+                                className="hover:text-[#D81B60] transition-colors cursor-pointer"
                                 title="Click to expand full product details"
                               >
                                 {p.name}
@@ -1232,7 +1498,7 @@ export default function ProductsCatalogMatrix({
 
                               {/* Standalone vs Variant vs Product Family badge */}
                               {p.isVariantChild ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white text-[#C2477A] border border-pink-200 text-[9.5px] font-bold">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white text-[#D81B60] border border-pink-200 text-[9.5px] font-bold">
                                   {p.hexColor && (
                                     <span
                                       className="w-2.5 h-2.5 rounded-full border border-gray-300"
@@ -1247,8 +1513,8 @@ export default function ProductsCatalogMatrix({
                                   onClick={() => toggleExpandProduct(p.id)}
                                   className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold border transition-all cursor-pointer ${
                                     isExpandedVariants
-                                      ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-2xs'
-                                      : 'bg-white text-[#C2477A] border-pink-200 hover:bg-pink-100'
+                                      ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-2xs'
+                                      : 'bg-white text-[#D81B60] border-pink-200 hover:bg-pink-100'
                                   }`}
                                   title={isExpandedVariants ? 'Collapse variants' : 'Expand all child variants'}
                                 >
@@ -1275,8 +1541,8 @@ export default function ProductsCatalogMatrix({
                               onClick={() => toggleProductDetails(p.id)}
                               className={`p-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
                                 isExpandedDetails
-                                  ? 'bg-[#C2477A] text-white shadow-2xs'
-                                  : 'text-gray-400 hover:text-[#C2477A] hover:bg-pink-50'
+                                  ? 'bg-[#D81B60] text-white shadow-2xs'
+                                  : 'text-gray-400 hover:text-[#D81B60] hover:bg-pink-50'
                               }`}
                               title={isExpandedDetails ? 'Hide details' : 'Show all details'}
                             >
@@ -1326,7 +1592,7 @@ export default function ProductsCatalogMatrix({
 
                             {/* Category */}
                             {p.category && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-white text-[#C2477A] font-bold text-[9px] border border-pink-100">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-white text-[#D81B60] font-bold text-[9px] border border-pink-100">
                                 {p.category.trim()}
                               </span>
                             )}
@@ -1370,14 +1636,14 @@ export default function ProductsCatalogMatrix({
                                   onClick={() => handleToggleProductShadesPanel(p)}
                                   className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all border cursor-pointer ${
                                     editingShadeProductId === p.id
-                                      ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-2xs'
-                                      : 'bg-white text-[#C2477A] border-pink-200 hover:bg-pink-100'
+                                      ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-2xs'
+                                      : 'bg-white text-[#D81B60] border-pink-200 hover:bg-pink-100'
                                   }`}
                                   title="Manage shade variants and role prices"
                                 >
                                   <Palette
                                     size={9}
-                                    className={editingShadeProductId === p.id ? 'text-white' : 'text-[#C2477A]'}
+                                    className={editingShadeProductId === p.id ? 'text-white' : 'text-[#D81B60]'}
                                   />
                                   <span>
                                     {shadesCount} {shadesCount === 1 ? 'Shade' : 'Shades'}
@@ -1405,7 +1671,7 @@ export default function ProductsCatalogMatrix({
                                   onClick={() => handleToggleProductTiersPanel(p)}
                                   className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all border cursor-pointer ${
                                     editingTiersProductId === p.id
-                                      ? 'bg-[#C2477A] text-white border-[#C2477A] shadow-2xs'
+                                      ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-2xs'
                                       : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
                                   }`}
                                   title="Configure per-product quantity discount tiers"
@@ -1443,7 +1709,7 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => toggleProductDetails(p.id)}
-                                  className="text-[8.5px] font-bold text-[#C2477A] hover:underline cursor-pointer"
+                                  className="text-[8.5px] font-bold text-[#D81B60] hover:underline cursor-pointer"
                                 >
                                   +{attrEntries.length - 3} more specs
                                 </button>
@@ -1508,11 +1774,11 @@ export default function ProductsCatalogMatrix({
                             placeholder="Barcode..."
                             value={editPrices.barcode !== undefined ? editPrices.barcode : p.barcode || ''}
                             onChange={(e) => setEditPrices({ ...editPrices, barcode: e.target.value })}
-                            className="w-28 p-1.5 border border-[#C2477A] rounded-lg font-mono text-xs font-semibold text-gray-900 outline-none"
+                            className="w-28 p-1.5 border border-[#D81B60] rounded-lg font-mono text-xs font-semibold text-gray-900 outline-none"
                           />
                         ) : p.barcode ? (
                           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-50 text-gray-800 font-mono text-[10.5px] font-bold border border-gray-200 shadow-2xs group">
-                            <Barcode size={12} className="text-[#C2477A]" />
+                            <Barcode size={12} className="text-[#D81B60]" />
                             <span>{p.barcode}</span>
                             <button
                               type="button"
@@ -1545,7 +1811,7 @@ export default function ProductsCatalogMatrix({
                             onChange={(e) =>
                               setEditPrices({ ...editPrices, mrp: Math.max(0, Number(e.target.value)) })
                             }
-                            className="w-18 p-1 border border-[#C2477A] rounded-lg font-bold text-gray-900 outline-none text-right text-xs"
+                            className="w-18 p-1 border border-[#D81B60] rounded-lg font-bold text-gray-900 outline-none text-right text-xs"
                           />
                         ) : (
                           <span className="font-semibold text-gray-600 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
@@ -1567,7 +1833,7 @@ export default function ProductsCatalogMatrix({
                                 generalPrice: Math.max(0, Number(e.target.value))
                               })
                             }
-                            className="w-18 p-1 border border-[#C2477A] rounded-lg font-bold text-gray-900 outline-none text-right text-xs"
+                            className="w-18 p-1 border border-[#D81B60] rounded-lg font-bold text-gray-900 outline-none text-right text-xs"
                           />
                         ) : (
                           <div className="flex items-center justify-end gap-1">
@@ -1599,18 +1865,18 @@ export default function ProductsCatalogMatrix({
                                 salonPrice: Math.max(0, Number(e.target.value))
                               })
                             }
-                            className="w-18 p-1 border border-[#C2477A] rounded-lg font-bold text-[#C2477A] outline-none text-right text-xs"
+                            className="w-18 p-1 border border-[#D81B60] rounded-lg font-bold text-[#D81B60] outline-none text-right text-xs"
                           />
                         ) : (
                           <div className="flex items-center justify-end gap-1">
-                            <span className="font-extrabold text-[#C2477A] bg-white px-1.5 py-0.5 rounded-lg border border-pink-200/80 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
+                            <span className="font-extrabold text-[#D81B60] bg-white px-1.5 py-0.5 rounded-lg border border-pink-200/80 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                               ₹
                               {p.salonPrice !== undefined && p.salonPrice !== null && p.salonPrice !== ''
                                 ? p.salonPrice
                                 : p.mrp ?? 0}
                             </span>
                             {salonDisc > 0 && (
-                              <span className="text-[9px] font-extrabold text-[#C2477A] bg-white px-1 py-0.5 rounded border border-pink-200">
+                              <span className="text-[9px] font-extrabold text-[#D81B60] bg-white px-1 py-0.5 rounded border border-pink-200">
                                 {salonDisc}%
                               </span>
                             )}
@@ -1689,7 +1955,7 @@ export default function ProductsCatalogMatrix({
                         {isEditing ? (
                           <button
                             onClick={() => handleSavePrices(p.id)}
-                            className="bg-[#C2477A] hover:bg-[#9E2D5B] text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs text-[10.5px] ml-auto cursor-pointer transition-all active:scale-95"
+                            className="bg-[#D81B60] hover:bg-[#9E2D5B] text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs text-[10.5px] ml-auto cursor-pointer transition-all active:scale-95"
                           >
                             <Save size={12} />
                             <span>Save</span>
@@ -1710,7 +1976,7 @@ export default function ProductsCatalogMatrix({
                             <button
                               type="button"
                               onClick={() => handleOpenEditProduct(p)}
-                              className="bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
+                              className="bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
                               title="Edit product details & barcode"
                             >
                               <Edit size={11} />
@@ -1742,7 +2008,7 @@ export default function ProductsCatalogMatrix({
                     {/* INLINE EXPANDABLE FULL PRODUCT DETAILS PANEL */}
                     {isExpandedDetails && (
                       <tr key={p.id + '_full_details_panel'} className="bg-white border-y-2 border-pink-200/80">
-                        <td colSpan={11} className="p-4 sm:p-6">
+                        <td colSpan={13} className="p-4 sm:p-6">
                           <div className="bg-white rounded-3xl border border-pink-200 shadow-sm p-5 sm:p-6 space-y-6">
                             {/* Card Header with Key Identifiers */}
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-pink-100">
@@ -1757,7 +2023,7 @@ export default function ProductsCatalogMatrix({
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <h4 className="font-black text-base text-gray-900">{p.name}</h4>
-                                    <span className="px-2 py-0.5 rounded-full bg-pink-100 text-[#C2477A] text-[10px] font-extrabold uppercase">
+                                    <span className="px-2 py-0.5 rounded-full bg-pink-100 text-[#D81B60] text-[10px] font-extrabold uppercase">
                                       {p.category || 'Product'}
                                     </span>
                                   </div>
@@ -1781,7 +2047,7 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEditProduct(p)}
-                                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#C2477A] hover:text-white border border-pink-200 text-[#C2477A] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#D81B60] hover:text-white border border-pink-200 text-[#D81B60] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
                                 >
                                   <Edit size={13} />
                                   <span>Edit Product</span>
@@ -1802,7 +2068,7 @@ export default function ProductsCatalogMatrix({
                               <div className="bg-white p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
                                 <div>
                                   <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-pink-100 text-xs font-black text-gray-900 uppercase tracking-wider">
-                                    <Tag size={14} className="text-[#C2477A]" />
+                                    <Tag size={14} className="text-[#D81B60]" />
                                     <span>4-Role Pricing Matrix</span>
                                   </div>
                                   <div className="space-y-2 text-xs">
@@ -1818,10 +2084,10 @@ export default function ProductsCatalogMatrix({
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center py-1 border-b border-pink-100 bg-white px-2 rounded-lg">
-                                      <span className="text-[#C2477A] font-bold">Salon Owner:</span>
-                                      <span className="font-black text-[#C2477A]">
+                                      <span className="text-[#D81B60] font-bold">Salon Owner:</span>
+                                      <span className="font-black text-[#D81B60]">
                                         ₹{p.salonPrice ?? p.mrp ?? 0}{' '}
-                                        {salonDisc > 0 && <span className="text-[#C2477A] text-[10px]">({salonDisc}% off)</span>}
+                                        {salonDisc > 0 && <span className="text-[#D81B60] text-[10px]">({salonDisc}% off)</span>}
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center py-1 border-b border-purple-100 bg-purple-50/60 px-2 rounded-lg">
@@ -1853,7 +2119,7 @@ export default function ProductsCatalogMatrix({
                                     <div className="flex justify-between items-center py-1 border-b border-pink-50">
                                       <span className="text-gray-500 font-medium">Barcode:</span>
                                       <span className="font-mono font-bold text-gray-900 flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-2xs">
-                                        <Barcode size={11} className="text-[#C2477A]" />
+                                        <Barcode size={11} className="text-[#D81B60]" />
                                         <span>{p.barcode || '—'}</span>
                                         {p.barcode && (
                                           <button
@@ -1963,24 +2229,74 @@ export default function ProductsCatalogMatrix({
                         return (
                           <tr
                             key={v.id || `${p.id}_var_${vIdx}`}
-                            className="bg-white hover:bg-[#FFF2F5] border-b border-pink-100/60 transition-colors"
+                            className="bg-pink-50/25 hover:bg-[#FFF2F5] border-b border-pink-100/70 transition-colors"
                           >
-                            {/* 1. Child Variant Thumbnail */}
-                            <td className="py-2.5 px-3 text-center align-middle w-14">
-                              <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-pink-200 flex items-center justify-center mx-auto shadow-2xs">
+                            {/* 1 & 2. Indent & Hierarchy Indicator (Spanning Checkbox + Order columns) */}
+                            <td colSpan={2} className="py-2.5 px-2 text-right align-middle">
+                              <div className="flex items-center justify-end pr-1 text-[#D81B60] font-extrabold text-sm select-none" title="Child Variant">
+                                ↳
+                              </div>
+                            </td>
+
+                            {/* 3. Child Variant Thumbnail (Aligning under IMAGE column with Drag & Drop) */}
+                            <td className="py-2.5 px-2 text-center align-middle w-12 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <div
+                                onClick={() => {
+                                  if (vImg) setActiveImagePreview(vImg);
+                                  else handleToggleProductShadesPanel(p);
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                                onDrop={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const extracted = await extractDroppedImageSource(e);
+                                  if (!extracted) return;
+                                  let newUrl = null;
+                                  if (extracted.type === 'file') {
+                                    if (adminCtx?.uploadImage) {
+                                      try {
+                                        newUrl = await adminCtx.uploadImage(extracted.file, 'products', `var_${v.sku || v.id || Date.now()}`);
+                                      } catch (err) {
+                                        console.error('Failed to upload variant dropped file:', err);
+                                      }
+                                    }
+                                  } else if (extracted.type === 'url') {
+                                    newUrl = extracted.url;
+                                  }
+                                  if (newUrl) {
+                                    const updateFn = updateProduct || adminCtx?.updateProduct;
+                                    const allShades = p.shades || [];
+                                    const updatedShades = allShades.map((sh, idx) => {
+                                      if ((v.id && sh.id === v.id) || idx === vIdx) {
+                                        return { ...sh, image: newUrl, imageUrl: newUrl, images: [newUrl] };
+                                      }
+                                      return sh;
+                                    });
+                                    if (typeof updateFn === 'function') {
+                                      await updateFn(p.id, { shades: updatedShades });
+                                      setBulkToastMessage(`Variant image for "${shadeName || vName}" updated!`);
+                                      setTimeout(() => setBulkToastMessage(null), 3000);
+                                    }
+                                  }
+                                }}
+                                className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-pink-200 hover:border-[#D81B60] flex items-center justify-center mx-auto shadow-2xs cursor-pointer group transition-all"
+                                title={vImg ? "Click to preview image (or drag & drop new image here)" : "Drag & drop image from Google or device here to set variant photo"}
+                              >
                                 {vImg ? (
-                                  <img src={vImg} alt={shadeName || vName} className="w-full h-full object-cover" />
+                                  <img src={vImg} alt={shadeName || vName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200" />
                                 ) : (
-                                  <Package size={14} className="text-pink-300" />
+                                  <Package size={14} className="text-pink-300 group-hover:text-[#D81B60]" />
                                 )}
                               </div>
                             </td>
 
-                            {/* 2. Child Variant Name, SKU, Shade, Size (NO duplicate barcode) */}
-                            <td className="py-2.5 px-4 align-middle">
-                              <div className="pl-3 flex flex-col gap-1 border-l-2 border-pink-300/80 ml-1">
+                            {/* 4 & 5. Child Variant Name, Shade, SKU, Size (Spanning PRODUCT & DETAILS + FEATURED SECTIONS) */}
+                            <td colSpan={2} className="py-2.5 px-3 align-middle min-w-[300px]">
+                              <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[#C2477A] font-bold text-xs">↳</span>
                                   {v.hexColor && (
                                     <span
                                       className="w-3.5 h-3.5 rounded-full border border-gray-300 shrink-0 shadow-2xs inline-block"
@@ -1992,23 +2308,23 @@ export default function ProductsCatalogMatrix({
                                     {shadeName || vName}
                                   </span>
                                   {shadeNumber && (
-                                    <span className="text-[10px] text-gray-600 font-bold bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 shadow-2xs">
+                                    <span className="text-[10px] text-gray-600 font-bold bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 shadow-2xs whitespace-nowrap">
                                       #{shadeNumber}
                                     </span>
                                   )}
-                                  <span className="text-[9px] font-bold text-[#C2477A] bg-white px-1.5 py-0.5 rounded border border-pink-200">
+                                  <span className="text-[9px] font-bold text-[#D81B60] bg-pink-50 px-1.5 py-0.5 rounded border border-pink-200 whitespace-nowrap">
                                     Variant
                                   </span>
                                 </div>
 
                                 <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500 flex-wrap">
                                   {variantSku && (
-                                    <span className="font-mono bg-white px-2 py-0.5 rounded text-gray-700 border border-gray-200 shadow-2xs">
-                                      SKU: <span className="font-bold text-gray-900">{variantSku}</span>
+                                    <span className="font-mono bg-white px-2 py-0.5 rounded text-gray-700 border border-gray-200 shadow-2xs whitespace-nowrap inline-flex items-center gap-1">
+                                      <span>SKU:</span> <span className="font-bold text-gray-900">{variantSku}</span>
                                     </span>
                                   )}
                                   {variantSize && (
-                                    <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded border border-blue-200 shadow-2xs">
+                                    <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded border border-blue-200 shadow-2xs whitespace-nowrap">
                                       Size: {variantSize}
                                     </span>
                                   )}
@@ -2017,20 +2333,20 @@ export default function ProductsCatalogMatrix({
                                     .map(([k, valStr]) => (
                                       <span
                                         key={k}
-                                        className="text-[9.5px] font-medium text-gray-600 bg-white px-1.5 py-0.5 rounded border border-pink-100 shadow-2xs"
+                                        className="text-[9.5px] font-medium text-gray-600 bg-white px-1.5 py-0.5 rounded border border-pink-100 shadow-2xs whitespace-nowrap"
                                       >
-                                        {k}: <span className="text-[#C2477A] font-bold">{valStr}</span>
+                                        {k}: <span className="text-[#D81B60] font-bold">{valStr}</span>
                                       </span>
                                     ))}
                                 </div>
                               </div>
                             </td>
 
-                            {/* 3. Barcode (Dedicated Barcode Column - single source of truth) */}
+                            {/* 6. Barcode (Aligning under BARCODE column) */}
                             <td className="py-2 px-2 whitespace-nowrap align-middle">
                               {v.barcode ? (
                                 <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-50 text-gray-800 font-mono text-[10.5px] font-bold border border-gray-200 shadow-2xs group">
-                                  <Barcode size={12} className="text-[#C2477A]" />
+                                  <Barcode size={12} className="text-[#D81B60]" />
                                   <span>{v.barcode}</span>
                                   <button
                                     type="button"
@@ -2046,55 +2362,55 @@ export default function ProductsCatalogMatrix({
                               )}
                             </td>
 
-                            {/* 4. Brand */}
+                            {/* 7. Brand (Aligning under BRAND column) */}
                             <td className="py-2 px-2 whitespace-nowrap align-middle">
                               <span className="font-bold text-[10.5px] text-gray-800 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-200">
                                 {p.brandName || brands?.find(b => b.id === p.brandId)?.name || '—'}
                               </span>
                             </td>
 
-                            {/* 5. Original MRP */}
+                            {/* 8. Original MRP (Aligning under ORIGINAL MRP column) */}
                             <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
                               <span className="font-semibold text-gray-600 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vOriginalMrp}
                               </span>
                             </td>
 
-                            {/* 6. General MRP */}
+                            {/* 9. General MRP (Aligning under GENERAL USER column) */}
                             <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
                               <span className="font-bold text-gray-900 bg-white px-1.5 py-0.5 rounded-lg border border-gray-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vGen}
                               </span>
                             </td>
 
-                            {/* 7. Salon Price */}
+                            {/* 10. Salon Price (Aligning under SALON OWNER column) */}
                             <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
-                              <span className="font-extrabold text-[#C2477A] bg-white px-1.5 py-0.5 rounded-lg border border-pink-200/80 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
+                              <span className="font-extrabold text-[#D81B60] bg-white px-1.5 py-0.5 rounded-lg border border-pink-200/80 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vSalon}
                               </span>
                             </td>
 
-                            {/* 8. Artist Price */}
+                            {/* 11. Artist Price (Aligning under ARTIST PRICE column) */}
                             <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
                               <span className="font-extrabold text-purple-700 bg-purple-50/70 px-1.5 py-0.5 rounded-lg border border-purple-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vArtist}
                               </span>
                             </td>
 
-                            {/* 9. Beautician Price */}
+                            {/* 12. Beautician Price (Aligning under BEAUTICIAN column) */}
                             <td className="py-2 px-1.5 whitespace-nowrap text-right align-middle">
                               <span className="font-extrabold text-indigo-700 bg-indigo-50/70 px-1.5 py-0.5 rounded-lg border border-indigo-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                                 ₹{vBeautician}
                               </span>
                             </td>
 
-                            {/* 10. Actions */}
+                            {/* 13. Actions (Aligning under ACTIONS column) */}
                             <td className="py-2 px-3 text-right whitespace-nowrap align-middle">
                               <div className="flex items-center justify-end gap-1">
                                 <button
                                   type="button"
                                   onClick={() => handleToggleProductShadesPanel(p)}
-                                  className="bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
+                                  className="bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
                                   title="Edit variant details"
                                 >
                                   <span>Edit Variant</span>
@@ -2117,7 +2433,7 @@ export default function ProductsCatalogMatrix({
                     {/* EXPANDABLE QUANTITY DISCOUNT TIERS PANEL */}
                     {editingTiersProductId === p.id && (
                       <tr key={p.id + '_tiers_panel'} className="bg-amber-50/40 border-y-2 border-pink-200">
-                        <td colSpan={11} className="p-4 sm:p-5">
+                        <td colSpan={13} className="p-4 sm:p-5">
                           <RoleQuantityTiersManager
                             tiers={productTiersLocal}
                             onChange={setProductTiersLocal}
@@ -2138,12 +2454,12 @@ export default function ProductsCatalogMatrix({
                     {/* EXPANDABLE SHADE / COLOR VARIANT MANAGER PANEL */}
                     {editingShadeProductId === p.id && (
                       <tr key={p.id + '_shades_panel'} className="bg-white border-y-2 border-[#FCE4EC]">
-                        <td colSpan={11} className="p-4 sm:p-5">
+                        <td colSpan={13} className="p-4 sm:p-5">
                           <div className="bg-white rounded-3xl border border-[#FCE4EC] shadow-sm p-5 space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#FCE4EC]">
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="w-8 h-8 rounded-xl bg-pink-100 text-[#C2477A] flex items-center justify-center font-bold">
+                                  <span className="w-8 h-8 rounded-xl bg-pink-100 text-[#D81B60] flex items-center justify-center font-bold">
                                     <Layers size={16} />
                                   </span>
                                   <h4 className="font-black text-sm text-gray-900 uppercase tracking-wide">
@@ -2162,7 +2478,7 @@ export default function ProductsCatalogMatrix({
                                   className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all ${
                                     shadesSaveSuccess
                                       ? 'bg-emerald-600 text-white'
-                                      : 'bg-[#C2477A] hover:bg-[#9E2D5B] text-white cursor-pointer active:scale-95'
+                                      : 'bg-[#D81B60] hover:bg-[#9E2D5B] text-white cursor-pointer active:scale-95'
                                   }`}
                                 >
                                   {shadesSaveSuccess ? (
@@ -2197,14 +2513,14 @@ export default function ProductsCatalogMatrix({
                               <table className="w-full text-left text-xs">
                                 <thead className="bg-white text-gray-800 uppercase font-black text-[10px] tracking-wider border-b border-[#FCE4EC]">
                                   <tr>
-                                    <th className="py-2.5 px-3">Variant / Attributes</th>
-                                    <th className="py-2.5 px-3">Variant Image</th>
-                                    <th className="py-2.5 px-3">MRP (General)</th>
-                                    <th className="py-2.5 px-3">Salon Price</th>
-                                    <th className="py-2.5 px-3">Artist Price</th>
-                                    <th className="py-2.5 px-3">Beautician Price</th>
-                                    <th className="py-2.5 px-3 text-center">Qty Tiers</th>
-                                    <th className="py-2.5 px-3 text-right">Actions</th>
+                                    <th className="py-2.5 px-3 min-w-[140px]">Variant / Attributes</th>
+                                    <th className="py-2.5 px-3 min-w-[180px]">Variant Image</th>
+                                    <th className="py-2.5 px-3 text-right whitespace-nowrap">MRP (General)</th>
+                                    <th className="py-2.5 px-3 text-right whitespace-nowrap text-[#D81B60]">Salon Price</th>
+                                    <th className="py-2.5 px-3 text-right whitespace-nowrap text-purple-700">Artist Price</th>
+                                    <th className="py-2.5 px-3 text-right whitespace-nowrap text-indigo-700">Beautician Price</th>
+                                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Qty Tiers</th>
+                                    <th className="py-2.5 px-3 text-right whitespace-nowrap">Actions</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -2243,18 +2559,47 @@ export default function ProductsCatalogMatrix({
                                       );
 
                                       return (
-                                        <tr key={shade.id || sIdx} className="hover:bg-[#FFF5F8]/40 transition-colors">
+                                        <tr
+                                          key={shade.id || sIdx}
+                                          onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (dragOverVariantIdx !== sIdx) setDragOverVariantIdx(sIdx);
+                                          }}
+                                          onDragEnter={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setDragOverVariantIdx(sIdx);
+                                          }}
+                                          onDragLeave={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (e.currentTarget.contains(e.relatedTarget)) return;
+                                            setDragOverVariantIdx(null);
+                                          }}
+                                          onDrop={async (e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setDragOverVariantIdx(null);
+                                            await handleVariantImageDrop(e, sIdx, shade, p);
+                                          }}
+                                          className={`transition-colors relative ${
+                                            dragOverVariantIdx === sIdx
+                                              ? 'bg-pink-100/70 ring-2 ring-inset ring-[#D81B60]'
+                                              : 'hover:bg-[#FFF5F8]/40'
+                                          }`}
+                                        >
                                           <td className="py-3 px-3">
                                             <div className="flex items-center gap-2">
                                               {isColor ? (
                                                 <span
                                                   className="w-5 h-5 rounded-full border border-gray-300 shadow-2xs shrink-0"
-                                                  style={{ background: shade.hexColor || '#C2477A' }}
+                                                  style={{ background: shade.hexColor || '#D81B60' }}
                                                 />
                                               ) : shade.image ? (
-                                                <img src={shade.image} alt={shade.name} className="w-5 h-5 rounded-md object-cover border border-pink-100 shrink-0" />
+                                                <img src={shade.image} alt={shade.name} referrerPolicy="no-referrer" className="w-5 h-5 rounded-md object-cover border border-pink-100 shrink-0" />
                                               ) : (
-                                                <span className="w-5 h-5 rounded-md bg-pink-100 text-[#C2477A] flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                <span className="w-5 h-5 rounded-md bg-pink-100 text-[#D81B60] flex items-center justify-center text-[10px] font-bold shrink-0">
                                                   #{sIdx + 1}
                                                 </span>
                                               )}
@@ -2263,7 +2608,7 @@ export default function ProductsCatalogMatrix({
                                                 {shade.attributes && Object.keys(shade.attributes).length > 0 && (
                                                   <div className="flex flex-wrap gap-1 mt-0.5">
                                                     {Object.entries(shade.attributes).map(([ak, av]) => (
-                                                      <span key={ak} className="px-1.5 py-0.2 rounded bg-white text-[#C2477A] text-[9.5px] font-semibold border border-pink-100">
+                                                      <span key={ak} className="px-1.5 py-0.2 rounded bg-white text-[#D81B60] text-[9.5px] font-semibold border border-pink-100">
                                                         {ak}: {av}
                                                       </span>
                                                     ))}
@@ -2273,57 +2618,96 @@ export default function ProductsCatalogMatrix({
                                             </div>
                                           </td>
                                           <td className="py-3 px-3">
-                                            <div className="flex items-center gap-2">
-                                              <div className="relative w-8 h-8 rounded-lg border border-pink-200 bg-white overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group/vimg">
-                                                {(shade.image || shade.imageUrl || (shade.images && shade.images[0])) ? (
-                                                  <img
-                                                    src={shade.image || shade.imageUrl || shade.images[0]}
-                                                    alt={shade.name}
-                                                    className="w-full h-full object-cover"
-                                                  />
+                                            <div
+                                              className={`relative flex items-center gap-2.5 p-2 rounded-2xl transition-all border ${
+                                                dragOverVariantIdx === sIdx
+                                                  ? 'border-2 border-dashed border-[#D81B60] bg-[#FFF2F5] shadow-md ring-2 ring-[#D81B60]/30 scale-[1.02]'
+                                                  : 'border-transparent hover:border-pink-200 hover:bg-pink-50/30'
+                                              }`}
+                                              onDragOver={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (dragOverVariantIdx !== sIdx) setDragOverVariantIdx(sIdx);
+                                              }}
+                                              onDragEnter={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setDragOverVariantIdx(sIdx);
+                                              }}
+                                              onDragLeave={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (e.currentTarget.contains(e.relatedTarget)) return;
+                                                setDragOverVariantIdx(null);
+                                              }}
+                                              onDrop={async (e) => {
+                                                await handleVariantImageDrop(e, sIdx, shade, p);
+                                              }}
+                                              onPaste={async (e) => {
+                                                await handleVariantClipboardPaste(e, sIdx, shade);
+                                              }}
+                                              tabIndex={0}
+                                              title="Drag & drop image from Google Images or your device here, or paste with Ctrl+V"
+                                            >
+                                              {/* Animated Drop Overlay */}
+                                              {dragOverVariantIdx === sIdx && (
+                                                <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-xs rounded-2xl border-2 border-dashed border-[#D81B60] flex items-center justify-center gap-1.5 text-[#D81B60] font-extrabold text-xs shadow-md animate-pulse pointer-events-none">
+                                                  <Upload size={14} className="animate-bounce" />
+                                                  <span>Drop Image Here!</span>
+                                                </div>
+                                              )}
+
+                                              {/* Variant Image Thumbnail (Click to open Image Manager) */}
+                                              <div
+                                                onClick={() => {
+                                                  setImageModalTarget({
+                                                    type: 'variant',
+                                                    sIdx,
+                                                    shade,
+                                                    product: p,
+                                                    currentUrl: shade.image || shade.imageUrl || (shade.images && shade.images[0]) || '',
+                                                    title: `Variant Image: ${p.name} - ${shade.name}`,
+                                                    entityName: `${p.name} ${shade.name}`,
+                                                    searchQuery: `${p.brandName || p.brand || ''} ${p.name} ${shade.name}`.trim(),
+                                                    prefix: `var_${shade.sku || shade.id || Date.now()}`
+                                                  });
+                                                }}
+                                                className={`relative w-11 h-11 rounded-xl border overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group/vimg cursor-pointer transition-all ${
+                                                  (shade.image || shade.imageUrl || (shade.images && shade.images[0]))
+                                                    ? 'border-pink-200 bg-white hover:border-[#D81B60]'
+                                                    : 'border-dashed border-pink-300 bg-pink-50/60 hover:bg-pink-100/60'
+                                                }`}
+                                                title="Click to open image manager modal (or drag & drop image here)"
+                                              >
+                                                {uploadingVariantIdx === sIdx ? (
+                                                  <div className="flex flex-col items-center justify-center text-[#D81B60]">
+                                                    <Loader2 size={16} className="animate-spin" />
+                                                    <span className="text-[7.5px] font-bold mt-0.5">Uploading</span>
+                                                  </div>
+                                                ) : (shade.image || shade.imageUrl || (shade.images && shade.images[0])) ? (
+                                                  <>
+                                                    <img
+                                                      src={shade.image || shade.imageUrl || shade.images[0]}
+                                                      alt={shade.name}
+                                                      referrerPolicy="no-referrer"
+                                                      className="w-full h-full object-cover group-hover/vimg:scale-110 transition-transform duration-200"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/vimg:opacity-100 transition-opacity flex items-center justify-center text-white text-[8.5px] font-bold">
+                                                      Change
+                                                    </div>
+                                                  </>
                                                 ) : (
-                                                  <ImageIcon size={14} className="text-pink-300" />
+                                                  <div className="flex flex-col items-center justify-center text-pink-400 group-hover/vimg:text-[#D81B60] transition-colors">
+                                                    <ImageIcon size={15} />
+                                                    <span className="text-[7.5px] font-extrabold mt-0.5">Drop / Add</span>
+                                                  </div>
                                                 )}
-                                                <label
-                                                  className="absolute inset-0 bg-black/50 opacity-0 group-hover/vimg:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-white"
-                                                  title="Upload Image"
-                                                >
-                                                  <Upload size={12} />
-                                                  <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={async (e) => {
-                                                      const file = e.target.files?.[0];
-                                                      if (!file) return;
-                                                      try {
-                                                        let uploadedUrl = null;
-                                                        if (adminCtx?.uploadImage) {
-                                                          uploadedUrl = await adminCtx.uploadImage(file, 'products', `var_${shade.sku || shade.id || Date.now()}`);
-                                                        }
-                                                        if (uploadedUrl) {
-                                                          setProductShadesLocal((prev) => prev.map((s, idx) => {
-                                                            if (idx !== sIdx) return s;
-                                                            const newImages = [uploadedUrl, ...(s.images || []).filter(u => u !== uploadedUrl)];
-                                                            return {
-                                                              ...s,
-                                                              image: uploadedUrl,
-                                                              imageUrl: uploadedUrl,
-                                                              images: newImages
-                                                            };
-                                                          }));
-                                                        }
-                                                      } catch (err) {
-                                                        console.error('Variant image upload failed:', err);
-                                                        alert('Failed to upload image. Please try again.');
-                                                      }
-                                                    }}
-                                                  />
-                                                </label>
                                               </div>
-                                              <div className="flex flex-col gap-1">
+
+                                              {/* Action Buttons: Upload, Google Search, Paste URL */}
+                                              <div className="flex flex-col gap-1 min-w-[140px]">
                                                 <div className="flex items-center gap-1.5">
-                                                  <label className="px-1.5 py-0.5 rounded bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[9.5px] font-bold text-[#C2477A] hover:underline cursor-pointer flex items-center gap-1 shadow-2xs transition-all">
+                                                  <label className="px-2 py-1 rounded-lg bg-pink-50 hover:bg-pink-100 border border-pink-200 text-[10px] font-bold text-[#D81B60] cursor-pointer flex items-center gap-1 shadow-2xs transition-all active:scale-95">
                                                     <Upload size={10} />
                                                     <span>Upload</span>
                                                     <input
@@ -2333,27 +2717,7 @@ export default function ProductsCatalogMatrix({
                                                       onChange={async (e) => {
                                                         const file = e.target.files?.[0];
                                                         if (!file) return;
-                                                        try {
-                                                          let uploadedUrl = null;
-                                                          if (adminCtx?.uploadImage) {
-                                                            uploadedUrl = await adminCtx.uploadImage(file, 'products', `var_${shade.sku || shade.id || Date.now()}`);
-                                                          }
-                                                          if (uploadedUrl) {
-                                                            setProductShadesLocal((prev) => prev.map((s, idx) => {
-                                                              if (idx !== sIdx) return s;
-                                                              const newImages = [uploadedUrl, ...(s.images || []).filter(u => u !== uploadedUrl)];
-                                                              return {
-                                                                ...s,
-                                                                image: uploadedUrl,
-                                                                imageUrl: uploadedUrl,
-                                                                images: newImages
-                                                              };
-                                                            }));
-                                                          }
-                                                        } catch (err) {
-                                                          console.error('Variant image upload failed:', err);
-                                                          alert('Failed to upload image. Please try again.');
-                                                        }
+                                                        await handleVariantFileSelect(file, sIdx, shade);
                                                       }}
                                                     />
                                                   </label>
@@ -2370,10 +2734,10 @@ export default function ProductsCatalogMatrix({
                                                       ].filter(Boolean);
                                                       const query = queryParts.join(' ').trim();
                                                       const searchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
-                                                      window.open(searchUrl, '_blank', 'noopener,noreferrer');
+                                                      window.open(searchUrl, 'salbeau_google_search', 'noopener,noreferrer');
                                                     }}
-                                                    className="px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 text-[9.5px] font-extrabold flex items-center gap-1 shadow-2xs cursor-pointer transition-all active:scale-95"
-                                                    title={`Search Google Images for "${p.name} ${shade.name}"`}
+                                                    className="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 text-[10px] font-extrabold flex items-center gap-1 shadow-2xs cursor-pointer transition-all active:scale-95"
+                                                    title={`Search Google Images for "${p.name} ${shade.name}" (You can drag images directly into this box)`}
                                                   >
                                                     <Globe size={10} className="text-amber-600" />
                                                     <span>Google ↗</span>
@@ -2386,19 +2750,10 @@ export default function ProductsCatalogMatrix({
                                                     onClick={() => {
                                                       const url = window.prompt(`Paste direct image URL for variant "${shade.name}":`, shade.image || shade.imageUrl || '');
                                                       if (url !== null && url.trim()) {
-                                                        setProductShadesLocal((prev) => prev.map((s, idx) => {
-                                                          if (idx !== sIdx) return s;
-                                                          const newImages = [url.trim(), ...(s.images || []).filter(u => u !== url.trim())];
-                                                          return {
-                                                            ...s,
-                                                            image: url.trim(),
-                                                            imageUrl: url.trim(),
-                                                            images: newImages
-                                                          };
-                                                        }));
+                                                        handleApplyImageUrlToVariant(url.trim(), sIdx);
                                                       }
                                                     }}
-                                                    className="text-[9px] text-gray-500 hover:text-[#C2477A] font-semibold text-left flex items-center gap-0.5 cursor-pointer"
+                                                    className="text-[9.5px] text-gray-500 hover:text-[#D81B60] font-semibold text-left flex items-center gap-0.5 cursor-pointer"
                                                   >
                                                     <LinkIcon size={9} />
                                                     <span>Paste URL</span>
@@ -2413,7 +2768,7 @@ export default function ProductsCatalogMatrix({
                                                           return { ...s, image: null, imageUrl: null, images: [] };
                                                         }));
                                                       }}
-                                                      className="text-[9px] text-rose-500 hover:underline font-semibold text-left cursor-pointer"
+                                                      className="text-[9.5px] text-rose-500 hover:underline font-semibold text-left cursor-pointer"
                                                     >
                                                       Clear
                                                     </button>
@@ -2422,10 +2777,10 @@ export default function ProductsCatalogMatrix({
                                               </div>
                                             </div>
                                           </td>
-                                          <td className="py-3 px-3 font-semibold text-gray-800">₹{shadeMrp}</td>
-                                          <td className="py-3 px-3 font-extrabold text-[#C2477A]">₹{shadeSalon}</td>
-                                          <td className="py-3 px-3 font-extrabold text-purple-700">₹{shadeArtist}</td>
-                                          <td className="py-3 px-3 font-extrabold text-indigo-700">₹{shadeBeautician}</td>
+                                          <td className="py-3 px-3 text-right whitespace-nowrap font-semibold text-gray-800">₹{shadeMrp}</td>
+                                          <td className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-[#D81B60]">₹{shadeSalon}</td>
+                                          <td className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-purple-700">₹{shadeArtist}</td>
+                                          <td className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-indigo-700">₹{shadeBeautician}</td>
                                           <td className="py-3 px-3 text-center">
                                             <span
                                               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -2443,7 +2798,7 @@ export default function ProductsCatalogMatrix({
                                               <button
                                                 type="button"
                                                 onClick={() => handleOpenShadePricing(shade, p, 'catalog')}
-                                                className="px-2.5 py-1 rounded-xl bg-white hover:bg-[#C2477A] text-[#C2477A] hover:text-white font-bold text-[11px] border border-pink-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                className="px-2.5 py-1 rounded-xl bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white font-bold text-[11px] border border-pink-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
                                               >
                                                 <BadgePercent size={11} />
                                                 <span>Pricing & Tiers</span>
@@ -2479,7 +2834,7 @@ export default function ProductsCatalogMatrix({
                                 placeholder="Variant Name (e.g. 50ml, Velvet Rose)"
                                 value={shadeFormDraft.name}
                                 onChange={(e) => setShadeFormDraft((prev) => ({ ...prev, name: e.target.value }))}
-                                className="flex-1 min-w-[140px] p-2 rounded-xl border border-pink-200 bg-white text-xs font-semibold outline-none focus:border-[#C2477A]"
+                                className="flex-1 min-w-[140px] p-2 rounded-xl border border-pink-200 bg-white text-xs font-semibold outline-none focus:border-[#D81B60]"
                               />
                               {Boolean(
                                 /makeup|lipstick|lip|nail|eyeshadow|blush|foundation/i.test(p.category || '') ||
@@ -2525,7 +2880,7 @@ export default function ProductsCatalogMatrix({
                                   const newShade = {
                                     id: 'shade_' + Date.now(),
                                     name: shadeFormDraft.name.trim(),
-                                    hexColor: shadeFormDraft.hexColor || '#C2477A',
+                                    hexColor: shadeFormDraft.hexColor || '#D81B60',
                                     mrp: shadeFormDraft.priceOverride
                                       ? Number(shadeFormDraft.priceOverride)
                                       : Number(p.mrp || 0),
@@ -2544,12 +2899,12 @@ export default function ProductsCatalogMatrix({
                                   setProductShadesLocal((prev) => [...prev, newShade]);
                                   setShadeFormDraft({
                                     name: '',
-                                    hexColor: '#C2477A',
+                                    hexColor: '#D81B60',
                                     priceOverride: '',
                                     active: true
                                   });
                                 }}
-                                className="px-4 py-2 bg-[#C2477A] hover:bg-[#9E2D5B] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-2xs"
+                                className="px-4 py-2 bg-[#D81B60] hover:bg-[#9E2D5B] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-2xs"
                               >
                                 <Plus size={14} />
                                 <span>Add Variant</span>
@@ -2579,7 +2934,7 @@ export default function ProductsCatalogMatrix({
                 setProductRecordsPerPage(Number(e.target.value));
                 setProductCurrentPage(1);
               }}
-              className="px-2.5 py-1.5 rounded-xl border border-pink-200 bg-white text-gray-800 font-bold outline-none cursor-pointer focus:border-[#C2477A] shadow-2xs"
+              className="px-2.5 py-1.5 rounded-xl border border-pink-200 bg-white text-gray-800 font-bold outline-none cursor-pointer focus:border-[#D81B60] shadow-2xs"
             >
               <option value={15}>15</option>
               <option value={20}>20</option>
@@ -2613,7 +2968,7 @@ export default function ProductsCatalogMatrix({
             className={`p-2 rounded-xl border flex items-center justify-center transition-all ${
               productCurrentPage <= 1
                 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
+                : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
             }`}
             title="Previous Page"
             aria-label="Previous Page"
@@ -2639,7 +2994,7 @@ export default function ProductsCatalogMatrix({
                     onClick={() => setProductCurrentPage(page)}
                     className={`min-w-[32px] h-8 px-2 rounded-xl font-bold text-xs transition-all ${
                       effectiveProductPage === page
-                        ? 'bg-[#C2477A] text-white shadow-xs'
+                        ? 'bg-[#D81B60] text-white shadow-xs'
                         : 'bg-white border border-pink-200 text-gray-700 hover:bg-pink-50 cursor-pointer shadow-2xs'
                     }`}
                   >
@@ -2655,7 +3010,7 @@ export default function ProductsCatalogMatrix({
             className={`p-2 rounded-xl border flex items-center justify-center transition-all ${
               productCurrentPage >= totalProductPages
                 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                : 'border-pink-200 text-[#C2477A] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
+                : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
             }`}
             title="Next Page"
             aria-label="Next Page"
@@ -2672,7 +3027,7 @@ export default function ProductsCatalogMatrix({
             {/* Modal Header */}
             <div className="p-5 sm:p-6 bg-gradient-to-r from-white via-white to-white border-b border-pink-100 flex items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#C2477A] to-[#9E2D5B] text-white flex items-center justify-center shadow-xs shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#D81B60] to-[#9E2D5B] text-white flex items-center justify-center shadow-xs shrink-0">
                   <Package size={20} />
                 </div>
                 <div>
@@ -2693,7 +3048,7 @@ export default function ProductsCatalogMatrix({
                     setSelectedDetailModalProduct(null);
                     handleOpenEditProduct(p);
                   }}
-                  className="px-3.5 py-2 rounded-xl bg-[#C2477A] hover:bg-[#9E2D5B] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-[#D81B60] hover:bg-[#9E2D5B] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
                 >
                   <Edit size={13} />
                   <span>Edit</span>
@@ -2728,7 +3083,7 @@ export default function ProductsCatalogMatrix({
                     onClick={() => setActiveDetailTab(tab.id)}
                     className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all flex items-center gap-1.5 border-b-2 whitespace-nowrap cursor-pointer ${
                       isActive
-                        ? 'border-[#C2477A] text-[#C2477A] bg-white'
+                        ? 'border-[#D81B60] text-[#D81B60] bg-white'
                         : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                   >
@@ -2748,7 +3103,7 @@ export default function ProductsCatalogMatrix({
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-white p-3.5 rounded-2xl border border-pink-100">
                       <span className="text-[10.5px] font-bold text-gray-500 block">Category</span>
-                      <span className="font-extrabold text-sm text-[#C2477A]">{selectedDetailModalProduct.category || '—'}</span>
+                      <span className="font-extrabold text-sm text-[#D81B60]">{selectedDetailModalProduct.category || '—'}</span>
                     </div>
                     <div className="bg-white p-3.5 rounded-2xl border border-pink-100">
                       <span className="text-[10.5px] font-bold text-gray-500 block">Subcategory</span>
@@ -2786,7 +3141,7 @@ export default function ProductsCatalogMatrix({
                         <tbody className="divide-y divide-gray-100">
                           {[
                             { role: 'General Customer', price: selectedDetailModalProduct.generalPrice ?? selectedDetailModalProduct.mrp, color: 'text-gray-900', bg: 'bg-white' },
-                            { role: 'Salon Owner', price: selectedDetailModalProduct.salonPrice ?? selectedDetailModalProduct.mrp, color: 'text-[#C2477A]', bg: 'bg-white' },
+                            { role: 'Salon Owner', price: selectedDetailModalProduct.salonPrice ?? selectedDetailModalProduct.mrp, color: 'text-[#D81B60]', bg: 'bg-white' },
                             { role: 'Makeup Artist', price: selectedDetailModalProduct.artistPrice ?? selectedDetailModalProduct.mrp, color: 'text-purple-700', bg: 'bg-purple-50/40' },
                             { role: 'Beautician', price: selectedDetailModalProduct.beauticianPrice ?? selectedDetailModalProduct.mrp, color: 'text-indigo-700', bg: 'bg-indigo-50/40' }
                           ].map((row, rIdx) => {
@@ -2908,7 +3263,7 @@ export default function ProductsCatalogMatrix({
                               </td>
                               <td className="py-2.5 px-3 font-mono text-[11px] text-gray-600">{sh.barcode || '—'}</td>
                               <td className="py-2.5 px-3 font-bold text-gray-800">₹{sh.mrp || sh.priceOverride || selectedDetailModalProduct.mrp}</td>
-                              <td className="py-2.5 px-3 font-bold text-[#C2477A]">₹{sh.salonPrice || selectedDetailModalProduct.salonPrice}</td>
+                              <td className="py-2.5 px-3 font-bold text-[#D81B60]">₹{sh.salonPrice || selectedDetailModalProduct.salonPrice}</td>
                               <td className="py-2.5 px-3 font-bold text-purple-700">₹{sh.artistPrice || selectedDetailModalProduct.artistPrice}</td>
                               <td className="py-2.5 px-3 font-bold text-indigo-700">₹{sh.beauticianPrice || selectedDetailModalProduct.beauticianPrice}</td>
                             </tr>
@@ -2931,7 +3286,7 @@ export default function ProductsCatalogMatrix({
                         <div
                           key={gIdx}
                           onClick={() => setActiveImagePreview(imgUrl)}
-                          className="h-44 rounded-2xl overflow-hidden border border-pink-200 bg-white hover:border-[#C2477A] transition-all cursor-pointer group shadow-2xs"
+                          className="h-44 rounded-2xl overflow-hidden border border-pink-200 bg-white hover:border-[#D81B60] transition-all cursor-pointer group shadow-2xs"
                         >
                           <img src={imgUrl} alt={`Gallery ${gIdx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
                         </div>
@@ -2994,7 +3349,7 @@ export default function ProductsCatalogMatrix({
                   if (isBulkDeleting) return;
                   setIsBulkDeleteModalOpen(false);
                 }}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -3090,6 +3445,40 @@ export default function ProductsCatalogMatrix({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 7. UNIVERSAL IMAGE MANAGER MODAL (Crop, Google Images, Dropzone, WebP) */}
+      {imageModalTarget && (
+        <ImageManagerModal
+          isOpen={Boolean(imageModalTarget)}
+          onClose={() => setImageModalTarget(null)}
+          currentImageUrl={imageModalTarget.currentUrl || ''}
+          title={imageModalTarget.title || 'Manage Image'}
+          entityName={imageModalTarget.entityName || ''}
+          folder="products"
+          filenamePrefix={imageModalTarget.prefix || 'prod'}
+          defaultSearchQuery={imageModalTarget.searchQuery || ''}
+          onSave={(newUrl) => {
+            if (imageModalTarget.type === 'variant') {
+              handleApplyImageUrlToVariant(newUrl, imageModalTarget.sIdx);
+            } else if (imageModalTarget.type === 'product') {
+              const updateFn = updateProduct || adminCtx?.updateProduct;
+              if (typeof updateFn === 'function') {
+                const prod = imageModalTarget.product;
+                const curImages = Array.isArray(prod?.images) ? prod.images : (prod?.imageUrl ? [prod.imageUrl] : []);
+                const newImages = [newUrl, ...curImages.filter(u => u !== newUrl)];
+                updateFn(prod.id, {
+                  image: newUrl,
+                  imageUrl: newUrl,
+                  images: newImages
+                });
+                setBulkToastMessage(`Photo for "${prod.name}" updated!`);
+                setTimeout(() => setBulkToastMessage(null), 3500);
+              }
+            }
+            setImageModalTarget(null);
+          }}
+        />
       )}
     </div>
   );

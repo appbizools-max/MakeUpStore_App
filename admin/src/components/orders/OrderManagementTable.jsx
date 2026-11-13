@@ -14,8 +14,9 @@ import {
   ChevronDown,
   Eye,
   MoreVertical,
-  QrCode,
   Banknote,
+  Smartphone,
+  Clock,
   Check,
   MapPin,
   RefreshCw,
@@ -29,11 +30,14 @@ import {
   X,
   Trash2,
   AlertTriangle,
+  AlertCircle,
   Layers,
-  Wand2
+  Wand2,
+  Image as ImageIcon
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import FulfillmentStatusSelector from './FulfillmentStatusSelector';
+import { useAdmin } from '../../context/AdminContext';
 
 export const isTestOrder = (o) => {
   if (!o) return false;
@@ -92,11 +96,10 @@ export const OrderManagementTable = ({
   // Product expanded map for "+X more items"
   const [expandedOrders, setExpandedOrders] = useState({});
 
-  // QR Payment Modal state
-  const [qrModalOrder, setQrModalOrder] = useState(null);
-  const [qrUtrNumber, setQrUtrNumber] = useState('');
-  const [isVerifyingQr, setIsVerifyingQr] = useState(false);
-  const [copiedUpi, setCopiedUpi] = useState(false);
+  // Payment Proof Viewer state (QR is accessible strictly via Delivery Partner App)
+  const [viewingProof, setViewingProof] = useState(null);
+  const adminCtx = useAdmin() || {};
+  const verifyUpiPayment = adminCtx.verifyUpiPayment;
 
   // Cash Confirmation Modal state
   const [cashModalOrder, setCashModalOrder] = useState(null);
@@ -482,7 +485,7 @@ export const OrderManagementTable = ({
             className="w-9 h-9 rounded-xl border border-pink-100 bg-white hover:bg-pink-50/50 flex items-center justify-center text-gray-700 transition-colors shadow-2xs cursor-pointer"
             title="Refresh Orders"
           >
-            <RefreshCw size={15} className={`text-[#C2477A] ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw size={15} className={`text-[#D81B60] ${isLoading ? 'animate-spin' : ''}`} />
           </button>
 
           {/* Date Presets Dropdown */}
@@ -490,7 +493,7 @@ export const OrderManagementTable = ({
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold rounded-xl border border-pink-100 bg-white hover:border-[#C2477A] text-gray-800 outline-none cursor-pointer shadow-2xs transition-colors"
+              className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold rounded-xl border border-pink-100 bg-white hover:border-[#D81B60] text-gray-800 outline-none cursor-pointer shadow-2xs transition-colors"
             >
               <option value="all">All Orders</option>
               <option value="today">Today Orders</option>
@@ -507,7 +510,7 @@ export const OrderManagementTable = ({
         {/* Total Orders */}
         <div className="bg-white p-4 rounded-2xl border border-pink-100/80 shadow-2xs flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-[#FFF0F5] border border-pink-100 flex items-center justify-center shrink-0">
-            <ShoppingBag size={20} className="text-[#C2477A]" />
+            <ShoppingBag size={20} className="text-[#D81B60]" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
@@ -587,7 +590,7 @@ export const OrderManagementTable = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by Order ID, Customer, Product..."
-              className="w-full pl-9 pr-4 py-2 text-xs font-semibold rounded-xl border border-pink-100 bg-white placeholder-gray-400 text-gray-800 outline-none focus:border-[#C2477A] transition-colors"
+              className="w-full pl-9 pr-4 py-2 text-xs font-semibold rounded-xl border border-pink-100 bg-white placeholder-gray-400 text-gray-800 outline-none focus:border-[#D81B60] transition-colors"
             />
             {searchTerm && (
               <button
@@ -606,7 +609,7 @@ export const OrderManagementTable = ({
               <select
                 value={fulfillmentFilter}
                 onChange={(e) => setFulfillmentFilter(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#C2477A] cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">Fulfillment Type</option>
                 <option value="delivery">Delivery</option>
@@ -620,7 +623,7 @@ export const OrderManagementTable = ({
               <select
                 value={customerTypeFilter}
                 onChange={(e) => setCustomerTypeFilter(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#C2477A] cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">Customer Type</option>
                 <option value="b2c">B2C Retail Customers</option>
@@ -637,7 +640,7 @@ export const OrderManagementTable = ({
               <select
                 value={branchFilter}
                 onChange={(e) => setBranchFilter(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#C2477A] cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">All Branches</option>
                 {uniqueBranches.map(b => (
@@ -652,7 +655,7 @@ export const OrderManagementTable = ({
               <select
                 value={staffFilter}
                 onChange={(e) => setStaffFilter(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#C2477A] cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">All Staff</option>
                 <option value="unassigned">Unassigned</option>
@@ -668,7 +671,7 @@ export const OrderManagementTable = ({
               <select
                 value={paymentMethodFilter}
                 onChange={(e) => setPaymentMethodFilter(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#C2477A] cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">Payment Method</option>
                 <option value="cash">Cash</option>
@@ -682,7 +685,7 @@ export const OrderManagementTable = ({
               <select
                 value={paymentStatusFilter}
                 onChange={(e) => setPaymentStatusFilter(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#C2477A] cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">Payment Status</option>
                 <option value="pending">COD Pending</option>
@@ -696,7 +699,7 @@ export const OrderManagementTable = ({
               <select
                 value={orderStatusFilter}
                 onChange={(e) => setOrderStatusFilter(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#C2477A] cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-2 text-xs font-bold rounded-xl border border-pink-100 bg-white text-gray-700 outline-none hover:border-[#D81B60] cursor-pointer"
               >
                 <option value="all">Order Status</option>
                 <option value="placed">Placed</option>
@@ -738,7 +741,7 @@ export const OrderManagementTable = ({
         {/* Active Filter Info & Table Scroll Controls */}
         <div className="flex items-center justify-between pt-2 border-t border-pink-100/60 text-xs">
           <div className="text-gray-500 font-medium">
-            Showing <span className="font-bold text-[#C2477A]">{filteredOrders.length}</span> of {orders.length} Orders
+            Showing <span className="font-bold text-[#D81B60]">{filteredOrders.length}</span> of {orders.length} Orders
           </div>
 
           {/* Smooth Horizontal Scroll Buttons as requested */}
@@ -750,7 +753,7 @@ export const OrderManagementTable = ({
               className="w-8 h-8 rounded-lg border border-pink-200 bg-white hover:bg-pink-50 flex items-center justify-center text-gray-700 transition-colors shadow-2xs cursor-pointer active:scale-95"
               title="Scroll Left"
             >
-              <ChevronLeft size={16} color="#C2477A" />
+              <ChevronLeft size={16} color="#D81B60" />
             </button>
             <button
               type="button"
@@ -758,7 +761,7 @@ export const OrderManagementTable = ({
               className="w-8 h-8 rounded-lg border border-pink-200 bg-white hover:bg-pink-50 flex items-center justify-center text-gray-700 transition-colors shadow-2xs cursor-pointer active:scale-95"
               title="Scroll Right"
             >
-              <ChevronRight size={16} color="#C2477A" />
+              <ChevronRight size={16} color="#D81B60" />
             </button>
           </div>
         </div>
@@ -774,24 +777,24 @@ export const OrderManagementTable = ({
             {/* Table Header: Soft Pink Tinted Bar matching Image 2 */}
             <thead>
               <tr className="bg-[#FFF0F5] border-b border-[#FADCE8] text-[#30212B] text-[11.5px] uppercase font-black tracking-wider">
-                <th className="py-3.5 px-3.5 rounded-l-xl whitespace-nowrap w-10 text-center">
+                <th className="py-3.5 px-3.5 rounded-l-xl whitespace-nowrap w-10 text-center sticky left-0 bg-[#FFF0F5] z-20">
                   <input
                     type="checkbox"
                     checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
                     onChange={handleToggleSelectAll}
-                    className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                    className="w-4 h-4 rounded text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                     title="Select All Orders"
                   />
                 </th>
-                <th className="py-3.5 px-4 whitespace-nowrap">Order ID</th>
-                <th className="py-3.5 px-4 whitespace-nowrap">Customer & Address</th>
-                <th className="py-3.5 px-4 min-w-[260px]">Products (Qty)</th>
+                <th className="py-3.5 px-4 whitespace-nowrap sticky left-10 bg-[#FFF0F5] z-20 border-r border-pink-200/50 shadow-xs">Order ID</th>
+                <th className="py-3.5 px-4 whitespace-nowrap min-w-[190px]">Customer & Address</th>
+                <th className="py-3.5 px-4 min-w-[220px]">Products & Qty</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">Fulfillment</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">Branch</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">Assigned Staff</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">Order Status</th>
-                <th className="py-3.5 px-4 whitespace-nowrap">Payment Method (COD)</th>
-                <th className="py-3.5 px-4 whitespace-nowrap">Payment Status</th>
+                <th className="py-3.5 px-4 whitespace-nowrap min-w-[180px]">Payment Method</th>
+                <th className="py-3.5 px-4 whitespace-nowrap min-w-[170px]">Payment Status</th>
                 <th className="py-3.5 px-4 text-right whitespace-nowrap">Total Amount</th>
                 <th className="py-3.5 px-4 text-center rounded-r-xl whitespace-nowrap">Actions</th>
               </tr>
@@ -802,7 +805,7 @@ export const OrderManagementTable = ({
                 <tr>
                   <td colSpan={12} className="py-16 text-center text-gray-400">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <ShoppingBag size={36} className="text-[#C2477A] opacity-40" />
+                      <ShoppingBag size={36} className="text-[#D81B60] opacity-40" />
                       <p className="font-bold text-sm text-gray-700">No orders found</p>
                       <p className="text-xs text-gray-400">Try adjusting your filters or search terms.</p>
                     </div>
@@ -825,17 +828,17 @@ export const OrderManagementTable = ({
                       className={`hover:bg-[#FFF9FB] transition-colors border-b border-[#FCE8F0] ${isSelected ? 'bg-pink-50/40' : ''}`}
                     >
                       {/* Selection Checkbox */}
-                      <td className="py-4 px-3.5 text-center align-top">
+                      <td className={`py-4 px-3.5 text-center align-top sticky left-0 z-10 ${isSelected ? 'bg-pink-50' : 'bg-white'}`}>
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectOrder(o.id)}
-                          className="w-4 h-4 rounded text-[#C2477A] focus:ring-[#C2477A] cursor-pointer accent-[#C2477A]"
+                          className="w-4 h-4 rounded text-[#D81B60] focus:ring-[#D81B60] cursor-pointer accent-[#D81B60]"
                         />
                       </td>
                       {/* 1. ORDER ID */}
-                      <td className="py-4 px-4 align-top whitespace-nowrap">
-                        <div className="font-extrabold text-[#C2477A] text-[12.5px] tracking-tight">
+                      <td className={`py-4 px-4 align-top whitespace-nowrap sticky left-10 z-10 border-r border-pink-100/60 shadow-xs ${isSelected ? 'bg-pink-50' : 'bg-white'}`}>
+                        <div className="font-extrabold text-[#D81B60] text-[12.5px] tracking-tight">
                           {o.id}
                         </div>
                         <div className="text-[10.5px] text-gray-400 font-medium mt-0.5">
@@ -844,10 +847,10 @@ export const OrderManagementTable = ({
                       </td>
 
                       {/* 2. CUSTOMER & ADDRESS */}
-                      <td className="py-4 px-4 align-top min-w-[210px]">
+                      <td className="py-4 px-4 align-top min-w-[190px]">
                         <div className="flex items-start gap-2.5">
                           {/* Avatar Circle with initial */}
-                          <div className="w-8 h-8 rounded-full bg-[#FFF0F5] border border-[#FADCE8] text-[#C2477A] font-extrabold flex items-center justify-center text-xs shrink-0 mt-0.5">
+                          <div className="w-8 h-8 rounded-full bg-[#FFF0F5] border border-[#FADCE8] text-[#D81B60] font-extrabold flex items-center justify-center text-xs shrink-0 mt-0.5">
                             {(o.userName || 'P').slice(0, 1).toUpperCase()}
                           </div>
                           <div>
@@ -856,8 +859,8 @@ export const OrderManagementTable = ({
                               {o.phone || 'No phone'}
                             </div>
                             {o.deliveryAddress && (
-                              <div className="text-[10px] text-gray-500 font-medium flex items-start gap-1 mt-1 max-w-[200px] leading-snug">
-                                <MapPin size={11} className="text-[#C2477A] shrink-0 mt-0.5" />
+                              <div className="text-[10px] text-gray-500 font-medium flex items-start gap-1 mt-1 max-w-[190px] leading-snug">
+                                <MapPin size={11} className="text-[#D81B60] shrink-0 mt-0.5" />
                                 <span className="line-clamp-2">{o.deliveryAddress}</span>
                               </div>
                             )}
@@ -866,11 +869,11 @@ export const OrderManagementTable = ({
                       </td>
 
                       {/* 3. PRODUCTS (QTY) */}
-                      <td className="py-4 px-4 align-top">
+                      <td className="py-4 px-4 align-top min-w-[220px]">
                         {items.length === 0 ? (
                           <span className="text-gray-400 italic text-[11px]">No items data</span>
                         ) : (
-                          <div className="space-y-2.5">
+                          <div className="space-y-2">
                             {displayedItems.map((item, itIdx) => {
                               const prod = item.product || {};
                               const pName = prod.name || item.name || 'Cosmetic Item';
@@ -878,9 +881,9 @@ export const OrderManagementTable = ({
                               const img = prod.image || item.image || (Array.isArray(prod.images) ? prod.images[0] : null);
 
                               return (
-                                <div key={itIdx} className="flex items-center gap-2.5">
+                                <div key={itIdx} className="flex items-center gap-2">
                                   {/* Product Thumbnail */}
-                                  <div className="w-9 h-9 rounded-lg bg-white border border-pink-100 p-0.5 overflow-hidden shrink-0 flex items-center justify-center">
+                                  <div className="w-8 h-8 rounded-lg bg-white border border-pink-100 p-0.5 overflow-hidden shrink-0 flex items-center justify-center">
                                     {img ? (
                                       <img
                                         src={img}
@@ -889,24 +892,24 @@ export const OrderManagementTable = ({
                                         onError={(e) => { e.target.style.display = 'none'; }}
                                       />
                                     ) : (
-                                      <ShoppingBag size={14} className="text-[#C2477A]" />
+                                      <ShoppingBag size={13} className="text-[#D81B60]" />
                                     )}
                                   </div>
 
                                   {/* Product Details */}
-                                  <div className="min-w-0 flex-1">
-                                    <div className="font-semibold text-gray-900 text-[11.5px] leading-snug">
+                                  <div className="min-w-0 flex-1 max-w-[170px]">
+                                    <div className="font-semibold text-gray-900 text-[11px] leading-tight truncate" title={pName}>
                                       {pName}
                                     </div>
                                     {shadeName && (
-                                      <div className="text-[10px] text-gray-500 font-medium">
+                                      <div className="text-[9.5px] text-gray-500 font-medium truncate">
                                         (Shade: {shadeName})
                                       </div>
                                     )}
                                   </div>
 
                                   {/* Qty Pill Badge */}
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black text-[#C2477A] bg-[#FFF0F5] border border-[#FADCE8] shrink-0">
+                                  <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-black text-[#D81B60] bg-[#FFF0F5] border border-[#FADCE8] shrink-0">
                                     Qty: {item.quantity || 1}
                                   </span>
                                 </div>
@@ -917,7 +920,7 @@ export const OrderManagementTable = ({
                               <button
                                 type="button"
                                 onClick={() => toggleExpandOrder(o.id)}
-                                className="text-[10.5px] font-bold text-[#C2477A] hover:underline cursor-pointer flex items-center gap-0.5 mt-1"
+                                className="text-[10.5px] font-bold text-[#D81B60] hover:underline cursor-pointer flex items-center gap-0.5 mt-1"
                               >
                                 {isExpanded ? 'Show less' : `+${items.length - 2} more item${items.length - 2 > 1 ? 's' : ''}`}
                               </button>
@@ -949,7 +952,7 @@ export const OrderManagementTable = ({
                         <select
                           value={o.assignedEmployeeId || ''}
                           onChange={(e) => assignOrderToEmployee(o.id, e.target.value || null)}
-                          className="px-2.5 py-1.5 text-xs rounded-xl border border-pink-100 bg-white font-medium text-gray-800 outline-none hover:border-[#C2477A] cursor-pointer shadow-2xs transition-colors"
+                          className="px-2.5 py-1.5 text-xs rounded-xl border border-pink-100 bg-white font-medium text-gray-800 outline-none hover:border-[#D81B60] cursor-pointer shadow-2xs transition-colors"
                         >
                           <option value="">Unassigned</option>
                           {(employees || []).filter((e) => e.status === 'active').map((emp) => (
@@ -975,103 +978,198 @@ export const OrderManagementTable = ({
                         />
                       </td>
 
-                      {/* 8. PAYMENT METHOD (COD) - RADIO CONTROLS */}
-                      <td className="py-4 px-4 align-top whitespace-nowrap">
-                        <div className="space-y-1.5">
-                          {/* Option 1: Cash */}
-                          <label
-                            className="flex items-center gap-2 cursor-pointer group"
-                            onClick={() => {
-                              if (updateOrderPaymentMethod) updateOrderPaymentMethod(o.id, 'cash');
-                            }}
-                          >
-                            <input
-                              type="radio"
-                              name={`pay_method_${o.id}`}
-                              checked={!isQrMethod}
-                              onChange={() => {
-                                if (updateOrderPaymentMethod) updateOrderPaymentMethod(o.id, 'cash');
-                              }}
-                              className="accent-[#C2477A] w-3.5 h-3.5 cursor-pointer"
-                            />
-                            <span className={`text-[11.5px] font-bold ${!isQrMethod ? 'text-[#C2477A]' : 'text-gray-700'}`}>
-                              Cash
-                            </span>
-                          </label>
+                      {/* 8. PAYMENT METHOD & COLLECTION DETAILS */}
+                      <td className="py-4 px-4 align-top">
+                        {(() => {
+                          const ship = (typeof o.shipments === 'object' && o.shipments) ? o.shipments : {};
+                          const method = (ship.paymentMethod || o.paymentMethod || o.payment_method || 'cash').toLowerCase();
+                          const isUpi = method === 'upi' || method === 'qr';
+                          const collectedBy = ship.collectedBy || o.payment_collected_by || (ship.confirmedByStaff ? (ship.assignedEmployeeName || o.assignedEmployeeName) : null);
+                          const collectedAt = ship.collectedAt || o.payment_collected_at || ship.deliveredAt;
+                          const upiUtr = ship.upiUtr || o.upi_ref || ship.upiVerification?.upiTransactionId;
+                          const proofUrl = ship.upiVerification?.proofUrl || ship.upiVerification?.payment_proof_url || ship.payment_proof_url || o.payment_proof;
 
-                          {/* Option 2: QR / Scanner */}
-                          <label
-                            className="flex items-center gap-2 cursor-pointer group"
-                            onClick={() => {
-                              if (updateOrderPaymentMethod) updateOrderPaymentMethod(o.id, 'qr');
-                            }}
-                          >
-                            <input
-                              type="radio"
-                              name={`pay_method_${o.id}`}
-                              checked={isQrMethod}
-                              onChange={() => {
-                                if (updateOrderPaymentMethod) updateOrderPaymentMethod(o.id, 'qr');
-                              }}
-                              className="accent-[#C2477A] w-3.5 h-3.5 cursor-pointer"
-                            />
-                            <span className={`text-[11.5px] font-bold ${isQrMethod ? 'text-[#C2477A]' : 'text-gray-700'}`}>
-                              QR / Scanner
-                            </span>
-                          </label>
+                          return (
+                            <div className="space-y-1.5 min-w-[190px]">
+                              {/* Method Badge */}
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                                    isUpi
+                                      ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                                  }`}
+                                >
+                                  {isUpi ? <Smartphone size={13} /> : <Banknote size={13} />}
+                                  <span>{isUpi ? 'UPI / QR Payment' : 'Cash on Delivery (COD)'}</span>
+                                </span>
+                              </div>
 
-                          {/* Quick modal trigger link */}
-                          {isQrMethod && !isPaid && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setQrModalOrder(o);
-                                setQrUtrNumber('');
-                              }}
-                              className="text-[10px] font-extrabold text-[#C2477A] hover:underline flex items-center gap-1 cursor-pointer pt-0.5"
-                            >
-                              <QrCode size={11} /> Open Payment QR
-                            </button>
-                          )}
-                        </div>
+                              {/* Collected By Details */}
+                              {collectedBy && (
+                                <div className="text-[11px] text-gray-600 font-semibold flex items-center gap-1">
+                                  <User size={11} className="text-gray-400 shrink-0" />
+                                  <span>Collected by: <strong className="text-gray-900">{collectedBy}</strong></span>
+                                </div>
+                              )}
+
+                              {/* Collection Date and Time */}
+                              {collectedAt && (
+                                <div className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                                  <Clock size={10} className="text-gray-400 shrink-0" />
+                                  <span>{new Date(collectedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                </div>
+                              )}
+
+                              {/* Transaction Reference (UTR) */}
+                              {upiUtr && (
+                                <div className="text-[10.5px] font-mono text-purple-700 bg-purple-50/70 border border-purple-100 rounded px-1.5 py-0.5 inline-block">
+                                  UTR: <strong>{upiUtr}</strong>
+                                </div>
+                              )}
+
+                              {/* Payment Proof Button */}
+                              {proofUrl && (
+                                <div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewingProof({
+                                      url: proofUrl,
+                                      orderId: o.id,
+                                      customerName: o.userName,
+                                      amount: o.totalAmount,
+                                      utr: upiUtr,
+                                      date: collectedAt
+                                    })}
+                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md px-2 py-0.5 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                  >
+                                    <ImageIcon size={11} />
+                                    <span>View Payment Proof</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
-                      {/* 9. PAYMENT STATUS */}
+                      {/* 9. PAYMENT STATUS & VERIFICATION */}
                       <td className="py-4 px-4 align-top whitespace-nowrap">
-                        <div className="flex flex-col gap-1.5">
-                          {isPaid ? (
-                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-black text-[11px] shadow-2xs">
-                              <Check size={13} className="text-emerald-700" />
-                              <span>Paid</span>
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-bold text-[11px] shadow-2xs">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                              <span>COD Pending</span>
-                            </div>
-                          )}
+                        {(() => {
+                          const ship = (typeof o.shipments === 'object' && o.shipments) ? o.shipments : {};
+                          const payStatus = String(o.paymentStatus || ship.paymentStatus || o.internalStatus || 'pending').toLowerCase();
+                          const verifStatus = String(ship.verificationStatus || ship.upiVerification?.verificationStatus || '').toUpperCase();
+                          const isVerified = payStatus === 'paid' || verifStatus === 'VERIFIED';
+                          const isPendingVerif = payStatus === 'pending_verification' || verifStatus === 'PENDING_VERIFICATION' || verifStatus === 'PENDING';
+                          const isCashCollected = payStatus === 'collected';
+                          const isFailed = payStatus === 'failed' || verifStatus === 'REJECTED';
 
-                          {/* Quick Action Button to collect/verify payment */}
-                          {!isPaid ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (isQrMethod) {
-                                  setQrModalOrder(o);
-                                  setQrUtrNumber('');
-                                } else {
-                                  setCashModalOrder(o);
-                                  setCashNote('');
-                                }
-                              }}
-                              className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md cursor-pointer transition-colors text-center shadow-2xs"
-                            >
-                              Collect {isQrMethod ? 'via QR' : 'Cash'}
-                            </button>
-                          ) : (
-                            <span className="text-[9.5px] text-gray-400 font-medium">Verified & Settled</span>
-                          )}
-                        </div>
+                          return (
+                            <div className="flex flex-col gap-1.5 min-w-[170px]">
+                              {/* Status Badge */}
+                              {isVerified && (
+                                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-black text-[11px] shadow-2xs">
+                                  <Check size={13} className="text-emerald-700" />
+                                  <span>Verified & Paid</span>
+                                </div>
+                              )}
+
+                              {isPendingVerif && (
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-900 font-bold text-[11px] shadow-2xs">
+                                  <Clock size={12} className="text-purple-600 animate-pulse" />
+                                  <span>Verification Pending</span>
+                                </div>
+                              )}
+
+                              {isCashCollected && (
+                                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 font-bold text-[11px] shadow-2xs">
+                                  <CheckCircle2 size={12} className="text-blue-600" />
+                                  <span>Cash Collected</span>
+                                </div>
+                              )}
+
+                              {!isVerified && !isPendingVerif && !isCashCollected && !isFailed && (
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-bold text-[11px] shadow-2xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                  <span>COD Pending</span>
+                                </div>
+                              )}
+
+                              {isFailed && (
+                                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 font-bold text-[11px] shadow-2xs">
+                                  <AlertCircle size={12} className="text-rose-600" />
+                                  <span>Failed / Rejected</span>
+                                </div>
+                              )}
+
+                              {/* Admin Verification Actions */}
+                              {isPendingVerif && (
+                                <div className="flex items-center gap-1 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (typeof verifyUpiPayment === 'function') {
+                                        verifyUpiPayment(o.id, true);
+                                      } else if (typeof updateOrderPaymentStatus === 'function') {
+                                        updateOrderPaymentStatus(o.id, 'paid', 'upi', 'UPI Payment verified by Administrator');
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10.5px] font-extrabold shadow-2xs cursor-pointer transition-all flex items-center gap-1"
+                                    title="Approve and verify payment"
+                                  >
+                                    <Check size={12} strokeWidth={3} /> Verify
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const reason = window.prompt('Enter rejection reason for this UPI payment:', 'Payment receipt mismatch or missing UTR');
+                                      if (reason !== null) {
+                                        if (typeof verifyUpiPayment === 'function') {
+                                          verifyUpiPayment(o.id, false, reason);
+                                        } else if (typeof updateOrderPaymentStatus === 'function') {
+                                          updateOrderPaymentStatus(o.id, 'failed', 'upi', reason);
+                                        }
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10.5px] font-bold cursor-pointer transition-all"
+                                    title="Reject invalid payment"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* Cash Collected Confirmation Action */}
+                              {isCashCollected && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (typeof updateOrderPaymentStatus === 'function') {
+                                      updateOrderPaymentStatus(o.id, 'paid', 'cash', 'Cash deposit reconciled and confirmed by Administrator');
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-[10.5px] font-bold shadow-2xs cursor-pointer transition-all text-center"
+                                >
+                                  Confirm Deposit
+                                </button>
+                              )}
+
+                              {/* Manual settlement fallback for pending COD */}
+                              {!isVerified && !isPendingVerif && !isCashCollected && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCashModalOrder(o);
+                                    setCashNote('');
+                                  }}
+                                  className="text-[10px] font-bold text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md cursor-pointer transition-colors text-center shadow-2xs"
+                                >
+                                  Record Settlement
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* 10. TOTAL AMOUNT */}
@@ -1088,7 +1186,7 @@ export const OrderManagementTable = ({
                             onClick={() => {
                               if (onViewInvoice) onViewInvoice(o);
                             }}
-                            className="w-8 h-8 rounded-lg border border-pink-100 bg-white hover:bg-pink-50 text-[#C2477A] flex items-center justify-center shadow-2xs cursor-pointer transition-colors"
+                            className="w-8 h-8 rounded-lg border border-pink-100 bg-white hover:bg-pink-50 text-[#D81B60] flex items-center justify-center shadow-2xs cursor-pointer transition-colors"
                             title="View Invoice & Order Details"
                           >
                             <Eye size={15} />
@@ -1123,19 +1221,9 @@ export const OrderManagementTable = ({
                                     setOpenActionMenuId(null);
                                     if (onViewInvoice) onViewInvoice(o);
                                   }}
-                                  className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#FFF5F8] hover:text-[#C2477A] flex items-center gap-2 cursor-pointer"
+                                  className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#FFF5F8] hover:text-[#D81B60] flex items-center gap-2 cursor-pointer"
                                 >
                                   <Eye size={13} /> View Invoice
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    setQrModalOrder(o);
-                                  }}
-                                  className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#FFF5F8] hover:text-[#C2477A] flex items-center gap-2 cursor-pointer"
-                                >
-                                  <QrCode size={13} /> Show QR Code
                                 </button>
                                 {!isPaid && (
                                   <button
@@ -1174,92 +1262,97 @@ export const OrderManagementTable = ({
         </div>
       </div>
 
-      {/* ── QR PAYMENT MODAL ─────────────────────────────────────────────── */}
-      {qrModalOrder && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl border border-pink-100 p-6 max-w-md w-full shadow-2xl relative text-center">
-            {/* Close Button */}
-            <button
-              onClick={() => setQrModalOrder(null)}
-              className="absolute right-4 top-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 cursor-pointer"
-            >
-              <X size={16} />
-            </button>
-
-            {/* Modal Header */}
-            <div className="w-12 h-12 rounded-2xl bg-[#FFF0F5] border border-pink-200 text-[#C2477A] flex items-center justify-center mx-auto mb-3">
-              <QrCode size={24} />
-            </div>
-            <h3 className="text-xl font-black text-gray-900">QR / Scanner Payment</h3>
-            <p className="text-xs text-gray-500 mt-1">
-              Customer can scan this QR code with any UPI app to pay
-            </p>
-
-            {/* Amount & Order ID Pill */}
-            <div className="my-4 p-3 bg-pink-50/50 rounded-2xl border border-pink-100 flex items-center justify-between">
-              <div className="text-left">
-                <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider block">Order ID</span>
-                <span className="text-xs font-extrabold text-[#C2477A]">{qrModalOrder.id}</span>
+      {/* ── PAYMENT PROOF VIEWER MODAL ────────────────────────────────────── */}
+      {viewingProof && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-gray-200 max-w-lg w-full overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                  <Smartphone size={16} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-gray-900">UPI Payment Confirmation Proof</h3>
+                  <p className="text-[10.5px] text-gray-500 font-medium">Order #{viewingProof.orderId} • {viewingProof.customerName}</p>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider block">Payable Amount</span>
-                <span className="text-lg font-black text-gray-900">
-                  ₹{Number(qrModalOrder.totalAmount || 0).toLocaleString('en-IN')}
-                </span>
-              </div>
-            </div>
-
-            {/* Dynamic UPI QR Code Image */}
-            <div className="p-3 bg-white border-2 border-dashed border-[#FADCE8] rounded-2xl inline-block mx-auto mb-3 shadow-inner">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-                  `upi://pay?pa=salbeau.pay@icici&pn=Salbeau+Cosmetics&am=${Number(qrModalOrder.totalAmount || 0)}&cu=INR&tn=Order+${qrModalOrder.id}`
-                )}`}
-                alt="UPI Payment QR Code"
-                className="w-48 h-48 object-contain mx-auto"
-              />
-            </div>
-
-            {/* Store UPI ID Display */}
-            <div className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-600 mb-4 bg-gray-50 py-1.5 px-3 rounded-xl border border-gray-100">
-              <span>UPI: <strong className="text-gray-900">salbeau.pay@icici</strong></span>
               <button
                 type="button"
-                onClick={() => {
-                  navigator.clipboard?.writeText('salbeau.pay@icici');
-                  setCopiedUpi(true);
-                  setTimeout(() => setCopiedUpi(false), 2000);
-                }}
-                className="text-[#C2477A] hover:underline flex items-center gap-0.5 text-[11px]"
+                onClick={() => setViewingProof(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 cursor-pointer"
               >
-                <Copy size={11} /> {copiedUpi ? 'Copied!' : 'Copy'}
+                <X size={16} />
               </button>
             </div>
 
-            {/* Optional UTR / Reference Input */}
-            <div className="text-left mb-4">
-              <label className="text-[11px] font-bold text-gray-700 mb-1 block">
-                Transaction / UTR Reference (Optional):
-              </label>
-              <input
-                type="text"
-                value={qrUtrNumber}
-                onChange={(e) => setQrUtrNumber(e.target.value)}
-                placeholder="e.g. 431209384920"
-                className="w-full px-3.5 py-2 text-xs font-semibold rounded-xl border border-pink-100 outline-none focus:border-[#C2477A]"
+            {/* Proof Details Pill */}
+            <div className="px-5 py-3 bg-purple-50/50 border-b border-purple-100 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Payable Amount</span>
+                <span className="text-sm font-black text-gray-900">₹{Number(viewingProof.amount || 0).toLocaleString('en-IN')}</span>
+              </div>
+              {viewingProof.utr && (
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Transaction / UTR</span>
+                  <span className="font-mono font-black text-purple-700">{viewingProof.utr}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Image Preview */}
+            <div className="p-4 bg-gray-950 flex-1 flex items-center justify-center overflow-auto min-h-[300px]">
+              <img
+                src={viewingProof.url}
+                alt="Payment Proof Confirmation"
+                className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-lg"
               />
             </div>
 
-            {/* Verify & Confirm Payment Button */}
-            <button
-              type="button"
-              disabled={isVerifyingQr}
-              onClick={handleVerifyQrPayment}
-              className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-colors disabled:opacity-50"
-            >
-              <ShieldCheck size={16} />
-              <span>{isVerifyingQr ? 'Verifying & Saving...' : 'Verify & Mark as Paid'}</span>
-            </button>
+            {/* Footer Action Buttons */}
+            <div className="px-5 py-3 border-t border-gray-100 bg-white flex items-center justify-between gap-3">
+              <a
+                href={viewingProof.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-bold text-gray-600 hover:text-gray-900 flex items-center gap-1"
+              >
+                <ExternalLink size={13} /> Open Full Size
+              </a>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof verifyUpiPayment === 'function') {
+                      verifyUpiPayment(viewingProof.orderId, true);
+                    } else if (typeof updateOrderPaymentStatus === 'function') {
+                      updateOrderPaymentStatus(viewingProof.orderId, 'paid', 'upi', 'UPI Payment verified by Administrator');
+                    }
+                    setViewingProof(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check size={14} strokeWidth={3} /> Approve & Mark Paid
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const reason = window.prompt('Enter rejection reason for this UPI payment:', 'Payment receipt mismatch');
+                    if (reason !== null) {
+                      if (typeof verifyUpiPayment === 'function') {
+                        verifyUpiPayment(viewingProof.orderId, false, reason);
+                      } else if (typeof updateOrderPaymentStatus === 'function') {
+                        updateOrderPaymentStatus(viewingProof.orderId, 'failed', 'upi', reason);
+                      }
+                      setViewingProof(null);
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs cursor-pointer"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1308,7 +1401,7 @@ export const OrderManagementTable = ({
                 value={cashNote}
                 onChange={(e) => setCashNote(e.target.value)}
                 placeholder="e.g. Received full cash at doorstep"
-                className="w-full px-3.5 py-2 text-xs font-semibold rounded-xl border border-pink-100 outline-none focus:border-[#C2477A]"
+                className="w-full px-3.5 py-2 text-xs font-semibold rounded-xl border border-pink-100 outline-none focus:border-[#D81B60]"
               />
             </div>
 
@@ -1383,7 +1476,7 @@ export const OrderManagementTable = ({
               {deleteConfirmModal.orders.slice(0, 10).map((ord) => (
                 <div key={ord.id} className="flex items-center justify-between py-1 border-b border-gray-200/60 last:border-none">
                   <div>
-                    <span className="font-mono font-bold text-[#C2477A]">{ord.id}</span>
+                    <span className="font-mono font-bold text-[#D81B60]">{ord.id}</span>
                     <span className="text-gray-600 ml-2 font-medium">{ord.userName || 'Customer'}</span>
                   </div>
                   <div className="text-right">

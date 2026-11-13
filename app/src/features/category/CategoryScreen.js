@@ -38,8 +38,11 @@ export const CategoryScreen = () => {
     leafCategories: liveLeafCategories = [],
     selectedCategory,
     setSelectedCategory,
+    selectedSubcategory,
+    setSelectedSubcategory,
     activeProducts = [],
     setCurrentScreen,
+    goBack,
     cart = []
   } = useApp();
 
@@ -114,14 +117,21 @@ export const CategoryScreen = () => {
       });
   }, [dbCategories, liveSubcategories]);
 
-  // Synchronize when navigating with selectedCategory from HomeScreen
+  // Synchronize when navigating with selectedCategory or selectedSubcategory from HomeScreen
   useEffect(() => {
     if (selectedCategory) {
       const categoryName = typeof selectedCategory === 'string' ? selectedCategory : selectedCategory?.name;
       const matched = displayCategories.find(c => c.name.toLowerCase() === (categoryName || '').toLowerCase());
       if (matched) {
         setActiveCategory(matched);
-        setNavLevel(2);
+        if (selectedSubcategory) {
+          const subName = typeof selectedSubcategory === 'string' ? selectedSubcategory : selectedSubcategory?.name;
+          setActiveSubcategory({ name: subName });
+          setNavLevel(3); // Level 3: ProductListingView for subcategory!
+        } else {
+          setActiveSubcategory(null);
+          setNavLevel(2);
+        }
         setOpenedFromHome(true);
       }
     } else if (displayCategories.length > 0 && !activeCategory) {
@@ -129,7 +139,7 @@ export const CategoryScreen = () => {
       setNavLevel(2);
       setOpenedFromHome(false);
     }
-  }, [selectedCategory, displayCategories]);
+  }, [selectedCategory, selectedSubcategory, displayCategories]);
 
   // ── NAVIGATION HANDLERS ─────────────────────────────────────────
   const handleSelectCategory = (cat) => {
@@ -169,9 +179,11 @@ export const CategoryScreen = () => {
 
   const handleBack = () => {
     if (navLevel === 3 || navLevel === 4) {
+      if (setSelectedSubcategory) setSelectedSubcategory(null);
       setNavLevel(2);
     } else {
       if (setSelectedCategory) setSelectedCategory(null);
+      if (setSelectedSubcategory) setSelectedSubcategory(null);
       setCurrentScreen('home');
     }
   };
@@ -229,7 +241,7 @@ export const CategoryScreen = () => {
           borderBottomColor: '#F0E3EA',
           backgroundColor: '#FFFFFF',
           elevation: 2,
-          shadowColor: '#C2477A',
+          shadowColor: '#D81B60',
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.06,
           shadowRadius: 3,
@@ -237,13 +249,16 @@ export const CategoryScreen = () => {
         className="px-4 py-3 flex-row items-center justify-between z-30"
       >
         <TouchableOpacity
-          onPress={() => setCurrentScreen('home')}
+          onPress={() => {
+            if (typeof goBack === 'function') goBack();
+            else setCurrentScreen('home');
+          }}
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           className="flex-row items-center gap-1 -ml-1 py-1 px-2 rounded-xl active:bg-pink-50"
         >
-          <Ionicons name="chevron-back" size={20} color="#C2477A" />
-          <Text style={{ color: '#C2477A' }} className="text-xs font-bold">
+          <Ionicons name="chevron-back" size={20} color="#D81B60" />
+          <Text style={{ color: '#D81B60' }} className="text-xs font-bold">
             Home
           </Text>
         </TouchableOpacity>
@@ -261,7 +276,7 @@ export const CategoryScreen = () => {
             className="w-9 h-9 rounded-full bg-white items-center justify-center shadow-2xs"
             accessibilityLabel="Search"
           >
-            <Ionicons name="search" size={16} color="#C2477A" />
+            <Ionicons name="search" size={16} color="#D81B60" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -272,11 +287,11 @@ export const CategoryScreen = () => {
             className="w-9 h-9 rounded-full bg-white items-center justify-center shadow-2xs relative"
             accessibilityLabel="Shopping Cart"
           >
-            <Ionicons name="bag-handle-outline" size={17} color="#C2477A" />
+            <Ionicons name="bag-handle-outline" size={17} color="#D81B60" />
             {cartCount > 0 && (
               <View
                 style={{ minWidth: 16, height: 16, paddingHorizontal: 3 }}
-                className="absolute -top-1 -right-1 bg-[#C2477A] rounded-full items-center justify-center border border-white"
+                className="absolute -top-1 -right-1 bg-[#D81B60] rounded-full items-center justify-center border border-white"
               >
                 <Text className="text-[9px] font-black text-white leading-none">
                   {cartCount > 99 ? '99+' : cartCount}
@@ -324,7 +339,7 @@ export const CategoryScreen = () => {
                 paddingVertical: 12,
                 paddingHorizontal: 14,
                 marginBottom: 12,
-                shadowColor: '#C2477A',
+                shadowColor: '#D81B60',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.06,
                 shadowRadius: 8,
@@ -348,7 +363,7 @@ export const CategoryScreen = () => {
                     overflow: 'hidden',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    shadowColor: '#C2477A',
+                    shadowColor: '#D81B60',
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.16,
                     shadowRadius: 4,
@@ -364,7 +379,7 @@ export const CategoryScreen = () => {
                       resizeMode="cover"
                     />
                   ) : (
-                    <FontAwesome5 name={cat.icon || 'sparkles'} size={24} color={cat.iconColor || '#C2477A'} />
+                    <FontAwesome5 name={cat.icon || 'sparkles'} size={24} color={cat.iconColor || '#D81B60'} />
                   )}
                 </View>
 
@@ -393,7 +408,7 @@ export const CategoryScreen = () => {
                   flexShrink: 0
                 }}
               >
-                <Ionicons name="chevron-forward" size={17} color="#C2477A" />
+                <Ionicons name="chevron-forward" size={17} color="#D81B60" />
               </View>
             </TouchableOpacity>
           ))}

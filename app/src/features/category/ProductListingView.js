@@ -241,7 +241,7 @@ export const ProductListingView = ({
           }}
           className="flex-row items-center px-3.5"
         >
-          <Ionicons name="search" size={18} color="#B64F7D" />
+          <Ionicons name="search" size={18} color="#D81B60" />
           <TextInput
             placeholder={`Search in ${leafCategory?.name || subcategory?.name || category?.name || 'Products'}...`}
             placeholderTextColor="#B0909A"
@@ -287,8 +287,8 @@ export const ProductListingView = ({
                 onPress={() => setSelectedPriceTier(tier.id)}
                 activeOpacity={0.8}
                 style={{
-                  backgroundColor: isSelected ? '#B64F7D' : '#FFFFFF',
-                  borderColor: isSelected ? '#B64F7D' : '#F0E3EA',
+                  backgroundColor: isSelected ? '#D81B60' : '#FFFFFF',
+                  borderColor: isSelected ? '#D81B60' : '#F0E3EA',
                   borderWidth: 1,
                 }}
                 className="px-3.5 py-1.5 rounded-full mr-2 shadow-2xs"
@@ -350,7 +350,7 @@ export const ProductListingView = ({
               }}
               className="w-16 h-16 rounded-full items-center justify-center mb-3 shadow-2xs"
             >
-              <Ionicons name="sparkles-outline" size={28} color="#B64F7D" />
+              <Ionicons name="sparkles-outline" size={28} color="#D81B60" />
             </View>
             <Text style={{ color: '#33252F' }} className="text-base font-extrabold mb-1 text-center">
               No Products Found
@@ -361,7 +361,7 @@ export const ProductListingView = ({
             {hasActiveFilters && (
               <TouchableOpacity
                 onPress={resetFilters}
-                style={{ backgroundColor: '#B64F7D' }}
+                style={{ backgroundColor: '#D81B60' }}
                 className="px-4 py-2 rounded-xl shadow-xs"
               >
                 <Text className="text-xs font-bold text-white">Reset Filters</Text>
@@ -459,13 +459,13 @@ export const ProductListingView = ({
               >
                 <Text
                   className={`text-sm ${
-                    selectedSort === item.id ? 'font-black text-[#C2477A]' : 'font-semibold text-[#3A2430]'
+                    selectedSort === item.id ? 'font-black text-[#D81B60]' : 'font-semibold text-[#3A2430]'
                   }`}
                 >
                   {item.label}
                 </Text>
                 {selectedSort === item.id && (
-                  <Ionicons name="checkmark-circle" size={18} color="#C2477A" />
+                  <Ionicons name="checkmark-circle" size={18} color="#D81B60" />
                 )}
               </TouchableOpacity>
             ))}

@@ -41,7 +41,7 @@ export default function ShadePricingModal({
   const [shadeData, setShadeData] = useState({
     id: shade.id || 'shade_' + Date.now(),
     name: shade.name || '',
-    hexColor: shade.hexColor || '#C2477A',
+    hexColor: shade.hexColor || '#D81B60',
     active: shade.active !== false,
     mrp: shade.mrp !== undefined && shade.mrp !== '' ? shade.mrp : (shade.priceOverride || parentProduct?.mrp || ''),
     generalPrice: shade.generalPrice !== undefined && shade.generalPrice !== '' ? shade.generalPrice : (shade.priceOverride || parentProduct?.generalPrice || parentProduct?.mrp || ''),
@@ -89,7 +89,7 @@ export default function ShadePricingModal({
       setShadeData({
         id: shade.id || 'shade_' + Date.now(),
         name: shade.name || '',
-        hexColor: shade.hexColor || '#C2477A',
+        hexColor: shade.hexColor || '#D81B60',
         active: shade.active !== false,
         mrp: shade.mrp !== undefined && shade.mrp !== '' ? shade.mrp : (shade.priceOverride || parentProduct?.mrp || ''),
         generalPrice: shade.generalPrice !== undefined && shade.generalPrice !== '' ? shade.generalPrice : (shade.priceOverride || parentProduct?.generalPrice || parentProduct?.mrp || ''),
@@ -184,7 +184,7 @@ export default function ShadePricingModal({
   const isColorVariant = Boolean(
     (shadeData.attributes && Object.keys(shadeData.attributes).some(k => /shade|color|colour/i.test(k))) ||
     (/makeup|lipstick|lip|nail|eyeshadow|blush|foundation/i.test(parentProduct?.category || '')) ||
-    (shadeData.hexColor && shadeData.hexColor !== '#C2477A' && shadeData.hexColor !== '')
+    (shadeData.hexColor && shadeData.hexColor !== '#D81B60' && shadeData.hexColor !== '')
   );
 
   return (
@@ -202,12 +202,12 @@ export default function ShadePricingModal({
             {isColorVariant ? (
               <div
                 className="w-10 h-10 rounded-2xl border-2 border-white shadow-md flex items-center justify-center shrink-0"
-                style={{ backgroundColor: shadeData.hexColor || '#C2477A' }}
+                style={{ backgroundColor: shadeData.hexColor || '#D81B60' }}
               >
                 <Palette size={18} className="text-white drop-shadow" />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-2xl bg-white text-[#C2477A] border border-pink-200 shadow-xs flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-white text-[#D81B60] border border-pink-200 shadow-xs flex items-center justify-center shrink-0">
                 <Package size={18} />
               </div>
             )}
@@ -229,7 +229,7 @@ export default function ShadePricingModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#C2477A] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-pink-100 text-gray-500 hover:text-[#D81B60] flex items-center justify-center transition-colors cursor-pointer shrink-0"
             title="Close"
           >
             <X size={16} />
@@ -245,7 +245,7 @@ export default function ShadePricingModal({
               <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-pink-100/60">
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Configured Attributes:</span>
                 {Object.entries(shadeData.attributes).map(([attrK, attrV]) => (
-                  <span key={attrK} className="px-2 py-0.5 rounded-lg bg-white border border-[#FCE4EC] text-[#C2477A] text-[10.5px] font-bold">
+                  <span key={attrK} className="px-2 py-0.5 rounded-lg bg-white border border-[#FCE4EC] text-[#D81B60] text-[10.5px] font-bold">
                     {attrK}: <strong className="text-gray-900">{attrV}</strong>
                   </span>
                 ))}
@@ -261,7 +261,7 @@ export default function ShadePricingModal({
                   placeholder="e.g. 50ml Gel / Velvet Rose"
                   value={shadeData.name}
                   onChange={(e) => setShadeData({ ...shadeData, name: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-[#FCE4EC] outline-none focus:border-[#C2477A] focus:ring-2 focus:ring-[#C2477A]/20 bg-white font-bold text-gray-900 text-xs shadow-2xs"
+                  className="w-full p-2.5 rounded-xl border border-[#FCE4EC] outline-none focus:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]/20 bg-white font-bold text-gray-900 text-xs shadow-2xs"
                 />
               </div>
 
@@ -278,10 +278,10 @@ export default function ShadePricingModal({
                     />
                     <input
                       type="text"
-                      placeholder="#C2477A"
+                      placeholder="#D81B60"
                       value={shadeData.hexColor}
                       onChange={(e) => setShadeData({ ...shadeData, hexColor: e.target.value })}
-                      className="w-full p-2 rounded-xl border border-[#FCE4EC] outline-none focus:border-[#C2477A] bg-white font-mono text-xs font-bold text-gray-700 shadow-2xs"
+                      className="w-full p-2 rounded-xl border border-[#FCE4EC] outline-none focus:border-[#D81B60] bg-white font-mono text-xs font-bold text-gray-700 shadow-2xs"
                     />
                   </div>
                 </div>
@@ -348,7 +348,7 @@ export default function ShadePricingModal({
           <button
             type="button"
             onClick={handleSave}
-            className="px-5 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 bg-gradient-to-r from-[#C2477A] to-[#E25586] hover:from-[#b83760] hover:to-[#C2477A] text-white shadow-xs cursor-pointer active:scale-[0.98] transition-all"
+            className="px-5 py-2.5 rounded-xl font-extrabold text-xs flex items-center gap-2 bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#D81B60] text-white shadow-xs cursor-pointer active:scale-[0.98] transition-all"
           >
             <CheckCircle2 size={15} />
             <span>Save Shade Configuration</span>

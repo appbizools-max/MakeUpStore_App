@@ -139,7 +139,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
         <button
           type="button"
           onClick={() => onNavigate('employees')}
-          className="mt-4 px-4 py-2 bg-[#CE4270] text-white rounded-xl text-xs font-bold"
+          className="mt-4 px-4 py-2 bg-[#D81B60] text-white rounded-xl text-xs font-bold"
         >
           ← Return to All Employees
         </button>
@@ -158,7 +158,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
           <button
             type="button"
             onClick={() => onNavigate(`employees/${employee.id}`)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:text-[#CE4270] hover:bg-pink-50/50 font-bold text-xs transition-all shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:text-[#D81B60] hover:bg-pink-50/50 font-bold text-xs transition-all shadow-2xs cursor-pointer"
           >
             <ArrowLeft size={15} />
             <span>Profile</span>
@@ -166,7 +166,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
           <button
             type="button"
             onClick={() => onNavigate('employees')}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:text-[#CE4270] hover:bg-pink-50/50 font-bold text-xs transition-all shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:text-[#D81B60] hover:bg-pink-50/50 font-bold text-xs transition-all shadow-2xs cursor-pointer"
           >
             <span>All Employees</span>
           </button>
@@ -176,7 +176,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#CE4270] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+          className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer disabled:opacity-50"
         >
           {isSaving ? (
             <>
@@ -195,7 +195,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
       {/* Target Employee Summary Header Card */}
       <div className="bg-white p-6 rounded-3xl border border-pink-100 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-pink-100 text-[#CE4270] flex items-center justify-center font-bold text-base border border-pink-200 shadow-xs overflow-hidden shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-pink-100 text-[#D81B60] flex items-center justify-center font-bold text-base border border-pink-200 shadow-xs overflow-hidden shrink-0">
             {employee.profile_photo ? (
               <img src={employee.profile_photo} alt={employee.full_name} className="w-full h-full object-cover" />
             ) : (
@@ -221,7 +221,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap">
-              <span className="text-[#CE4270] font-extrabold uppercase">{employee.designation || 'Staff'}</span>
+              <span className="text-[#D81B60] font-extrabold uppercase">{employee.designation || 'Staff'}</span>
               <span>•</span>
               <span className="font-mono text-gray-400">{employee.email}</span>
             </p>
@@ -231,7 +231,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
         <div className="flex items-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
           <div className="text-right">
             <div className="text-xs font-bold text-gray-400">Authorized Modules</div>
-            <div className="text-lg font-black text-[#CE4270]">
+            <div className="text-lg font-black text-[#D81B60]">
               {enabledModuleCount} / {MODULE_DEFINITIONS.length} Active
             </div>
           </div>
@@ -257,7 +257,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
       <div className="bg-white p-5 rounded-3xl border border-pink-100 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-[#CE4270]" />
+            <Sparkles size={16} className="text-[#D81B60]" />
             <span className="text-xs font-extrabold text-gray-900 uppercase tracking-wider">
               Quick Role Presets
             </span>
@@ -277,7 +277,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
                 onClick={() => handleApplyPreset(preset.id)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                   isActive
-                    ? 'bg-[#CE4270] text-white shadow-sm'
+                    ? 'bg-[#D81B60] text-white shadow-sm'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                 }`}
               >
@@ -318,7 +318,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                         isModuleEnabled
-                          ? 'bg-pink-100 text-[#CE4270]'
+                          ? 'bg-pink-100 text-[#D81B60]'
                           : 'bg-gray-200 text-gray-500'
                       }`}
                     >
@@ -336,7 +336,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
                     onChange={(e) => handleToggleModule(mod.key, e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#CE4270]"></div>
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#D81B60]"></div>
                 </label>
               </div>
 
@@ -366,7 +366,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
                           disabled={!isModuleEnabled}
                           checked={isChecked}
                           onChange={(e) => handleToggleAction(mod.key, act.key, e.target.checked)}
-                          className="w-4 h-4 text-[#CE4270] accent-[#CE4270] rounded cursor-pointer disabled:cursor-not-allowed"
+                          className="w-4 h-4 text-[#D81B60] accent-[#D81B60] rounded cursor-pointer disabled:cursor-not-allowed"
                         />
                         <span className="truncate">{act.label}</span>
                       </label>
@@ -382,7 +382,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
       {/* Floating Save Footer */}
       <div className="sticky bottom-4 z-20 bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-pink-100 shadow-xl flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-          <Info size={16} className="text-[#CE4270]" />
+          <Info size={16} className="text-[#D81B60]" />
           <span>
             Changes take effect immediately on next request. Unauthorized endpoints will return <code className="font-mono font-bold text-rose-600">ACCESS DENIED</code>.
           </span>
@@ -392,7 +392,7 @@ export default function EmployeePermissionsPage({ employeeId, onNavigate }) {
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#CE4270] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+          className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#b83760] hover:to-[#ce4270] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
         >
           {isSaving ? (
             <>

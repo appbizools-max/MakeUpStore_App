@@ -1790,7 +1790,7 @@ export default function AddNewProductPage({
                       <button
                         type="button"
                         onClick={() => setIsInlineAddBrandOpen(true)}
-                        className="text-[#C2477A] hover:text-[#b83760] font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                        className="text-[#D81B60] hover:text-[#b83760] font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         <Plus size={12} strokeWidth={2.5} />
                         <span>Add Brand</span>
@@ -1813,13 +1813,13 @@ export default function AddNewProductPage({
                           {selected.logo ? (
                             <img src={selected.logo} alt="" className="w-5 h-5 rounded-md object-contain shrink-0 bg-white border border-gray-200" />
                           ) : (
-                            <Store size={14} className="text-[#C2477A] shrink-0" />
+                            <Store size={14} className="text-[#D81B60] shrink-0" />
                           )}
                           <span className="font-extrabold text-gray-900 truncate">
                             {selected.name}
                           </span>
                           {brandNum && (
-                            <span className="text-[10px] font-mono font-bold text-[#C2477A] bg-white px-1.5 py-0.5 rounded border border-pink-200 shrink-0">
+                            <span className="text-[10px] font-mono font-bold text-[#D81B60] bg-white px-1.5 py-0.5 rounded border border-pink-200 shrink-0">
                               {brandNum}
                             </span>
                           )}
@@ -1844,7 +1844,7 @@ export default function AddNewProductPage({
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0 ml-2">
                             {brandNum && (
-                              <span className="text-[10px] font-mono font-bold text-[#C2477A] bg-white px-1.5 py-0.5 rounded border border-pink-200">
+                              <span className="text-[10px] font-mono font-bold text-[#D81B60] bg-white px-1.5 py-0.5 rounded border border-pink-200">
                                 {brandNum}
                               </span>
                             )}
@@ -2639,7 +2639,7 @@ export default function AddNewProductPage({
                     Salon Owner Price (₹) <span className="text-[#E11D48]">*</span>
                   </label>
                   <div className="relative flex items-center">
-                    <span className="absolute left-3 text-[#CE4270]">
+                    <span className="absolute left-3 text-[#D81B60]">
                       <Crown size={13} />
                     </span>
                     <span className="absolute left-8 font-bold text-gray-400 text-xs">₹</span>

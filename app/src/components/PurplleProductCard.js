@@ -58,10 +58,39 @@ export const PurplleProductCard = ({
     return getCartKey(effectiveParentId, hasShades ? selectedShade : (product?.variantData || null));
   }, [effectiveParentId, hasShades, selectedShade, product?.variantData]);
 
-  // Counter strictly looks up currentCartKey
-  const currentQty = (cartQuantityMap && currentCartKey)
-    ? (cartQuantityMap.get(currentCartKey) || 0)
-    : 0;
+  // Resolve existing matching cart item if already in bag
+  const existingCartItem = useMemo(() => {
+    const cartList = appCtx?.cart || [];
+    if (!Array.isArray(cartList) || cartList.length === 0) return null;
+    const pid = effectiveParentId || product?.id;
+    if (hasShades && selectedShade) {
+      const targetKey = getCartKey(pid, selectedShade);
+      const exact = cartList.find(item => item.id === targetKey);
+      if (exact) return exact;
+    }
+    return cartList.find(item => {
+      const itemPid = item.product?.id || item.productId;
+      return String(itemPid) === String(pid);
+    }) || null;
+  }, [appCtx?.cart, effectiveParentId, product?.id, hasShades, selectedShade]);
+
+  const activeCartKey = existingCartItem ? existingCartItem.id : currentCartKey;
+
+  // Counter looks up existing item or cartQuantityMap
+  const currentQty = useMemo(() => {
+    if (existingCartItem && typeof existingCartItem.quantity === 'number') {
+      return existingCartItem.quantity;
+    }
+    if (!cartQuantityMap) return 0;
+    if (activeCartKey && cartQuantityMap.has(activeCartKey)) {
+      return cartQuantityMap.get(activeCartKey) || 0;
+    }
+    const pid = effectiveParentId || product?.id;
+    if (pid && cartQuantityMap.has(String(pid))) {
+      return cartQuantityMap.get(String(pid)) || 0;
+    }
+    return 0;
+  }, [existingCartItem, cartQuantityMap, activeCartKey, effectiveParentId, product?.id]);
 
   // Dynamic price & MRP based on currently selected shade
   const rolePrice = useMemo(() => {
@@ -91,30 +120,36 @@ export const PurplleProductCard = ({
     ? (product.image || product.imageUrl || selectedShade?.image || selectedShade?.imageUrl)
     : (selectedShade?.image || selectedShade?.imageUrl || product?.image);
 
-  // Cart actions strictly pass currentCartKey & selectedShade
+  // Cart actions strictly pass activeCartKey & selectedShade
   const handleAdd = (e) => {
     e?.stopPropagation?.();
-    if (addToCart) {
-      addToCart(product, 1, hasShades ? selectedShade : null);
+    const effectiveAddToCart = addToCart || appCtx?.addToCart;
+    if (effectiveAddToCart) {
+      effectiveAddToCart(product, 1, hasShades ? selectedShade : null);
     }
   };
 
   const handleIncrement = (e) => {
     e?.stopPropagation?.();
-    if (updateCartQuantity && currentCartKey) {
-      updateCartQuantity(currentCartKey, currentQty + 1);
+    const updateFn = updateCartQuantity || appCtx?.updateCartQuantity;
+    const key = activeCartKey || currentCartKey;
+    if (updateFn && key) {
+      updateFn(key, currentQty + 1);
     }
   };
 
   const handleDecrement = (e) => {
     e?.stopPropagation?.();
+    const updateFn = updateCartQuantity || appCtx?.updateCartQuantity;
+    const removeFn = removeFromCart || appCtx?.removeFromCart;
+    const key = activeCartKey || currentCartKey;
     if (currentQty > 1) {
-      if (updateCartQuantity && currentCartKey) {
-        updateCartQuantity(currentCartKey, currentQty - 1);
+      if (updateFn && key) {
+        updateFn(key, currentQty - 1);
       }
     } else if (currentQty === 1) {
-      if (removeFromCart && currentCartKey) {
-        removeFromCart(currentCartKey);
+      if (removeFn && key) {
+        removeFn(key);
       }
     }
   };
@@ -133,15 +168,29 @@ export const PurplleProductCard = ({
 
   return (
     <View
-      style={[{ width: cardWidth }, style]}
-      className={`bg-white rounded-2xl p-2.5 shadow-2xs border border-gray-100 justify-between ${className}`}
+      style={[
+        {
+          width: cardWidth,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: 'transparent', // Transparent outer border per user specification
+          backgroundColor: '#FFFFFF',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 5,
+          elevation: 2,
+        },
+        style
+      ]}
+      className={`p-2.5 justify-between ${className}`}
     >
       {/* 1. PRODUCT IMAGE & WISHLIST */}
       <TouchableOpacity
-        activeOpacity={0.85}
+        activeOpacity={0.88}
         onPress={() => onPressProduct?.(product, selectedShade)}
       >
-        <View className="relative w-full aspect-square rounded-xl overflow-hidden mb-2 bg-white border border-gray-100 items-center justify-center p-2">
+        <View className="relative w-full aspect-square rounded-xl overflow-hidden mb-2 bg-[#FAFAFA] items-center justify-center p-2">
           <Image
             source={getSafeImageSource(displayImage, '')}
             style={{ width: '92%', height: '92%' }}
@@ -149,8 +198,23 @@ export const PurplleProductCard = ({
           />
 
           {discountPercent > 0 && (
-            <View className="absolute top-1.5 left-1.5 bg-[#C2477A] px-1.5 py-0.5 rounded shadow-2xs">
-              <Text className="text-white text-[8px] font-black">{discountPercent}% OFF</Text>
+            <View
+              style={{
+                position: 'absolute',
+                top: 6,
+                left: 6,
+                backgroundColor: '#FFF0F5',
+                borderColor: '#F8BBD0',
+                borderWidth: 0.5,
+                paddingHorizontal: 5,
+                paddingVertical: 2,
+                borderRadius: 4,
+                zIndex: 10
+              }}
+            >
+              <Text style={{ color: '#D81B60', fontSize: 8.5, fontWeight: '800' }}>
+                {discountPercent}% OFF
+              </Text>
             </View>
           )}
 
@@ -166,106 +230,130 @@ export const PurplleProductCard = ({
               <Ionicons
                 name={isLiked ? 'heart' : 'heart-outline'}
                 size={18}
-                color="#C2477A"
+                color="#D81B60"
               />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* 2. BRAND & TITLE */}
-        <Text className="text-[8px] font-bold text-[#C2477A] uppercase tracking-wider mb-0.5" numberOfLines={1}>
-          {product?.brandName || product?.brand || 'SALBEAU'}
+        {/* 2. BRAND & TITLE (Exact Fixed Height for Uniform Sizing) */}
+        <Text style={{ fontSize: 9, fontWeight: '800', color: '#D81B60', letterSpacing: 0.8, textTransform: 'uppercase', height: 14, marginBottom: 2 }} numberOfLines={1}>
+          {product?.brandName || product?.brand || product?.category || 'SALBEAU'}
         </Text>
-        <Text className="text-[11px] font-bold text-[#3A2430] leading-tight mb-1 min-h-[30px]" numberOfLines={2}>
+        <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#111827', lineHeight: 15, height: 30, marginBottom: 6 }} numberOfLines={2}>
           {cleanProductDisplayName(product?.name)}
         </Text>
       </TouchableOpacity>
 
-      {/* 3. PURPLLE SHADE DOTS / CHIPS (Interactive) */}
-      {hasShades ? (
-        <View className="mb-2">
-          <TouchableOpacity
-            onPress={handleOpenShades}
-            activeOpacity={0.7}
-            className="flex-row items-center justify-between mb-1"
-          >
-            <View className="flex-row items-center gap-1">
-              <Text className="text-[8.5px] font-extrabold text-[#C2477A]" numberOfLines={1}>
-                {shades.length > 1 ? 'Shades' : 'Shade'}
+      {/* 3. SHADE DOTS / CHIPS OR UNIFORM BADGE (Exact Same 38px Height across all products) */}
+      <View style={{ height: 38, justifyContent: 'center', marginBottom: 6 }}>
+        {hasShades ? (
+          <View>
+            <TouchableOpacity
+              onPress={handleOpenShades}
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <Text style={{ fontSize: 8.5, fontWeight: '800', color: '#D81B60' }} numberOfLines={1}>
+                  {shades.length > 1 ? `${shades.length} Shades` : '1 Shade'}
+                </Text>
+                <Ionicons name="chevron-down" size={9} color="#D81B60" />
+              </View>
+              <Text style={{ fontSize: 8.5, fontWeight: '700', color: '#8C7078', maxWidth: 85 }} numberOfLines={1}>
+                {selectedShade?.name || selectedShade?.title || ''}
               </Text>
-              <Ionicons name="chevron-down" size={9} color="#C2477A" />
-            </View>
-            <Text className="text-[8.5px] font-bold text-[#8C7078] max-w-[90px]" numberOfLines={1}>
-              {selectedShade?.name || selectedShade?.title || ''}
-            </Text>
-          </TouchableOpacity>
+            </TouchableOpacity>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            className="flex-row py-0.5"
-          >
-            {shades.map((shade, idx) => {
-              const isSelected = selectedShade && (
-                (selectedShade.id && shade.id && selectedShade.id === shade.id) ||
-                (selectedShade.name && shade.name && selectedShade.name === shade.name)
-              );
-              const colorHex = shade.hexColor || shade.hex_color || '#C2477A';
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ alignItems: 'center' }}
+            >
+              {shades.map((shade, idx) => {
+                const isSelected = selectedShade && (
+                  (selectedShade.id && shade.id && selectedShade.id === shade.id) ||
+                  (selectedShade.name && shade.name && selectedShade.name === shade.name)
+                );
+                const colorHex = shade.hexColor || shade.hex_color || '#D81B60';
 
-              return (
-                <TouchableOpacity
-                  key={shade.id || shade.name || idx}
-                  onPress={(e) => {
-                    e?.stopPropagation?.();
-                    setSelectedShade(shade);
-                    if (appCtx?.rememberSelectedShade && effectiveParentId) {
-                      appCtx.rememberSelectedShade(effectiveParentId, shade);
-                    }
-                    if (appCtx?.setSelectedShade) {
-                      appCtx.setSelectedShade(shade);
-                    }
-                  }}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
-                  className="mr-1.5 items-center justify-center p-0.5"
-                >
-                  <View
-                    style={{
-                      backgroundColor: colorHex,
-                      borderColor: isSelected ? '#C2477A' : '#E5E7EB',
-                      borderWidth: isSelected ? 2 : 1,
-                      transform: [{ scale: isSelected ? 1.15 : 1.0 }]
+                return (
+                  <TouchableOpacity
+                    key={shade.id || shade.name || idx}
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      setSelectedShade(shade);
+                      if (appCtx?.rememberSelectedShade && effectiveParentId) {
+                        appCtx.rememberSelectedShade(effectiveParentId, shade);
+                      }
+                      if (appCtx?.setSelectedShade) {
+                        appCtx.setSelectedShade(shade);
+                      }
                     }}
-                    className="w-4 h-4 rounded-full shadow-2xs items-center justify-center"
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
+                    style={{ marginRight: 5, padding: 1 }}
                   >
-                    {isSelected && (
-                      <View className="w-1 h-1 rounded-full bg-white" />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      ) : (
-        <View className="h-2" />
-      )}
+                    <View
+                      style={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        backgroundColor: colorHex,
+                        borderColor: isSelected ? '#D81B60' : '#E5E7EB',
+                        borderWidth: isSelected ? 2 : 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transform: [{ scale: isSelected ? 1.15 : 1.0 }]
+                      }}
+                    >
+                      {isSelected && (
+                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF' }} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : (
+          <View style={{ justifyContent: 'center' }}>
+            <View style={{ alignSelf: 'flex-start', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, backgroundColor: '#FFF0F5' }}>
+              <Text style={{ fontSize: 8.5, fontWeight: '800', color: '#D81B60', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {product?.productType || product?.category || 'Authentic'}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
 
       {/* 4. PRICE & SELECTED SHADE CART STEPPER / ADD BUTTON */}
-      <View className="flex-row items-center justify-between pt-1 border-t border-gray-100 mt-auto">
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6, borderTopWidth: 1, borderTopColor: '#F3F4F6', height: 36, marginTop: 'auto' }}>
         <View>
           {mrp > rolePrice && (
-            <Text className="text-[8.5px] font-semibold text-[#8C7078] line-through">
+            <Text style={{ fontSize: 9, fontWeight: '600', color: '#9CA3AF', textDecorationLine: 'line-through' }}>
               ₹{mrp}
             </Text>
           )}
-          <Text className="text-xs font-black text-[#C2477A]">₹{rolePrice}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: '#111827' }}>
+            ₹{rolePrice}
+          </Text>
         </View>
 
         <View>
           {currentQty > 0 ? (
-            <View className="bg-[#C2477A] rounded-lg px-2 py-1 flex-row items-center gap-1.5 shadow-2xs">
+            <View
+              style={{
+                backgroundColor: '#D81B60',
+                borderRadius: 8,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5
+              }}
+            >
               <TouchableOpacity
                 onPress={handleDecrement}
                 className="w-4 h-4 items-center justify-center"
@@ -288,17 +376,30 @@ export const PurplleProductCard = ({
             <TouchableOpacity
               onPress={(e) => {
                 e?.stopPropagation?.();
-                if (hasShades && !selectedShade && (onOpenShadeSheet || openShadeSheet)) {
+                if (hasShades && shades.length > 1 && (onOpenShadeSheet || openShadeSheet)) {
                   handleOpenShades(e);
                 } else {
                   handleAdd(e);
                 }
               }}
               activeOpacity={0.85}
-              className="flex-row items-center justify-center gap-1 px-3 py-1.5 rounded-lg border border-[#C2477A] bg-white shadow-2xs active:bg-[#FFF0F5]"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 3,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 8,
+                borderWidth: 1.2,
+                borderColor: '#D81B60',
+                backgroundColor: '#FFFFFF',
+              }}
             >
-              <Ionicons name="bag-handle-outline" size={12} color="#C2477A" />
-              <Text className="text-[#C2477A] text-[10px] font-black uppercase tracking-wider">+ ADD</Text>
+              <Ionicons name="bag-handle-outline" size={12} color="#D81B60" />
+              <Text style={{ color: '#D81B60', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
+                + ADD
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -306,4 +407,7 @@ export const PurplleProductCard = ({
     </View>
   );
 };
+
+export const ProductCard = PurplleProductCard;
+export default PurplleProductCard;
 
