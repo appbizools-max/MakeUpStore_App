@@ -140,6 +140,12 @@ export const MODULE_DEFINITIONS = [
     description: 'Payment reconciliation and transaction verification',
     actions: [
       { key: 'view', label: 'View Payments' },
+      { key: 'view_upi', label: 'View UPI Payments' },
+      { key: 'view_proofs', label: 'View Payment Proofs' },
+      { key: 'verify_upi', label: 'Verify UPI Payments' },
+      { key: 'approve', label: 'Approve Payments' },
+      { key: 'reject', label: 'Reject Payments' },
+      { key: 'view_history', label: 'View Payment History' },
       { key: 'refund', label: 'Process Refund' },
     ],
   },
@@ -554,6 +560,7 @@ export const DEPARTMENT_DESIGNATIONS_MAP = {
     'Logistics Manager',
     'Fleet & Dispatch Lead',
     'Delivery Associate',
+    'Delivery Partner',
   ],
   'IT & Systems': [
     'Systems Administrator',
@@ -576,13 +583,7 @@ export const EMPLOYMENT_TYPES = [
 /**
  * Standard Work Locations
  */
-export const WORK_LOCATIONS = [
-  'Visakhapatnam Main Store & Headquarters',
-  'Gajuwaka Fulfillment Center (Branch 2)',
-  'Madhurawada Express Hub (Branch 3)',
-  'Central Logistics Warehouse',
-  'Remote / Work From Home',
-];
+export const WORK_LOCATIONS = [];
 
 /**
  * Supported Country Codes
@@ -764,10 +765,19 @@ export function canAccessTab(tabId, user) {
   const perms = user.permissions || {};
 
   switch (tabId) {
+    case 'branches':
+    case 'settings/branches':
+      return user.role === 'admin' || user.id === 'admin_root' || Boolean(perms.settings?.enabled);
+    case 'upi_verification':
+    case 'payments/upi':
+      return user.role === 'admin' || user.id === 'admin_root' || Boolean(perms.payments?.enabled && (perms.payments?.actions?.view_upi || perms.payments?.actions?.view || perms.payments?.actions?.verify_upi));
     case 'dashboard':
       return Boolean(perms.dashboard?.enabled);
     case 'order_updated':
       return Boolean(perms.orders?.enabled);
+    case 'delivery_partners':
+    case 'delivery_partner':
+      return Boolean(perms.orders?.enabled || perms.employees?.enabled);
     case 'approval_center':
       return Boolean(perms.approvals?.enabled || perms.orders?.actions?.assign);
     case 'products':
@@ -816,6 +826,8 @@ export function canAccessTab(tabId, user) {
       return Boolean(perms.employees?.enabled && perms.employees?.actions?.add);
         case 'dashboard_visibility':
     case 'settings':
+    case 'security_2fa':
+    case 'security':
       return Boolean(perms.settings?.enabled);
     case 'quick_panel': {
       if (user.role === 'admin' || user.id === 'admin_root') return true;
@@ -841,6 +853,7 @@ export function getFirstAccessibleTab(user) {
   const candidateTabs = [
     'dashboard',
     'order_updated',
+      'delivery_partners',
     'products',
     'categories',
     'add_brand',
@@ -866,4 +879,31 @@ export function getFirstAccessibleTab(user) {
 
   // Safe fallback if no candidate matched
   return 'order_updated';
+}
+
+/**
+ * UPI Payment Verification Permission Helpers
+ */
+export function canVerifyUpi(user) {
+  if (!user) return false;
+  if (user.role === 'admin' || user.id === 'admin_root') return true;
+  const payments = user.permissions?.payments;
+  if (!payments || !payments.enabled) return false;
+  return Boolean(payments.actions?.verify_upi || payments.actions?.approve || payments.actions?.view_proofs || payments.actions?.view);
+}
+
+export function canApproveUpi(user) {
+  if (!user) return false;
+  if (user.role === 'admin' || user.id === 'admin_root') return true;
+  const payments = user.permissions?.payments;
+  if (!payments || !payments.enabled) return false;
+  return Boolean(payments.actions?.approve || payments.actions?.verify_upi);
+}
+
+export function canRejectUpi(user) {
+  if (!user) return false;
+  if (user.role === 'admin' || user.id === 'admin_root') return true;
+  const payments = user.permissions?.payments;
+  if (!payments || !payments.enabled) return false;
+  return Boolean(payments.actions?.reject || payments.actions?.verify_upi);
 }

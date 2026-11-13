@@ -708,7 +708,7 @@ export const mapEmployeeFromDb = (emp) => {
     employment_type: emp.employment_type || meta.employment_type || 'Full-time',
     reporting_manager_id: emp.reporting_manager_id || meta.reporting_manager_id || '',
     reporting_manager_name: emp.reporting_manager_name || meta.reporting_manager_name || '',
-    work_location: emp.work_location || meta.work_location || 'Visakhapatnam Main Store & Headquarters',
+    work_location: emp.work_location || meta.work_location || emp.branch || 'Main Branch',
     avatar: resolvedPhoto,
     profile_photo: resolvedPhoto,
     profilePhoto: resolvedPhoto,
@@ -735,6 +735,65 @@ export const mapLogFromDb = (log) => {
     metadata: meta,
     status: meta.status || log.status || 'success'
   };
+};
+
+
+export const DEFAULT_GENERAL_SETTINGS = {
+  storeName: 'Salbeau MakeUpStore',
+  tagline: 'Luxury Beauty & Salon Cosmetics Store',
+  supportEmail: 'contact@salbeau.com',
+  supportPhone: '+91 98765 43210',
+  headquartersAddress: 'VIP Road, C-Block, Visakhapatnam, Andhra Pradesh - 530003',
+  gstin: '37AAAAA0000A1Z5',
+  currency: '₹',
+  identity: {
+    storeName: 'Salbeau MakeUpStore',
+    tagline: 'Luxury Beauty & Salon Cosmetics Store',
+    contactEmail: 'contact@salbeau.com',
+    supportPhone: '+91 98765 43210',
+    hqAddress: 'VIP Road, C-Block, Visakhapatnam, Andhra Pradesh - 530003',
+    gstin: '37AAAAA0000A1Z5',
+    currencyCode: 'INR',
+    currencySymbol: '₹'
+  },
+  delivery: {
+    standardFee: 49,
+    standardDeliveryFee: 49,
+    freeDeliveryThreshold: 499,
+    estimatedTimeText: 'Same Day / 24-48 Hours',
+    estimatedDeliveryTime: 'Same Day / 24-48 Hours',
+    minOrderAmount: 99,
+    maxItemsPerOrder: 50,
+  },
+  payments: {
+    upiId: 'salbeau.store@okaxis',
+    acceptUpi: true,
+    acceptCod: true,
+    allowCod: true,
+    allowUpi: true,
+    maxCodAmount: 5000,
+    maxCodLimit: 5000,
+  },
+  storeOpen: true,
+  operations: {
+    isAcceptingOrders: true,
+    pauseOrdersNotice: 'We are temporarily not taking new orders. Please check back shortly.',
+    announcementEnabled: false,
+    announcementMessage: '✨ Welcome to Salbeau Luxury Cosmetics! Enjoy Free Shipping on orders above ₹499.',
+  },
+  announcement: {
+    enabled: false,
+    message: '✨ Welcome to Salbeau Luxury Cosmetics! Enjoy Free Shipping on orders above ₹499.',
+  },
+  policies: {
+    graceWindowMinutes: 30,
+    cancellationWindowMinutes: 30,
+    cancelFeeAmount: 0,
+    cancellationFee: 0,
+    allowSelfCancel: true,
+    allowCustomerSelfCancel: true,
+    requireB2BVerification: true,
+  }
 };
 
 export const AdminProvider = ({ children }) => {
@@ -790,7 +849,16 @@ export const AdminProvider = ({ children }) => {
   const [searchRequestsLoading, setSearchRequestsLoading] = useState(false);
   const [b2bVerifications, setB2BVerifications] = useState(() => getCachedData('salbeau_admin_cache_b2b', []));
   const [b2bLoading, setB2BLoading] = useState(false);
-  const [employees, setEmployees] = useState(() => getCachedData('salbeau_admin_cache_employees', INITIAL_SEED_EMPLOYEES));
+  // General Store Settings & Live Configuration
+  const [generalSettings, setGeneralSettings] = useState(() => {
+    const cached = getCachedData('salbeau_admin_cache_general_settings', null);
+    return cached ? { ...DEFAULT_GENERAL_SETTINGS, ...cached } : DEFAULT_GENERAL_SETTINGS;
+  });
+  // Branch Management (Configured by Admin in Settings -> Branch Management)
+  const [branches, setBranches] = useState(() => getCachedData('salbeau_admin_cache_branches', []));
+  // UPI Payment Verifications
+  const [upiVerifications, setUpiVerifications] = useState(() => getCachedData('salbeau_admin_cache_upi_verifications', []));
+    const [employees, setEmployees] = useState(() => getCachedData('salbeau_admin_cache_employees', INITIAL_SEED_EMPLOYEES));
   const [employeeActivityLogs, setEmployeeActivityLogs] = useState([]);
   const [employeeOperations, setEmployeeOperations] = useState([]);
   const [currentAuthUser, setCurrentAuthUser] = useState(() => {
@@ -814,7 +882,7 @@ export const AdminProvider = ({ children }) => {
   // Automatic purge of stale customer & booking caches to guarantee clean database synchronization
   useEffect(() => {
     try {
-      const purgeKey = 'salbeau_admin_user_data_purge_v1';
+      const purgeKey = 'salbeau_admin_user_data_purge_v2';
       if (typeof window !== 'undefined' && window.localStorage && localStorage.getItem(purgeKey) !== 'true') {
         localStorage.removeItem('salbeau_admin_cache_orders');
         localStorage.removeItem('salbeau_admin_cache_users');
@@ -889,7 +957,10 @@ export const AdminProvider = ({ children }) => {
         fetchAllSearchRequests().catch(() => []),
         safeDbFetch(adminClient.from('employees').select('*, employee_permissions(*)').order('created_at', { ascending: false })),
         safeDbFetch(adminClient.from('employee_activity_logs').select('*').order('created_at', { ascending: false }).limit(200)),
-        safeDbFetch(adminClient.from('brands').select('logo').eq('id', 'salbeau_employees_backup').limit(1))
+        safeDbFetch(adminClient.from('brands').select('logo').eq('id', 'salbeau_employees_backup').limit(1)),
+        safeDbFetch(adminClient.from('branches').select('*').order('created_at', { ascending: false })),
+        safeDbFetch(adminClient.from('brands').select('logo').eq('id', 'salbeau_branches_master').limit(1)),
+        safeDbFetch(adminClient.from('upi_payment_verifications').select('*').order('submission_date', { ascending: false }))
       ]);
 
       if (ordersRes && Array.isArray(ordersRes.data)) {
@@ -1091,6 +1162,66 @@ export const AdminProvider = ({ children }) => {
         setSearchRequests(directReqs);
       }
 
+      
+      // Process General Store Settings from Supabase
+      try {
+        const settingsRes = await safeDbFetch(adminClient.from('brands').select('logo').eq('id', 'salbeau_store_settings').limit(1));
+        if (settingsRes?.data?.[0]?.logo) {
+          try {
+            const parsed = JSON.parse(settingsRes.data[0].logo);
+            if (parsed && typeof parsed === 'object') {
+              const merged = {
+                ...DEFAULT_GENERAL_SETTINGS,
+                ...parsed,
+                identity: { ...DEFAULT_GENERAL_SETTINGS.identity, ...(parsed.identity || {}) },
+                delivery: { ...DEFAULT_GENERAL_SETTINGS.delivery, ...(parsed.delivery || {}) },
+                payments: { ...DEFAULT_GENERAL_SETTINGS.payments, ...(parsed.payments || {}) },
+                operations: { ...DEFAULT_GENERAL_SETTINGS.operations, ...(parsed.operations || {}) },
+                policies: { ...DEFAULT_GENERAL_SETTINGS.policies, ...(parsed.policies || {}) },
+              };
+              setGeneralSettings(merged);
+              setCachedData('salbeau_admin_cache_general_settings', merged);
+            }
+          } catch (e) { }
+        }
+      } catch (err) {
+        console.warn('General settings fetch note:', err);
+      }
+
+      // Process Branches from Supabase & Cloud Backup
+      try {
+        let loadedBranches = [];
+        // Check if branches table returned records
+        const branchesRes = await safeDbFetch(adminClient.from('branches').select('*').order('created_at', { ascending: false }));
+        if (branchesRes && Array.isArray(branchesRes.data) && branchesRes.data.length > 0) {
+          loadedBranches = branchesRes.data;
+        } else {
+          // Check persistent cloud backup in brands row
+          const backupRes = await safeDbFetch(adminClient.from('brands').select('logo').eq('id', 'salbeau_branches_master').limit(1));
+          if (backupRes?.data?.[0]?.logo) {
+            try {
+              const parsed = JSON.parse(backupRes.data[0].logo);
+              if (Array.isArray(parsed)) loadedBranches = parsed;
+            } catch (e) { }
+          }
+        }
+        setBranches(loadedBranches);
+        setCachedData('salbeau_admin_cache_branches', loadedBranches);
+      } catch (err) {
+        console.warn('Branch fetch note:', err);
+      }
+
+      // Process UPI Payment Verifications
+      try {
+        const upiRes = await safeDbFetch(adminClient.from('upi_payment_verifications').select('*').order('submission_date', { ascending: false }));
+        if (upiRes && Array.isArray(upiRes.data)) {
+          setUpiVerifications(upiRes.data);
+          setCachedData('salbeau_admin_cache_upi_verifications', upiRes.data);
+        }
+      } catch (err) {
+        console.warn('UPI verifications fetch note:', err);
+      }
+
       // Process Employees and Employee Activity Logs (fetched in parallel above)
       try {
         const employeeMap = new Map();
@@ -1281,8 +1412,19 @@ export const AdminProvider = ({ children }) => {
             } else {
               updatedList = [...prev, updatedBrand];
             }
-            return updatedList.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
+            const sorted = updatedList.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
+            setCachedData('salbeau_admin_cache_brands', sorted);
+            return sorted;
           });
+        } else if (payload.eventType === 'DELETE') {
+          const deletedId = payload.old?.id;
+          if (deletedId) {
+            setBrands(prev => {
+              const remaining = prev.filter(b => b.id !== deletedId);
+              setCachedData('salbeau_admin_cache_brands', remaining);
+              return remaining;
+            });
+          }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
@@ -1435,12 +1577,45 @@ export const AdminProvider = ({ children }) => {
     }
 
     const dbClient = supabaseAdmin || supabase;
-    const brandRes = await findOrCreateBrand(newBrand, brands, dbClient);
+
+    // Optimize logo if data URL or Blob provided
+    let finalLogo = newBrand.logo || '';
+    if (finalLogo && (finalLogo.startsWith('data:') || finalLogo instanceof Blob)) {
+      try {
+        const logoUpload = await uploadOptimizedImage(finalLogo, 'BRAND_LOGO', {
+          folder: 'brand-logos',
+          filenamePrefix: 'brand'
+        });
+        if (logoUpload?.url) finalLogo = logoUpload.url;
+      } catch (luErr) {
+        console.warn('Brand logo upload notice:', luErr);
+      }
+    }
+
+    const cleanBrandInput = {
+      ...newBrand,
+      logo: finalLogo
+    };
+
+    const brandRes = await findOrCreateBrand(cleanBrandInput, brands, dbClient);
     if (!brandRes || !brandRes.brand) {
       throw new Error('Failed to resolve or create brand.');
     }
 
     const brandObj = brandRes.brand;
+
+    if (!brandRes.created && brandRes.brand) {
+      const updatedFields = {
+        category: (newBrand.categories && newBrand.categories.length > 0) ? newBrand.categories[0] : (newBrand.category || brandRes.brand.category || ''),
+        categories: (newBrand.categories && newBrand.categories.length > 0) ? newBrand.categories : (brandRes.brand.categories || []),
+        logo: finalLogo || brandRes.brand.logo || '',
+        enabled: newBrand.enabled !== undefined ? newBrand.enabled : brandRes.brand.enabled,
+        description: newBrand.description !== undefined ? newBrand.description : brandRes.brand.description,
+        internalNotes: newBrand.internalNotes !== undefined ? newBrand.internalNotes : brandRes.brand.internalNotes
+      };
+      await updateBrand(brandRes.brand.id, updatedFields);
+      return { ...brandRes.brand, ...updatedFields };
+    }
 
     if (brandRes.created) {
       setBrands(prev => {
@@ -1741,7 +1916,7 @@ export const AdminProvider = ({ children }) => {
           continue;
         }
 
-        const existing = currentBrandsList.find(b => b.id === row.matchedBrandId);
+        const existing = currentBrandsList.find(b => (row.matchedBrandId && b.id === row.matchedBrandId) || (b.name && row.brandName && b.name.trim().toLowerCase() === row.brandName.trim().toLowerCase()));
         if (existing) {
           brandsToUpdate.push({
             id: existing.id,
@@ -4782,7 +4957,7 @@ export const AdminProvider = ({ children }) => {
         employmentType = 'Full-time',
         reportingManagerId = '',
         reportingManagerName = '',
-        workLocation = 'Visakhapatnam Main Store & Headquarters',
+        workLocation = '',
         profilePhoto = '',
         onboardingMethod = 'temporary_password',
         permissions = {},
@@ -5759,6 +5934,327 @@ export const AdminProvider = ({ children }) => {
   };
 
   /**
+   * BRANCH MANAGEMENT CRUD (Admin Settings)
+   */
+  const saveBranchesBackup = async (nextBranches) => {
+    try {
+      await supabase.from('brands').upsert({
+        id: 'salbeau_branches_master',
+        name: 'Branches Master Record',
+        logo: JSON.stringify(nextBranches),
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+    } catch (e) { }
+  };
+
+  
+  /**
+   * GENERAL STORE SETTINGS
+   */
+  const updateGeneralSettings = async (partialOrFull) => {
+    try {
+      const merged = {
+        ...generalSettings,
+        ...partialOrFull,
+        identity: { ...(generalSettings?.identity || {}), ...(partialOrFull?.identity || {}) },
+        delivery: { ...(generalSettings?.delivery || {}), ...(partialOrFull?.delivery || {}) },
+        payments: { ...(generalSettings?.payments || {}), ...(partialOrFull?.payments || {}) },
+        operations: { ...(generalSettings?.operations || {}), ...(partialOrFull?.operations || {}) },
+        policies: { ...(generalSettings?.policies || {}), ...(partialOrFull?.policies || {}) },
+      };
+
+      setGeneralSettings(merged);
+      setCachedData('salbeau_admin_cache_general_settings', merged);
+
+      // Persist to Supabase brands table as store settings document
+      const client = supabaseAdmin || supabase;
+      await client.from('brands').upsert({
+        id: 'salbeau_store_settings',
+        name: 'Salbeau Store Settings',
+        slug: 'salbeau-store-settings',
+        logo: JSON.stringify(merged),
+        status: 'active',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
+      // Signal other windows/tabs (e.g. mobile app preview)
+      try {
+        localStorage.setItem('salbeau_general_settings_sync', JSON.stringify({
+          timestamp: Date.now(),
+          settings: merged
+        }));
+      } catch (e) { }
+
+      return { success: true, data: merged };
+    } catch (err) {
+      console.error('Failed to update general settings:', err);
+      throw err;
+    }
+  };
+
+  const addBranch = async (branchData) => {
+    try {
+      const branchId = 'br_' + Date.now();
+      const payload = {
+        id: branchId,
+        name: (branchData.name || '').trim(),
+        code: (branchData.code || '').trim().toUpperCase(),
+        address: branchData.address || '',
+        city: branchData.city || '',
+        state: branchData.state || '',
+        pin_code: branchData.pin_code || '',
+        contact_number: branchData.contact_number || '',
+        manager_name: branchData.manager_name || '',
+        manager_id: branchData.manager_id || '',
+        is_active: branchData.is_active !== false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // Try inserting into branches table
+      try {
+        await supabase.from('branches').insert([payload]);
+      } catch (e) {
+        console.warn('Direct branches table insert note:', e);
+      }
+
+      // Update state, local storage, and cloud backup
+      const nextList = [payload, ...branches.filter(b => b.code !== payload.code)];
+      setBranches(nextList);
+      setCachedData('salbeau_admin_cache_branches', nextList);
+      await saveBranchesBackup(nextList);
+
+      return { success: true, branch: payload };
+    } catch (err) {
+      console.error('Error adding branch:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const updateBranch = async (branchId, branchData) => {
+    try {
+      const updatedFields = {
+        name: (branchData.name || '').trim(),
+        code: (branchData.code || '').trim().toUpperCase(),
+        address: branchData.address || '',
+        city: branchData.city || '',
+        state: branchData.state || '',
+        pin_code: branchData.pin_code || '',
+        contact_number: branchData.contact_number || '',
+        manager_name: branchData.manager_name || '',
+        manager_id: branchData.manager_id || '',
+        is_active: branchData.is_active !== false,
+        updated_at: new Date().toISOString()
+      };
+
+      try {
+        await supabase.from('branches').update(updatedFields).eq('id', branchId);
+      } catch (e) { }
+
+      const nextList = branches.map(b => b.id === branchId ? { ...b, ...updatedFields } : b);
+      setBranches(nextList);
+      setCachedData('salbeau_admin_cache_branches', nextList);
+      await saveBranchesBackup(nextList);
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error updating branch:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const deleteBranch = async (branchId) => {
+    try {
+      try {
+        await supabase.from('branches').delete().eq('id', branchId);
+      } catch (e) { }
+
+      const nextList = branches.filter(b => b.id !== branchId);
+      setBranches(nextList);
+      setCachedData('salbeau_admin_cache_branches', nextList);
+      await saveBranchesBackup(nextList);
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error deleting branch:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const toggleBranchStatus = async (branchId) => {
+    const target = branches.find(b => b.id === branchId);
+    if (!target) return;
+    const newActive = target.is_active === false ? true : false;
+    return updateBranch(branchId, { ...target, is_active: newActive });
+  };
+
+  /**
+   * UPI PAYMENT VERIFICATION WORKFLOW (Admin / Authorized Staff)
+   */
+  const approveUpiPayment = async ({ id, orderId, previousStatus, notes, verifiedBy, verifiedByName }) => {
+    try {
+      const nowIso = new Date().toISOString();
+      const client = supabaseAdmin || supabase;
+
+      // 1. Update upi_payment_verifications table
+      try {
+        await client.from('upi_payment_verifications').upsert({
+          id: id || ('upi_' + orderId),
+          order_id: orderId,
+          verification_status: 'VERIFIED',
+          verified_by: verifiedBy || 'admin',
+          verified_by_name: verifiedByName || 'Administrator',
+          verified_at: nowIso,
+          previous_status: previousStatus || 'PENDING_VERIFICATION',
+          notes: notes || 'Verified and approved by admin',
+          updated_at: nowIso
+        }, { onConflict: 'id' });
+      } catch (e) { }
+
+      // 2. Update order shipments in orders table
+      const targetOrder = orders.find(o => o.id === orderId);
+      const prevShip = targetOrder?.shipments || {};
+      const updatedShipments = {
+        ...prevShip,
+        paymentStatus: 'VERIFIED',
+        paymentVerified: true,
+        verifiedAt: nowIso,
+        verifiedBy: verifiedByName || 'Administrator',
+        reconciledAt: nowIso,
+        upiVerification: {
+          ...(prevShip.upiVerification || {}),
+          verificationStatus: 'VERIFIED',
+          verifiedAt: nowIso,
+          verifiedBy: verifiedByName || 'Administrator'
+        }
+      };
+
+      try {
+        await client.from('orders').update({
+          shipments: updatedShipments,
+          updated_at: nowIso
+        }).eq('id', orderId);
+      } catch (e) { }
+
+      // 3. Update local state
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, shipments: updatedShipments } : o));
+      setUpiVerifications(prev => [
+        {
+          id: id || ('upi_' + orderId),
+          order_id: orderId,
+          verification_status: 'VERIFIED',
+          verified_by: verifiedBy,
+          verified_by_name: verifiedByName,
+          verified_at: nowIso,
+          notes
+        },
+        ...prev.filter(v => (v.id !== id && v.order_id !== orderId))
+      ]);
+
+      // 4. Log Audit Trail
+      await logEmployeeActivity({
+        action: 'APPROVE_UPI_PAYMENT',
+        module: 'payments',
+        entityType: 'upi_payment_verification',
+        entityId: orderId,
+        status: 'success',
+        details: { previousStatus, updatedStatus: 'VERIFIED', notes },
+        metadata: { orderId, verifiedBy, verifiedByName }
+      });
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error approving UPI payment:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const rejectUpiPayment = async ({ id, orderId, previousStatus, rejectionReason, notes, verifiedBy, verifiedByName }) => {
+    try {
+      const nowIso = new Date().toISOString();
+      const client = supabaseAdmin || supabase;
+
+      if (!rejectionReason || !rejectionReason.trim()) {
+        return { success: false, error: 'Mandatory rejection reason required.' };
+      }
+
+      // 1. Update upi_payment_verifications
+      try {
+        await client.from('upi_payment_verifications').upsert({
+          id: id || ('upi_' + orderId),
+          order_id: orderId,
+          verification_status: 'REJECTED',
+          rejection_reason: rejectionReason.trim(),
+          verified_by: verifiedBy || 'admin',
+          verified_by_name: verifiedByName || 'Administrator',
+          verified_at: nowIso,
+          previous_status: previousStatus || 'PENDING_VERIFICATION',
+          notes: notes || '',
+          updated_at: nowIso
+        }, { onConflict: 'id' });
+      } catch (e) { }
+
+      // 2. Update order shipments
+      const targetOrder = orders.find(o => o.id === orderId);
+      const prevShip = targetOrder?.shipments || {};
+      const updatedShipments = {
+        ...prevShip,
+        paymentStatus: 'REJECTED',
+        paymentVerified: false,
+        paymentRejectionReason: rejectionReason.trim(),
+        verifiedAt: nowIso,
+        verifiedBy: verifiedByName || 'Administrator',
+        upiVerification: {
+          ...(prevShip.upiVerification || {}),
+          verificationStatus: 'REJECTED',
+          rejectionReason: rejectionReason.trim(),
+          verifiedAt: nowIso,
+          verifiedBy: verifiedByName || 'Administrator'
+        }
+      };
+
+      try {
+        await client.from('orders').update({
+          shipments: updatedShipments,
+          updated_at: nowIso
+        }).eq('id', orderId);
+      } catch (e) { }
+
+      // 3. Update local state
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, shipments: updatedShipments } : o));
+      setUpiVerifications(prev => [
+        {
+          id: id || ('upi_' + orderId),
+          order_id: orderId,
+          verification_status: 'REJECTED',
+          rejection_reason: rejectionReason.trim(),
+          verified_by: verifiedBy,
+          verified_by_name: verifiedByName,
+          verified_at: nowIso,
+          notes
+        },
+        ...prev.filter(v => (v.id !== id && v.order_id !== orderId))
+      ]);
+
+      // 4. Log Audit Trail
+      await logEmployeeActivity({
+        action: 'REJECT_UPI_PAYMENT',
+        module: 'payments',
+        entityType: 'upi_payment_verification',
+        entityId: orderId,
+        status: 'success',
+        details: { previousStatus, updatedStatus: 'REJECTED', rejectionReason, notes },
+        metadata: { orderId, verifiedBy, verifiedByName }
+      });
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error rejecting UPI payment:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  /**
    * Complete Database & Local Caches Purge
    * Wipes users, admins/employees, orders, products, categories, brands, carts, verifications
    * from local React state, browser localStorage, and Supabase backend.
@@ -5969,6 +6465,19 @@ export const AdminProvider = ({ children }) => {
         toggleHomeBannerActive,
         reorderHomeBanners,
         DEFAULT_HOME_BANNERS,
+        generalSettings,
+        updateGeneralSettings,
+        DEFAULT_GENERAL_SETTINGS,
+        branches,
+        addBranch,
+        updateBranch,
+        deleteBranch,
+        toggleBranchStatus,
+        refreshBranches: fetchData,
+        upiVerifications,
+        approveUpiPayment,
+        rejectUpiPayment,
+        refreshUpiVerifications: fetchData,
         purgeCompleteDatabaseAndCaches,
       }}
     >

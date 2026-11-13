@@ -37,6 +37,7 @@ export default function ImageManagerModal({
   filenamePrefix = 'img',
   defaultSearchQuery = '',
   aspectRatioSpec = null,
+  localOnly = false,
 }) {
   const { uploadImage } = useAdmin();
   const spec = aspectRatioSpec || resolveImageSpec(folder);
@@ -537,77 +538,96 @@ export default function ImageManagerModal({
                 </div>
               )}
 
-              {/* Source Option Tabs */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                  Choose Image Source
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('upload')}
-                    className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
-                      activeTab === 'upload'
-                        ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center">
+              {/* Source Option Tabs - Hidden if localOnly */}
+              {!localOnly ? (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    Choose Image Source
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('upload')}
+                      className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
+                        activeTab === 'upload'
+                          ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-bold">Upload / Drop</span>
+                      <span className="text-[10px] text-gray-500">File picker & drop</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('paste')}
+                      className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
+                        activeTab === 'paste'
+                          ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                        <Clipboard className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-bold">Paste (Ctrl+V)</span>
+                      <span className="text-[10px] text-gray-500">From clipboard</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('google')}
+                      className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
+                        activeTab === 'google'
+                          ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                        <Search className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-bold">Browse Google</span>
+                      <span className="text-[10px] text-gray-500">Search images</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('url')}
+                      className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
+                        activeTab === 'url'
+                          ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <LinkIcon className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-bold">Image URL</span>
+                      <span className="text-[10px] text-gray-500">Direct web link</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-gradient-to-r from-pink-50/70 via-purple-50/40 to-white border border-pink-200/80 rounded-2xl flex items-center justify-between gap-3 text-pink-950">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#C2477A] text-white flex items-center justify-center font-bold text-xs shadow-xs">
                       <Upload className="w-4 h-4" />
                     </div>
-                    <span className="text-xs font-bold">Upload / Drop</span>
-                    <span className="text-[10px] text-gray-500">File picker & drop</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('paste')}
-                    className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
-                      activeTab === 'paste'
-                        ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
-                      <Clipboard className="w-4 h-4" />
+                    <div>
+                      <span className="font-extrabold text-xs block text-gray-900">Direct Local Device File Upload</span>
+                      <span className="text-[11px] text-gray-500 font-medium">
+                        Select an image file directly from your local computer, tablet, or phone.
+                      </span>
                     </div>
-                    <span className="text-xs font-bold">Paste (Ctrl+V)</span>
-                    <span className="text-[10px] text-gray-500">From clipboard</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('google')}
-                    className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
-                      activeTab === 'google'
-                        ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
-                      <Search className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-bold">Browse Google</span>
-                    <span className="text-[10px] text-gray-500">Search images</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('url')}
-                    className={`p-3 rounded-xl border text-left transition-all flex flex-col items-start gap-1.5 ${
-                      activeTab === 'url'
-                        ? 'border-pink-600 bg-white text-pink-900 shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                      <LinkIcon className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-bold">Image URL</span>
-                    <span className="text-[10px] text-gray-500">Direct web link</span>
-                  </button>
+                  </div>
+                  <span className="px-2.5 py-1 bg-white border border-pink-200 rounded-lg text-[10px] font-black text-[#C2477A] uppercase tracking-wider shrink-0 shadow-2xs">
+                    Local File Only
+                  </span>
                 </div>
-              </div>
+              )}
 
               {/* Tab 1: Upload / Drag & Drop */}
               {activeTab === 'upload' && (

@@ -18,7 +18,9 @@ export const CartScreen = () => {
     setCurrentScreen,
     activeProducts,
     recommendationConfig,
-    setSelectedProduct
+    setSelectedProduct,
+    getDeliveryFee,
+    storeSettings
   } = useApp();
 
 
@@ -84,7 +86,12 @@ export const CartScreen = () => {
 
   const productSavings = Math.max(0, mrpTotal - bagTotal);
   const totalSavings = productSavings;
-  const totalPayable = bagTotal;
+  const deliveryFee = getDeliveryFee ? getDeliveryFee(bagTotal) : 0;
+  const isFreeDelivery = deliveryFee === 0;
+  const freeThreshold = Number(storeSettings?.delivery?.freeDeliveryThreshold ?? 499);
+  const minOrder = Number(storeSettings?.delivery?.minOrderAmount ?? 0);
+  const isBelowMinOrder = minOrder > 0 && bagTotal < minOrder;
+  const totalPayable = (bagTotal + deliveryFee);
 
   if (cart.length === 0) {
     return (
@@ -361,8 +368,17 @@ export const CartScreen = () => {
 
 
             <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-xs font-medium text-[#8C7078]">Delivery Charges</Text>
-              <Text className="text-xs font-extrabold text-[#2E7D32]">FREE</Text>
+              <View>
+                <Text className="text-xs font-medium text-[#8C7078]">Delivery Charges</Text>
+                {bagTotal < freeThreshold && (
+                  <Text className="text-[10px] text-pink-500 font-bold">
+                    Add ₹{freeThreshold - bagTotal} more for FREE delivery
+                  </Text>
+                )}
+              </View>
+              <Text className={`text-xs font-extrabold ${isFreeDelivery ? 'text-[#2E7D32]' : 'text-slate-900'}`}>
+                {isFreeDelivery ? 'FREE' : `₹${deliveryFee}`}
+              </Text>
             </View>
 
             <View className="border-b border-[#FCE4EC] my-1" />

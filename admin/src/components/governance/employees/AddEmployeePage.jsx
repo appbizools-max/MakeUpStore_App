@@ -32,7 +32,7 @@ import {
 } from '../../../utils/permissionEngine';
 
 export default function AddEmployeePage({ onNavigate }) {
-  const { employees = [], createEmployee } = useAdmin();
+  const { employees = [], branches = [], createEmployee } = useAdmin();
 
   // Step 1 = Identity & Contact Info, Step 2 = Granular Access Matrix
   const [currentStep, setCurrentStep] = useState(1);
@@ -46,6 +46,9 @@ export default function AddEmployeePage({ onNavigate }) {
     countryCode: '+91',
     phone: '',
     profilePhoto: '',
+    branch: '',
+    branchId: '',
+    workLocation: '',
     designation: 'manager',
     rolePreset: 'manager',
     status: 'active'
@@ -264,6 +267,9 @@ export default function AddEmployeePage({ onNavigate }) {
         phone: formData.phone.trim(),
         profilePhoto: formData.profilePhoto,
         designation: formData.designation,
+        branch: formData.branch,
+        branch_id: formData.branchId,
+        workLocation: formData.branch,
         department: '',
         rolePreset: formData.rolePreset,
         status: 'active',
@@ -627,6 +633,38 @@ export default function AddEmployeePage({ onNavigate }) {
                   Preset: <strong className="text-[#CE4270] font-bold">{formData.rolePreset.toUpperCase()}</strong> access level
                 </span>
               </div>
+            </div>
+
+            {/* Branch Assignment */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                Store / Branch Assignment <span className="text-[#CE4270]">*</span>
+              </label>
+              <select
+                value={formData.branch}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const sel = branches.find(b => b.name === val);
+                  setFormData({
+                    ...formData,
+                    branch: val,
+                    branchId: sel ? sel.id : '',
+                    workLocation: val
+                  });
+                }}
+                className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-white cursor-pointer shadow-2xs"
+              >
+                <option value="">Select Branch Assignment</option>
+                {branches && branches.length > 0 ? (
+                  branches.filter(b => b.is_active !== false).map((b) => (
+                    <option key={b.id || b.code} value={b.name}>
+                      {b.name} ({b.code})
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>No branches configured — Add in Settings → Branch Management</option>
+                )}
+              </select>
             </div>
 
             {/* Row 4: Photo (Optional) */}

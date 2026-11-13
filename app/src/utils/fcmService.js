@@ -82,8 +82,8 @@ export async function requestFCMToken(userId = null, phone = null) {
           console.log('[FCM Native] Device token registered:', token.slice(0, 15) + '...');
 
           // Subscribe to general beauty announcements and order updates
-          NativeModules.SalbeauFCM.subscribeToTopic('salbeau_all_users').catch(() => {});
-          NativeModules.SalbeauFCM.subscribeToTopic('salbeau_announcements').catch(() => {});
+          NativeModules.SalbeauFCM.subscribeToTopic('salbeau_all_users').catch(() => { });
+          NativeModules.SalbeauFCM.subscribeToTopic('salbeau_announcements').catch(() => { });
 
           // Sync token to Supabase users profile
           const identifier = phone || userId;
@@ -175,7 +175,7 @@ export function setupFCMForegroundListener(onNotificationReceived) {
     const refreshSub = DeviceEventEmitter.addListener('onFCMTokenRefresh', async ({ token }) => {
       console.log('[FCM Native Token Refreshed]:', token?.slice(0, 15) + '...');
       if (token) {
-        await AsyncStorage.setItem('salbeau_fcm_token', token).catch(() => {});
+        await AsyncStorage.setItem('salbeau_fcm_token', token).catch(() => { });
       }
     });
 
@@ -187,7 +187,7 @@ export function setupFCMForegroundListener(onNotificationReceived) {
 
   // 2. Web Browser Fallback
   if (typeof window !== 'undefined') {
-    let unsubscribe = () => {};
+    let unsubscribe = () => { };
     getWebFcmMessaging().then(async (messaging) => {
       if (!messaging) return;
       try {
@@ -214,7 +214,7 @@ export function setupFCMForegroundListener(onNotificationReceived) {
     };
   }
 
-  return () => {};
+  return () => { };
 }
 
 // In-memory deduplication cache to prevent identical system notifications within a 5-second window
@@ -334,7 +334,7 @@ export function setupNotificationTapListener(onNotificationTapped) {
  */
 export async function clearFCMToken(userId = null, phone = null) {
   try {
-    await AsyncStorage.removeItem('salbeau_fcm_token').catch(() => {});
+    await AsyncStorage.removeItem('salbeau_fcm_token').catch(() => { });
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('salbeau_fcm_token');
     }

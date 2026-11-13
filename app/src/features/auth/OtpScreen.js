@@ -289,18 +289,27 @@ export const OtpScreen = () => {
                   >
                     <View className="flex-1 mr-2">
                       <View className="flex-row items-center gap-1.5 mb-1">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                          acc.role === 'salon' ? 'bg-pink-100 text-pink-700' :
-                          acc.role === 'artist' ? 'bg-purple-100 text-purple-700' :
-                          acc.role === 'beautician' ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-blue-100 text-blue-700'
+                        <View className={`px-2 py-0.5 rounded-full ${
+                          acc.role === 'salon' ? 'bg-pink-100' :
+                          acc.role === 'artist' ? 'bg-purple-100' :
+                          acc.role === 'beautician' ? 'bg-emerald-100' :
+                          'bg-blue-100'
                         }`}>
-                          {rTitle}
-                        </span>
+                          <Text className={`text-[10px] font-black uppercase ${
+                            acc.role === 'salon' ? 'text-pink-700' :
+                            acc.role === 'artist' ? 'text-purple-700' :
+                            acc.role === 'beautician' ? 'text-emerald-700' :
+                            'text-blue-700'
+                          }`}>
+                            {rTitle}
+                          </Text>
+                        </View>
                         {isB2B && acc.b2bVerified && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">
-                            Verified
-                          </span>
+                          <View className="px-1.5 py-0.5 rounded bg-emerald-100">
+                            <Text className="text-[10px] font-bold text-emerald-700">
+                              Verified
+                            </Text>
+                          </View>
                         )}
                       </View>
                       <Text className="text-xs font-bold text-[#3A2430]">

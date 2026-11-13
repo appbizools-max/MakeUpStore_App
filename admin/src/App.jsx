@@ -77,7 +77,9 @@ import {
   ShieldCheck,
   Table,
   Download,
-  Wand2
+  Wand2,
+  Settings,
+  UserPlus
 } from 'lucide-react';
 // Lazy-loaded feature modules for code-splitting and rapid initial rendering
 const AllEmployeesPage = React.lazy(() => import('./components/governance/employees/AllEmployeesPage'));
@@ -94,6 +96,11 @@ const B2BVerificationPage = React.lazy(() => import('./components/b2b/B2BVerific
 const ApprovalCenterPage = React.lazy(() => import('./components/governance/ApprovalCenterPage'));
 const BrandManagementPage = React.lazy(() => import('./components/brands/BrandManagementPage'));
 const CentralBannerManagementPage = React.lazy(() => import('./components/banners/BannerManagementPage'));
+const DeliveryPartnerManagementPage = React.lazy(() => import('./components/orders/DeliveryPartnerManagementPage'));
+const BranchManagementPage = React.lazy(() => import('./components/settings/BranchManagementPage'));
+const GeneralSettingsPage = React.lazy(() => import('./components/settings/GeneralSettingsPage'));
+const UpiPaymentVerificationPage = React.lazy(() => import('./components/payments/UpiPaymentVerificationPage'));
+const Security2FASettingsPage = React.lazy(() => import('./components/security/Security2FASettingsPage'));
 
 const PageLoadingFallback = () => (
   <div className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center animate-fade-in">
@@ -242,6 +249,8 @@ const AdminDashboard = () => {
     deleteAbandonedCart,
     bulkDeleteAbandonedCarts,
     clearAllAbandonedCarts,
+    branches = [],
+    upiVerifications = [],
     purgeCompleteDatabaseAndCaches,
   } = useAdmin();
 
@@ -330,7 +339,7 @@ const AdminDashboard = () => {
         return 'categories';
       }
       if (routeParam === 'settings') {
-        return 'dashboard_visibility';
+        return 'settings';
       }
       if (routeParam && (
         validTabs.includes(routeParam) ||
@@ -480,7 +489,7 @@ const AdminDashboard = () => {
           return;
         }
         if (routeParam === 'settings') {
-          setActiveTab('dashboard_visibility');
+          setActiveTab('settings');
           return;
         }
         if (routeParam && (
@@ -859,6 +868,9 @@ const AdminDashboard = () => {
     if (tab === 'b2b-verification/salon') return 'Salon Verification';
     if (tab === 'b2b-verification/makeup-artist' || tab === 'b2b-verification/makeup_artist') return 'Makeup Artist';
     if (tab === 'b2b-verification/beautician') return 'Beautician';
+    if (tab === 'settings') return 'General Settings';
+    if (tab === 'branches') return 'Branch Management';
+    if (tab === 'upi_verification') return 'UPI Verification';
     if (tab === 'quick_panel') return 'Quick Panel';
     if (tab.startsWith('employees')) return 'Employees';
     const match = allNavItemsFlat.find(i => i.id === tab);
@@ -2983,6 +2995,8 @@ const AdminDashboard = () => {
         b2bPendingArtist={b2bPendingArtist}
         b2bPendingBeautician={b2bPendingBeautician}
         employees={employees}
+        branches={branches}
+        upiVerifications={upiVerifications}
       />
 
       {/* Main Content Area */}
@@ -3016,6 +3030,7 @@ const AdminDashboard = () => {
                   {activeTab === 'home_banners' && 'Home Screen Banners Manager'}
                   {activeTab === 'categories' && 'Category & Subcategory Image Manager'}
                   {activeTab === 'order_updated' && 'Order Management'}
+                    {activeTab === 'delivery_partners' && 'Delivery Partners & Live Tracking'}
                   {activeTab === 'add_brand' && 'Add Brand'}
                   {activeTab === 'products' && 'Products'}
                   {activeTab === 'approval_center' && 'Employee Operations & Approval Center'}
@@ -3029,6 +3044,10 @@ const AdminDashboard = () => {
                           ? 'Beautician Verification Panel'
                           : 'B2B Professional Verification'
                   )}
+                  {activeTab === 'settings' && 'General Settings — Store Identity, Rates & Rules'}
+                  {activeTab === 'branches' && 'Branch Management — Store Locations'}
+                  {activeTab === 'security_2fa' && 'Security & Two-Factor Authentication (2FA) — Gateway Protection'}
+                  {activeTab === 'upi_verification' && 'UPI Payment Verification — Delivery Reconciliation'}
                   {activeTab === 'quick_panel' && 'Quick Panel — Command Center'}
                   {activeTab === 'cancel_fee' && 'Cancel Fee Policy'}
                   {activeTab === 'pricing_rules' && 'Pricing Rules & Discount Configuration'}
@@ -3039,6 +3058,7 @@ const AdminDashboard = () => {
                 </h1>
                 <p className="text-xs text-gray-400 font-medium mt-1">
                   {activeTab === 'products' && 'Manage product families, variants, catalog details, and pricing.'}
+                  {activeTab === 'settings' && 'Configure store name, delivery fee thresholds, UPI payment options, and live announcements.'}
                   {activeTab === 'home_banners' && 'Manage the carousel banners displayed on the customer mobile app home page. Changes sync in real-time.'}
                   {activeTab === 'search_requests' && 'Real-time tracking of all customer searches (found and not-found) performed in the User App'}
                   {activeTab === 'approval_center' && 'Review and approve/reject employee operations before they go live on the customer store'}
@@ -3870,7 +3890,53 @@ const AdminDashboard = () => {
             />
           )}
 
+{/* 2.1 DELIVERY PARTNER MANAGEMENT & LIVE TRACKING */}
+          {activeTab === 'delivery_partners' && (
+            <React.Suspense fallback={<PageLoadingFallback />}>
+              <DeliveryPartnerManagementPage
+                orders={orders}
+                employees={employees}
+                updateOrderStatus={updateOrderStatus}
+                currentAuthUser={currentAuthUser}
+                onRefresh={() => {
+                  if (typeof refreshData === 'function') refreshData();
+                }}
+              />
+            </React.Suspense>
+          )}
 
+
+
+          {/* GENERAL SETTINGS MODULE (Admin Settings) */}
+          {activeTab === 'settings' && (
+            <React.Suspense fallback={<PageLoadingFallback />}>
+              <GeneralSettingsPage />
+            </React.Suspense>
+          )}
+
+          {/* BRANCH MANAGEMENT MODULE (Admin Settings) */}
+          {activeTab === 'branches' && (
+            <React.Suspense fallback={<PageLoadingFallback />}>
+              <BranchManagementPage />
+            </React.Suspense>
+          )}
+
+          {/* UPI PAYMENT VERIFICATION MODULE */}
+          {activeTab === 'upi_verification' && (
+            <React.Suspense fallback={<PageLoadingFallback />}>
+              <UpiPaymentVerificationPage />
+            </React.Suspense>
+          )}
+
+          {/* SECURITY & 2FA MODULE */}
+          {activeTab === 'security_2fa' && (
+            <React.Suspense fallback={<PageLoadingFallback />}>
+              <Security2FASettingsPage
+                currentAuthUser={currentAuthUser}
+                onBackToSettings={() => navigateToTab('settings')}
+              />
+            </React.Suspense>
+          )}
 
           {/* 4. BRAND MANAGEMENT MODULE — Production Ready Dedicated Module */}
           {activeTab === 'add_brand' && (
@@ -5578,37 +5644,15 @@ const AdminDashboard = () => {
 
           {/* QUICK ACCESS PANEL / COMMAND CENTER */}
           {activeTab === 'quick_panel' && (() => {
-            const resolvedProductsCount = (products && products.length > 0)
-              ? products.length
-              : (() => {
-                  try {
-                    const c = JSON.parse(localStorage.getItem('salbeau_admin_cache_products') || '[]');
-                    if (Array.isArray(c) && c.length > 0) return c.length;
-                  } catch (e) {}
-                  return 368;
-                })();
-
-            const resolvedCategoriesCount = (categories && categories.length > 0)
-              ? categories.length
-              : (() => {
-                  try {
-                    const c = JSON.parse(localStorage.getItem('salbeau_admin_cache_categories') || '[]');
-                    if (Array.isArray(c) && c.length > 0) return c.length;
-                  } catch (e) {}
-                  return 24;
-                })();
-
-            const resolvedBrandsCount = (brands && brands.length > 0)
-              ? brands.length
-              : (() => {
-                  try {
-                    const c = JSON.parse(localStorage.getItem('salbeau_admin_cache_brands') || '[]');
-                    if (Array.isArray(c) && c.length > 0) return c.length;
-                  } catch (e) {}
-                  return 365;
-                })();
-
-            const resolvedAbandonedCartsCount = (abandonedCarts || []).filter(c => c.status === 'abandoned').length || 5;
+            const resolvedProductsCount = Array.isArray(products) ? products.length : 0;
+            const resolvedCategoriesCount = Array.isArray(categories) ? categories.length : 0;
+            const resolvedBrandsCount = Array.isArray(brands) ? brands.length : 0;
+            const resolvedAbandonedCartsCount = (abandonedCarts || []).filter(c => c.status === 'abandoned').length;
+            const resolvedOrdersCount = Array.isArray(orders) ? orders.length : 0;
+            const resolvedBranchesCount = Array.isArray(branches) ? branches.length : 0;
+            const resolvedEmployeesCount = Array.isArray(employees) ? employees.length : 0;
+            const resolvedUpiPendingCount = (upiVerifications || []).filter(u => u.verification_status === 'PENDING_VERIFICATION').length;
+            const liveDeliveriesCount = (orders || []).filter(o => o.status === 'out_for_delivery').length;
 
             return (
               <div className="space-y-6 animate-fade-in pb-12">
@@ -5645,9 +5689,14 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                       <button
-                        onClick={() => refreshData && refreshData()}
+                        onClick={async () => {
+                          if (typeof refreshData === 'function') {
+                            await refreshData();
+                            setDashboardToast('Store metrics, orders, branches & verifications synchronized successfully.');
+                          }
+                        }}
                         className="bg-white/15 hover:bg-white/25 active:scale-95 text-white text-xs font-bold px-4 py-3 rounded-2xl border border-white/20 backdrop-blur-md flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
-                        title="Refresh all metrics"
+                        title="Reload all live store data from Supabase"
                       >
                         <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                         <span>Refresh All</span>
@@ -5660,120 +5709,156 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                {/* Live Operational Metrics Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 sm:gap-4">
-                  {/* B2B Pending */}
+                {/* Live Operational Metrics Grid (8 Interactive Cards with Zero Mock Data) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-3.5">
+                  {/* 1. B2B Pending */}
                   <div
                     onClick={() => navigateToTab('b2b-verification')}
-                    className="bg-white p-4 sm:p-4.5 rounded-2xl border border-amber-200/80 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-amber-400"
+                    className="bg-white p-3.5 rounded-2xl border border-amber-200/80 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-amber-400"
                   >
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[10.5px] font-extrabold text-gray-500 uppercase tracking-wider">B2B Pending</span>
-                      <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-100 transition-all shadow-xs">
-                        <ShieldCheck size={16} />
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">B2B Pending</span>
+                      <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-100 transition-all shadow-xs">
+                        <ShieldCheck size={14} />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight">{b2bPendingTotal}</div>
-                    <div className="text-[11px] text-gray-400 mt-1.5 font-semibold flex items-center justify-between">
-                      <span>Awaiting review</span>
-                      <ChevronRight size={12} className="text-amber-500 group-hover:translate-x-1 transition-transform" />
+                    <div className="text-xl sm:text-2xl font-black text-amber-600 tracking-tight">{b2bPendingTotal || 0}</div>
+                    <div className="text-[10px] text-gray-400 mt-1 font-semibold flex items-center justify-between">
+                      <span>Review</span>
+                      <ChevronRight size={11} className="text-amber-500 group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
 
-                  {/* Catalog Products */}
+                  {/* 2. UPI Verifications */}
+                  <div
+                    onClick={() => navigateToTab('upi_verification')}
+                    className="bg-white p-3.5 rounded-2xl border border-purple-200/80 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-purple-400"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">UPI Verify</span>
+                      <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-100 transition-all shadow-xs">
+                        <ShieldCheck size={14} />
+                      </div>
+                    </div>
+                    <div className="text-xl sm:text-2xl font-black text-purple-600 tracking-tight">{resolvedUpiPendingCount}</div>
+                    <div className="text-[10px] text-gray-400 mt-1 font-semibold flex items-center justify-between">
+                      <span>Proofs</span>
+                      <ChevronRight size={11} className="text-purple-500 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* 3. Catalog Products */}
                   <div
                     onClick={() => navigateToTab('products')}
-                    className="bg-white p-4 sm:p-4.5 rounded-2xl border border-pink-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-[#C2477A]"
+                    className="bg-white p-3.5 rounded-2xl border border-pink-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-[#C2477A]"
                   >
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[10.5px] font-extrabold text-gray-500 uppercase tracking-wider">Catalog Products</span>
-                      <div className="w-8 h-8 rounded-xl bg-pink-50 text-[#C2477A] flex items-center justify-center group-hover:scale-110 group-hover:bg-pink-100 transition-all shadow-xs">
-                        <Package size={16} />
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Products</span>
+                      <div className="w-7 h-7 rounded-lg bg-pink-50 text-[#C2477A] flex items-center justify-center group-hover:scale-110 group-hover:bg-pink-100 transition-all shadow-xs">
+                        <Package size={14} />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">{resolvedProductsCount}</div>
-                    <div className="text-[11px] text-gray-400 mt-1.5 font-semibold flex items-center justify-between">
-                      <span>Manage items</span>
-                      <ChevronRight size={12} className="text-[#C2477A] group-hover:translate-x-1 transition-transform" />
+                    <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{resolvedProductsCount}</div>
+                    <div className="text-[10px] text-gray-400 mt-1 font-semibold flex items-center justify-between">
+                      <span>Catalog</span>
+                      <ChevronRight size={11} className="text-[#C2477A] group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
 
-                  {/* Store Orders */}
+                  {/* 4. Store Orders */}
                   <div
                     onClick={() => navigateToTab('order_updated')}
-                    className="bg-white p-4 sm:p-4.5 rounded-2xl border border-blue-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-blue-400"
+                    className="bg-white p-3.5 rounded-2xl border border-blue-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-blue-400"
                   >
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[10.5px] font-extrabold text-gray-500 uppercase tracking-wider">Store Orders</span>
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-100 transition-all shadow-xs">
-                        <ShoppingBag size={16} />
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Orders</span>
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-100 transition-all shadow-xs">
+                        <ShoppingBag size={14} />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">{orders?.length || 4}</div>
-                    <div className="text-[11px] text-gray-400 mt-1.5 font-semibold flex items-center justify-between">
-                      <span>View live queue</span>
-                      <ChevronRight size={12} className="text-blue-500 group-hover:translate-x-1 transition-transform" />
+                    <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{resolvedOrdersCount}</div>
+                    <div className="text-[10px] text-gray-400 mt-1 font-semibold flex items-center justify-between">
+                      <span>Live Queue</span>
+                      <ChevronRight size={11} className="text-blue-500 group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
 
-                  {/* B2C Customers */}
+                  {/* 5. B2C Customers */}
                   <div
                     onClick={() => navigateToTab('users/b2c')}
-                    className="bg-white p-4 sm:p-4.5 rounded-2xl border border-emerald-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-emerald-400"
+                    className="bg-white p-3.5 rounded-2xl border border-emerald-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-emerald-400"
                   >
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[10.5px] font-extrabold text-gray-500 uppercase tracking-wider">B2C Customers</span>
-                      <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-100 transition-all shadow-xs">
-                        <User size={16} />
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">B2C Users</span>
+                      <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-100 transition-all shadow-xs">
+                        <User size={14} />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">{b2cUsersCount}</div>
-                    <div className="text-[11px] text-gray-400 mt-1.5 font-semibold flex items-center justify-between">
-                      <span>General shoppers</span>
-                      <ChevronRight size={12} className="text-emerald-500 group-hover:translate-x-1 transition-transform" />
+                    <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{b2cUsersCount || 0}</div>
+                    <div className="text-[10px] text-gray-400 mt-1 font-semibold flex items-center justify-between">
+                      <span>Shoppers</span>
+                      <ChevronRight size={11} className="text-emerald-500 group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
 
-                  {/* B2B Accounts */}
+                  {/* 6. B2B Accounts */}
                   <div
                     onClick={() => navigateToTab('users/b2b')}
-                    className="bg-white p-4 sm:p-4.5 rounded-2xl border border-purple-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-purple-400"
+                    className="bg-white p-3.5 rounded-2xl border border-indigo-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-indigo-400"
                   >
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[10.5px] font-extrabold text-gray-500 uppercase tracking-wider">B2B Accounts</span>
-                      <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-100 transition-all shadow-xs">
-                        <Building2 size={16} />
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">B2B Accounts</span>
+                      <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-100 transition-all shadow-xs">
+                        <Building2 size={14} />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">{b2bUsersCount}</div>
-                    <div className="text-[11px] text-gray-400 mt-1.5 font-semibold flex items-center justify-between">
-                      <span>Wholesale accounts</span>
-                      <ChevronRight size={12} className="text-purple-500 group-hover:translate-x-1 transition-transform" />
+                    <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{b2bUsersCount || 0}</div>
+                    <div className="text-[10px] text-gray-400 mt-1 font-semibold flex items-center justify-between">
+                      <span>Wholesale</span>
+                      <ChevronRight size={11} className="text-indigo-500 group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
 
-                  {/* Abandoned Carts */}
+                  {/* 7. Store Branches */}
                   <div
-                    onClick={() => navigateToTab('abandoned_carts')}
-                    className="bg-white p-4 sm:p-4.5 rounded-2xl border border-rose-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-rose-400"
+                    onClick={() => navigateToTab('branches')}
+                    className="bg-white p-3.5 rounded-2xl border border-cyan-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-cyan-400"
                   >
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[10.5px] font-extrabold text-gray-500 uppercase tracking-wider">Abandoned Carts</span>
-                      <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-rose-100 transition-all shadow-xs">
-                        <ShoppingCart size={16} />
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Branches</span>
+                      <div className="w-7 h-7 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-cyan-100 transition-all shadow-xs">
+                        <Store size={14} />
                       </div>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-rose-600 tracking-tight">
+                    <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{resolvedBranchesCount}</div>
+                    <div className="text-[10px] text-gray-400 mt-1 font-semibold flex items-center justify-between">
+                      <span>Locations</span>
+                      <ChevronRight size={11} className="text-cyan-500 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* 8. Abandoned Carts */}
+                  <div
+                    onClick={() => navigateToTab('abandoned_carts')}
+                    className="bg-white p-3.5 rounded-2xl border border-rose-100/90 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group hover:border-rose-400"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Abandoned</span>
+                      <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-rose-100 transition-all shadow-xs">
+                        <ShoppingCart size={14} />
+                      </div>
+                    </div>
+                    <div className="text-xl sm:text-2xl font-black text-rose-600 tracking-tight">
                       {resolvedAbandonedCartsCount}
                     </div>
-                    <div className="text-[11px] text-gray-400 mt-1.5 font-semibold flex items-center justify-between">
-                      <span>Recover sales</span>
-                      <ChevronRight size={12} className="text-rose-500 group-hover:translate-x-1 transition-transform" />
+                    <div className="text-[10px] text-gray-400 mt-1 font-semibold flex items-center justify-between">
+                      <span>Recover</span>
+                      <ChevronRight size={11} className="text-rose-500 group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
                 </div>
 
-                {/* Department Shortcuts Grid */}
+                {/* Department Shortcuts Grid (Organized into 6 Functional Cards) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {/* Card 1: B2B Verification Command */}
                   <div className="bg-white rounded-3xl p-5.5 border border-pink-100/80 shadow-xs hover:shadow-md transition-all">
@@ -5861,16 +5946,79 @@ const AdminDashboard = () => {
                         <span className="text-[11px] text-gray-400 font-semibold">{resolvedCategoriesCount}</span>
                       </button>
                       <button
-                        onClick={() => setIsAddBrandModalOpen(true)}
+                        onClick={() => navigateToTab('add_brand')}
                         className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
-                        <span>Add Partner Brand</span>
-                        <BadgePlus size={14} className="text-[#C2477A]" />
+                        <span>Brand Partners</span>
+                        <span className="text-[11px] text-gray-400 font-semibold">{resolvedBrandsCount}</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Card 3: Customers & Sales Intelligence */}
+                  {/* Card 3: Orders, Delivery & Payments Workflow */}
+                  <div className="bg-white rounded-3xl p-5.5 border border-pink-100/80 shadow-xs hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shadow-xs">
+                          <ShoppingBag size={20} />
+                        </div>
+                        <div>
+                          <h3 className="font-extrabold text-sm text-gray-900 tracking-tight">Orders & Deliveries</h3>
+                          <p className="text-[11px] text-gray-400 font-medium">Fulfillment, Riders & UPI Verifications</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <button
+                        onClick={() => navigateToTab('order_updated')}
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                      >
+                        <span>Orders</span>
+                        <span className="text-[11px] text-gray-400 font-semibold">{resolvedOrdersCount}</span>
+                      </button>
+                      <button
+                        onClick={() => navigateToTab('delivery_partners')}
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-purple-50 hover:text-purple-700 text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-purple-200"
+                      >
+                        <span>Delivery Partners</span>
+                        {liveDeliveriesCount > 0 ? (
+                          <span className="px-1.5 py-0.5 bg-purple-500 text-white text-[9px] rounded-full font-black">
+                            {liveDeliveriesCount} Live
+                          </span>
+                        ) : (
+                          <ChevronRight size={13} className="text-gray-400" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => navigateToTab('upi_verification')}
+                        className="flex items-center justify-between p-3 rounded-xl bg-purple-50/70 hover:bg-purple-100 hover:text-purple-800 text-purple-900 font-bold transition-all text-left cursor-pointer border border-purple-200/80"
+                      >
+                        <span>UPI Verification</span>
+                        {resolvedUpiPendingCount > 0 ? (
+                          <span className="px-1.5 py-0.5 bg-amber-500 text-white text-[9px] rounded-full font-black animate-pulse">
+                            {resolvedUpiPendingCount}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-gray-400 font-semibold">0</span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => navigateToTab('approval_center')}
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-amber-50 hover:text-amber-700 text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-amber-200"
+                      >
+                        <span>Approval Center</span>
+                        {(employeeOperations || []).filter(op => op.status === 'pending').length > 0 ? (
+                          <span className="px-1.5 py-0.5 bg-amber-500 text-white text-[9px] rounded-full font-black">
+                            {(employeeOperations || []).filter(op => op.status === 'pending').length}
+                          </span>
+                        ) : (
+                          <ChevronRight size={13} className="text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Customers & Sales Intelligence */}
                   <div className="bg-white rounded-3xl p-5.5 border border-pink-100/80 shadow-xs hover:shadow-md transition-all">
                     <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-gray-100">
                       <div className="flex items-center gap-3">
@@ -5889,14 +6037,14 @@ const AdminDashboard = () => {
                         className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>B2C Users</span>
-                        <span className="text-[11px] text-gray-400 font-semibold">{b2cUsersCount}</span>
+                        <span className="text-[11px] text-gray-400 font-semibold">{b2cUsersCount || 0}</span>
                       </button>
                       <button
                         onClick={() => navigateToTab('users/b2b')}
                         className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-purple-50 hover:text-purple-700 text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-purple-200"
                       >
                         <span>B2B Users</span>
-                        <span className="text-[11px] text-gray-400 font-semibold">{b2bUsersCount}</span>
+                        <span className="text-[11px] text-gray-400 font-semibold">{b2bUsersCount || 0}</span>
                       </button>
                       <button
                         onClick={() => navigateToTab('search_requests')}
@@ -5915,69 +6063,46 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Card 4: Orders & Approvals */}
+                  {/* Card 5: Store Settings & Configuration */}
                   <div className="bg-white rounded-3xl p-5.5 border border-pink-100/80 shadow-xs hover:shadow-md transition-all">
                     <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-gray-100">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shadow-xs">
-                          <ShoppingBag size={20} />
+                        <div className="w-10 h-10 rounded-2xl bg-pink-50 text-[#C2477A] flex items-center justify-center font-bold shadow-xs">
+                          <Settings size={20} />
                         </div>
                         <div>
-                          <h3 className="font-extrabold text-sm text-gray-900 tracking-tight">Orders & Workflow</h3>
-                          <p className="text-[11px] text-gray-400 font-medium">Fulfillment & Operations Approvals</p>
+                          <h3 className="font-extrabold text-sm text-gray-900 tracking-tight">Settings & Rules</h3>
+                          <p className="text-[11px] text-gray-400 font-medium">Store configuration, rates & locations</p>
                         </div>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <button
-                        onClick={() => navigateToTab('order_updated')}
+                        onClick={() => navigateToTab('settings')}
+                        className="flex items-center justify-between p-3 rounded-xl bg-pink-50/60 hover:bg-pink-100 hover:text-[#C2477A] text-gray-800 font-bold transition-all text-left cursor-pointer border border-pink-200/70"
+                      >
+                        <span>General Settings</span>
+                        <ChevronRight size={13} className="text-[#C2477A]" />
+                      </button>
+                      <button
+                        onClick={() => navigateToTab('branches')}
+                        className="flex items-center justify-between p-3 rounded-xl bg-cyan-50/60 hover:bg-cyan-100 hover:text-cyan-800 text-gray-800 font-bold transition-all text-left cursor-pointer border border-cyan-200/70"
+                      >
+                        <span>Branch Management</span>
+                        <span className="text-[11px] text-cyan-700 font-bold">{resolvedBranchesCount}</span>
+                      </button>
+                      <button
+                        onClick={() => navigateToTab('home_banners')}
                         className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
-                        <span>Order Management</span>
-                        <span className="text-[11px] text-gray-400 font-semibold">{orders?.length || 4}</span>
+                        <span>Home Banners</span>
+                        <ChevronRight size={13} className="text-gray-400" />
                       </button>
-                      <button
-                        onClick={() => navigateToTab('approval_center')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-amber-50 hover:text-amber-700 text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-amber-200"
-                      >
-                        <span>Approval Center</span>
-                        {(employeeOperations || []).filter(op => op.status === 'pending').length > 0 ? (
-                          <span className="px-1.5 py-0.5 bg-amber-500 text-white text-[9px] rounded-full font-black">
-                            {(employeeOperations || []).filter(op => op.status === 'pending').length}
-                          </span>
-                        ) : (
-                          <ChevronRight size={13} className="text-gray-400" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Card 5: Pricing Strategy */}
-                  <div className="bg-white rounded-3xl p-5.5 border border-pink-100/80 shadow-xs hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shadow-xs">
-                          <Percent size={20} />
-                        </div>
-                        <div>
-                          <h3 className="font-extrabold text-sm text-gray-900 tracking-tight">Pricing & Margins</h3>
-                          <p className="text-[11px] text-gray-400 font-medium">B2B Wholesale & Cancellation Rules</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
                       <button
                         onClick={() => navigateToTab('pricing_rules')}
                         className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Pricing Rules</span>
-                        <ChevronRight size={13} className="text-gray-400" />
-                      </button>
-                      <button
-                        onClick={() => navigateToTab('cancel_fee')}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
-                      >
-                        <span>Cancel Fee Matrix</span>
                         <ChevronRight size={13} className="text-gray-400" />
                       </button>
                     </div>
@@ -5992,7 +6117,7 @@ const AdminDashboard = () => {
                         </div>
                         <div>
                           <h3 className="font-extrabold text-sm text-gray-900 tracking-tight">Team & Governance</h3>
-                          <p className="text-[11px] text-gray-400 font-medium">Internal staff & Dashboard visibility</p>
+                          <p className="text-[11px] text-gray-400 font-medium">Internal staff, roles & security</p>
                         </div>
                       </div>
                     </div>
@@ -6002,6 +6127,20 @@ const AdminDashboard = () => {
                         className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
                         <span>Employees List</span>
+                        <span className="text-[11px] text-gray-400 font-semibold">{resolvedEmployeesCount}</span>
+                      </button>
+                      <button
+                        onClick={() => navigateToTab('employees/new')}
+                        className="flex items-center justify-between p-3 rounded-xl bg-pink-50/50 hover:bg-pink-100 hover:text-[#C2477A] text-gray-800 font-bold transition-all text-left cursor-pointer border border-pink-200/50"
+                      >
+                        <span>+ Add Employee</span>
+                        <UserPlus size={13} className="text-[#C2477A]" />
+                      </button>
+                      <button
+                        onClick={() => navigateToTab('cancel_fee')}
+                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#C2477A] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
+                      >
+                        <span>Cancel Fee Policy</span>
                         <ChevronRight size={13} className="text-gray-400" />
                       </button>
                       <button

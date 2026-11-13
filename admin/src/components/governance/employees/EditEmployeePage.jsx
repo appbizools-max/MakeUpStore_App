@@ -22,6 +22,7 @@ import { generateSecureTemporaryPassword } from '../../../utils/permissionEngine
 export default function EditEmployeePage({ employeeId, onNavigate }) {
   const {
     employees = [],
+    branches = [],
     updateEmployee
   } = useAdmin();
 
@@ -60,6 +61,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
         designation: desig,
         password: employee.password || '',
         profilePhoto: employee.profile_photo || '',
+        branch: employee.branch || employee.work_location || '',
         status: employee.status || 'active',
       });
     }
@@ -91,6 +93,9 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
         employee_code: formData.employeeCode.trim(),
         phone: formData.phone.trim(),
         designation: formData.designation,
+        branch: formData.branch,
+        branch_id: (branches.find(b => b.name === formData.branch)?.id) || '',
+        work_location: formData.branch,
         password: formData.password.trim(),
         profilePhoto: formData.profilePhoto,
         profile_photo: formData.profilePhoto,
@@ -268,6 +273,29 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
               />
               <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             </div>
+          </div>
+
+          {/* Store / Branch Assignment */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1.5">
+              Store / Branch Assignment
+            </label>
+            <select
+              value={formData.branch || ''}
+              onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+              className="w-full p-3.5 rounded-xl border border-pink-200 text-xs font-extrabold text-gray-900 focus:border-[#CE4270] outline-none bg-white cursor-pointer shadow-2xs"
+            >
+              <option value="">Select Branch Assignment</option>
+              {branches && branches.length > 0 ? (
+                branches.filter(b => b.is_active !== false).map((b) => (
+                  <option key={b.id || b.code} value={b.name}>
+                    {b.name} ({b.code})
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>No branches configured — Add in Settings → Branch Management</option>
+              )}
+            </select>
           </div>
 
           {/* Designation (Dropdown with exact 4 options) */}

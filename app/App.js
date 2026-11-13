@@ -30,6 +30,9 @@ import { WishlistScreen } from './src/features/wishlist/WishlistScreen';
 import { B2BVerificationScreen } from './src/features/auth/B2BVerificationScreen';
 import { VerificationStatusScreen } from './src/features/auth/VerificationStatusScreen';
 import { SelectShadeBottomSheet } from './src/components/SelectShadeBottomSheet';
+import { StaffLoginScreen } from './src/features/staff/StaffLoginScreen';
+import { DeliveryPartnerDashboard } from './src/features/staff/DeliveryPartnerDashboard';
+import { CustomerUpiPaymentStatusScreen } from './src/features/cart/CustomerUpiPaymentStatusScreen';
 import { requestFCMToken } from './src/utils/fcmService';
 
 
@@ -116,6 +119,20 @@ const MainShell = () => {
         if (Platform.OS === 'android') ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
         return true;
       }
+      if (currentScreen === 'staff_login') {
+        setCurrentScreen('login');
+        return true;
+      }
+      if (currentScreen === 'delivery_dashboard') {
+        const now = Date.now();
+        if (now - lastBackPressTimeRef.current < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+        lastBackPressTimeRef.current = now;
+        if (Platform.OS === 'android') ToastAndroid.show('Press back again to exit delivery app', ToastAndroid.SHORT);
+        return true;
+      }
       if (currentScreen === 'b2b_verification' || currentScreen === 'verification_status') {
         setCurrentScreen('home');
         return true;
@@ -139,7 +156,13 @@ const MainShell = () => {
   }).length;
 
   const renderScreen = () => {
-    if (isRestoringSession) return <SplashScreen />;
+    if (isRestoringSession) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        </View>
+      );
+    }
     let screenComponent;
     switch (currentScreen) {
       case 'splash':              screenComponent = <SplashScreen />; break;
@@ -161,6 +184,9 @@ const MainShell = () => {
       case 'profile':             screenComponent = <ProfileScreen />; break;
       case 'search':              screenComponent = <SearchScreen />; break;
       case 'wishlist':            screenComponent = <WishlistScreen />; break;
+      case 'staff_login':         screenComponent = <StaffLoginScreen />; break;
+      case 'delivery_dashboard':  screenComponent = <DeliveryPartnerDashboard />; break;
+      case 'upi_payment_status': screenComponent = <CustomerUpiPaymentStatusScreen />; break;
       default:                    screenComponent = <HomeScreen />; break;
     }
     return (
@@ -170,11 +196,17 @@ const MainShell = () => {
     );
   };
 
-  if (!fontsLoaded) return <SplashScreen />;
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      </View>
+    );
+  }
 
   const hideBottomNav =
     isRestoringSession ||
-    ['splash','onboarding','login','otp','complete_profile','b2b_registration','b2b_verification','verification_status','checkout','confirmation','product','product_detail'].includes(currentScreen);
+    ['splash','onboarding','login','otp','complete_profile','b2b_registration','b2b_verification','verification_status','checkout','confirmation','product','product_detail','staff_login','delivery_dashboard','upi_payment_status'].includes(currentScreen);
 
   return (
     <SafeAreaView className="flex-1 bg-white">

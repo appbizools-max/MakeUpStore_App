@@ -38,6 +38,7 @@ export { default as InlineImageSection } from './media/InlineImageSection';
 // Orders & Fulfillment Module
 export { default as FulfillmentStatusSelector } from './orders/FulfillmentStatusSelector';
 export { AbandonedCartsManager } from './orders/AbandonedCartsManager';
+export { default as DeliveryPartnerManagementPage } from './orders/DeliveryPartnerManagementPage';
 
 // B2B & Customer Intent Module
 export { default as B2BVerificationPage } from './b2b/B2BVerificationPage';

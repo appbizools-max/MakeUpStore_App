@@ -185,6 +185,19 @@ export const STANDARD_IMAGE_SPECS = {
     fitMode: 'contain',
     containerClass: 'aspect-square'
   },
+  upi_qr: {
+    key: 'upi_qr',
+    label: 'Store Merchant UPI QR Code',
+    aspectRatio: '1:1 (Square)',
+    aspectRatioValue: 1,
+    recommendedDimensions: '1000 × 1000 px',
+    minDimensions: '400 × 400 px',
+    maxDimensions: '2000 × 2000 px',
+    supportedFormats: 'PNG, JPG, WebP',
+    maxFileSize: '10 MB',
+    fitMode: 'contain',
+    containerClass: 'aspect-square'
+  },
   thumbnail: {
     key: 'thumbnail',
     label: 'Thumbnail',
@@ -205,6 +218,7 @@ export function resolveImageSpec(aspectRatioOrPreset = 'square') {
   if (norm.includes('home_banner') || norm.includes('hero')) return STANDARD_IMAGE_SPECS.home_banner;
   if (norm.includes('promo') || norm.includes('banner')) return STANDARD_IMAGE_SPECS.promo_banner;
   if (norm.includes('brand') || norm.includes('logo') || norm.includes('circle')) return STANDARD_IMAGE_SPECS.brand_logo;
+  if (norm.includes('qr') || norm.includes('upi') || norm.includes('payment')) return STANDARD_IMAGE_SPECS.upi_qr;
   if (norm.includes('subcat')) return STANDARD_IMAGE_SPECS.subcategory;
   if (norm.includes('cat')) return STANDARD_IMAGE_SPECS.category;
   if (norm.includes('thumb')) return STANDARD_IMAGE_SPECS.thumbnail;
@@ -212,6 +226,19 @@ export function resolveImageSpec(aspectRatioOrPreset = 'square') {
 }
 
 export const RESPONSIVE_VARIANTS = {
+  upi_qr: {
+    key: 'upi_qr',
+    label: 'Store Merchant UPI QR Code',
+    aspectRatio: '1:1 (Square)',
+    aspectRatioValue: 1,
+    recommendedDimensions: '1000 × 1000 px',
+    minDimensions: '400 × 400 px',
+    maxDimensions: '2000 × 2000 px',
+    supportedFormats: 'PNG, JPG, WebP',
+    maxFileSize: '10 MB',
+    fitMode: 'contain',
+    containerClass: 'aspect-square'
+  },
   thumbnail: { maxWidth: 160, maxHeight: 160, quality: 0.80, suffix: '_thumb' },
   small: { maxWidth: 320, maxHeight: 320, quality: 0.85, suffix: '_sm' },
   medium: { maxWidth: 640, maxHeight: 640, quality: 0.85, suffix: '_md' },

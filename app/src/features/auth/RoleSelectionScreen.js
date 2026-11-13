@@ -122,22 +122,27 @@ export const RoleSelectionScreen = () => {
 
   const handleSelectAccountType = (type) => {
     setAccountType(type);
-    if (type === 'business') {
-      setIsDropdownOpen(true);
-    } else {
+    if (type === 'general_user') {
       setIsDropdownOpen(false);
+      setUserRole('general');
+    } else {
+      const bRole = selectedRole || 'salon';
+      setSelectedRole(bRole);
+      setUserRole(bRole);
+      setIsDropdownOpen(true);
     }
   };
 
   const handleSelectRole = (roleId) => {
     setSelectedRole(roleId);
+    setUserRole(roleId);
     setIsDropdownOpen(false);
   };
 
   // Validation: General User is enabled immediately. Business User requires role selection.
   const isContinueEnabled =
     accountType === 'general_user' ||
-    (accountType === 'business' && Boolean(selectedRole));
+    (accountType === 'business' && Boolean(selectedRole || 'salon'));
 
   const handleContinue = () => {
     if (!isContinueEnabled || isSubmitting) return;
@@ -148,7 +153,8 @@ export const RoleSelectionScreen = () => {
         setUserRole('general');
         setCurrentScreen('complete_profile');
       } else {
-        setUserRole(selectedRole || 'salon');
+        const bRole = selectedRole || 'salon';
+        setUserRole(bRole);
         setCurrentScreen('b2b_registration');
       }
     } finally {
@@ -677,7 +683,11 @@ export const RoleSelectionScreen = () => {
                       marginRight: 6,
                     }}
                   >
-                    Continue
+                    {accountType === 'general_user'
+                      ? 'Continue as General User'
+                      : accountType === 'business'
+                      ? `Continue as ${selectedRoleObj ? selectedRoleObj.title : 'Business User'}`
+                      : 'Continue'}
                   </Text>
                   <Ionicons
                     name="arrow-forward"

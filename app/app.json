@@ -15,7 +15,7 @@
       "package": "com.Salbeau",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./Assets/Logo.png",
+        "foregroundImage": "./Assets/adaptive-icon.png",
         "backgroundColor": "#FFF8FA"
       },
       "googleServicesFile": "./google-services.json"

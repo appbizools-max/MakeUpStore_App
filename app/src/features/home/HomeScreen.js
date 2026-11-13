@@ -519,7 +519,8 @@ export const HomeScreen = () => {
     homeBanners = [],
     activeBanners = [],
     openShadeSheet,
-    homeSectionVisibility = {}
+    homeSectionVisibility = {},
+    storeSettings
   } = useApp();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -998,6 +999,26 @@ export const HomeScreen = () => {
           />
         }
       >
+        {/* Live Broadcast Announcement Banner (from Admin General Settings) */}
+        {storeSettings?.operations?.announcementEnabled && storeSettings?.operations?.announcementMessage ? (
+          <View className="mx-4 mb-3 p-3 rounded-2xl bg-gradient-to-r from-[#CE4270] to-[#E25586] border border-pink-200 shadow-xs flex-row items-center gap-2.5">
+            <Ionicons name="megaphone" size={17} color="#FFFFFF" />
+            <Text className="flex-1 text-[11px] font-bold text-white tracking-tight leading-4">
+              {storeSettings.operations.announcementMessage}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Store Closed / Paused Notice (from Admin General Settings) */}
+        {storeSettings?.operations?.isAcceptingOrders === false && (
+          <View className="mx-4 mb-3 p-3 rounded-2xl bg-amber-500 border border-amber-600 shadow-xs flex-row items-center gap-2.5">
+            <Ionicons name="pause-circle" size={18} color="#FFFFFF" />
+            <Text className="flex-1 text-xs font-bold text-white leading-4">
+              {storeSettings?.operations?.pauseOrdersNotice || 'We are temporarily not accepting new orders. Please check back shortly.'}
+            </Text>
+          </View>
+        )}
+
         {/* ========================================================================= */}
         {/* 2. SEARCH BAR (SEARCH INPUT + BARCODE SCANNER ICON)                       */}
         {/* ========================================================================= */}
@@ -1596,7 +1617,7 @@ export const HomeScreen = () => {
                 {totalCartQuantity} {totalCartQuantity === 1 ? 'Item' : 'Items'} • ₹{totalCartPrice.toFixed(2).replace(/\.00$/, '')}
               </Text>
               <Text className="text-[10px] font-medium text-pink-100">
-                Free delivery on orders above ₹499
+                Free delivery on orders above ₹{storeSettings?.delivery?.freeDeliveryThreshold ?? 499}
               </Text>
             </View>
           </View>

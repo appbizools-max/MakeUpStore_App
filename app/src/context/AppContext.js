@@ -447,10 +447,51 @@ export const DEFAULT_HOME_BANNERS = [
   }
 ];
 
+
+export const DEFAULT_STORE_SETTINGS = {
+  identity: {
+    storeName: 'Salbeau',
+    tagline: 'Luxury Beauty & Salon Cosmetics Store',
+    contactEmail: 'contact@salbeau.com',
+    supportPhone: '+91 98765 43210',
+    hqAddress: 'Salbeau Headquarters, VIP Road, Visakhapatnam, AP - 530003',
+    currencySymbol: '₹'
+  },
+  delivery: {
+    standardDeliveryFee: 49,
+    freeDeliveryThreshold: 499,
+    estimatedDeliveryTime: 'Same Day / 24-48 Hours',
+    minOrderAmount: 99,
+  },
+  payments: {
+    allowCod: true,
+    allowUpi: true,
+    upiId: 'salbeau.store@okaxis',
+    maxCodLimit: 5000,
+  },
+  operations: {
+    isAcceptingOrders: true,
+    pauseOrdersNotice: 'We are temporarily not taking new orders. Please check back shortly.',
+    announcementEnabled: false,
+    announcementMessage: '✨ Welcome to Salbeau Luxury Cosmetics! Enjoy Free Shipping on orders above ₹499.',
+    announcementType: 'info',
+  },
+  policies: {
+    cancellationWindowMinutes: 30,
+    allowCustomerSelfCancel: true,
+  }
+};
+
 export const AppProvider = ({ children }) => {
   const initialSession = useMemo(() => getInitialAuthSession(), []);
 
-  const [currentScreen, _setCurrentScreen] = useState('splash');
+  const [currentScreen, _setCurrentScreen] = useState(() => {
+    const session = getInitialAuthSession();
+    if (session && session.phone && session.isProfileComplete) {
+      return 'home';
+    }
+    return 'login';
+  });
   const [previousScreen, setPreviousScreen] = useState('home');
 
   const setCurrentScreen = useCallback((newScr) => {
@@ -462,10 +503,58 @@ export const AppProvider = ({ children }) => {
     });
   }, []);
 
-  const [userRole, setUserRole] = useState(() => {
+  const [currentUpiOrder, setCurrentUpiOrder] = useState(null);
+  const [storeSettings, setStoreSettings] = useState(() => {
+    try {
+      const saved = storage.getSync('salbeau_store_settings_cache');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            ...DEFAULT_STORE_SETTINGS,
+            ...parsed,
+            identity: { ...DEFAULT_STORE_SETTINGS.identity, ...(parsed.identity || {}) },
+            delivery: { ...DEFAULT_STORE_SETTINGS.delivery, ...(parsed.delivery || {}) },
+            payments: { ...DEFAULT_STORE_SETTINGS.payments, ...(parsed.payments || {}) },
+            operations: { ...DEFAULT_STORE_SETTINGS.operations, ...(parsed.operations || {}) },
+            policies: { ...DEFAULT_STORE_SETTINGS.policies, ...(parsed.policies || {}) },
+          };
+        }
+      }
+    } catch (e) {}
+    return DEFAULT_STORE_SETTINGS;
+  });
+
+  const getDeliveryFee = useCallback((amount = 0) => {
+    const threshold = Number(storeSettings?.delivery?.freeDeliveryThreshold ?? 499);
+    if (Number(amount) >= threshold) return 0;
+    return Number(storeSettings?.delivery?.standardDeliveryFee ?? 49);
+  }, [storeSettings]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      const handleStorageSync = (e) => {
+        if (e.key === 'salbeau_general_settings_sync' && e.newValue) {
+          try {
+            const data = JSON.parse(e.newValue);
+            if (data?.settings) {
+              setStoreSettings(prev => ({
+                ...prev,
+                ...data.settings
+              }));
+            }
+          } catch (_) {}
+        }
+      };
+      window.addEventListener('storage', handleStorageSync);
+      return () => window.removeEventListener('storage', handleStorageSync);
+    }
+  }, []);
+
+    const [userRole, setUserRole] = useState(() => {
     return initialSession?.role || initialSession?.profile?.role || 'general';
   });
-  const [selectedBranch, setSelectedBranch] = useState('MG Road Branch');
+  const [selectedBranch, setSelectedBranch] = useState('');
   const [homeBanners, setHomeBanners] = useState(() => {
     try {
       const saved = storage.getSync('salbeau_home_banners');
@@ -546,11 +635,17 @@ export const AppProvider = ({ children }) => {
   const [userVerificationRecord, setUserVerificationRecord] = useState(null);
   const [isVerificationSubmitting, setIsVerificationSubmitting] = useState(false);
 
+  // Dedicated Staff / Delivery Partner State
+  const [staffProfile, setStaffProfile] = useState(null);
+
   const [addresses, setAddresses] = useState(() => {
     return initialSession?.addresses || [];
   });
 
-  const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [isRestoringSession, setIsRestoringSession] = useState(() => {
+    const session = getInitialAuthSession();
+    return !session;
+  });
 
   // Restore authenticated session from persistent storage on startup
   useEffect(() => {
@@ -558,7 +653,7 @@ export const AppProvider = ({ children }) => {
     const restoreSession = async () => {
       try {
         // Automatic global user data & cache reset for mobile app
-        const cacheVer = await storage.getItem('salbeau_mobile_cache_v12');
+        const cacheVer = await storage.getItem('salbeau_mobile_cache_v13');
         if (cacheVer !== 'true') {
           await Promise.all([
             storage.removeItem(AUTH_SESSION_KEY),
@@ -577,7 +672,7 @@ export const AppProvider = ({ children }) => {
             storage.removeItem('salbeau_cache_brands'),
             storage.removeItem('salbeau_cache_subcategories'),
             storage.removeItem('salbeau_recently_viewed_ids'),
-            storage.setItem('salbeau_mobile_cache_v12', 'true')
+            storage.setItem('salbeau_mobile_cache_v13', 'true')
           ]).catch(() => {});
           setUserProfile(EMPTY_USER_PROFILE);
           setUserRole('general');
@@ -844,6 +939,35 @@ export const AppProvider = ({ children }) => {
 
     const fetchPromise = (async () => {
       try {
+                // Fetch Store Settings from brands table
+        supabase
+          .from('brands')
+          .select('id, logo')
+          .eq('id', 'salbeau_store_settings')
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data?.logo) {
+              try {
+                const parsed = JSON.parse(data.logo);
+                if (parsed && typeof parsed === 'object') {
+                  setStoreSettings(prev => ({
+                    ...prev,
+                    ...parsed,
+                    identity: { ...prev.identity, ...(parsed.identity || {}) },
+                    delivery: { ...prev.delivery, ...(parsed.delivery || {}) },
+                    payments: { ...prev.payments, ...(parsed.payments || {}) },
+                    operations: { ...prev.operations, ...(parsed.operations || {}) },
+                    policies: { ...prev.policies, ...(parsed.policies || {}) },
+                  }));
+                  try {
+                    storage.setItem('salbeau_store_settings_cache', JSON.stringify(parsed));
+                  } catch (_) {}
+                }
+              } catch (_) {}
+            }
+          })
+          .catch(() => {});
+
         // Ultra-low latency banner sync: updates banners in milliseconds without waiting for products or orders
         supabase
           .from('brands')
@@ -1354,24 +1478,33 @@ export const AppProvider = ({ children }) => {
           const updatedBrand = {
             id: b.id,
             name: b.name,
+            category: b.category || '',
+            categories: b.category ? [b.category] : [],
             enabled: b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0 && b.status !== 'hidden' && b.status !== 'disabled',
-            logo: b.logo
+            logo: b.logo || '',
+            sort_order: Number(b.sort_order ?? 99999)
           };
           setBrands(prev => {
             const idx = prev.findIndex(item => item.id === updatedBrand.id || (item.name && b.name && item.name.trim().toLowerCase() === b.name.trim().toLowerCase()));
             let updatedList;
             if (idx >= 0) {
               updatedList = [...prev];
-              updatedList[idx] = updatedBrand;
+              updatedList[idx] = { ...updatedList[idx], ...updatedBrand };
             } else {
               updatedList = [...prev, updatedBrand];
             }
-            return updatedList.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
+            const sorted = updatedList.sort((a, b) => ((Number(a.sort_order) || 99999) - (Number(b.sort_order) || 99999)) || (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
+            storage.setItem('salbeau_cache_brands', JSON.stringify(sorted)).catch(() => {});
+            return sorted;
           });
         } else if (payload.eventType === 'DELETE') {
           const deletedId = payload.old?.id;
           if (deletedId) {
-            setBrands(prev => prev.filter(b => b.id !== deletedId));
+            setBrands(prev => {
+              const remaining = prev.filter(b => b.id !== deletedId);
+              storage.setItem('salbeau_cache_brands', JSON.stringify(remaining)).catch(() => {});
+              return remaining;
+            });
             setSelectedBrand(prev => (prev && prev.id === deletedId ? null : prev));
           }
         }
@@ -2111,10 +2244,10 @@ export const AppProvider = ({ children }) => {
         const hasName = r.name && r.name.trim().length >= 2;
         const isComplete = Boolean(r.is_profile_complete || r.isProfileComplete || hasName);
 
-        if (isComplete || hasName || r.b2b_verified || r.business_name) {
+        if (isComplete || hasName || r.b2b_verified || r.business_name || (r.phone && r.id)) {
           const profile = {
             id: r.id || `u_${last10Digits}`,
-            name: r.name || 'User',
+            name: r.name || (r.business_name ? r.business_name : 'User'),
             phone: r.phone || formattedPhone,
             email: r.email || '',
             pincode: r.pincode || '',
@@ -2134,7 +2267,35 @@ export const AppProvider = ({ children }) => {
         }
       });
 
-      const accounts = Array.from(validAccountsMap.values());
+      let accounts = Array.from(validAccountsMap.values());
+
+      // Fallback check in b2b_verifications if not found in users table
+      if (accounts.length === 0) {
+        try {
+          const { data: b2bRows } = await supabase
+            .from('b2b_verifications')
+            .select('*')
+            .or(`phone.eq.${formattedPhone},phone.ilike.%${last10Digits}%`)
+            .limit(1);
+
+          if (Array.isArray(b2bRows) && b2bRows.length > 0) {
+            const b = b2bRows[0];
+            const bRole = (b.role || 'salon').toLowerCase().trim();
+            accounts.push({
+              id: b.user_id || `u_${last10Digits}`,
+              name: b.name || b.professional_name || 'B2B Partner',
+              phone: b.phone || formattedPhone,
+              email: b.email || '',
+              role: bRole,
+              businessName: b.business_name || '',
+              verificationStatus: (b.verification_status || 'submitted').toLowerCase().trim(),
+              b2bVerified: Boolean(b.b2b_verified),
+              isProfileComplete: true
+            });
+          }
+        } catch (_) {}
+      }
+
       return {
         isRegistered: accounts.length > 0,
         accounts
@@ -2316,7 +2477,7 @@ export const AppProvider = ({ children }) => {
         state: state,
         role: effectiveRole,
         business_name: cleanBizName,
-        branch: `${city || 'MG Road'} Branch`,
+        branch: city ? `${city} Branch` : '',
         verification_status: initialStatus,
         b2b_verified: isB2BVer,
         cancellation_count: consecutiveCancels || 0,
@@ -2332,7 +2493,7 @@ export const AppProvider = ({ children }) => {
           phone: cleanPhone,
           role: effectiveRole,
           business_name: cleanBizName,
-          branch: `${city || 'MG Road'} Branch`,
+          branch: city ? `${city} Branch` : '',
           verification_status: initialStatus,
           cancellation_count: consecutiveCancels || 0,
           last_active: new Date().toISOString()
@@ -2688,7 +2849,7 @@ export const AppProvider = ({ children }) => {
       avatar: '',
       itemDescription: orderItems.map(i => `${i.product?.name || 'Item'}${i.shade ? ` - ${i.shade.name}` : ''} (x${i.quantity})`).join(', ') || 'Cosmetics Package',
       userRole: userRole === 'salon' ? 'Salon Owner' : userRole === 'artist' ? 'Makeup Artist' : userRole === 'beautician' ? 'Beautician' : 'General Retail',
-      branch: branch || selectedBranch || 'MG Road Branch',
+      branch: branch || selectedBranch || '',
       deliveryType: deliveryType || 'delivery',
       deliveryAddress: address || userProfile.address || '',
       deliveryInstructions: finalInstructions,
@@ -2705,6 +2866,7 @@ export const AppProvider = ({ children }) => {
     try {
       const orderPayload = {
         id: newOrderId,
+        user_id: userProfile?.id || ('u_' + (userProfile?.phone || '').replace(/\D/g, '').slice(-10)) || null,
         user_name: formattedOrder.userName,
         phone: formattedOrder.phone,
         avatar: formattedOrder.avatar,
@@ -2965,6 +3127,8 @@ export const AppProvider = ({ children }) => {
   }, [userProfile?.isProfileComplete, userProfile?.verificationStatus, userRole]);
 
   const contextValue = {
+        currentUpiOrder,
+        setCurrentUpiOrder,
         currentScreen,
         previousScreen,
         setCurrentScreen: setProtectedScreen,
@@ -3039,6 +3203,8 @@ export const AppProvider = ({ children }) => {
         loginWithAccount,
         setVerifiedPhoneForRegistration,
         saveUserProfile,
+        staffProfile,
+        setStaffProfile,
         refreshCatalog: fetchCatalog,
         logout,
         isRestoringSession,

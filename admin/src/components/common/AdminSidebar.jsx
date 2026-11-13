@@ -23,11 +23,14 @@ import {
   Clock,
   UserPlus,
   SlidersHorizontal,
+  Settings,
   LogOut,
   ChevronDown,
   Menu,
   X,
-  Sparkle
+  Sparkle,
+  Truck,
+  Bike
 } from 'lucide-react';
 import { canAccessTab } from '../../utils/permissionEngine';
 
@@ -75,7 +78,9 @@ export const AdminSidebar = ({
   b2bPendingSalon = 0,
   b2bPendingArtist = 0,
   b2bPendingBeautician = 0,
-  employees = []
+  employees = [],
+  branches = [],
+  upiVerifications = []
 }) => {
   const [openSubmenus, setOpenSubmenus] = useState({
     users: true,
@@ -120,6 +125,7 @@ export const AdminSidebar = ({
     if (itemId === 'products/bulk') return activeTab === 'products/bulk';
     if (itemId === 'attributes') return activeTab === 'attributes';
     if (itemId === 'order_updated') return activeTab === 'order_updated';
+    if (itemId === 'delivery_partners') return activeTab === 'delivery_partners';
     if (itemId === 'approval_center') return activeTab === 'approval_center';
     if (itemId === 'users') return activeTab === 'user' || activeTab === 'users';
     if (itemId === 'users/b2c') return activeTab === 'users/b2c' || activeTab === 'user/b2c' || activeTab === 'user' || activeTab === 'users';
@@ -135,6 +141,9 @@ export const AdminSidebar = ({
     if (itemId === 'employees') return activeTab === 'employees' || activeTab === 'employees/new';
     if (itemId === 'audit_trail') return activeTab === 'audit_trail';
     if (itemId === 'quick_panel') return activeTab === 'quick_panel';
+    if (itemId === 'settings') return activeTab === 'settings';
+    if (itemId === 'branches') return activeTab === 'branches';
+    if (itemId === 'upi_verification') return activeTab === 'upi_verification';
     return activeTab === itemId;
   }, [activeTab]);
 
@@ -155,6 +164,13 @@ export const AdminSidebar = ({
     return (abandonedCarts || []).filter(c => c.status === 'abandoned').length;
   }, [abandonedCarts]);
 
+  const pendingUpiCount = useMemo(() => {
+    return (upiVerifications || []).filter(u => {
+      const st = String(u.verification_status || u.verificationStatus || '').toUpperCase();
+      return st === 'PENDING_VERIFICATION' || st === 'PENDING';
+    }).length;
+  }, [upiVerifications]);
+
   const activeEmployeesCount = useMemo(() => {
     return (employees || []).filter(e => e.status === 'active').length;
   }, [employees]);
@@ -173,6 +189,31 @@ export const AdminSidebar = ({
           id: 'dashboard_visibility',
           label: 'Dashboard Visibility',
           icon: Eye
+        }
+      ]
+    },
+    {
+      title: 'SETTINGS & CONFIGURATION',
+      items: [
+        {
+          id: 'settings',
+          label: 'General Settings',
+          icon: Settings,
+          badge: null
+        },
+        {
+          id: 'branches',
+          label: 'Branch Management',
+          icon: Building2,
+          badge: (branches || []).length > 0 ? (branches || []).length : null,
+          badgeVariant: 'neutral'
+        },
+        {
+          id: 'security_2fa',
+          label: 'Security & 2FA',
+          icon: ShieldCheck,
+          badge: '2FA',
+          badgeVariant: 'brand'
         }
       ]
     },
@@ -227,6 +268,22 @@ export const AdminSidebar = ({
           label: 'Order Management',
           icon: ShoppingBag,
           badge: (orders || []).filter(o => o.status === 'placed' || o.status === 'pending').length || null,
+          badgeVariant: 'amber'
+        },
+        {
+          id: 'delivery_partners',
+          label: 'Delivery Partners & Live Tracking',
+          icon: Truck,
+          badge: (orders || []).filter(o => o.status === 'out_for_delivery').length > 0
+            ? `${(orders || []).filter(o => o.status === 'out_for_delivery').length} Live`
+            : null,
+          badgeVariant: 'purple'
+        },
+        {
+          id: 'upi_verification',
+          label: 'UPI Payment Verification',
+          icon: ShieldCheck,
+          badge: pendingUpiCount > 0 ? `${pendingUpiCount} Proof` : null,
           badgeVariant: 'amber'
         },
         {
@@ -379,7 +436,9 @@ export const AdminSidebar = ({
     b2bPendingSalon,
     b2bPendingArtist,
     b2bPendingBeautician,
-    activeEmployeesCount
+    activeEmployeesCount,
+    branches,
+    pendingUpiCount
   ]);
 
   // Role and Permission Filter — strictly permits only pages explicitly authorized by Administrator

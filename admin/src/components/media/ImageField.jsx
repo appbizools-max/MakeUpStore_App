@@ -15,6 +15,7 @@ export default function ImageField({
   compact = false,
   disabled = false,
   className = '',
+  localOnly = false,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const spec = resolveImageSpec(aspectRatio);
@@ -89,6 +90,7 @@ export default function ImageField({
           filenamePrefix={filenamePrefix}
           defaultSearchQuery={entityName}
           aspectRatioSpec={spec}
+          localOnly={localOnly}
         />
       </div>
     );
@@ -215,6 +217,7 @@ export default function ImageField({
         filenamePrefix={filenamePrefix}
         defaultSearchQuery={entityName}
         aspectRatioSpec={spec}
+        localOnly={localOnly}
       />
     </div>
   );

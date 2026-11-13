@@ -607,11 +607,12 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
             errors.push('Brand Name is required.');
           } else {
             const nameNorm = normalizeBrandName(brandName).toLowerCase();
+            const isAlreadyInDb = existingBrandNamesMap.has(nameNorm);
             if (seenInFileNames.has(nameNorm)) {
               errors.push(`Duplicate brand "${brandName}" found multiple times in this spreadsheet.`);
               duplicateRecordsCount++;
-            } else if (existingBrandNamesMap.has(nameNorm)) {
-              errors.push(`Brand "${brandName}" already exists in the database.`);
+            } else if (isAlreadyInDb) {
+              warnings.push(`Brand "${brandName}" already exists in the database and will be updated if "Update Existing" mode is selected.`);
               duplicateRecordsCount++;
             } else {
               seenInFileNames.add(nameNorm);
@@ -646,11 +647,15 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
           }
 
           if (rowMissingCategories.length > 0) {
-            errors.push(`Invalid Category: "${rowMissingCategories.join(', ')}" does not exist in the Categories List.`);
-            invalidCategoriesCount++;
+            warnings.push(`Category "${rowMissingCategories.join(', ')}" will be auto-synchronized to master categories.`);
           }
 
-          const brandNumber = formatBrandNumber(maxExistingSeq + index + 1);
+          const nameNormForMatch = normalizeBrandName(brandName || '').toLowerCase();
+          const matchedBrand = existingBrandNamesMap.get(nameNormForMatch);
+          const isExisting = Boolean(brandName && matchedBrand);
+          const brandNumber = isExisting && (matchedBrand.brandNumber || matchedBrand.brand_number)
+            ? (matchedBrand.brandNumber || matchedBrand.brand_number)
+            : formatBrandNumber(maxExistingSeq + index + 1);
           const isValid = errors.length === 0;
 
           if (isValid) validCount++;
@@ -659,15 +664,16 @@ export const parseAndValidateBrandExcel = async (file, masterCategories = [], ex
           parsedRows.push({
             rowNumber: rowNum,
             isValid,
-            isExisting: Boolean(brandName && existingBrandNamesMap.has(normalizeBrandName(brandName).toLowerCase())),
+            isExisting,
+            matchedBrandId: matchedBrand ? matchedBrand.id : null,
             brandNumber,
             brandName,
             category: parsedCategories[0] || categoryRaw,
             categories: parsedCategories,
-            logoUrl: '',
+            logoUrl: matchedBrand ? (matchedBrand.logo || '') : '',
             enabled: true,
-            description: '',
-            internalNotes: '',
+            description: matchedBrand ? (matchedBrand.description || '') : '',
+            internalNotes: matchedBrand ? (matchedBrand.internalNotes || '') : '',
             errors,
             warnings
           });

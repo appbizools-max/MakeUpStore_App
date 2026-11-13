@@ -201,16 +201,24 @@ export const PlaceOrderScreen = () => {
     Alert.alert('Address Saved', `New delivery address (${newLabel}) added and selected.`);
   };
 
-  const handleConfirmOrder = () => {
-    const order = placeOrder({
+  const handleConfirmOrder = async () => {
+    const order = await placeOrder({
       deliveryType: 'delivery',
       address: selectedAddressString,
       branch: selectedBranch,
       paymentMethod: selectedPayment,
       notes,
     });
-    Alert.alert('Order Confirmed!', `Order ${order.id} placed successfully!`);
-    setCurrentScreen('orders');
+
+    if (selectedPayment === 'upi') {
+      if (typeof setCurrentUpiOrder === 'function') {
+        setCurrentUpiOrder(order);
+      }
+      setCurrentScreen('upi_payment_status');
+    } else {
+      Alert.alert('Order Confirmed!', `Order ${order?.id || ''} placed successfully!`);
+      setCurrentScreen('orders');
+    }
   };
 
   return (
@@ -345,28 +353,84 @@ export const PlaceOrderScreen = () => {
         </View>
       )}
 
-      {/* Payment Method Card Box - Cash on Delivery Only */}
+      {/* Payment Method Options Box */}
       <View className="bg-white rounded-2xl border border-gray-200 p-4 mb-4 shadow-xs">
         <Text className="text-xs font-black text-slate-900 uppercase tracking-wider mb-3">
-          Payment Method
+          Select Payment Method
         </Text>
 
-        <View className="bg-gray-50 border border-gray-300 rounded-xl p-3.5 flex-row items-center justify-between">
+        {/* Option 1: UPI Transfer / QR Code */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setSelectedPayment('upi')}
+          className={`p-3.5 rounded-xl border flex-row items-center justify-between mb-3 ${
+            selectedPayment === 'upi' ? 'bg-purple-50/80 border-purple-400' : 'bg-gray-50 border-gray-200'
+          }`}
+        >
           <View className="flex-row items-center gap-3 flex-1">
-            <View className="w-9 h-9 rounded-xl bg-white items-center justify-center border border-gray-200 shadow-2xs">
-              <Ionicons name="cash-outline" size={18} color="#1E293B" />
+            <View className={`w-9 h-9 rounded-xl items-center justify-center border shadow-2xs ${
+              selectedPayment === 'upi' ? 'bg-purple-100 border-purple-300 text-purple-700' : 'bg-white border-gray-200'
+            }`}>
+              <Ionicons name="qr-code-outline" size={18} color={selectedPayment === 'upi' ? '#7C3AED' : '#64748B'} />
             </View>
             <View className="flex-col flex-1">
-              <Text className="text-xs font-black text-slate-900">
-                Cash on Delivery (COD)
-              </Text>
-              <Text className="text-[10px] font-semibold text-slate-500 mt-0.5">
-                Pay cash upon delivery — No online gateway needed
+              <View className="flex-row items-center gap-1.5">
+                <Text className="text-xs font-black text-slate-900">UPI / QR Code Transfer</Text>
+                <View className="bg-[#C2477A] px-1.5 py-0.5 rounded">
+                  <Text className="text-[9px] font-black text-white uppercase">Verification Required</Text>
+                </View>
+              </View>
+              <Text className="text-[10px] font-medium text-slate-500 mt-0.5">
+                Transfer via GPay/PhonePe/Paytm • Verified by Admin & Delivery Partner
               </Text>
             </View>
           </View>
-          <Ionicons name="checkmark-circle" size={20} color="#1E293B" />
-        </View>
+          <Ionicons
+            name={selectedPayment === 'upi' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color={selectedPayment === 'upi' ? '#7C3AED' : '#94A3B8'}
+          />
+        </TouchableOpacity>
+
+        {/* Option 2: Cash on Delivery */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setSelectedPayment('cod')}
+          className={`p-3.5 rounded-xl border flex-row items-center justify-between ${
+            selectedPayment === 'cod' ? 'bg-pink-50/80 border-pink-400' : 'bg-gray-50 border-gray-200'
+          }`}
+        >
+          <View className="flex-row items-center gap-3 flex-1">
+            <View className={`w-9 h-9 rounded-xl items-center justify-center border shadow-2xs ${
+              selectedPayment === 'cod' ? 'bg-pink-100 border-pink-300' : 'bg-white border-gray-200'
+            }`}>
+              <Ionicons name="cash-outline" size={18} color={selectedPayment === 'cod' ? '#C2477A' : '#64748B'} />
+            </View>
+            <View className="flex-col flex-1">
+              <Text className="text-xs font-black text-slate-900">Cash on Delivery (COD)</Text>
+              <Text className="text-[10px] font-medium text-slate-500 mt-0.5">
+                Pay in cash upon doorstep delivery
+              </Text>
+            </View>
+          </View>
+          <Ionicons
+            name={selectedPayment === 'cod' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color={selectedPayment === 'cod' ? '#C2477A' : '#94A3B8'}
+          />
+        </TouchableOpacity>
+
+        {/* UPI Instructions preview */}
+        {selectedPayment === 'upi' && (
+          <View className="mt-3 p-3 bg-purple-50 rounded-xl border border-purple-200">
+            <Text className="text-[11px] font-bold text-purple-900">
+              UPI Instructions:
+            </Text>
+            <Text className="text-[10.5px] text-purple-800 mt-0.5 leading-relaxed">
+              After placing your order, your payment status will remain <strong>PENDING_VERIFICATION</strong>. When your delivery partner arrives or captures payment proof, our store administrator verifies the credits and instantly approves your payment.
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Payment Totals Breakdown Card Box */}

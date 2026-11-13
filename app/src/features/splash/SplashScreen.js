@@ -4,26 +4,16 @@ import { useApp } from '../../context/AppContext';
 
 export const SplashScreen = () => {
   const { setCurrentScreen, userProfile, isRestoringSession } = useApp();
-  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
-
-  // Performance Optimization: Eliminate 1.8s startup freeze.
-  // Minimal 300ms transition for zero-flicker cold starts, immediately navigable as soon as session is ready.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMinTimeElapsed(true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
-    if (minTimeElapsed && !isRestoringSession) {
+    if (!isRestoringSession) {
       if (userProfile?.isProfileComplete) {
         setCurrentScreen('home');
       } else {
         setCurrentScreen('login');
       }
     }
-  }, [minTimeElapsed, isRestoringSession, userProfile?.isProfileComplete, setCurrentScreen]);
+  }, [isRestoringSession, userProfile?.isProfileComplete, setCurrentScreen]);
 
   const handleProceed = () => {
     if (!isRestoringSession) {
@@ -58,7 +48,7 @@ export const SplashScreen = () => {
         <View className="items-center justify-center">
           <Image
             source={require('../../../Assets/Logo_transparent.png')}
-            style={{ width: 220, height: 90 }}
+            style={{ width: 260, height: 87 }}
             resizeMode="contain"
           />
         </View>
