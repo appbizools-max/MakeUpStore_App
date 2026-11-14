@@ -1,4 +1,4 @@
-package com.salbeau.app
+package com.Salbeau
 
 import android.content.Intent
 import android.os.Build

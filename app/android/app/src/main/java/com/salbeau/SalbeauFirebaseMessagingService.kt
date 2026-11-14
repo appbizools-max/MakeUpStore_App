@@ -1,4 +1,4 @@
-package com.salbeau.app
+package com.Salbeau
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

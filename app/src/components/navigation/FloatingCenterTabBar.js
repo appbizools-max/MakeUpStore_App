@@ -13,15 +13,20 @@ import { useApp } from '../../context/AppContext';
 
 /**
  * Premium Floating Center Tab Bar
- * 5 Navigation Items:
- *   1. Home
- *   2. Categories
- *   3. Search (Clean Floating Action Button with subtle animation, no outer halo)
- *   4. Orders (with live order count badge)
- *   5. Account
+ * Matches the reference design mockup pixel-for-pixel:
+ *   1. Home (with pink active indicator underline pill)
+ *   2. Categories (single-line label, 4-square grid icon)
+ *   3. Search (Floating center circular pink button with soft ambient pink glow & curved cradle)
+ *   4. Wishlist (Heart icon, with optional orders fallback)
+ *   5. Account (Clean person outline)
  */
-export const FloatingCenterTabBar = () => {
-  const { currentScreen, setCurrentScreen, userOrdersCount = 0 } = useApp() || {};
+export const FloatingCenterTabBar = ({ fourthTabMode = 'wishlist' }) => {
+  const {
+    currentScreen,
+    setCurrentScreen,
+    userOrdersCount = 0,
+    favorites = []
+  } = useApp() || {};
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
   // Auto-hide when keyboard is open so it never overlaps inputs
@@ -38,13 +43,17 @@ export const FloatingCenterTabBar = () => {
     };
   }, []);
 
-  // Simple, subtle animated values
+  // Simple, subtle animated values for tabs
   const homeAnim = useRef(new Animated.Value(currentScreen === 'home' ? 1 : 0)).current;
   const catAnim = useRef(new Animated.Value(currentScreen === 'category' ? 1 : 0)).current;
-  const ordersAnim = useRef(new Animated.Value((currentScreen === 'orders' || currentScreen === 'order_details') ? 1 : 0)).current;
+  const fourthAnim = useRef(
+    new Animated.Value(
+      currentScreen === 'wishlist' || currentScreen === 'orders' || currentScreen === 'order_details' ? 1 : 0
+    )
+  ).current;
   const accountAnim = useRef(new Animated.Value(currentScreen === 'profile' ? 1 : 0)).current;
 
-  // Search button simple press animation
+  // Search button press scale animation
   const searchScale = useRef(new Animated.Value(1.0)).current;
 
   // Smooth active indicator transitions
@@ -61,9 +70,13 @@ export const FloatingCenterTabBar = () => {
       useNativeDriver: true,
     }).start();
 
-    const isOrders = currentScreen === 'orders' || currentScreen === 'order_details';
-    Animated.timing(ordersAnim, {
-      toValue: isOrders ? 1 : 0,
+    const isFourthActive =
+      currentScreen === 'wishlist' ||
+      currentScreen === 'orders' ||
+      currentScreen === 'order_details';
+
+    Animated.timing(fourthAnim, {
+      toValue: isFourthActive ? 1 : 0,
       duration: 180,
       useNativeDriver: true,
     }).start();
@@ -94,7 +107,7 @@ export const FloatingCenterTabBar = () => {
     setCurrentScreen(screenId);
   };
 
-  // Clean, subtle search tap feedback (simple scale down & spring back)
+  // Clean, subtle search tap feedback
   const handleSearchPress = () => {
     Animated.sequence([
       Animated.timing(searchScale, {
@@ -119,9 +132,19 @@ export const FloatingCenterTabBar = () => {
 
   const isHomeActive = currentScreen === 'home';
   const isCategoryActive = currentScreen === 'category';
-  const isSearchActive = currentScreen === 'search';
+  const isWishlistActive = currentScreen === 'wishlist';
   const isOrdersActive = currentScreen === 'orders' || currentScreen === 'order_details';
+  const isFourthActive = isWishlistActive || isOrdersActive;
   const isAccountActive = currentScreen === 'profile';
+
+  // 4th Tab Configuration (defaults to 'wishlist' matching the design image)
+  const isWishlistMode = fourthTabMode === 'wishlist';
+  const fourthScreenTarget = isWishlistMode ? 'wishlist' : 'orders';
+  const fourthLabel = isWishlistMode ? 'Wishlist' : 'Orders';
+  const fourthIconName = isWishlistMode
+    ? (isWishlistActive ? 'heart' : 'heart-outline')
+    : (isOrdersActive ? 'cube' : 'cube-outline');
+  const fourthBadgeCount = isWishlistMode ? (favorites?.length || 0) : userOrdersCount;
 
   return (
     <View style={styles.outerContainer} pointerEvents="box-none">
@@ -152,8 +175,8 @@ export const FloatingCenterTabBar = () => {
           >
             <Ionicons
               name={isHomeActive ? 'home' : 'home-outline'}
-              size={22}
-              color={isHomeActive ? '#D81B60' : '#2D3748'}
+              size={23}
+              color={isHomeActive ? '#D81B60' : '#2D3142'}
             />
           </Animated.View>
           <Text
@@ -161,8 +184,8 @@ export const FloatingCenterTabBar = () => {
             style={[
               styles.tabLabel,
               {
-                color: isHomeActive ? '#D81B60' : '#2D3748',
-                fontWeight: isHomeActive ? '800' : '600',
+                color: isHomeActive ? '#D81B60' : '#2D3142',
+                fontWeight: isHomeActive ? '700' : '500',
               },
             ]}
           >
@@ -213,7 +236,7 @@ export const FloatingCenterTabBar = () => {
             <Ionicons
               name={isCategoryActive ? 'grid' : 'grid-outline'}
               size={22}
-              color={isCategoryActive ? '#D81B60' : '#2D3748'}
+              color={isCategoryActive ? '#D81B60' : '#2D3142'}
             />
           </Animated.View>
           <Text
@@ -221,8 +244,8 @@ export const FloatingCenterTabBar = () => {
             style={[
               styles.tabLabel,
               {
-                color: isCategoryActive ? '#D81B60' : '#2D3748',
-                fontWeight: isCategoryActive ? '800' : '600',
+                color: isCategoryActive ? '#D81B60' : '#2D3142',
+                fontWeight: isCategoryActive ? '700' : '500',
               },
             ]}
           >
@@ -250,15 +273,19 @@ export const FloatingCenterTabBar = () => {
         {/* 3. CENTER SEARCH TAB (FLOATING ACTION BUTTON)             */}
         {/* ========================================================= */}
         <View style={styles.centerFabSlot} pointerEvents="box-none">
-          {/* Subtle curved notch backdrop blending into top navbar border */}
-          <View style={styles.centerArchBackdrop} pointerEvents="none" />
+          {/* Smooth contoured white cradle dome rising from the navigation bar */}
+          <View style={styles.cradleDome} pointerEvents="none" />
 
+          {/* Touchable Floating Pink Action Button */}
           <TouchableOpacity
             style={styles.fabTouchable}
             activeOpacity={0.88}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={handleSearchPress}
           >
+            {/* Soft pink ambient glow underneath the circular button */}
+            <View style={styles.fabPinkGlow} pointerEvents="none" />
+
             <Animated.View
               style={[
                 styles.fabCircle,
@@ -267,19 +294,19 @@ export const FloatingCenterTabBar = () => {
                 },
               ]}
             >
-              <Ionicons name="search" size={24} color="#FFFFFF" />
+              <Ionicons name="search" size={26} color="#FFFFFF" />
             </Animated.View>
           </TouchableOpacity>
         </View>
 
         {/* ========================================================= */}
-        {/* 4. ORDERS TAB                                             */}
+        {/* 4. FOURTH TAB (WISHLIST / ORDERS)                         */}
         {/* ========================================================= */}
         <TouchableOpacity
           style={styles.tabItem}
           activeOpacity={0.75}
           hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-          onPress={() => handleTabPress('orders', ordersAnim)}
+          onPress={() => handleTabPress(fourthScreenTarget, fourthAnim)}
         >
           <Animated.View
             style={[
@@ -287,7 +314,7 @@ export const FloatingCenterTabBar = () => {
               {
                 transform: [
                   {
-                    scale: ordersAnim.interpolate({
+                    scale: fourthAnim.interpolate({
                       inputRange: [0, 1],
                       outputRange: [1.0, 1.06],
                     }),
@@ -297,14 +324,14 @@ export const FloatingCenterTabBar = () => {
             ]}
           >
             <Ionicons
-              name={isOrdersActive ? 'cube' : 'cube-outline'}
+              name={fourthIconName}
               size={22}
-              color={isOrdersActive ? '#D81B60' : '#2D3748'}
+              color={isFourthActive ? '#D81B60' : '#2D3142'}
             />
-            {userOrdersCount > 0 && (
+            {fourthBadgeCount > 0 && (
               <View style={styles.badgeDot}>
                 <Text style={styles.badgeText}>
-                  {userOrdersCount > 9 ? '9+' : userOrdersCount}
+                  {fourthBadgeCount > 9 ? '9+' : fourthBadgeCount}
                 </Text>
               </View>
             )}
@@ -314,21 +341,21 @@ export const FloatingCenterTabBar = () => {
             style={[
               styles.tabLabel,
               {
-                color: isOrdersActive ? '#D81B60' : '#2D3748',
-                fontWeight: isOrdersActive ? '800' : '600',
+                color: isFourthActive ? '#D81B60' : '#2D3142',
+                fontWeight: isFourthActive ? '700' : '500',
               },
             ]}
           >
-            Orders
+            {fourthLabel}
           </Text>
           <Animated.View
             style={[
               styles.activeIndicator,
               {
-                opacity: ordersAnim,
+                opacity: fourthAnim,
                 transform: [
                   {
-                    scaleX: ordersAnim.interpolate({
+                    scaleX: fourthAnim.interpolate({
                       inputRange: [0, 1],
                       outputRange: [0, 1],
                     }),
@@ -366,7 +393,7 @@ export const FloatingCenterTabBar = () => {
             <Ionicons
               name={isAccountActive ? 'person' : 'person-outline'}
               size={22}
-              color={isAccountActive ? '#D81B60' : '#2D3748'}
+              color={isAccountActive ? '#D81B60' : '#2D3142'}
             />
           </Animated.View>
           <Text
@@ -374,8 +401,8 @@ export const FloatingCenterTabBar = () => {
             style={[
               styles.tabLabel,
               {
-                color: isAccountActive ? '#D81B60' : '#2D3748',
-                fontWeight: isAccountActive ? '800' : '600',
+                color: isAccountActive ? '#D81B60' : '#2D3142',
+                fontWeight: isAccountActive ? '700' : '500',
               },
             ]}
           >
@@ -411,8 +438,6 @@ const styles = StyleSheet.create({
   },
   navBar: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F2',
     height: Platform.OS === 'ios' ? 66 : 58,
@@ -421,85 +446,98 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 8,
     paddingBottom: Platform.OS === 'ios' ? 8 : 2,
-    // Clean soft shadow
-    shadowColor: '#000',
+    // Soft subtle ambient shadow across top edge
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 6,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 2,
-    minHeight: 46,
+    minHeight: 48,
   },
   iconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    height: 25,
   },
   tabLabel: {
-    fontSize: 9.5,
+    fontSize: 10,
     marginTop: 2,
     letterSpacing: -0.1,
   },
   activeIndicator: {
-    width: 20,
+    width: 22,
     height: 2.8,
-    borderRadius: 1.5,
+    borderRadius: 1.4,
     backgroundColor: '#D81B60',
-    marginTop: 2,
+    marginTop: 2.5,
   },
   centerFabSlot: {
-    width: 66,
+    width: 72,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 30,
     position: 'relative',
   },
-  centerArchBackdrop: {
+  cradleDome: {
     position: 'absolute',
-    top: -14,
-    width: 66,
-    height: 36,
-    borderTopLeftRadius: 33,
-    borderTopRightRadius: 33,
+    top: -20,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: '#F0F0F2',
+    borderColor: '#EFEFEF',
     zIndex: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 3,
   },
   fabTouchable: {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    marginTop: -18,
+    marginTop: -16,
     zIndex: 2,
   },
-  fabCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+  fabPinkGlow: {
+    position: 'absolute',
+    bottom: -6,
+    width: 44,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: '#D81B60',
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
+    opacity: 0.32,
+    zIndex: -1,
+  },
+  fabCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#D81B60',
     alignItems: 'center',
     justifyContent: 'center',
-    // Clean, natural elevation without oversized pink blur
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 5,
-    elevation: 6,
+    // Soft vibrant pink shadow
+    shadowColor: '#D81B60',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.40,
+    shadowRadius: 10,
+    elevation: 8,
   },
   badgeDot: {
     position: 'absolute',
-    top: -2,
-    right: -7,
+    top: -3,
+    right: -8,
     backgroundColor: '#D81B60',
     minWidth: 14,
     height: 14,

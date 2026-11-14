@@ -1,4 +1,4 @@
-package com.salbeau.app
+package com.Salbeau
 
 import android.Manifest
 import android.app.PendingIntent

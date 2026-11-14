@@ -1,4 +1,4 @@
-package com.salbeau.app
+package com.Salbeau
 
 import android.view.View
 import com.facebook.react.ReactPackage
