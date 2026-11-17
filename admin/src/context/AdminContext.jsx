@@ -2964,32 +2964,55 @@ export const AdminProvider = ({ children }) => {
       ...currentShipments,
       paymentStatus: validPaymentStatus,
       paymentMethod: finalMethod,
-      paidAt: validPaymentStatus === 'paid' ? new Date().toISOString() : (currentShipments.paidAt || null)
+      verificationStatus: validPaymentStatus === 'paid' ? 'VERIFIED' : (validPaymentStatus === 'failed' ? 'REJECTED' : 'PENDING'),
+      confirmedWithAdmin: validPaymentStatus === 'paid',
+      paidAt: validPaymentStatus === 'paid' ? (currentShipments.paidAt || new Date().toISOString()) : (currentShipments.paidAt || null)
     };
 
     const updatedFields = {
       paymentStatus: validPaymentStatus,
+      payment_status: validPaymentStatus,
       paymentMethod: finalMethod,
+      payment_method: finalMethod,
+      verificationStatus: validPaymentStatus === 'paid' ? 'VERIFIED' : (validPaymentStatus === 'failed' ? 'REJECTED' : 'PENDING'),
+      verification_status: validPaymentStatus === 'paid' ? 'VERIFIED' : (validPaymentStatus === 'failed' ? 'REJECTED' : 'PENDING'),
       internalStatus: validPaymentStatus,
+      internal_status: validPaymentStatus,
       shipments: updatedShipments,
       statusHistory: updatedHistory,
+      status_history: updatedHistory,
       updated_at: new Date().toISOString()
     };
 
-    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o)));
+    setOrders(prev => {
+      const next = prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o));
+      setCachedData('salbeau_admin_cache_orders', next);
+      return next;
+    });
 
     try {
       const client = supabaseAdmin || supabase;
-      const { error } = await client.from('orders').update({
+      const dbPayload = {
+        payment_status: validPaymentStatus,
+        payment_method: finalMethod,
+        verification_status: validPaymentStatus === 'paid' ? 'VERIFIED' : (validPaymentStatus === 'failed' ? 'REJECTED' : 'PENDING'),
         internal_status: validPaymentStatus,
         shipments: updatedShipments,
         status_history: updatedHistory,
         updated_at: new Date().toISOString()
-      }).eq('id', orderId);
+      };
+
+      if (validPaymentStatus === 'paid') {
+        dbPayload.payment_collected_at = new Date().toISOString();
+        dbPayload.payment_collected_by = currentAuthUser?.fullName || currentAuthUser?.name || 'Administrator';
+      }
+
+      const { error } = await client.from('orders').update(dbPayload).eq('id', orderId);
 
       if (error) {
         await client.from('orders').update({
-          internal_status: validPaymentStatus,
+          payment_status: validPaymentStatus,
+          payment_method: finalMethod,
           shipments: updatedShipments,
           status_history: updatedHistory
         }).eq('id', orderId);
@@ -3045,19 +3068,27 @@ export const AdminProvider = ({ children }) => {
 
     const updatedFields = {
       paymentStatus: newPayStatus,
+      payment_status: newPayStatus,
       verificationStatus: newVerifStatus,
+      verification_status: newVerifStatus,
       internalStatus: newPayStatus,
+      internal_status: newPayStatus,
       shipments: updatedShipments,
       updated_at: new Date().toISOString()
     };
 
-    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o)));
+    setOrders(prev => {
+      const next = prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o));
+      setCachedData('salbeau_admin_cache_orders', next);
+      return next;
+    });
 
     try {
       const client = supabaseAdmin || supabase;
       await client.from('orders').update({
         internal_status: newPayStatus,
         payment_status: newPayStatus,
+        verification_status: newVerifStatus,
         shipments: updatedShipments,
         updated_at: new Date().toISOString()
       }).eq('id', orderId);

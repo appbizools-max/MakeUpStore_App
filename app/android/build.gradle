@@ -39,4 +39,9 @@ allprojects {
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
     }
+
+    // Disable library source jar packaging to prevent Gradle 8.8+ implicit dependency validation failure
+    tasks.matching { it.name in ['releaseSourcesJar', 'debugSourcesJar'] }.configureEach {
+        enabled = false
+    }
 }

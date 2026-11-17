@@ -1057,12 +1057,12 @@ export const OrderManagementTable = ({
                       <td className="py-4 px-4 align-top whitespace-nowrap">
                         {(() => {
                           const ship = (typeof o.shipments === 'object' && o.shipments) ? o.shipments : {};
-                          const payStatus = String(o.paymentStatus || ship.paymentStatus || o.internalStatus || 'pending').toLowerCase();
-                          const verifStatus = String(ship.verificationStatus || ship.upiVerification?.verificationStatus || '').toUpperCase();
-                          const isVerified = payStatus === 'paid' || verifStatus === 'VERIFIED';
-                          const isPendingVerif = payStatus === 'pending_verification' || verifStatus === 'PENDING_VERIFICATION' || verifStatus === 'PENDING';
-                          const isCashCollected = payStatus === 'collected';
-                          const isFailed = payStatus === 'failed' || verifStatus === 'REJECTED';
+                          const rawPay = String(o.payment_status || o.paymentStatus || ship.paymentStatus || o.internalStatus || o.internal_status || 'pending').toLowerCase();
+                          const verifStatus = String(o.verification_status || o.verificationStatus || ship.verificationStatus || ship.upiVerification?.verificationStatus || '').toUpperCase();
+                          const isVerified = rawPay === 'paid' || rawPay === 'completed' || verifStatus === 'VERIFIED';
+                          const isPendingVerif = !isVerified && (rawPay === 'pending_verification' || verifStatus === 'PENDING_VERIFICATION' || verifStatus === 'PENDING');
+                          const isCashCollected = !isVerified && (rawPay === 'collected' || rawPay === 'cash_collected');
+                          const isFailed = !isVerified && (rawPay === 'failed' || verifStatus === 'REJECTED');
 
                           return (
                             <div className="flex flex-col gap-1.5 min-w-[170px]">

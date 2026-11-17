@@ -215,8 +215,11 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                 }
               }
 
-              const rawPay = (data.payment_status || shipmentsMeta.paymentStatus || data.internal_status || '').toLowerCase();
-              const paymentStatus = ['paid', 'completed'].includes(rawPay) ? 'paid' : 'pending';
+              const shipPay = String(shipmentsMeta.paymentStatus || '').toLowerCase().trim();
+              const rawPay = (data.payment_status || shipPay || data.internal_status || '').toLowerCase().trim();
+              const rawVerif = String(data.verification_status || shipmentsMeta.verificationStatus || '').toUpperCase().trim();
+              const isPaid = ['paid', 'completed'].includes(rawPay) || ['paid', 'completed'].includes(shipPay) || rawVerif === 'VERIFIED';
+              const paymentStatus = isPaid ? 'paid' : (rawPay === 'partially_paid' ? 'partially_paid' : 'pending');
               const paymentMethod = (data.payment_method || shipmentsMeta.paymentMethod || 'cash').toLowerCase();
 
               setDirectOrder({

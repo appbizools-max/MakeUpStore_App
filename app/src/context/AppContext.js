@@ -253,8 +253,11 @@ const mapOrderFromDb = (o) => {
   }
 
   // Safe payment status and payment method mapping
-  const rawPayStatus = (o.payment_status || shipmentsMeta.paymentStatus || o.internal_status || '').toLowerCase().trim();
-  const paymentStatus = ['paid', 'completed'].includes(rawPayStatus) ? 'paid' : (rawPayStatus === 'partially_paid' ? 'partially_paid' : 'pending');
+  const shipPayStatus = String(shipmentsMeta.paymentStatus || '').toLowerCase().trim();
+  const rawPayStatus = (o.payment_status || shipPayStatus || o.internal_status || '').toLowerCase().trim();
+  const rawVerifStatus = String(o.verification_status || shipmentsMeta.verificationStatus || '').toUpperCase().trim();
+  const isPaid = ['paid', 'completed'].includes(rawPayStatus) || ['paid', 'completed'].includes(shipPayStatus) || rawVerifStatus === 'VERIFIED';
+  const paymentStatus = isPaid ? 'paid' : (rawPayStatus === 'partially_paid' ? 'partially_paid' : 'pending');
   const paymentMethod = (o.payment_method || shipmentsMeta.paymentMethod || 'cash').toLowerCase().trim();
 
   // Parse status_history safely
@@ -1740,6 +1743,51 @@ export const AppProvider = ({ children }) => {
           }
         } else if (payload.eventType === 'DELETE' && payload.old && payload.old.user_id === userId) {
           setFavorites(prev => prev.filter(p => p.id !== payload.old.product_id));
+        }
+      })
+      // 8. ORDERS (Live real-time sync for order status, cash collection, and payment verification)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        const curP = userProfileRef.current;
+        const rawPhone = (curP?.phone || '').trim();
+        const rawId = (curP?.id || '').trim();
+        const digits10 = rawPhone.replace(/\D/g, '').slice(-10);
+
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const row = payload.new;
+          if (!row) return;
+
+          const rowPhone = String(row.phone || '').replace(/\D/g, '').slice(-10);
+          const rowUserId = String(row.user_id || '');
+          const isUserOrder =
+            (digits10 && rowPhone && digits10 === rowPhone) ||
+            (rawId && rowUserId && (rawId === rowUserId || rowUserId.includes(rawId)));
+
+          if (isUserOrder) {
+            const mapped = mapOrderFromDb(row);
+            if (mapped) {
+              setOrders(prev => {
+                const idx = prev.findIndex(o => o.id === mapped.id);
+                let next;
+                if (idx >= 0) {
+                  next = [...prev];
+                  next[idx] = { ...prev[idx], ...mapped };
+                } else {
+                  next = [mapped, ...prev];
+                }
+                setCachedData('salbeau_cache_orders', next);
+                return next;
+              });
+            }
+          }
+        } else if (payload.eventType === 'DELETE') {
+          const deletedId = payload.old?.id;
+          if (deletedId) {
+            setOrders(prev => {
+              const next = prev.filter(o => o.id !== deletedId);
+              setCachedData('salbeau_cache_orders', next);
+              return next;
+            });
+          }
         }
       })
       .subscribe((status, err) => {
