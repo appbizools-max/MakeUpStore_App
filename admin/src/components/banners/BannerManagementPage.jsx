@@ -797,10 +797,33 @@ export default function BannerManagementPage({
                             }
                           }
                         }}
+                        onPaste={async (e) => {
+                          const clipboardData = e.clipboardData;
+                          if (!clipboardData) return;
+                          const items = clipboardData.items;
+                          if (items) {
+                            for (let i = 0; i < items.length; i++) {
+                              if (items[i].type.indexOf('image') !== -1) {
+                                const file = items[i].getAsFile();
+                                if (file) {
+                                  e.preventDefault();
+                                  await handleDirectImageUpload(file);
+                                  return;
+                                }
+                              }
+                            }
+                          }
+                          const text = clipboardData.getData('text');
+                          if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image'))) {
+                            e.preventDefault();
+                            setDrawerFormData(prev => ({ ...prev, imageUrl: text.trim(), mobileImageUrl: text.trim() }));
+                          }
+                        }}
+                        tabIndex={0}
                         onClick={() => fileInputRef.current?.click()}
-                        className={`p-3.5 rounded-xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                        className={`p-3.5 rounded-xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 outline-none select-none ${
                           isDragging
-                            ? 'border-[#D81B60] bg-pink-100/70 scale-[0.99]'
+                            ? 'border-[#D81B60] bg-pink-100/70 scale-[0.99] ring-2 ring-pink-200'
                             : 'border-pink-200 bg-white hover:bg-[#FFF5F8] hover:border-[#D81B60]'
                         }`}
                       >

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   LayoutGrid,
+  BarChart3,
+  Wallet,
+  FileSpreadsheet,
   Eye,
   Image as ImageIcon,
   FolderPlus,
@@ -117,7 +120,9 @@ export const AdminSidebar = ({
   const isItemActive = useCallback((itemId) => {
     if (!itemId) return false;
     if (itemId === 'dashboard') return activeTab === 'dashboard';
-    if (itemId === 'dashboard_visibility') return activeTab === 'dashboard_visibility';
+    if (itemId === 'analytics') return activeTab === 'analytics';
+    if (itemId === 'expenses') return activeTab === 'expenses';
+    if (itemId === 'reports') return activeTab === 'reports';
     if (itemId === 'home_banners') return activeTab === 'home_banners';
     if (itemId === 'categories') return activeTab === 'categories';
     if (itemId === 'add_brand') return activeTab === 'add_brand';
@@ -165,11 +170,30 @@ export const AdminSidebar = ({
   }, [abandonedCarts]);
 
   const pendingUpiCount = useMemo(() => {
-    return (upiVerifications || []).filter(u => {
-      const st = String(u.verification_status || u.verificationStatus || '').toUpperCase();
-      return st === 'PENDING_VERIFICATION' || st === 'PENDING';
-    }).length;
-  }, [upiVerifications]);
+    let count = 0;
+    (orders || []).forEach(o => {
+      const ship = (o.shipments && typeof o.shipments === 'object' && !Array.isArray(o.shipments)) ? o.shipments : {};
+      const isUpi =
+        String(o.payment_method || o.paymentMethod || '').toLowerCase() === 'upi' ||
+        String(ship.paymentMethod || ship.payment_method || '').toLowerCase() === 'upi' ||
+        Boolean(ship.upiUtr) ||
+        Boolean(o.upi_ref) ||
+        Boolean(ship.upiVerification);
+      if (isUpi) {
+        const st = String(
+          ship.verificationStatus ||
+          ship.paymentStatus ||
+          o.verification_status ||
+          o.payment_status ||
+          ''
+        ).toUpperCase();
+        if (st === 'PENDING_VERIFICATION' || st === 'PENDING' || st === 'UNPAID') {
+          count++;
+        }
+      }
+    });
+    return count;
+  }, [orders]);
 
   const activeEmployeesCount = useMemo(() => {
     return (employees || []).filter(e => e.status === 'active').length;
@@ -184,11 +208,31 @@ export const AdminSidebar = ({
           id: 'dashboard',
           label: 'Dashboard',
           icon: LayoutGrid
+        }
+      ]
+    },
+    {
+      title: 'BUSINESS INTELLIGENCE & REPORTS',
+      items: [
+        {
+          id: 'analytics',
+          label: 'Analytics Dashboard',
+          icon: BarChart3,
+          badge: 'BI',
+          badgeVariant: 'brand'
         },
         {
-          id: 'dashboard_visibility',
-          label: 'Dashboard Visibility',
-          icon: Eye
+          id: 'expenses',
+          label: 'Expense Manager',
+          icon: Wallet,
+          badgeVariant: 'amber'
+        },
+        {
+          id: 'reports',
+          label: 'Reports & Exports',
+          icon: FileSpreadsheet,
+          badge: '16 Reports',
+          badgeVariant: 'emerald'
         }
       ]
     },
@@ -207,13 +251,6 @@ export const AdminSidebar = ({
           icon: Building2,
           badge: (branches || []).length > 0 ? (branches || []).length : null,
           badgeVariant: 'neutral'
-        },
-        {
-          id: 'security_2fa',
-          label: 'Security & 2FA',
-          icon: ShieldCheck,
-          badge: '2FA',
-          badgeVariant: 'brand'
         }
       ]
     },
@@ -575,7 +612,7 @@ export const AdminSidebar = ({
                               return;
                             }
                             if (hasSubItems) {
-                              navigateToTab(item.subItems[0].id);
+                              navigateToTab(item.subItems?.[0]?.id || item.id);
                               return;
                             }
                             navigateToTab(item.id);
@@ -610,7 +647,7 @@ export const AdminSidebar = ({
                               toggleSubmenu(item.id);
                               const isCurrentlyInside = item.subItems.some(sub => isItemActive(sub.id));
                               if (!isCurrentlyInside) {
-                                navigateToTab(item.subItems[0].id);
+                                navigateToTab(item.subItems?.[0]?.id || item.id);
                               }
                               return;
                             }

@@ -200,7 +200,7 @@ export const CategoryDetailView = ({
 
       {/* ── 1. UNIFIED CATEGORY HEADER ───────────────────────────── */}
       <CategoryHeader
-        parentTitle="Home"
+        parentTitle="Categories"
         title={categoryName}
         categoryIcon={categoryIconName}
         categoryImage={currentCategory?.image || null}

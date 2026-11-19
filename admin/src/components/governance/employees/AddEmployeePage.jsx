@@ -536,7 +536,7 @@ export default function AddEmployeePage({ onNavigate }) {
                     autoComplete="off"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="employee@salbeau.com"
+                    placeholder="Enter login email address"
                     className={`w-full p-3.5 pl-10 rounded-xl border text-xs font-semibold outline-none bg-white transition-all shadow-2xs ${
                       isDuplicateEmail
                         ? 'border-rose-400 text-rose-700 bg-rose-50/30'
@@ -609,7 +609,7 @@ export default function AddEmployeePage({ onNavigate }) {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '') })}
-                    placeholder="9876543210"
+                    placeholder="Enter 10-digit mobile number"
                     className="w-full p-3.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#D81B60] outline-none bg-white shadow-2xs"
                   />
                 </div>

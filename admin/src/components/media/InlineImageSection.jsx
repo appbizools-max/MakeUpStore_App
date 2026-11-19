@@ -30,7 +30,9 @@ export default function InlineImageSection({
   const uploadImage = adminCtx.uploadImage;
 
   const fileInputRef = useRef(null);
+  const containerRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [hasImgError, setHasImgError] = useState(false);
 
   const getDefaultQuery = (name, type) => {
@@ -62,10 +64,8 @@ export default function InlineImageSection({
     }
   };
 
-  const handleLocalFileSelect = async (e) => {
-    const file = e.target.files?.[0];
+  const processFile = async (file) => {
     if (!file) return;
-
     setIsUploading(true);
     setHasImgError(false);
     try {
@@ -90,8 +90,95 @@ export default function InlineImageSection({
     }
   };
 
+  const handleLocalFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) await processFile(file);
+  };
+
+  // Drag and drop handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    // 1. Dropped files from computer
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0 && files[0].type.startsWith('image/')) {
+      await processFile(files[0]);
+      return;
+    }
+
+    // 2. Dropped image from another webpage or Google Images
+    const html = e.dataTransfer?.getData('text/html');
+    if (html) {
+      const match = html.match(/src=["'](.*?)["']/);
+      if (match && match[1]) {
+        handleApplyUrl(match[1]);
+        return;
+      }
+    }
+
+    const textUrl = e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain');
+    if (textUrl && (textUrl.startsWith('http') || textUrl.startsWith('data:image'))) {
+      handleApplyUrl(textUrl);
+    }
+  };
+
+  // Clipboard paste handler (Ctrl + V)
+  const handlePaste = async (e) => {
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    // 1. Direct image blob in clipboard (e.g. Snipping tool, screenshots, copied image)
+    const items = clipboardData.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const blob = item.getAsFile();
+          if (blob) {
+            e.preventDefault();
+            await processFile(blob);
+            return;
+          }
+        }
+      }
+    }
+
+    // 2. Direct URL text in clipboard
+    const text = clipboardData.getData('text');
+    if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image'))) {
+      e.preventDefault();
+      handleApplyUrl(text.trim());
+    }
+  };
+
   return (
-    <div className="bg-white p-3 rounded-2xl border border-pink-100/90 space-y-2.5 shadow-2xs">
+    <div
+      ref={containerRef}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onPaste={handlePaste}
+      tabIndex={0}
+      className={`p-3 rounded-2xl border transition-all space-y-2.5 shadow-2xs outline-none ${
+        isDragging
+          ? 'bg-pink-50/80 border-[#D81B60] ring-2 ring-pink-200'
+          : 'bg-white border-pink-100/90 hover:border-pink-300'
+      }`}
+    >
       {/* Hidden File Input */}
       <input
         ref={fileInputRef}
@@ -197,7 +284,7 @@ export default function InlineImageSection({
                 type="text"
                 value={urlInput}
                 onChange={(e) => handleApplyUrl(e.target.value)}
-                placeholder="Or paste direct image link..."
+                placeholder="Drag & drop image, paste (Ctrl+V), or enter link..."
                 className="w-full px-3 py-2 rounded-xl border border-pink-100 focus:border-[#D81B60] text-xs font-medium outline-none bg-white text-gray-800 transition-colors"
               />
             </div>

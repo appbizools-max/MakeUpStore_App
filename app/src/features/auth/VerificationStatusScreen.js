@@ -27,7 +27,8 @@ export const VerificationStatusScreen = () => {
     userProfile,
     userVerificationRecord,
     loadUserB2BVerification,
-    setCurrentScreen
+    setCurrentScreen,
+    storeSettings
   } = useApp();
 
   const [fontsLoaded] = useFonts({
@@ -71,7 +72,13 @@ export const VerificationStatusScreen = () => {
   const rejectionReason = userProfile?.rejectionReason || userVerificationRecord?.rejection_reason || 'Please provide updated proof of business registration or identity.';
 
   const handleContactSupport = () => {
-    Linking.openURL('https://wa.me/919876543210?text=Hello%20Salbeau%20Support,%20I%20have%20an%20inquiry%20regarding%20my%20B2B%20verification');
+    const rawPhone = storeSettings?.identity?.supportPhone || storeSettings?.supportPhone || '';
+    const phoneDigits = rawPhone.replace(/\D/g, '');
+    if (phoneDigits) {
+      Linking.openURL(`https://wa.me/${phoneDigits}?text=Hello%20Salbeau%20Support,%20I%20have%20an%20inquiry%20regarding%20my%20B2B%20verification`);
+    } else {
+      Linking.openURL('mailto:contact@salbeau.com?subject=B2B%20Verification%20Inquiry');
+    }
   };
 
   return (

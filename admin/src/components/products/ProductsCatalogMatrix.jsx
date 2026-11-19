@@ -30,7 +30,7 @@ import {
   Copy,
   Check,
   Info,
-  Sliders,
+  SlidersHorizontal,
   Image as ImageIcon,
   ExternalLink,
   ShieldCheck,
@@ -56,6 +56,7 @@ import { getBeautyShadeName } from '../common/HexColorPicker';
 import { getDefaultQuantityTiers } from '../../utils/quantityTiersUtils';
 import { getSafeActiveVariants } from '../../utils/productSearchEngine';
 import { useAdmin } from '../../context/AdminContext';
+import { hasActionPermission } from '../../utils/permissionEngine';
 
 /**
  * ProductsCatalogMatrix - Premium Beauty-Commerce Admin Catalog Table
@@ -136,6 +137,12 @@ export default function ProductsCatalogMatrix({
   const [copiedKey, setCopiedKey] = useState(null);
   const [activeImagePreview, setActiveImagePreview] = useState(null);
   const adminCtx = useAdmin();
+  const currentAuthUser = adminCtx?.currentAuthUser;
+  const isEmployee = currentAuthUser?.role === 'employee';
+  const canAddProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'add', currentAuthUser?.role);
+  const canEditProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'edit', currentAuthUser?.role);
+  const canDeleteProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'delete', currentAuthUser?.role);
+  const canPublishProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'publish', currentAuthUser?.role);
 
   // Multi-Product Selection & Bulk Actions State
   const [selectedProductIds, setSelectedProductIds] = useState(new Set());
@@ -517,6 +524,63 @@ export default function ProductsCatalogMatrix({
     }
   };
 
+  const handleProductThumbnailPaste = async (e, product) => {
+    if (!e || !e.clipboardData) return;
+    let finalUrl = null;
+
+    const items = e.clipboardData.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+              if (adminCtx?.uploadImage) {
+                finalUrl = await adminCtx.uploadImage(file, 'products', `prod_${product.sku || product.id || Date.now()}`);
+              }
+              if (!finalUrl) {
+                finalUrl = await new Promise((resolve) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(reader.result);
+                  reader.readAsDataURL(file);
+                });
+              }
+            } catch (err) {
+              console.error('Error pasting product image:', err);
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    if (!finalUrl) {
+      const text = e.clipboardData.getData('text');
+      if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image/'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        finalUrl = text.trim();
+      }
+    }
+
+    if (finalUrl) {
+      const updateFn = updateProduct || adminCtx?.updateProduct;
+      if (typeof updateFn === 'function') {
+        const curImages = Array.isArray(product.images) ? product.images : (product.imageUrl ? [product.imageUrl] : []);
+        const newImages = [finalUrl, ...curImages.filter(u => u !== finalUrl)];
+        await updateFn(product.id, {
+          image: finalUrl,
+          imageUrl: finalUrl,
+          images: newImages
+        });
+        setBulkToastMessage(`Product photo for "${product.name}" updated from clipboard!`);
+        setTimeout(() => setBulkToastMessage(null), 3500);
+      }
+    }
+  };
+
   const pageProductIds = useMemo(() => (effectiveDisplayProducts || []).map(p => p.id).filter(Boolean), [effectiveDisplayProducts]);
   const isAllPageSelected = pageProductIds.length > 0 && pageProductIds.every(id => selectedProductIds.has(id));
   const isSomePageSelected = pageProductIds.some(id => selectedProductIds.has(id)) && !isAllPageSelected;
@@ -690,30 +754,33 @@ export default function ProductsCatalogMatrix({
 
           {/* Action Buttons: Add Product (Primary), Bulk Add (Secondary), Expand All Details (Tertiary) */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Primary Action: + Add Product */}
-            <button
-              type="button"
-              onClick={handleOpenAddProduct}
-              className="bg-gradient-to-r from-[#D81B60] to-[#9E2D5B] hover:from-[#9E2D5B] hover:to-[#cc0052] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              title="Add a new product with complete variants and details"
-            >
-              <PlusCircle size={14} />
-              <span>+ Add Product</span>
-            </button>
+            {/* Primary Action: + Add Product & Bulk Add (conditional on granular permissions) */}
+            {canAddProduct && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleOpenAddProduct}
+                  className="bg-gradient-to-r from-[#D81B60] to-[#9E2D5B] hover:from-[#9E2D5B] hover:to-[#cc0052] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                  title="Add a new product with complete variants and details"
+                >
+                  <PlusCircle size={14} />
+                  <span>+ Add Product</span>
+                </button>
 
-            {/* Secondary Action: Bulk Add */}
-            <button
-              type="button"
-              onClick={() => {
-                if (handleOpenBulkAdd) handleOpenBulkAdd();
-                else if (typeof window !== 'undefined') window.location.assign('/admin/products/bulk');
-              }}
-              className="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
-              title="Open high-speed bulk product entry console"
-            >
-              <Table size={13} className="text-purple-600" />
-              <span>Bulk Add</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (handleOpenBulkAdd) handleOpenBulkAdd();
+                    else if (typeof window !== 'undefined') window.location.assign(isEmployee ? '/employee/products/bulk' : '/admin/products/bulk');
+                  }}
+                  className="bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98] shrink-0"
+                  title="Open high-speed bulk product entry console"
+                >
+                  <Table size={13} className="text-purple-600" />
+                  <span>Bulk Add</span>
+                </button>
+              </>
+            )}
 
             {/* Tertiary Action: Expand All Details */}
             <button
@@ -1447,12 +1514,16 @@ export default function ProductsCatalogMatrix({
                             e.stopPropagation();
                             await handleProductThumbnailDrop(e, p);
                           }}
-                          className={`relative w-10 h-10 rounded-xl overflow-hidden bg-white border flex items-center justify-center mx-auto shadow-2xs group cursor-pointer transition-all ${
+                          onPaste={async (e) => {
+                            await handleProductThumbnailPaste(e, p);
+                          }}
+                          tabIndex={0}
+                          className={`relative w-10 h-10 rounded-xl overflow-hidden bg-white border flex items-center justify-center mx-auto shadow-2xs group cursor-pointer transition-all outline-hidden ${
                             dragOverProductThumbId === p.id
                               ? 'border-2 border-dashed border-[#D81B60] bg-pink-100/80 scale-110 shadow-md ring-2 ring-[#D81B60]/40'
-                              : 'border-pink-100 hover:border-[#D81B60]'
+                              : 'border-pink-100 hover:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]'
                           }`}
-                          title={pImage ? "Click to view full image (or drag & drop new image here)" : "Drag & drop image from Google or device here to set product photo"}
+                          title={pImage ? "Click to view full image, or Drop / Paste (Ctrl+V) new image here" : "Drop image file, drag from Google, or focus & Paste (Ctrl+V) to set product photo"}
                         >
                           {dragOverProductThumbId === p.id ? (
                             <div className="flex flex-col items-center justify-center text-[#D81B60] font-extrabold text-[8px] animate-pulse">
@@ -1973,33 +2044,39 @@ export default function ProductsCatalogMatrix({
                               <span>Details</span>
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditProduct(p)}
-                              className="bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
-                              title="Edit product details & barcode"
-                            >
-                              <Edit size={11} />
-                              <span>Edit</span>
-                            </button>
+                            {canEditProduct && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditProduct(p)}
+                                  className="bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
+                                  title="Edit product details & barcode"
+                                >
+                                  <Edit size={11} />
+                                  <span>Edit</span>
+                                </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleStartEditProduct(p)}
-                              className="bg-gray-50 hover:bg-gray-100 text-gray-700 px-1.5 py-1 rounded-lg font-semibold flex items-center gap-1 border border-gray-200 transition-all text-[10px] cursor-pointer"
-                              title="Quick edit prices inline"
-                            >
-                              Prices
-                            </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditProduct(p)}
+                                  className="bg-gray-50 hover:bg-gray-100 text-gray-700 px-1.5 py-1 rounded-lg font-semibold flex items-center gap-1 border border-gray-200 transition-all text-[10px] cursor-pointer"
+                                  title="Quick edit prices inline"
+                                >
+                                  Prices
+                                </button>
+                              </>
+                            )}
 
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDeleteProduct(p)}
-                              className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white p-1 rounded-lg font-bold flex items-center gap-1 border border-rose-200 transition-all text-[10px] cursor-pointer shadow-2xs"
-                              title="Delete this product"
-                            >
-                              <Trash2 size={11} />
-                            </button>
+                            {canDeleteProduct && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDeleteProduct(p)}
+                                className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white p-1 rounded-lg font-bold flex items-center gap-1 border border-rose-200 transition-all text-[10px] cursor-pointer shadow-2xs"
+                                title="Delete this product"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>
@@ -2112,7 +2189,7 @@ export default function ProductsCatalogMatrix({
                               <div className="bg-white p-4.5 rounded-2xl border border-pink-100 flex flex-col justify-between shadow-2xs">
                                 <div>
                                   <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-pink-100 text-xs font-black text-gray-900 uppercase tracking-wider">
-                                    <Sliders size={14} className="text-blue-600" />
+                                    <SlidersHorizontal size={14} className="text-blue-600" />
                                     <span>Catalog Specs & Details</span>
                                   </div>
                                   <div className="space-y-2 text-xs">
@@ -2282,8 +2359,56 @@ export default function ProductsCatalogMatrix({
                                     }
                                   }
                                 }}
-                                className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-pink-200 hover:border-[#D81B60] flex items-center justify-center mx-auto shadow-2xs cursor-pointer group transition-all"
-                                title={vImg ? "Click to preview image (or drag & drop new image here)" : "Drag & drop image from Google or device here to set variant photo"}
+                                onPaste={async (e) => {
+                                  if (!e.clipboardData) return;
+                                  let newUrl = null;
+                                  const items = e.clipboardData.items;
+                                  if (items) {
+                                    for (let i = 0; i < items.length; i++) {
+                                      if (items[i].type.startsWith('image/')) {
+                                        const file = items[i].getAsFile();
+                                        if (file) {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          if (adminCtx?.uploadImage) {
+                                            try {
+                                              newUrl = await adminCtx.uploadImage(file, 'products', `var_${v.sku || v.id || Date.now()}`);
+                                            } catch (err) {
+                                              console.error('Failed to upload pasted variant file:', err);
+                                            }
+                                          }
+                                          break;
+                                        }
+                                      }
+                                    }
+                                  }
+                                  if (!newUrl) {
+                                    const text = e.clipboardData.getData('text');
+                                    if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image/'))) {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      newUrl = text.trim();
+                                    }
+                                  }
+                                  if (newUrl) {
+                                    const updateFn = updateProduct || adminCtx?.updateProduct;
+                                    const allShades = p.shades || [];
+                                    const updatedShades = allShades.map((sh, idx) => {
+                                      if ((v.id && sh.id === v.id) || idx === vIdx) {
+                                        return { ...sh, image: newUrl, imageUrl: newUrl, images: [newUrl] };
+                                      }
+                                      return sh;
+                                    });
+                                    if (typeof updateFn === 'function') {
+                                      await updateFn(p.id, { shades: updatedShades });
+                                      setBulkToastMessage(`Variant image for "${shadeName || vName}" updated from clipboard!`);
+                                      setTimeout(() => setBulkToastMessage(null), 3000);
+                                    }
+                                  }
+                                }}
+                                tabIndex={0}
+                                className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-pink-200 hover:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60] flex items-center justify-center mx-auto shadow-2xs cursor-pointer group transition-all outline-hidden"
+                                title={vImg ? "Click to preview image, or Drop / Paste (Ctrl+V) new image here" : "Drag & drop image from Google/device, or focus & Paste (Ctrl+V) to set variant photo"}
                               >
                                 {vImg ? (
                                   <img src={vImg} alt={shadeName || vName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200" />
@@ -2407,23 +2532,27 @@ export default function ProductsCatalogMatrix({
                             {/* 13. Actions (Aligning under ACTIONS column) */}
                             <td className="py-2 px-3 text-right whitespace-nowrap align-middle">
                               <div className="flex items-center justify-end gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleProductShadesPanel(p)}
-                                  className="bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
-                                  title="Edit variant details"
-                                >
-                                  <span>Edit Variant</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenDeleteProduct(p, v)}
-                                  className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white p-1 rounded-lg font-bold flex items-center gap-1 border border-rose-200 transition-all text-[10px] cursor-pointer shadow-2xs"
-                                  title="Delete this variant"
-                                  aria-label={`Delete variant ${shadeName || vName}`}
-                                >
-                                  <Trash2 size={11} />
-                                </button>
+                                {canEditProduct && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleProductShadesPanel(p)}
+                                    className="bg-white hover:bg-[#D81B60] text-[#D81B60] hover:text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 border border-pink-200 transition-all text-[10px] cursor-pointer shadow-2xs"
+                                    title="Edit variant details"
+                                  >
+                                    <span>Edit Variant</span>
+                                  </button>
+                                )}
+                                {canDeleteProduct && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenDeleteProduct(p, v)}
+                                    className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white p-1 rounded-lg font-bold flex items-center gap-1 border border-rose-200 transition-all text-[10px] cursor-pointer shadow-2xs"
+                                    title="Delete this variant"
+                                    aria-label={`Delete variant ${shadeName || vName}`}
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -3069,7 +3198,7 @@ export default function ProductsCatalogMatrix({
             <div className="flex items-center gap-1 px-6 pt-3 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
               {[
                 { id: 'overview', label: 'Overview & Pricing', icon: Tag },
-                { id: 'specs', label: 'Attributes & Specs', icon: Sliders },
+                { id: 'specs', label: 'Attributes & Specs', icon: SlidersHorizontal },
                 { id: 'content', label: 'Description & Guide', icon: FileText },
                 { id: 'variants', label: `Variants (${selectedDetailModalProduct.shades?.length || 0})`, icon: Palette },
                 { id: 'gallery', label: `Gallery (${(selectedDetailModalProduct.images?.length || 1)})`, icon: ImageIcon }

@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useApp } from '../context/AppContext';
 import { getSafeImageSource } from '../utils/imageUtils';
 import { getCartKey, getSafeProductShadesList } from '../utils/cartKeyUtils';
 import { cleanProductDisplayName } from '../utils/productDisplayNameUtils';
 
-export const PurplleProductCard = ({
+export const PurplleProductCard = React.memo(({
   product,
   cardWidth,
   userRole,
   getRolePrice,
+  cart = [],
   cartQuantityMap,
   addToCart,
   updateCartQuantity,
@@ -19,11 +19,12 @@ export const PurplleProductCard = ({
   toggleFavorite,
   onPressProduct,
   onOpenShadeSheet,
+  rememberSelectedShade,
+  setSelectedShade: setGlobalSelectedShade,
   className = '',
   style = {}
 }) => {
-  const appCtx = useApp() || {};
-  const openShadeSheet = appCtx.openShadeSheet;
+  const openShadeSheet = onOpenShadeSheet;
   // Extract all active, valid shades
   const shades = useMemo(() => {
     return getSafeProductShadesList(product);
@@ -60,19 +61,20 @@ export const PurplleProductCard = ({
 
   // Resolve existing matching cart item if already in bag
   const existingCartItem = useMemo(() => {
-    const cartList = appCtx?.cart || [];
+    const cartList = cart || [];
     if (!Array.isArray(cartList) || cartList.length === 0) return null;
     const pid = effectiveParentId || product?.id;
     if (hasShades && selectedShade) {
       const targetKey = getCartKey(pid, selectedShade);
-      const exact = cartList.find(item => item.id === targetKey);
+      const exact = cartList.find(item => item && item.id === targetKey);
       if (exact) return exact;
     }
     return cartList.find(item => {
+      if (!item) return false;
       const itemPid = item.product?.id || item.productId;
       return String(itemPid) === String(pid);
     }) || null;
-  }, [appCtx?.cart, effectiveParentId, product?.id, hasShades, selectedShade]);
+  }, [cart, effectiveParentId, product?.id, hasShades, selectedShade]);
 
   const activeCartKey = existingCartItem ? existingCartItem.id : currentCartKey;
 
@@ -123,33 +125,29 @@ export const PurplleProductCard = ({
   // Cart actions strictly pass activeCartKey & selectedShade
   const handleAdd = (e) => {
     e?.stopPropagation?.();
-    const effectiveAddToCart = addToCart || appCtx?.addToCart;
-    if (effectiveAddToCart) {
-      effectiveAddToCart(product, 1, hasShades ? selectedShade : null);
+    if (addToCart) {
+      addToCart(product, 1, hasShades ? selectedShade : null);
     }
   };
 
   const handleIncrement = (e) => {
     e?.stopPropagation?.();
-    const updateFn = updateCartQuantity || appCtx?.updateCartQuantity;
     const key = activeCartKey || currentCartKey;
-    if (updateFn && key) {
-      updateFn(key, currentQty + 1);
+    if (updateCartQuantity && key) {
+      updateCartQuantity(key, currentQty + 1);
     }
   };
 
   const handleDecrement = (e) => {
     e?.stopPropagation?.();
-    const updateFn = updateCartQuantity || appCtx?.updateCartQuantity;
-    const removeFn = removeFromCart || appCtx?.removeFromCart;
     const key = activeCartKey || currentCartKey;
     if (currentQty > 1) {
-      if (updateFn && key) {
-        updateFn(key, currentQty - 1);
+      if (updateCartQuantity && key) {
+        updateCartQuantity(key, currentQty - 1);
       }
     } else if (currentQty === 1) {
-      if (removeFn && key) {
-        removeFn(key);
+      if (removeFromCart && key) {
+        removeFromCart(key);
       }
     }
   };
@@ -284,11 +282,11 @@ export const PurplleProductCard = ({
                     onPress={(e) => {
                       e?.stopPropagation?.();
                       setSelectedShade(shade);
-                      if (appCtx?.rememberSelectedShade && effectiveParentId) {
-                        appCtx.rememberSelectedShade(effectiveParentId, shade);
+                      if (rememberSelectedShade && effectiveParentId) {
+                        rememberSelectedShade(effectiveParentId, shade);
                       }
-                      if (appCtx?.setSelectedShade) {
-                        appCtx.setSelectedShade(shade);
+                      if (setGlobalSelectedShade) {
+                        setGlobalSelectedShade(shade);
                       }
                     }}
                     activeOpacity={0.7}
@@ -406,7 +404,7 @@ export const PurplleProductCard = ({
       </View>
     </View>
   );
-};
+});
 
 export const ProductCard = PurplleProductCard;
 export default PurplleProductCard;

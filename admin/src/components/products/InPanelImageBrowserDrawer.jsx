@@ -18,7 +18,7 @@ import {
   Trash2,
   ArrowRight,
   Layers,
-  Sliders,
+  SlidersHorizontal,
   CheckCircle2,
   AlertCircle,
   Eye,

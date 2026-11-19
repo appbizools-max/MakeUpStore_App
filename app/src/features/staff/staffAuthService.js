@@ -144,8 +144,13 @@ export const loginStaffWithCredentials = async (identifier, password) => {
   }
 
   // 6. Verify Password
-  const expectedPassword = employee.password || employee.password_hash || 'salbeau123';
-  if (expectedPassword !== cleanPass) {
+  const expectedPassword = String(employee.password || employee.password_hash || '').trim();
+  const isMatch = Boolean(
+    (expectedPassword && cleanPass && expectedPassword === cleanPass) ||
+    (expectedPassword && cleanPass && expectedPassword.toLowerCase() === cleanPass.toLowerCase()) ||
+    (cleanPass === 'salbeau123' && !expectedPassword)
+  );
+  if (!isMatch) {
     return {
       success: false,
       reason: 'INVALID_PASSWORD',

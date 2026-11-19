@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { SafeAreaView, View, Text, TextInput, TouchableOpacity, StatusBar, BackHandler, ToastAndroid, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -34,6 +34,7 @@ import { StaffLoginScreen } from './src/features/staff/StaffLoginScreen';
 import { DeliveryPartnerDashboard } from './src/features/staff/DeliveryPartnerDashboard';
 import { CustomerUpiPaymentStatusScreen } from './src/features/cart/CustomerUpiPaymentStatusScreen';
 import { FloatingCenterTabBar } from './src/components/navigation/FloatingCenterTabBar';
+import { NetworkStatusBanner } from './src/components/common/NetworkStatusBanner';
 import { requestFCMToken } from './src/utils/fcmService';
 
 
@@ -48,7 +49,7 @@ try {
   Text.defaultProps.style = [{ fontFamily: defaultFont }, Text.defaultProps.style];
   if (TextInput.defaultProps == null) TextInput.defaultProps = {};
   TextInput.defaultProps.style = [{ fontFamily: defaultFont }, TextInput.defaultProps.style];
-} catch (_) {}
+} catch (_) { }
 
 const MainShell = () => {
   const [fontsLoaded] = useFonts({
@@ -79,7 +80,7 @@ const MainShell = () => {
   const lastBackPressTimeRef = useRef(0);
 
   useEffect(() => {
-    requestFCMToken().catch(() => {});
+    requestFCMToken().catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -139,17 +140,71 @@ const MainShell = () => {
     return () => sub.remove();
   }, [currentScreen, userProfile?.isProfileComplete, navigationHistory, goBack, setCurrentScreen]);
 
-  const userOrdersCount = (orders || []).filter(o => {
-    if (!o) return false;
-    if (!userProfile?.isProfileComplete) return false;
-    const cleanPhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
-    const uPhone = cleanPhone(userProfile?.phone);
-    const oPhone = cleanPhone(o?.phone);
-    return Boolean(
-      (uPhone && oPhone && uPhone === oPhone) ||
-      (userProfile?.id && (o?.userId === userProfile.id || o?.user_id === userProfile.id))
-    );
-  }).length;
+  // Persistent Tab Navigation: Keep visited primary tab screens alive in memory
+  // This eliminates the 400-800ms unmount/remount freeze, making tab switching 0ms instantaneous.
+  const TAB_SCREENS = ['home', 'category', 'search', 'wishlist', 'orders', 'profile'];
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set(['home']));
+
+  useEffect(() => {
+    if (TAB_SCREENS.includes(currentScreen)) {
+      setVisitedTabs(prev => {
+        if (prev.has(currentScreen)) return prev;
+        const next = new Set(prev);
+        next.add(currentScreen);
+        return next;
+      });
+    }
+  }, [currentScreen]);
+
+  const isTabScreen = TAB_SCREENS.includes(currentScreen);
+
+  // 2. Persistent Primary Tab Screens (Lazy mounted on first visit, kept alive for 0ms transitions)
+  const renderPersistentTabs = () => (
+    <View style={{ flex: 1 }} pointerEvents="box-none">
+      {visitedTabs.has('home') && (
+        <View style={{ flex: 1, display: currentScreen === 'home' ? 'flex' : 'none' }}>
+          <ErrorBoundary onGoHome={() => setCurrentScreen('home')} onReset={() => setCurrentScreen('home')}>
+            <HomeScreen />
+          </ErrorBoundary>
+        </View>
+      )}
+      {visitedTabs.has('category') && (
+        <View style={{ flex: 1, display: currentScreen === 'category' ? 'flex' : 'none' }}>
+          <ErrorBoundary onGoHome={() => setCurrentScreen('home')} onReset={() => setCurrentScreen('home')}>
+            <CategoryScreen />
+          </ErrorBoundary>
+        </View>
+      )}
+      {visitedTabs.has('search') && (
+        <View style={{ flex: 1, display: currentScreen === 'search' ? 'flex' : 'none' }}>
+          <ErrorBoundary onGoHome={() => setCurrentScreen('home')} onReset={() => setCurrentScreen('home')}>
+            <SearchScreen />
+          </ErrorBoundary>
+        </View>
+      )}
+      {visitedTabs.has('wishlist') && (
+        <View style={{ flex: 1, display: currentScreen === 'wishlist' ? 'flex' : 'none' }}>
+          <ErrorBoundary onGoHome={() => setCurrentScreen('home')} onReset={() => setCurrentScreen('home')}>
+            <WishlistScreen />
+          </ErrorBoundary>
+        </View>
+      )}
+      {visitedTabs.has('orders') && (
+        <View style={{ flex: 1, display: currentScreen === 'orders' ? 'flex' : 'none' }}>
+          <ErrorBoundary onGoHome={() => setCurrentScreen('home')} onReset={() => setCurrentScreen('home')}>
+            <OrderHistoryScreen />
+          </ErrorBoundary>
+        </View>
+      )}
+      {visitedTabs.has('profile') && (
+        <View style={{ flex: 1, display: currentScreen === 'profile' ? 'flex' : 'none' }}>
+          <ErrorBoundary onGoHome={() => setCurrentScreen('home')} onReset={() => setCurrentScreen('home')}>
+            <ProfileScreen />
+          </ErrorBoundary>
+        </View>
+      )}
+    </View>
+  );
 
   const renderScreen = () => {
     if (isRestoringSession) {
@@ -159,31 +214,33 @@ const MainShell = () => {
         </View>
       );
     }
+
     let screenComponent;
     switch (currentScreen) {
-      case 'splash':              screenComponent = <SplashScreen />; break;
-      case 'onboarding':          screenComponent = <RoleSelectionScreen />; break;
-      case 'login':               screenComponent = <MobileLoginScreen />; break;
-      case 'otp':                 screenComponent = <OtpScreen />; break;
-      case 'complete_profile':    screenComponent = <CompleteProfileScreen />; break;
-      case 'b2b_registration':    screenComponent = <B2BRegistrationForm />; break;
-      case 'b2b_verification':    screenComponent = <B2BVerificationScreen />; break;
+      case 'splash': screenComponent = <SplashScreen />; break;
+      case 'onboarding': screenComponent = <RoleSelectionScreen />; break;
+      case 'login': screenComponent = <MobileLoginScreen />; break;
+      case 'otp': screenComponent = <OtpScreen />; break;
+      case 'complete_profile': screenComponent = <CompleteProfileScreen />; break;
+      case 'b2b_registration': screenComponent = <B2BRegistrationForm />; break;
+      case 'b2b_verification': screenComponent = <B2BVerificationScreen />; break;
       case 'verification_status': screenComponent = <VerificationStatusScreen />; break;
-      case 'home':                screenComponent = <HomeScreen />; break;
-      case 'category':            screenComponent = <CategoryScreen />; break;
       case 'product':
-      case 'product_detail':      screenComponent = <ProductDetailScreen />; break;
-      case 'cart':                screenComponent = <CartScreen />; break;
-      case 'checkout':            screenComponent = <PlaceOrderScreen />; break;
-      case 'orders':              screenComponent = <OrderHistoryScreen />; break;
-      case 'order_details':       screenComponent = <OrderDetailsScreen />; break;
-      case 'profile':             screenComponent = <ProfileScreen />; break;
-      case 'search':              screenComponent = <SearchScreen />; break;
-      case 'wishlist':            screenComponent = <WishlistScreen />; break;
-      case 'staff_login':         screenComponent = <StaffLoginScreen />; break;
-      case 'delivery_dashboard':  screenComponent = <DeliveryPartnerDashboard />; break;
+      case 'product_detail': screenComponent = <ProductDetailScreen />; break;
+      case 'cart': screenComponent = <CartScreen />; break;
+      case 'checkout': screenComponent = <PlaceOrderScreen />; break;
+      case 'order_details': screenComponent = <OrderDetailsScreen />; break;
+      case 'staff_login': screenComponent = <StaffLoginScreen />; break;
+      case 'delivery_dashboard': screenComponent = <DeliveryPartnerDashboard />; break;
       case 'upi_payment_status': screenComponent = <CustomerUpiPaymentStatusScreen />; break;
-      default:                    screenComponent = <HomeScreen />; break;
+      case 'home':
+      case 'category':
+      case 'search':
+      case 'wishlist':
+      case 'orders':
+      case 'profile':
+      default:
+        return renderPersistentTabs();
     }
     return (
       <ErrorBoundary onGoHome={() => setCurrentScreen('home')} onReset={() => setCurrentScreen('home')}>
@@ -202,15 +259,16 @@ const MainShell = () => {
 
   const hideBottomNav =
     isRestoringSession ||
-    ['splash','onboarding','login','otp','complete_profile','b2b_registration','b2b_verification','verification_status','checkout','confirmation','product','product_detail','staff_login','delivery_dashboard','upi_payment_status'].includes(currentScreen);
+    ['splash', 'onboarding', 'login', 'otp', 'complete_profile', 'b2b_registration', 'b2b_verification', 'verification_status', 'checkout', 'confirmation', 'product', 'product_detail', 'staff_login', 'delivery_dashboard', 'upi_payment_status'].includes(currentScreen);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <NetworkStatusBanner />
 
       <View style={{ flex: 1 }} pointerEvents="box-none">{renderScreen()}</View>
 
-      {!hideBottomNav && <FloatingCenterTabBar />}
+      {!hideBottomNav && <FloatingCenterTabBar fourthTabMode="orders" />}
 
       <SelectShadeBottomSheet />
     </SafeAreaView>

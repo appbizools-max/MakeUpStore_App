@@ -22,6 +22,19 @@ import {
   safeCopyToClipboard
 } from './OrderDetailsScreen';
 
+export const getOrderPaymentInfo = (order) => {
+  if (!order) return { label: 'COD PENDING', isPaid: false };
+  const shipmentsMeta = typeof order.shipments === 'string'
+    ? (() => { try { return JSON.parse(order.shipments); } catch (_) { return {}; } })()
+    : (order.shipments || {});
+  const shipPay = String(shipmentsMeta.paymentStatus || '').toLowerCase().trim();
+  const rawPay = String(order.payment_status || order.paymentStatus || '').toLowerCase().trim();
+  const rawVerif = String(order.verification_status || order.verificationStatus || '').toUpperCase().trim();
+  const hasItemPaid = Array.isArray(order.items) && order.items.some(it => String(it?.paymentStatus || '').toLowerCase() === 'paid');
+  const isPaid = ['paid', 'completed', 'collected', 'cash_collected'].includes(rawPay) || ['paid', 'completed', 'collected', 'cash_collected'].includes(shipPay) || rawVerif === 'VERIFIED' || hasItemPaid;
+  return isPaid ? { label: 'PAID', isPaid: true } : { label: 'COD PENDING', isPaid: false };
+};
+
 export const OrderHistoryScreen = () => {
   const {
     orders = [],
@@ -39,14 +52,11 @@ export const OrderHistoryScreen = () => {
 
   useEffect(() => {
     refreshOrders?.();
-    const interval = setInterval(() => {
-      refreshOrders?.();
-    }, 4000);
-    return () => clearInterval(interval);
   }, [refreshOrders]);
 
-  // Two Main Tabs: 'all' | 'completed'
+  // Two Main Tabs: 'all' | 'completed' + Payment filter: 'all' | 'paid' | 'pending'
   const [activeTab, setActiveTab] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
   const [copiedOrderId, setCopiedOrderId] = useState(null);
   const [activeStageNote, setActiveStageNote] = useState({}); // { [orderId]: stageIndex }
 
@@ -97,16 +107,30 @@ export const OrderHistoryScreen = () => {
     }).length;
   }, [userOrders]);
 
-  // Tab Filtered Orders
+  const paidCount = useMemo(() => {
+    return userOrders.filter(o => getOrderPaymentInfo(o).isPaid).length;
+  }, [userOrders]);
+
+  const codPendingCount = useMemo(() => {
+    return userOrders.filter(o => !getOrderPaymentInfo(o).isPaid).length;
+  }, [userOrders]);
+
+  // Tab & Payment Filtered Orders
   const filteredOrders = useMemo(() => {
+    let list = userOrders;
     if (activeTab === 'completed') {
-      return userOrders.filter(o => {
+      list = list.filter(o => {
         const s = (o.status || '').toLowerCase();
         return s === 'completed' || s === 'delivered';
       });
     }
-    return userOrders;
-  }, [userOrders, activeTab]);
+    if (paymentFilter === 'paid') {
+      list = list.filter(o => getOrderPaymentInfo(o).isPaid);
+    } else if (paymentFilter === 'pending') {
+      list = list.filter(o => !getOrderPaymentInfo(o).isPaid);
+    }
+    return list;
+  }, [userOrders, activeTab, paymentFilter]);
 
   const handleCopyId = (orderId) => {
     const ok = safeCopyToClipboard(orderId);
@@ -246,21 +270,18 @@ export const OrderHistoryScreen = () => {
               color={activeTab === 'all' ? '#FFFFFF' : '#8A7B85'}
             />
             <Text
-              className={`text-xs font-black ${
-                activeTab === 'all' ? 'text-white' : 'text-[#8A7B85]'
-              }`}
+              className={`text-xs font-black ${activeTab === 'all' ? 'text-white' : 'text-[#8A7B85]'
+                }`}
             >
               All Orders
             </Text>
             <View
-              className={`px-1.5 py-0.2 rounded-full ${
-                activeTab === 'all' ? 'bg-white/20' : 'bg-[#FFFFFF] border border-[#F0E3EA]'
-              }`}
+              className={`px-1.5 py-0.2 rounded-full ${activeTab === 'all' ? 'bg-white/20' : 'bg-[#FFFFFF] border border-[#F0E3EA]'
+                }`}
             >
               <Text
-                className={`text-[9.5px] font-black ${
-                  activeTab === 'all' ? 'text-white' : 'text-[#D81B60]'
-                }`}
+                className={`text-[9.5px] font-black ${activeTab === 'all' ? 'text-white' : 'text-[#D81B60]'
+                  }`}
               >
                 {allOrdersCount}
               </Text>
@@ -283,25 +304,84 @@ export const OrderHistoryScreen = () => {
               color={activeTab === 'completed' ? '#FFFFFF' : '#2E7D32'}
             />
             <Text
-              className={`text-xs font-black ${
-                activeTab === 'completed' ? 'text-white' : 'text-[#8A7B85]'
-              }`}
+              className={`text-xs font-black ${activeTab === 'completed' ? 'text-white' : 'text-[#8A7B85]'
+                }`}
             >
               Completed
             </Text>
             <View
-              className={`px-1.5 py-0.2 rounded-full ${
-                activeTab === 'completed' ? 'bg-white/20' : 'bg-emerald-50 border border-emerald-200'
-              }`}
+              className={`px-1.5 py-0.2 rounded-full ${activeTab === 'completed' ? 'bg-white/20' : 'bg-emerald-50 border border-emerald-200'
+                }`}
             >
               <Text
-                className={`text-[9.5px] font-black ${
-                  activeTab === 'completed' ? 'text-white' : 'text-emerald-700'
-                }`}
+                className={`text-[9.5px] font-black ${activeTab === 'completed' ? 'text-white' : 'text-emerald-700'
+                  }`}
               >
                 {completedOrdersCount}
               </Text>
             </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Payment Status Filters */}
+        <View className="flex-row items-center gap-1.5 mt-2">
+          <TouchableOpacity
+            onPress={() => setPaymentFilter('all')}
+            activeOpacity={0.7}
+            style={{
+              backgroundColor: paymentFilter === 'all' ? '#352832' : '#FFFFFF',
+              borderColor: paymentFilter === 'all' ? '#352832' : '#F0E3EA',
+              borderWidth: 1,
+              borderRadius: 20,
+              paddingHorizontal: 9,
+              paddingVertical: 3.5
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: '800', color: paymentFilter === 'all' ? '#FFFFFF' : '#8A7B85' }}>
+              All ({allOrdersCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setPaymentFilter('paid')}
+            activeOpacity={0.7}
+            style={{
+              backgroundColor: paymentFilter === 'paid' ? '#16A34A' : '#DCFCE7',
+              borderColor: paymentFilter === 'paid' ? '#15803D' : '#BBF7D0',
+              borderWidth: 1,
+              borderRadius: 20,
+              paddingHorizontal: 9,
+              paddingVertical: 3.5,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 3
+            }}
+          >
+            <Ionicons name="checkmark-circle" size={10} color={paymentFilter === 'paid' ? '#FFFFFF' : '#16A34A'} />
+            <Text style={{ fontSize: 10, fontWeight: '800', color: paymentFilter === 'paid' ? '#FFFFFF' : '#166534' }}>
+              Paid ({paidCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setPaymentFilter('pending')}
+            activeOpacity={0.7}
+            style={{
+              backgroundColor: paymentFilter === 'pending' ? '#D97706' : '#FEF3C7',
+              borderColor: paymentFilter === 'pending' ? '#B45309' : '#FDE68A',
+              borderWidth: 1,
+              borderRadius: 20,
+              paddingHorizontal: 9,
+              paddingVertical: 3.5,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 3
+            }}
+          >
+            <Ionicons name="time" size={10} color={paymentFilter === 'pending' ? '#FFFFFF' : '#D97706'} />
+            <Text style={{ fontSize: 10, fontWeight: '800', color: paymentFilter === 'pending' ? '#FFFFFF' : '#92400E' }}>
+              COD Pending ({codPendingCount})
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -316,7 +396,7 @@ export const OrderHistoryScreen = () => {
             refreshing={isRefreshing}
             onRefresh={async () => {
               setIsRefreshing(true);
-              try { await refreshOrders?.(); } catch (_) {}
+              try { await refreshOrders?.(); } catch (_) { }
               setIsRefreshing(false);
             }}
             colors={['#D81B60']}
@@ -392,6 +472,7 @@ export const OrderHistoryScreen = () => {
             const firstItem = items[0];
             const remainingItemsCount = Math.max(0, items.length - 1);
             const isCopied = copiedOrderId === order.id;
+            const paymentInfo = getOrderPaymentInfo(order);
 
             return (
               <View
@@ -409,7 +490,7 @@ export const OrderHistoryScreen = () => {
                 }}
                 className="p-4 mb-3.5"
               >
-                {/* 1. Card Top: Order ID & Status Pill */}
+                {/* 1. Card Top: Order ID, Payment Pill & Status Badge */}
                 <View className="flex-row justify-between items-start pb-2.5 border-b border-[#F0E3EA]">
                   <View className="flex-1 mr-2">
                     <View className="flex-row items-center gap-1.5 flex-wrap">
@@ -433,11 +514,44 @@ export const OrderHistoryScreen = () => {
                     </Text>
                   </View>
 
-                  <View className={`px-2.5 py-1 rounded-full flex-row items-center gap-1 shrink-0 ${badge.container}`}>
-                    <Ionicons name={badge.icon} size={11} color="#D81B60" />
-                    <Text className={`text-[9.5px] font-black tracking-wider ${badge.text}`}>
-                      {badge.label}
-                    </Text>
+                  <View className="flex-row items-center gap-1.5 shrink-0">
+                    {/* Payment Status Pill */}
+                    <View
+                      style={{
+                        backgroundColor: paymentInfo.isPaid ? '#DCFCE7' : '#FEF3C7',
+                        borderColor: paymentInfo.isPaid ? '#BBF7D0' : '#FDE68A',
+                        borderWidth: 1,
+                        borderRadius: 9999,
+                        paddingHorizontal: 7,
+                        paddingVertical: 2,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 3
+                      }}
+                    >
+                      <Ionicons
+                        name={paymentInfo.isPaid ? 'checkmark-circle' : 'time'}
+                        size={10}
+                        color={paymentInfo.isPaid ? '#16A34A' : '#D97706'}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 9.5,
+                          fontWeight: '900',
+                          color: paymentInfo.isPaid ? '#166534' : '#92400E'
+                        }}
+                      >
+                        {paymentInfo.label}
+                      </Text>
+                    </View>
+
+                    {/* Order Fulfillment Stage Badge */}
+                    <View className={`px-2.5 py-1 rounded-full flex-row items-center gap-1 shrink-0 ${badge.container}`}>
+                      <Ionicons name={badge.icon} size={11} color="#D81B60" />
+                      <Text className={`text-[9.5px] font-black tracking-wider ${badge.text}`}>
+                        {badge.label}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
@@ -476,13 +590,12 @@ export const OrderHistoryScreen = () => {
                               style={{ width: `${100 / ORDER_STAGES.length}%` }}
                             >
                               <View
-                                className={`w-5 h-5 rounded-full items-center justify-center ${
-                                  isPassed
-                                    ? 'bg-[#D81B60]'
-                                    : isCurrent
+                                className={`w-5 h-5 rounded-full items-center justify-center ${isPassed
+                                  ? 'bg-[#D81B60]'
+                                  : isCurrent
                                     ? 'bg-white border-2 border-[#D81B60]'
                                     : 'bg-white border border-gray-200'
-                                }`}
+                                  }`}
                               >
                                 {isPassed ? (
                                   <Ionicons name="checkmark" size={10} color="#FFF" />
@@ -494,13 +607,12 @@ export const OrderHistoryScreen = () => {
                               </View>
                               <Text
                                 numberOfLines={1}
-                                className={`mt-0.5 text-[7.5px] font-black text-center ${
-                                  isCurrent
-                                    ? 'text-[#D81B60]'
-                                    : isPassed
+                                className={`mt-0.5 text-[7.5px] font-black text-center ${isCurrent
+                                  ? 'text-[#D81B60]'
+                                  : isPassed
                                     ? 'text-[#352832]'
                                     : 'text-gray-400'
-                                }`}
+                                  }`}
                               >
                                 {shortLabels[idx] || st.label}
                               </Text>

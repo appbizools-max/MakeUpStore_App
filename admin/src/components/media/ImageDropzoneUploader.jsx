@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Image as ImageIcon, RefreshCw, Trash2, CheckCircle2, AlertCircle, Loader2, Sparkles, ExternalLink } from 'lucide-react';
 import ImageManagerModal from './ImageManagerModal';
+import { uploadOptimizedImage } from '../../services/imageStorageService';
 
 /**
  * ImageDropzoneUploader
@@ -21,6 +22,7 @@ export default function ImageDropzoneUploader({
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const folder = prefix.startsWith('sub')
     ? 'subcategories'
@@ -31,6 +33,36 @@ export default function ImageDropzoneUploader({
     : prefix.startsWith('prod')
     ? 'products'
     : 'categories';
+
+  const profileType = folder.includes('cat')
+    ? 'CATEGORY'
+    : folder.includes('brand')
+    ? 'BRAND_LOGO'
+    : 'PRODUCT';
+
+  const processDirectUpload = async (source) => {
+    if (!source || disabled) return;
+    setIsUploading(true);
+    try {
+      const res = await uploadOptimizedImage(source, profileType, {
+        folder,
+        filenamePrefix: `${prefix}_drop`,
+        generateVariants: false
+      });
+      if (res && res.url) {
+        if (typeof onImageUploaded === 'function') onImageUploaded(res.url);
+      } else if (typeof source === 'string') {
+        if (typeof onImageUploaded === 'function') onImageUploaded(source);
+      }
+    } catch (err) {
+      console.error('Direct upload failed:', err);
+      if (typeof source === 'string') {
+        if (typeof onImageUploaded === 'function') onImageUploaded(source);
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -44,12 +76,62 @@ export default function ImageDropzoneUploader({
     setIsDragging(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    if (!disabled) {
-      setIsModalOpen(true);
+    if (disabled) return;
+
+    // 1. Dropped files from computer
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0 && files[0].type.startsWith('image/')) {
+      await processDirectUpload(files[0]);
+      return;
+    }
+
+    // 2. Dropped image from another webpage or Google search
+    const html = e.dataTransfer?.getData('text/html');
+    if (html) {
+      const match = html.match(/src=["'](.*?)["']/);
+      if (match && match[1]) {
+        await processDirectUpload(match[1]);
+        return;
+      }
+    }
+
+    const textUrl = e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain');
+    if (textUrl && (textUrl.startsWith('http') || textUrl.startsWith('data:image'))) {
+      await processDirectUpload(textUrl.trim());
+      return;
+    }
+
+    setIsModalOpen(true);
+  };
+
+  const handlePaste = async (e) => {
+    if (disabled) return;
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    const items = clipboardData.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const blob = item.getAsFile();
+          if (blob) {
+            e.preventDefault();
+            await processDirectUpload(blob);
+            return;
+          }
+        }
+      }
+    }
+
+    const text = clipboardData.getData('text');
+    if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image'))) {
+      e.preventDefault();
+      await processDirectUpload(text.trim());
     }
   };
 
@@ -73,12 +155,30 @@ export default function ImageDropzoneUploader({
     <div className={`w-full ${className}`}>
       {/* Current Image Active */}
       {currentImageUrl ? (
-        <div className="relative rounded-2xl border border-pink-200/80 bg-white p-3.5 flex items-center justify-between gap-3.5 shadow-2xs group overflow-hidden">
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onPaste={handlePaste}
+          tabIndex={0}
+          className={`relative rounded-2xl border transition-all p-3.5 flex items-center justify-between gap-3.5 shadow-2xs group overflow-hidden outline-hidden ${
+            isDragging
+              ? 'border-[#D81B60] ring-2 ring-pink-400 bg-pink-50/40'
+              : 'border-pink-200/80 bg-white hover:border-pink-300'
+          }`}
+        >
+          {isUploading && (
+            <div className="absolute inset-0 bg-white/85 z-10 flex items-center justify-center gap-2">
+              <Loader2 size={18} className="animate-spin text-[#D81B60]" />
+              <span className="text-xs font-bold text-gray-800">Optimizing & Uploading...</span>
+            </div>
+          )}
+
           <div className="flex items-center gap-3.5 min-w-0">
             <div
               onClick={() => !disabled && setIsModalOpen(true)}
               className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-white border border-pink-100 shrink-0 relative shadow-xs flex items-center justify-center p-1 cursor-pointer hover:border-pink-500 transition-colors"
-              title="Click to replace image"
+              title="Click or drop/paste to replace image"
             >
               <img
                 src={currentImageUrl}
@@ -99,8 +199,9 @@ export default function ImageDropzoneUploader({
               <p className="text-[11px] text-gray-500 truncate mt-0.5 font-mono">
                 {currentImageUrl.split('/').pop() || 'image.webp'}
               </p>
-              <div className="text-[10px] text-emerald-600 font-semibold mt-0.5">
-                ● Live in User App
+              <div className="text-[10px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-2">
+                <span>● Live in User App</span>
+                <span className="text-gray-400 font-normal">| Drop or Paste (Ctrl+V) to replace</span>
               </div>
             </div>
           </div>
@@ -113,7 +214,7 @@ export default function ImageDropzoneUploader({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#D81B60] bg-white border border-pink-200 rounded-xl hover:bg-pink-50 active:scale-95 transition-all shadow-2xs cursor-pointer"
               >
                 <RefreshCw size={13} />
-                <span>Replace Image</span>
+                <span>Replace</span>
               </button>
 
               <button
@@ -129,31 +230,43 @@ export default function ImageDropzoneUploader({
           )}
         </div>
       ) : (
-        /* Empty State -> Opens ImageManagerModal */
+        /* Empty State -> Opens ImageManagerModal, accepts Drop & Paste */
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          onPaste={handlePaste}
+          tabIndex={0}
           onClick={() => !disabled && setIsModalOpen(true)}
-          className={`relative rounded-2xl border-2 border-dashed transition-all p-5 text-center flex flex-col items-center justify-center cursor-pointer select-none ${
+          className={`relative rounded-2xl border-2 border-dashed transition-all p-5 text-center flex flex-col items-center justify-center cursor-pointer select-none outline-hidden ${
             isDragging
-              ? 'border-[#D81B60] bg-white scale-[1.01]'
+              ? 'border-[#D81B60] bg-pink-50/50 scale-[1.01] ring-2 ring-pink-400'
               : 'border-pink-200/90 bg-[#FAF9F6]/60 hover:bg-[#FFF2F5]/50 hover:border-[#D81B60]'
           } ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
         >
+          {isUploading && (
+            <div className="absolute inset-0 bg-white/90 rounded-2xl z-10 flex flex-col items-center justify-center gap-2">
+              <Loader2 size={24} className="animate-spin text-[#D81B60]" />
+              <span className="text-xs font-bold text-gray-800">Optimizing & Uploading...</span>
+            </div>
+          )}
+
           <div className="w-12 h-12 rounded-2xl bg-white text-[#D81B60] flex items-center justify-center mb-2.5 shadow-2xs border border-pink-100 group-hover:scale-105 transition-transform">
             <Upload size={20} />
           </div>
           <div className="text-xs font-bold text-gray-800">
             <span>{label}</span>
           </div>
-          <p className="text-[11px] text-gray-400 mt-1 max-w-[280px] leading-relaxed">
+          <p className="text-[11px] text-gray-500 mt-1 max-w-[280px] leading-relaxed">
             {sublabel}
           </p>
+          <div className="mt-2 text-[10px] text-pink-600 font-medium">
+            Drag & drop file, copy-paste screenshot (Ctrl+V), or drag from Google Images
+          </div>
           <div className="mt-3 flex items-center gap-2">
             <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-[#D81B60] bg-white border border-pink-200/90 rounded-xl shadow-2xs hover:bg-pink-50">
               <Sparkles size={13} />
-              <span>+ Add Image</span>
+              <span>Browse / Search Library</span>
             </span>
           </div>
         </div>

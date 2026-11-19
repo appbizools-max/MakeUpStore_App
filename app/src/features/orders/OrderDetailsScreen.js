@@ -158,10 +158,6 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
 
   useEffect(() => {
     refreshOrders?.();
-    const interval = setInterval(() => {
-      refreshOrders?.();
-    }, 4000);
-    return () => clearInterval(interval);
   }, [refreshOrders]);
 
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -218,7 +214,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
               const shipPay = String(shipmentsMeta.paymentStatus || '').toLowerCase().trim();
               const rawPay = (data.payment_status || shipPay || data.internal_status || '').toLowerCase().trim();
               const rawVerif = String(data.verification_status || shipmentsMeta.verificationStatus || '').toUpperCase().trim();
-              const isPaid = ['paid', 'completed'].includes(rawPay) || ['paid', 'completed'].includes(shipPay) || rawVerif === 'VERIFIED';
+              const isPaid = ['paid', 'completed', 'collected', 'cash_collected'].includes(rawPay) || ['paid', 'completed', 'collected', 'cash_collected'].includes(shipPay) || rawVerif === 'VERIFIED';
               const paymentStatus = isPaid ? 'paid' : (rawPay === 'partially_paid' ? 'partially_paid' : 'pending');
               const paymentMethod = (data.payment_method || shipmentsMeta.paymentMethod || 'cash').toLowerCase();
 
@@ -653,10 +649,10 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                       >
                         <View
                           className={`w-7 h-7 rounded-full items-center justify-center ${isPassed
-                              ? 'bg-[#D81B60]'
-                              : isCurrent
-                                ? 'bg-white border-2 border-[#D81B60]'
-                                : 'bg-white border border-gray-200'
+                            ? 'bg-[#D81B60]'
+                            : isCurrent
+                              ? 'bg-white border-2 border-[#D81B60]'
+                              : 'bg-white border border-gray-200'
                             }`}
                         >
                           {isPassed ? (
@@ -669,10 +665,10 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
                         </View>
                         <Text
                           className={`mt-1.5 text-[8.5px] font-extrabold text-center ${isCurrent
-                              ? 'text-[#D81B60]'
-                              : isPassed
-                                ? 'text-[#352832]'
-                                : 'text-gray-400'
+                            ? 'text-[#D81B60]'
+                            : isPassed
+                              ? 'text-[#352832]'
+                              : 'text-gray-400'
                             }`}
                         >
                           {st.label}
@@ -749,7 +745,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
               const brandName = it.product?.brandName || it.brand || it.brandName || 'SALBEAU';
               const productName = it.product?.name || it.name || 'Cosmetic Product';
               const variantName = it.variantName || it.variant || it.selectedVariant?.name || it.size || it.volume || null;
-              
+
               const shadeObj = it.shade || it.selectedShade;
               const shadeName = shadeObj ? (shadeObj.name || shadeObj.color_name || (typeof shadeObj === 'string' ? shadeObj : null)) : null;
               const shadeColor = shadeObj ? (shadeObj.hexColor || shadeObj.hex || '#D81B60') : null;
@@ -1140,7 +1136,7 @@ export const OrderDetailsScreen = ({ order: propOrder, onBack }) => {
               value={editPhone}
               onChangeText={setEditPhone}
               keyboardType="phone-pad"
-              placeholder="e.g. +91 98765 43210"
+              placeholder="Enter 10-digit mobile number"
               className="bg-[#FFFFFF] border border-[#F0E3EA] rounded-xl p-2.5 text-xs text-[#352832] mb-2.5 font-bold"
             />
 

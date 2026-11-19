@@ -42,8 +42,6 @@ export const AdminNotificationBell = ({
     }
   });
 
-  // Track live incoming toast
-  const [liveToast, setLiveToast] = useState(null);
   const prevEventIdsRef = useRef(new Set());
   const isInitialMountRef = useRef(true);
   const dropdownRef = useRef(null);
@@ -287,16 +285,8 @@ export const AdminNotificationBell = ({
       // Play official notification bell sound ONLY for high priority events (new order, B2B verification, approval required, stockout)
       playNotificationBellSound({ priority: topEvent.priority });
 
-      // Show toast
-      setLiveToast(topEvent);
-      const timer = setTimeout(() => {
-        setLiveToast(null);
-      }, 7000);
-
-      // Update tracked IDs
+      // Update tracked IDs without displaying intrusive popup toast banners
       prevEventIdsRef.current = new Set(aggregatedNotifications.map(n => n.id));
-
-      return () => clearTimeout(timer);
     } else {
       prevEventIdsRef.current = new Set(aggregatedNotifications.map(n => n.id));
     }
@@ -583,51 +573,6 @@ export const AdminNotificationBell = ({
               Go to Full Order Management →
             </button>
           </div>
-        </div>
-      )}
-
-      {/* 3. Real-Time Floating Toast Banner on Incoming Alert */}
-      {liveToast && (
-        <div
-          onClick={() => {
-            handleNotificationClick(liveToast);
-            setLiveToast(null);
-          }}
-          className="fixed top-5 right-5 z-[9999] max-w-sm w-full bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-2xl border-2 border-[#D81B60] animate-in slide-in-from-top-4 duration-200 cursor-pointer flex items-start gap-3 text-slate-900 group hover:bg-white"
-        >
-          <div className="w-10 h-10 rounded-xl bg-white border border-pink-200 text-[#D81B60] flex items-center justify-center shrink-0 shadow-2xs">
-            <BellRing size={20} className="animate-bounce" />
-          </div>
-
-          <div className="flex-1 min-w-0 pr-1">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#D81B60]">
-                Live Store Alert
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium">Just now</span>
-            </div>
-            <h5 className="text-xs font-black text-slate-900 mt-0.5 truncate">
-              {liveToast.title}
-            </h5>
-            <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2 leading-tight font-medium">
-              {liveToast.message}
-            </p>
-            <div className="mt-2 flex items-center gap-1 text-[11px] font-black text-[#D81B60]">
-              <span>Tap to Open</span>
-              <ChevronRight size={12} />
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setLiveToast(null);
-            }}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
-          >
-            <X size={15} />
-          </button>
         </div>
       )}
     </div>

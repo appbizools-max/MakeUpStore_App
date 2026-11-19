@@ -11,6 +11,32 @@ export const MODULE_DEFINITIONS = [
     actions: [{ key: 'view', label: 'View Dashboard' }],
   },
   {
+    key: 'analytics',
+    name: 'Analytics & BI',
+    description: 'Business intelligence, P&L calculations, and financial metrics',
+    actions: [{ key: 'view', label: 'View Analytics' }],
+  },
+  {
+    key: 'expenses',
+    name: 'Expense Manager',
+    description: 'Track and manage operational business expenses and costs',
+    actions: [
+      { key: 'view', label: 'View Expenses' },
+      { key: 'create', label: 'Add Expense' },
+      { key: 'edit', label: 'Edit Expense' },
+      { key: 'delete', label: 'Delete Expense' }
+    ],
+  },
+  {
+    key: 'reports',
+    name: 'Reports & Exports',
+    description: '16 comprehensive financial and operational reports with Excel/CSV export',
+    actions: [
+      { key: 'view', label: 'View Reports' },
+      { key: 'export', label: 'Export Reports' }
+    ],
+  },
+  {
     key: 'orders',
     name: 'Orders',
     description: 'Customer orders, status processing, fulfillment, and refunds',
@@ -767,22 +793,29 @@ export function canAccessTab(tabId, user) {
   switch (tabId) {
     case 'branches':
     case 'settings/branches':
-      return user.role === 'admin' || user.id === 'admin_root' || Boolean(perms.settings?.enabled);
+      return Boolean(perms.settings?.enabled);
     case 'upi_verification':
     case 'payments/upi':
-      return user.role === 'admin' || user.id === 'admin_root' || Boolean(perms.payments?.enabled && (perms.payments?.actions?.view_upi || perms.payments?.actions?.view || perms.payments?.actions?.verify_upi));
+      return Boolean(perms.payments?.enabled && (perms.payments?.actions?.view_upi || perms.payments?.actions?.view || perms.payments?.actions?.verify_upi));
     case 'dashboard':
       return Boolean(perms.dashboard?.enabled);
+    case 'analytics':
+      return Boolean(perms.analytics?.enabled);
+    case 'expenses':
+      return Boolean(perms.expenses?.enabled);
+    case 'reports':
+      return Boolean(perms.reports?.enabled);
     case 'order_updated':
       return Boolean(perms.orders?.enabled);
     case 'delivery_partners':
     case 'delivery_partner':
-      return Boolean(perms.orders?.enabled || perms.employees?.enabled);
+      return Boolean(perms.employees?.enabled || (perms.orders?.enabled && perms.orders?.actions?.assign));
     case 'approval_center':
-      return Boolean(perms.approvals?.enabled || perms.orders?.actions?.assign);
+      return Boolean(perms.approvals?.enabled || (perms.orders?.enabled && perms.orders?.actions?.assign));
     case 'products':
-    case 'attributes':
       return Boolean(perms.products?.enabled);
+    case 'attributes':
+      return Boolean(perms.products?.enabled && (perms.products?.actions?.edit || perms.products?.actions?.add));
     case 'products/new':
       return Boolean(perms.products?.enabled && (perms.products?.actions?.add || perms.products?.actions?.create));
     case 'products/bulk':
@@ -794,7 +827,7 @@ export function canAccessTab(tabId, user) {
     case 'categories_order':
       return Boolean(perms.categories?.enabled);
     case 'home_banners':
-      return Boolean(perms.banners?.enabled || perms.settings?.enabled);
+      return Boolean(perms.banners?.enabled);
     case 'users':
     case 'user':
     case 'users/b2c':
@@ -803,9 +836,9 @@ export function canAccessTab(tabId, user) {
     case 'user/b2b':
       return Boolean(perms.customers?.enabled);
     case 'search_requests':
-      return Boolean(perms.customers?.enabled || perms.reports?.enabled || perms.products?.enabled);
+      return Boolean(perms.reports?.enabled);
     case 'abandoned_carts':
-      return Boolean(perms.orders?.enabled);
+      return Boolean(perms.offers?.enabled || perms.reports?.enabled);
     case 'b2b-verification':
     case 'b2b_verification':
     case 'b2b-verification/salon':
@@ -815,22 +848,18 @@ export function canAccessTab(tabId, user) {
     case 'b2b_verification/makeup_artist':
     case 'b2b-verification/beautician':
     case 'b2b_verification/beautician':
-      return Boolean(perms.customers?.enabled || perms.approvals?.enabled);
+      return Boolean(perms.customers?.enabled && (perms.customers?.actions?.edit || perms.customers?.actions?.verify || perms.approvals?.enabled));
     case 'cancel_fee':
-      return Boolean(perms.payments?.enabled);
+      return Boolean(perms.payments?.enabled || perms.settings?.enabled);
     case 'pricing_rules':
       return Boolean(perms.offers?.enabled);
     case 'employees':
       return Boolean(perms.employees?.enabled);
     case 'employees/new':
       return Boolean(perms.employees?.enabled && perms.employees?.actions?.add);
-        case 'dashboard_visibility':
     case 'settings':
-    case 'security_2fa':
-    case 'security':
       return Boolean(perms.settings?.enabled);
     case 'quick_panel': {
-      if (user.role === 'admin' || user.id === 'admin_root') return true;
       const desig = (user.designation || '').toLowerCase();
       const preset = (user.rolePreset || user.role || '').toLowerCase();
       return desig.includes('manager') || preset.includes('manager');
@@ -852,8 +881,11 @@ export function getFirstAccessibleTab(user) {
 
   const candidateTabs = [
     'dashboard',
+    'analytics',
+    'expenses',
+    'reports',
     'order_updated',
-      'delivery_partners',
+    'delivery_partners',
     'products',
     'categories',
     'add_brand',
@@ -865,9 +897,11 @@ export function getFirstAccessibleTab(user) {
     'home_banners',
     'pricing_rules',
     'cancel_fee',
+    'upi_verification',
     'employees',
-        'approval_center',
-    'dashboard_visibility',
+    'settings',
+    'branches',
+    'approval_center',
     'quick_panel'
   ];
 

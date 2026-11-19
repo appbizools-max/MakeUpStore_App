@@ -8,7 +8,7 @@ import {
   Calendar,
   Clock,
   Shield,
-  Sliders,
+  SlidersHorizontal,
   Edit,
   Activity,
   ShoppingBag,
@@ -103,7 +103,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
             onClick={() => onNavigate(`employees/${employee.id}/permissions`)}
             className="px-4 py-2 rounded-xl bg-[#D81B60] hover:bg-[#b83760] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
-            <Sliders size={14} />
+            <SlidersHorizontal size={14} />
             <span>Manage Permissions</span>
           </button>
         </div>
@@ -170,7 +170,7 @@ export default function EmployeeProfilePage({ employeeId, onNavigate }) {
         <div className="flex items-center gap-2 border-t border-gray-100 mt-6 pt-4 overflow-x-auto no-scrollbar">
           {[
             { id: 'overview', label: 'Overview', icon: User },
-            { id: 'permissions', label: `Permissions (${activeModules.length})`, icon: Sliders },
+            { id: 'permissions', label: `Permissions (${activeModules.length})`, icon: SlidersHorizontal },
             { id: 'work', label: `Assigned Work (${assignedOrders.length})`, icon: ShoppingBag },
             { id: 'activity', label: `Activity (${employeeLogs.length})`, icon: Activity },
           ].map((tab) => {

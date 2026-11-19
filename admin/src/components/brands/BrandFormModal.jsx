@@ -30,6 +30,7 @@ import {
   formatBytes
 } from '../../utils/imageOptimizer';
 import { uploadOptimizedImage } from '../../services/imageStorageService';
+import InlineImageSection from '../media/InlineImageSection';
 
 /**
  * Simplified Brand Master Form Modal (Right-Side Slide-In Drawer)
@@ -356,6 +357,21 @@ export default function BrandFormModal({
               <span>{errors.general}</span>
             </div>
           )}
+
+          {/* ════════════════════════════════════════════════════════════════ */}
+          {/* FIELD 1: BRAND LOGO (UPLOAD, DRAG & DROP, PASTE, GOOGLE SEARCH)  */}
+          {/* ════════════════════════════════════════════════════════════════ */}
+          <div className="space-y-1.5">
+            <InlineImageSection
+              imageUrl={formData.logo}
+              onChange={(newUrl) => setFormData(prev => ({ ...prev, logo: newUrl }))}
+              entityName={formData.name || 'Brand Logo'}
+              entityType="Brand"
+              folder="brand-logos"
+              filenamePrefix={`brand_${(formData.name || 'logo').toLowerCase().replace(/[^a-z0-9]/g, '_')}`}
+            />
+            {errors.logo && <p className="text-rose-500 text-[11px] font-semibold">{errors.logo}</p>}
+          </div>
 
           {/* ════════════════════════════════════════════════════════════════ */}
           {/* FIELD 2: BRAND NAME                                             */}

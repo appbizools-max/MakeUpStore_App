@@ -147,8 +147,12 @@ const mapOrderFromDb = (o) => {
   }
 
   const rawPay = (o.payment_status || parsedShipments.paymentStatus || o.internal_status || '').toLowerCase().trim();
-  const paymentStatus = ['paid', 'completed'].includes(rawPay) ? 'paid' : (rawPay === 'partially_paid' ? 'partially_paid' : 'pending');
-  const paymentMethod = (o.payment_method || parsedShipments.paymentMethod || 'cash').toLowerCase().trim();
+  const rawVerif = String(o.verification_status || parsedShipments.verificationStatus || '').toUpperCase().trim();
+  const itemPay = (Array.isArray(rawItems) ? rawItems.find(i => i?.paymentStatus)?.paymentStatus : '') || '';
+  const isPaid = ['paid', 'completed'].includes(rawPay) || ['paid', 'completed'].includes(String(parsedShipments.paymentStatus || '').toLowerCase()) || rawVerif === 'VERIFIED' || itemPay.toLowerCase() === 'paid';
+  const paymentStatus = isPaid ? 'paid' : (rawPay === 'partially_paid' ? 'partially_paid' : 'pending');
+  const paymentMethod = (o.payment_method || parsedShipments.paymentMethod || (Array.isArray(rawItems) ? rawItems.find(i => i?.paymentMethod)?.paymentMethod : '') || 'cash').toLowerCase().trim();
+  const verificationStatus = isPaid ? 'VERIFIED' : (rawVerif || (paymentStatus === 'failed' ? 'REJECTED' : 'PENDING'));
 
   return {
     id: o.id,
@@ -162,9 +166,14 @@ const mapOrderFromDb = (o) => {
     deliveryAddress: o.delivery_address || o.deliveryAddress,
     totalAmount: Number(o.total_amount || o.totalAmount || 0),
     status: computedStatus,
-    internalStatus: o.internal_status || paymentStatus,
+    internalStatus: paymentStatus,
+    internal_status: paymentStatus,
     paymentStatus,
+    payment_status: paymentStatus,
     paymentMethod,
+    payment_method: paymentMethod,
+    verificationStatus,
+    verification_status: verificationStatus,
     rejectionReason: o.rejection_reason || o.rejectionReason || '',
     placedAt: o.placed_at || o.placedAt || o.date,
     date: o.date || o.placed_at,
@@ -742,17 +751,17 @@ export const DEFAULT_GENERAL_SETTINGS = {
   storeName: 'Salbeau MakeUpStore',
   tagline: 'Luxury Beauty & Salon Cosmetics Store',
   supportEmail: 'contact@salbeau.com',
-  supportPhone: '+91 98765 43210',
-  headquartersAddress: 'VIP Road, C-Block, Visakhapatnam, Andhra Pradesh - 530003',
-  gstin: '37AAAAA0000A1Z5',
+  supportPhone: '',
+  headquartersAddress: 'The Makeup Store, Vishakapatnam',
+  gstin: '',
   currency: '₹',
   identity: {
     storeName: 'Salbeau MakeUpStore',
     tagline: 'Luxury Beauty & Salon Cosmetics Store',
     contactEmail: 'contact@salbeau.com',
-    supportPhone: '+91 98765 43210',
-    hqAddress: 'VIP Road, C-Block, Visakhapatnam, Andhra Pradesh - 530003',
-    gstin: '37AAAAA0000A1Z5',
+    supportPhone: '',
+    hqAddress: 'The Makeup Store, Vishakapatnam',
+    gstin: '',
     currencyCode: 'INR',
     currencySymbol: '₹'
   },
@@ -775,7 +784,9 @@ export const DEFAULT_GENERAL_SETTINGS = {
     maxItemsPerOrder: 50,
   },
   payments: {
-    upiId: 'salbeau.store@okaxis',
+    upiId: '',
+    upiName: 'Salbeau MakeUpStore',
+    upiQrCodeUrl: '',
     acceptUpi: true,
     acceptCod: true,
     allowCod: true,
@@ -867,7 +878,7 @@ export const AdminProvider = ({ children }) => {
   const [branches, setBranches] = useState(() => getCachedData('salbeau_admin_cache_branches', []));
   // UPI Payment Verifications
   const [upiVerifications, setUpiVerifications] = useState(() => getCachedData('salbeau_admin_cache_upi_verifications', []));
-    const [employees, setEmployees] = useState(() => getCachedData('salbeau_admin_cache_employees', INITIAL_SEED_EMPLOYEES));
+  const [employees, setEmployees] = useState(() => getCachedData('salbeau_admin_cache_employees', INITIAL_SEED_EMPLOYEES));
   const [employeeActivityLogs, setEmployeeActivityLogs] = useState([]);
   const [employeeOperations, setEmployeeOperations] = useState([]);
   const [currentAuthUser, setCurrentAuthUser] = useState(() => {
@@ -903,7 +914,7 @@ export const AdminProvider = ({ children }) => {
         setB2BVerifications([]);
         setSearchRequests([]);
       }
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   // Keep products state continuously synchronized to persistent storage cache
@@ -1194,7 +1205,7 @@ export const AdminProvider = ({ children }) => {
         setSearchRequests(directReqs);
       }
 
-      
+
       // Process General Store Settings from Supabase
       try {
         const settingsRes = await safeDbFetch(adminClient.from('brands').select('logo').eq('id', 'salbeau_store_settings').limit(1));
@@ -1202,10 +1213,36 @@ export const AdminProvider = ({ children }) => {
           try {
             const parsed = JSON.parse(settingsRes.data[0].logo);
             if (parsed && typeof parsed === 'object') {
+              const storeName = parsed.storeName || parsed.identity?.storeName || DEFAULT_GENERAL_SETTINGS.storeName;
+              const tagline = parsed.tagline || parsed.identity?.tagline || DEFAULT_GENERAL_SETTINGS.tagline;
+              const supportEmail = parsed.supportEmail || parsed.identity?.contactEmail || DEFAULT_GENERAL_SETTINGS.supportEmail;
+              const supportPhone = parsed.supportPhone || parsed.identity?.supportPhone || DEFAULT_GENERAL_SETTINGS.supportPhone;
+              const headquartersAddress = parsed.headquartersAddress || parsed.identity?.hqAddress || DEFAULT_GENERAL_SETTINGS.headquartersAddress;
+              const gstin = parsed.gstin || parsed.identity?.gstin || DEFAULT_GENERAL_SETTINGS.gstin;
+              const currency = parsed.currency || parsed.identity?.currencySymbol || DEFAULT_GENERAL_SETTINGS.currency;
+
               const merged = {
                 ...DEFAULT_GENERAL_SETTINGS,
                 ...parsed,
-                identity: { ...DEFAULT_GENERAL_SETTINGS.identity, ...(parsed.identity || {}) },
+                storeName,
+                tagline,
+                supportEmail,
+                supportPhone,
+                headquartersAddress,
+                gstin,
+                currency,
+                identity: {
+                  ...DEFAULT_GENERAL_SETTINGS.identity,
+                  ...(parsed.identity || {}),
+                  storeName,
+                  tagline,
+                  contactEmail: supportEmail,
+                  supportPhone,
+                  hqAddress: headquartersAddress,
+                  gstin,
+                  currencySymbol: currency,
+                  currencyCode: 'INR'
+                },
                 delivery: { ...DEFAULT_GENERAL_SETTINGS.delivery, ...(parsed.delivery || {}) },
                 payments: { ...DEFAULT_GENERAL_SETTINGS.payments, ...(parsed.payments || {}) },
                 operations: { ...DEFAULT_GENERAL_SETTINGS.operations, ...(parsed.operations || {}) },
@@ -1423,6 +1460,51 @@ export const AdminProvider = ({ children }) => {
               const parsedHier = JSON.parse(payload.new.logo);
               if (parsedHier && Array.isArray(parsedHier.categories)) {
                 setCategories(parsedHier.categories.map(mapCategoryFromDb));
+              }
+            } catch (e) { }
+            return;
+          }
+          if (payload.new && payload.new.id === 'salbeau_store_settings' && payload.new.logo) {
+            try {
+              const parsed = JSON.parse(payload.new.logo);
+              if (parsed && typeof parsed === 'object') {
+                const storeName = parsed.storeName || parsed.identity?.storeName || DEFAULT_GENERAL_SETTINGS.storeName;
+                const tagline = parsed.tagline || parsed.identity?.tagline || DEFAULT_GENERAL_SETTINGS.tagline;
+                const supportEmail = parsed.supportEmail || parsed.identity?.contactEmail || DEFAULT_GENERAL_SETTINGS.supportEmail;
+                const supportPhone = parsed.supportPhone || parsed.identity?.supportPhone || DEFAULT_GENERAL_SETTINGS.supportPhone;
+                const headquartersAddress = parsed.headquartersAddress || parsed.identity?.hqAddress || DEFAULT_GENERAL_SETTINGS.headquartersAddress;
+                const gstin = parsed.gstin || parsed.identity?.gstin || DEFAULT_GENERAL_SETTINGS.gstin;
+                const currency = parsed.currency || parsed.identity?.currencySymbol || DEFAULT_GENERAL_SETTINGS.currency;
+
+                const mergedRealtime = {
+                  ...DEFAULT_GENERAL_SETTINGS,
+                  ...parsed,
+                  storeName,
+                  tagline,
+                  supportEmail,
+                  supportPhone,
+                  headquartersAddress,
+                  gstin,
+                  currency,
+                  identity: {
+                    ...DEFAULT_GENERAL_SETTINGS.identity,
+                    ...(parsed.identity || {}),
+                    storeName,
+                    tagline,
+                    contactEmail: supportEmail,
+                    supportPhone,
+                    hqAddress: headquartersAddress,
+                    gstin,
+                    currencySymbol: currency,
+                    currencyCode: 'INR'
+                  },
+                  delivery: { ...DEFAULT_GENERAL_SETTINGS.delivery, ...(parsed.delivery || {}) },
+                  payments: { ...DEFAULT_GENERAL_SETTINGS.payments, ...(parsed.payments || {}) },
+                  operations: { ...DEFAULT_GENERAL_SETTINGS.operations, ...(parsed.operations || {}) },
+                  policies: { ...DEFAULT_GENERAL_SETTINGS.policies, ...(parsed.policies || {}) },
+                };
+                setGeneralSettings(mergedRealtime);
+                setCachedData('salbeau_admin_cache_general_settings', mergedRealtime);
               }
             } catch (e) { }
             return;
@@ -1785,7 +1867,7 @@ export const AdminProvider = ({ children }) => {
               const { data: mapRow } = await supabase.from('brands').select('logo').eq('id', 'app_brand_category_map').maybeSingle();
               let catMap = {};
               if (mapRow?.logo) {
-                try { catMap = JSON.parse(mapRow.logo); } catch (_) {}
+                try { catMap = JSON.parse(mapRow.logo); } catch (_) { }
               }
               catMap[updatedBrandObj.name] = updatedBrandObj.category;
               await supabase.from('brands').upsert({
@@ -1842,7 +1924,7 @@ export const AdminProvider = ({ children }) => {
       const remaining = prev.filter(b => b.id !== brandId);
       setCachedData('salbeau_admin_cache_brands', remaining);
       if (remaining.length === 0 && typeof window !== 'undefined' && window.localStorage) {
-        try { localStorage.removeItem('salbeau_brand_seq_counter'); } catch (e) {}
+        try { localStorage.removeItem('salbeau_brand_seq_counter'); } catch (e) { }
       }
       return remaining;
     });
@@ -1897,7 +1979,7 @@ export const AdminProvider = ({ children }) => {
         const remaining = prev.filter(b => !deletableIdSet.has(b.id));
         setCachedData('salbeau_admin_cache_brands', remaining);
         if (remaining.length === 0 && typeof window !== 'undefined' && window.localStorage) {
-          try { localStorage.removeItem('salbeau_brand_seq_counter'); } catch (e) {}
+          try { localStorage.removeItem('salbeau_brand_seq_counter'); } catch (e) { }
         }
         return remaining;
       });
@@ -1962,7 +2044,7 @@ export const AdminProvider = ({ children }) => {
           results.updated++;
         }
       } else {
-        const brandNumber = row.brandNumber || generateNextBrandNumber(currentBrandsList);const logoPrefix = 'brand';
+        const brandNumber = row.brandNumber || generateNextBrandNumber(currentBrandsList); const logoPrefix = 'brand';
 
         let finalImportLogo = row.logoUrl || '';
         if (finalImportLogo && (finalImportLogo.startsWith('data:') || finalImportLogo instanceof Blob)) {
@@ -2933,14 +3015,19 @@ export const AdminProvider = ({ children }) => {
   };
 
   const updateOrderPaymentStatus = async (orderId, newPaymentStatus, paymentMethod = null, note = '') => {
-    const targetOrder = orders.find(o => o.id === orderId);
-    if (!targetOrder) return;
+    const cleanId = String(orderId || '').trim();
+    const targetOrder = orders.find(o => String(o.id || '').trim() === cleanId || String(o.orderNumber || '').trim() === cleanId);
+    if (!targetOrder) {
+      console.warn('updateOrderPaymentStatus: order not found for ID', orderId);
+      return;
+    }
 
     const validPaymentStatus = ['pending', 'partially_paid', 'paid', 'refunded', 'cancelled'].includes(newPaymentStatus)
       ? newPaymentStatus
       : 'pending';
 
     const finalMethod = paymentMethod || targetOrder.paymentMethod || 'cash';
+    const finalVerifStatus = validPaymentStatus === 'paid' ? 'VERIFIED' : (validPaymentStatus === 'failed' ? 'REJECTED' : 'PENDING');
 
     const newHistoryEntry = {
       id: 'pay_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
@@ -2964,61 +3051,99 @@ export const AdminProvider = ({ children }) => {
       ...currentShipments,
       paymentStatus: validPaymentStatus,
       paymentMethod: finalMethod,
-      verificationStatus: validPaymentStatus === 'paid' ? 'VERIFIED' : (validPaymentStatus === 'failed' ? 'REJECTED' : 'PENDING'),
+      verificationStatus: finalVerifStatus,
       confirmedWithAdmin: validPaymentStatus === 'paid',
-      paidAt: validPaymentStatus === 'paid' ? (currentShipments.paidAt || new Date().toISOString()) : (currentShipments.paidAt || null)
+      paidAt: validPaymentStatus === 'paid' ? (currentShipments.paidAt || new Date().toISOString()) : (currentShipments.paidAt || null),
+      paymentCollectedAt: validPaymentStatus === 'paid' ? new Date().toISOString() : null,
+      paymentCollectedBy: currentAuthUser?.fullName || currentAuthUser?.name || 'Administrator'
     };
+
+    // Update item-level payment metadata so that legacy schemas without dedicated payment_status columns also persist paid status reliably
+    const currentItems = Array.isArray(targetOrder.items) ? targetOrder.items : [];
+    const updatedItems = currentItems.map(item => ({
+      ...item,
+      paymentStatus: validPaymentStatus,
+      paymentMethod: finalMethod
+    }));
 
     const updatedFields = {
       paymentStatus: validPaymentStatus,
       payment_status: validPaymentStatus,
       paymentMethod: finalMethod,
       payment_method: finalMethod,
-      verificationStatus: validPaymentStatus === 'paid' ? 'VERIFIED' : (validPaymentStatus === 'failed' ? 'REJECTED' : 'PENDING'),
-      verification_status: validPaymentStatus === 'paid' ? 'VERIFIED' : (validPaymentStatus === 'failed' ? 'REJECTED' : 'PENDING'),
+      verificationStatus: finalVerifStatus,
+      verification_status: finalVerifStatus,
       internalStatus: validPaymentStatus,
       internal_status: validPaymentStatus,
       shipments: updatedShipments,
       statusHistory: updatedHistory,
       status_history: updatedHistory,
+      items: updatedItems,
       updated_at: new Date().toISOString()
     };
 
+    // 1. Immediately reflect in Admin local React state & localStorage cache
     setOrders(prev => {
-      const next = prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o));
+      const next = prev.map(o => (String(o.id || '').trim() === cleanId ? { ...o, ...updatedFields } : o));
       setCachedData('salbeau_admin_cache_orders', next);
       return next;
     });
 
+    // 2. Multi-tier Database Persistence
     try {
       const client = supabaseAdmin || supabase;
-      const dbPayload = {
+
+      // Tier 1: Modern production schema (all columns except nonexistent internal_status)
+      let tierPayload = {
         payment_status: validPaymentStatus,
         payment_method: finalMethod,
-        verification_status: validPaymentStatus === 'paid' ? 'VERIFIED' : (validPaymentStatus === 'failed' ? 'REJECTED' : 'PENDING'),
-        internal_status: validPaymentStatus,
+        verification_status: finalVerifStatus,
         shipments: updatedShipments,
         status_history: updatedHistory,
+        items: updatedItems,
         updated_at: new Date().toISOString()
       };
 
       if (validPaymentStatus === 'paid') {
-        dbPayload.payment_collected_at = new Date().toISOString();
-        dbPayload.payment_collected_by = currentAuthUser?.fullName || currentAuthUser?.name || 'Administrator';
+        tierPayload.payment_collected_at = new Date().toISOString();
+        tierPayload.payment_collected_by = currentAuthUser?.fullName || currentAuthUser?.name || 'Administrator';
       }
 
-      const { error } = await client.from('orders').update(dbPayload).eq('id', orderId);
+      let res = await client.from('orders').update(tierPayload).eq('id', targetOrder.id);
 
-      if (error) {
-        await client.from('orders').update({
+      // Tier 2: If payment_collected_at / payment_collected_by columns don't exist
+      if (res.error) {
+        const { payment_collected_at, payment_collected_by, ...tier2Payload } = tierPayload;
+        res = await client.from('orders').update(tier2Payload).eq('id', targetOrder.id);
+      }
+
+      // Tier 3: If status_history or verification_status columns don't exist
+      if (res.error) {
+        res = await client.from('orders').update({
           payment_status: validPaymentStatus,
           payment_method: finalMethod,
           shipments: updatedShipments,
-          status_history: updatedHistory
-        }).eq('id', orderId);
+          items: updatedItems,
+          updated_at: new Date().toISOString()
+        }).eq('id', targetOrder.id);
       }
 
-      // Dispatch Payment Notification via System Tray + FCM Push
+      // Tier 4: If payment_status column does not exist, persist via shipments and items
+      if (res.error) {
+        res = await client.from('orders').update({
+          shipments: updatedShipments,
+          items: updatedItems
+        }).eq('id', targetOrder.id);
+      }
+
+      // Tier 5: Only items is guaranteed to exist on any legacy orders schema
+      if (res.error) {
+        res = await client.from('orders').update({
+          items: updatedItems
+        }).eq('id', targetOrder.id);
+      }
+
+      // Dispatch Payment Notification via In-App + System Tray + FCM Push
       if (validPaymentStatus === 'paid') {
         try {
           await dispatchOrderNotification({
@@ -3031,7 +3156,7 @@ export const AdminProvider = ({ children }) => {
             customMessage: `Payment for order #${targetOrder.orderNumber || String(targetOrder.id).slice(-6).toUpperCase()} has been confirmed (${finalMethod === 'qr' ? 'QR / UPI Scanner' : 'Cash on Delivery'}).`,
             meta: {
               paymentMethod: finalMethod,
-              amount: targetOrder.total || targetOrder.finalAmount
+              amount: targetOrder.total || targetOrder.totalAmount || targetOrder.finalAmount
             }
           });
         } catch (e) {
@@ -3045,7 +3170,8 @@ export const AdminProvider = ({ children }) => {
 
   // ── UPI PAYMENT VERIFICATION BY ADMIN ──────────────────────────────────
   const verifyUpiPayment = async (orderId, isApproved = true, rejectionReason = '') => {
-    const targetOrder = orders.find(o => o.id === orderId);
+    const cleanId = String(orderId || '').trim();
+    const targetOrder = orders.find(o => String(o.id || '').trim() === cleanId || String(o.orderNumber || '').trim() === cleanId);
     if (!targetOrder) return;
 
     const newPayStatus = isApproved ? 'paid' : 'failed';
@@ -3066,6 +3192,13 @@ export const AdminProvider = ({ children }) => {
       paidAt: isApproved ? new Date().toISOString() : null
     };
 
+    const currentItems = Array.isArray(targetOrder.items) ? targetOrder.items : [];
+    const updatedItems = currentItems.map(item => ({
+      ...item,
+      paymentStatus: newPayStatus,
+      paymentMethod: 'upi'
+    }));
+
     const updatedFields = {
       paymentStatus: newPayStatus,
       payment_status: newPayStatus,
@@ -3074,24 +3207,33 @@ export const AdminProvider = ({ children }) => {
       internalStatus: newPayStatus,
       internal_status: newPayStatus,
       shipments: updatedShipments,
+      items: updatedItems,
       updated_at: new Date().toISOString()
     };
 
     setOrders(prev => {
-      const next = prev.map(o => (o.id === orderId ? { ...o, ...updatedFields } : o));
+      const next = prev.map(o => (String(o.id || '').trim() === cleanId ? { ...o, ...updatedFields } : o));
       setCachedData('salbeau_admin_cache_orders', next);
       return next;
     });
 
     try {
       const client = supabaseAdmin || supabase;
-      await client.from('orders').update({
-        internal_status: newPayStatus,
+
+      let res = await client.from('orders').update({
         payment_status: newPayStatus,
         verification_status: newVerifStatus,
         shipments: updatedShipments,
+        items: updatedItems,
         updated_at: new Date().toISOString()
-      }).eq('id', orderId);
+      }).eq('id', targetOrder.id);
+
+      if (res.error) {
+        res = await client.from('orders').update({
+          shipments: updatedShipments,
+          items: updatedItems
+        }).eq('id', targetOrder.id);
+      }
 
       // Also update upi_payment_verifications table if present
       await client.from('upi_payment_verifications').update({
@@ -3099,11 +3241,11 @@ export const AdminProvider = ({ children }) => {
         verified_by: currentAuthUser?.fullName || currentAuthUser?.name || 'Administrator',
         verified_at: new Date().toISOString(),
         rejection_reason: !isApproved ? rejectionReason : null
-      }).eq('order_id', orderId);
+      }).eq('order_id', targetOrder.id);
 
       // Audit log
       recordAdminAuditLog(isApproved ? 'VERIFY_UPI_PAYMENT' : 'REJECT_UPI_PAYMENT', {
-        orderId,
+        orderId: targetOrder.id,
         isApproved,
         rejectionReason,
         amount: targetOrder.totalAmount
@@ -3327,7 +3469,7 @@ export const AdminProvider = ({ children }) => {
 
     try {
       const client = supabaseAdmin || supabase;
-      
+
       // Clean dependent b2b verifications & carts first
       await client.from('b2b_verifications').delete().eq('user_id', userId);
       await client.from('abandoned_carts').delete().eq('user_id', userId);
@@ -3522,8 +3664,8 @@ export const AdminProvider = ({ children }) => {
       let resolvedImages = updatedFields.images;
 
       if ((resolvedImage && (resolvedImage.startsWith('data:') || resolvedImage instanceof Blob)) ||
-          (Array.isArray(resolvedImages) && resolvedImages.some(img => img && (img.startsWith('data:') || img instanceof Blob))) ||
-          (Array.isArray(resolvedShades) && resolvedShades.some(s => s && s.image && (s.image.startsWith('data:') || s.image instanceof Blob)))) {
+        (Array.isArray(resolvedImages) && resolvedImages.some(img => img && (img.startsWith('data:') || img instanceof Blob))) ||
+        (Array.isArray(resolvedShades) && resolvedShades.some(s => s && s.image && (s.image.startsWith('data:') || s.image instanceof Blob)))) {
         try {
           const optRes = await optimizeProductImageSet(
             resolvedImage,
@@ -4415,7 +4557,7 @@ export const AdminProvider = ({ children }) => {
           localStorage.removeItem('salbeau_admin_cache_subcategories');
           localStorage.removeItem('salbeau_categories_catalog_v2');
           localStorage.removeItem('salbeau_subcategories_v2');
-        } catch (_) {}
+        } catch (_) { }
       }
 
       return { success: true };
@@ -4497,7 +4639,7 @@ export const AdminProvider = ({ children }) => {
             });
           }
         }
-      } catch (hErr) {}
+      } catch (hErr) { }
 
       // 7. Clear local caches
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -4506,7 +4648,7 @@ export const AdminProvider = ({ children }) => {
           localStorage.removeItem('salbeau_admin_cache_subcategories');
           localStorage.removeItem('salbeau_categories_catalog_v2');
           localStorage.removeItem('salbeau_subcategories_v2');
-        } catch (_) {}
+        } catch (_) { }
       }
 
       return { success: true, count: targetCats.length };
@@ -4535,7 +4677,7 @@ export const AdminProvider = ({ children }) => {
         if (targetNames.length > 0) {
           await client.from('products').update({ subcategory: null }).in('subcategory', targetNames);
         }
-      } catch (pErr) {}
+      } catch (pErr) { }
 
       // 3. Delete subcategories from Supabase
       await client.from('subcategories').delete().in('id', subcategoryIds);
@@ -4555,7 +4697,7 @@ export const AdminProvider = ({ children }) => {
             });
           }
         }
-      } catch (hErr) {}
+      } catch (hErr) { }
 
       return { success: true, count: targetSubs.length };
     } catch (e) {
@@ -5382,19 +5524,19 @@ export const AdminProvider = ({ children }) => {
       if (!prevEmp) throw new Error('Employee not found');
 
       const targetDesig = updates.designation !== undefined ? updates.designation : prevEmp.designation;
-      const targetRole = updates.role !== undefined 
-        ? updates.role 
+      const targetRole = updates.role !== undefined
+        ? updates.role
         : (targetDesig === '(admin)' ? 'admin' : 'employee');
-      const targetName = updates.fullName !== undefined 
-        ? updates.fullName 
+      const targetName = updates.fullName !== undefined
+        ? updates.fullName
         : (updates.full_name !== undefined ? updates.full_name : (prevEmp.full_name || prevEmp.name));
       const targetPhone = updates.phone !== undefined ? updates.phone : prevEmp.phone;
       const targetStatus = updates.status !== undefined ? updates.status : prevEmp.status;
-      const targetPhoto = updates.profilePhoto !== undefined 
-        ? updates.profilePhoto 
+      const targetPhoto = updates.profilePhoto !== undefined
+        ? updates.profilePhoto
         : (updates.profile_photo !== undefined ? updates.profile_photo : (prevEmp.profile_photo || prevEmp.avatar));
-      const targetCode = updates.employeeCode !== undefined 
-        ? updates.employeeCode 
+      const targetCode = updates.employeeCode !== undefined
+        ? updates.employeeCode
         : (updates.employee_code !== undefined ? updates.employee_code : prevEmp.employee_code);
 
       // Safe update for Supabase employees table (only compatible columns)
@@ -5406,6 +5548,9 @@ export const AdminProvider = ({ children }) => {
         avatar: targetPhoto,
         updated_at: new Date().toISOString()
       };
+      if (updates.password) {
+        dbEmpUpdates.password_hash = updates.password;
+      }
       const { error: empError } = await supabase.from('employees').update(dbEmpUpdates).eq('id', prevEmp.id);
       if (empError) console.warn('Supabase employees update note:', empError);
 
@@ -5784,13 +5929,13 @@ export const AdminProvider = ({ children }) => {
       const trimmedEmail = (email || '').trim().toLowerCase();
 
       // Check if root administrator
-      if (trimmedEmail === 'admin@salbeau.com' || trimmedEmail === 'admin') {
+      if (trimmedEmail === 'admin@clobeau.com' || trimmedEmail === 'admin@salbeau.com' || trimmedEmail === 'admin') {
         if (!password || !password.trim()) {
           throw new Error('Please enter your administrator password.');
         }
         const adminSession = {
           id: 'admin_root',
-          email: 'admin@salbeau.com',
+          email: trimmedEmail.includes('clobeau') ? 'admin@clobeau.com' : 'admin@salbeau.com',
           role: 'admin',
           fullName: 'System Administrator',
           permissions: null // Admin has unrestricted access to all modules
@@ -5800,8 +5945,73 @@ export const AdminProvider = ({ children }) => {
         return { success: true, user: adminSession };
       }
 
-      // Check if employee account
-      const matchedEmployee = employees.find(e => (e.email || '').toLowerCase() === trimmedEmail);
+      // Check if employee account (by email, employee code e.g. EMP-0002 / EMP002, or phone)
+      let matchedEmployee = employees.find(e =>
+        (e.email || '').toLowerCase() === trimmedEmail ||
+        (e.employee_code || '').toLowerCase() === trimmedEmail ||
+        (e.employeeCode || '').toLowerCase() === trimmedEmail ||
+        (e.phone || '').trim() === trimmedEmail
+      );
+
+      // Direct Supabase Query Fallback if not found in memory (e.g. fresh browser session)
+      if (!matchedEmployee) {
+        try {
+          const { data: dbEmp } = await supabase
+            .from('employees')
+            .select('*, employee_permissions(*)')
+            .or(`email.ilike.${trimmedEmail},employee_code.ilike.${trimmedEmail},phone.eq.${trimmedEmail}`)
+            .limit(1)
+            .maybeSingle();
+
+          if (dbEmp) {
+            matchedEmployee = mapEmployeeFromDb(dbEmp);
+          }
+        } catch (dbErr) {
+          console.warn('DB employee lookup fallback note:', dbErr);
+        }
+      }
+
+      // Fallback to Cloud Backup in brands table
+      if (!matchedEmployee) {
+        try {
+          const { data: backupRow } = await supabase
+            .from('brands')
+            .select('logo')
+            .eq('id', 'salbeau_employees_backup')
+            .maybeSingle();
+
+          if (backupRow?.logo) {
+            const parsed = JSON.parse(backupRow.logo);
+            if (Array.isArray(parsed)) {
+              const matched = parsed.find(e =>
+                (e.email || '').toLowerCase() === trimmedEmail ||
+                (e.employee_code || e.employeeCode || '').toLowerCase() === trimmedEmail ||
+                (e.phone || '').trim() === trimmedEmail
+              );
+              if (matched) {
+                matchedEmployee = mapEmployeeFromDb(matched);
+              }
+            }
+          }
+        } catch (bErr) { }
+      }
+
+      // Fallback to localStorage cache
+      if (!matchedEmployee) {
+        try {
+          const localCache = JSON.parse(localStorage.getItem('salbeau_admin_cache_employees') || '[]');
+          if (Array.isArray(localCache)) {
+            const matched = localCache.find(e =>
+              (e.email || '').toLowerCase() === trimmedEmail ||
+              (e.employee_code || e.employeeCode || '').toLowerCase() === trimmedEmail ||
+              (e.phone || '').trim() === trimmedEmail
+            );
+            if (matched) {
+              matchedEmployee = mapEmployeeFromDb(matched);
+            }
+          }
+        } catch (lErr) { }
+      }
       if (matchedEmployee) {
         if (matchedEmployee.status !== 'active') {
           throw new Error('This employee account is ' + matchedEmployee.status.toUpperCase() + '. Access blocked by Administrator.');
@@ -5821,11 +6031,16 @@ export const AdminProvider = ({ children }) => {
           }
         } catch (authErr) { }
 
-        // Local password verification fallback (case-insensitive & normal)
-        const enteredPass = (password || '').trim().toLowerCase();
-        const employeePass = (matchedEmployee.password || 'salbeau123').trim().toLowerCase();
-        const isPasswordMatch = authSuccess || enteredPass === employeePass || enteredPass === 'salbeau123';
-        if (!isPasswordMatch && matchedEmployee.password) {
+        // Local password verification: handles exact case, case-insensitive, password_hash, and default fallback
+        const enteredPass = String(password || '').trim();
+        const expectedPass = String(matchedEmployee.password || matchedEmployee.password_hash || '').trim();
+
+        const isPasswordMatch = authSuccess ||
+          (enteredPass && expectedPass && enteredPass === expectedPass) ||
+          (enteredPass && expectedPass && enteredPass.toLowerCase() === expectedPass.toLowerCase()) ||
+          (enteredPass === 'salbeau123' && !expectedPass);
+
+        if (!isPasswordMatch) {
           throw new Error('Invalid credentials. Please enter the correct password provided by your administrator.');
         }
 
@@ -5975,7 +6190,7 @@ export const AdminProvider = ({ children }) => {
     setBrands(reindexed);
     try {
       localStorage.setItem('salbeau_admin_cache_brands', JSON.stringify(reindexed));
-    } catch (_) {}
+    } catch (_) { }
 
     // Persist to Supabase in chunks
     try {
@@ -6072,35 +6287,142 @@ export const AdminProvider = ({ children }) => {
     } catch (e) { }
   };
 
-  
+
   /**
    * GENERAL STORE SETTINGS
+   * Persists to Supabase `brands` table as store settings document with multi-tier fallback (Upsert -> Update -> Insert)
    */
   const updateGeneralSettings = async (partialOrFull) => {
     try {
+      const nowIso = new Date().toISOString();
+
+      const storeName = partialOrFull?.storeName || partialOrFull?.identity?.storeName || generalSettings?.storeName || generalSettings?.identity?.storeName || DEFAULT_GENERAL_SETTINGS.storeName;
+      const tagline = partialOrFull?.tagline || partialOrFull?.identity?.tagline || generalSettings?.tagline || generalSettings?.identity?.tagline || DEFAULT_GENERAL_SETTINGS.tagline;
+      const supportEmail = partialOrFull?.supportEmail || partialOrFull?.identity?.contactEmail || generalSettings?.supportEmail || generalSettings?.identity?.contactEmail || DEFAULT_GENERAL_SETTINGS.supportEmail;
+      const supportPhone = partialOrFull?.supportPhone || partialOrFull?.identity?.supportPhone || generalSettings?.supportPhone || generalSettings?.identity?.supportPhone || DEFAULT_GENERAL_SETTINGS.supportPhone;
+      const headquartersAddress = partialOrFull?.headquartersAddress || partialOrFull?.identity?.hqAddress || generalSettings?.headquartersAddress || generalSettings?.identity?.hqAddress || DEFAULT_GENERAL_SETTINGS.headquartersAddress;
+      const gstin = partialOrFull?.gstin || partialOrFull?.identity?.gstin || generalSettings?.gstin || generalSettings?.identity?.gstin || DEFAULT_GENERAL_SETTINGS.gstin;
+      const currency = partialOrFull?.currency || partialOrFull?.identity?.currencySymbol || generalSettings?.currency || generalSettings?.identity?.currencySymbol || DEFAULT_GENERAL_SETTINGS.currency;
+
       const merged = {
+        ...DEFAULT_GENERAL_SETTINGS,
         ...generalSettings,
         ...partialOrFull,
-        identity: { ...(generalSettings?.identity || {}), ...(partialOrFull?.identity || {}) },
-        delivery: { ...(generalSettings?.delivery || {}), ...(partialOrFull?.delivery || {}) },
-        payments: { ...(generalSettings?.payments || {}), ...(partialOrFull?.payments || {}) },
-        operations: { ...(generalSettings?.operations || {}), ...(partialOrFull?.operations || {}) },
-        policies: { ...(generalSettings?.policies || {}), ...(partialOrFull?.policies || {}) },
+        storeName,
+        tagline,
+        supportEmail,
+        supportPhone,
+        headquartersAddress,
+        gstin,
+        currency,
+        identity: {
+          ...DEFAULT_GENERAL_SETTINGS.identity,
+          ...(generalSettings?.identity || {}),
+          ...(partialOrFull?.identity || {}),
+          storeName,
+          tagline,
+          contactEmail: supportEmail,
+          supportPhone,
+          hqAddress: headquartersAddress,
+          gstin,
+          currencySymbol: currency,
+          currencyCode: 'INR'
+        },
+        delivery: {
+          ...DEFAULT_GENERAL_SETTINGS.delivery,
+          ...(generalSettings?.delivery || {}),
+          ...(partialOrFull?.delivery || {})
+        },
+        payments: {
+          ...DEFAULT_GENERAL_SETTINGS.payments,
+          ...(generalSettings?.payments || {}),
+          ...(partialOrFull?.payments || {}),
+          updatedAt: nowIso
+        },
+        operations: {
+          ...DEFAULT_GENERAL_SETTINGS.operations,
+          ...(generalSettings?.operations || {}),
+          ...(partialOrFull?.operations || {})
+        },
+        policies: {
+          ...DEFAULT_GENERAL_SETTINGS.policies,
+          ...(generalSettings?.policies || {}),
+          ...(partialOrFull?.policies || {})
+        },
+        updated_at: nowIso
       };
 
       setGeneralSettings(merged);
       setCachedData('salbeau_admin_cache_general_settings', merged);
 
       // Persist to Supabase brands table as store settings document
-      const client = supabaseAdmin || supabase;
-      await client.from('brands').upsert({
-        id: 'salbeau_store_settings',
-        name: 'Salbeau Store Settings',
-        slug: 'salbeau-store-settings',
-        logo: JSON.stringify(merged),
-        status: 'active',
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
+      // Multi-tier resilience: try service role (supabaseAdmin) then public (supabase)
+      // and attempt upsert -> update -> insert
+      const clientsToTry = [supabaseAdmin, supabase].filter(Boolean);
+      let isSavedToDb = false;
+      let lastDbError = null;
+
+      for (const client of clientsToTry) {
+        // Step A: Attempt Upsert
+        try {
+          const { error: upsertErr } = await client.from('brands').upsert({
+            id: 'salbeau_store_settings',
+            name: 'Salbeau Store Settings',
+            enabled: true,
+            logo: JSON.stringify(merged),
+            updated_at: nowIso
+          }, { onConflict: 'id' });
+
+          if (!upsertErr) {
+            isSavedToDb = true;
+            break;
+          }
+          lastDbError = upsertErr;
+        } catch (e) {
+          lastDbError = e;
+        }
+
+        // Step B: Attempt Update
+        try {
+          const { error: updateErr, count } = await client.from('brands').update({
+            name: 'Salbeau Store Settings',
+            enabled: true,
+            logo: JSON.stringify(merged),
+            updated_at: nowIso
+          }).eq('id', 'salbeau_store_settings');
+
+          if (!updateErr && count !== 0) {
+            isSavedToDb = true;
+            break;
+          }
+          if (updateErr) lastDbError = updateErr;
+        } catch (e) {
+          lastDbError = e;
+        }
+
+        // Step C: Attempt Insert
+        try {
+          const { error: insertErr } = await client.from('brands').insert({
+            id: 'salbeau_store_settings',
+            name: 'Salbeau Store Settings',
+            enabled: true,
+            logo: JSON.stringify(merged),
+            updated_at: nowIso
+          });
+
+          if (!insertErr) {
+            isSavedToDb = true;
+            break;
+          }
+          lastDbError = insertErr;
+        } catch (e) {
+          lastDbError = e;
+        }
+      }
+
+      if (!isSavedToDb && lastDbError) {
+        console.warn('Database write notification for store settings:', lastDbError);
+      }
 
       // Signal other windows/tabs (e.g. mobile app preview)
       try {
@@ -6115,6 +6437,23 @@ export const AdminProvider = ({ children }) => {
       console.error('Failed to update general settings:', err);
       throw err;
     }
+  };
+
+  /**
+   * Quick UPI Gateway & Merchant QR Code Updater
+   * Instant CRUD for UPI ID, Payee Name, and Standee QR Code
+   */
+  const quickUpdateUpiQr = async ({ upiId, upiName, upiQrCodeUrl }) => {
+    const currentPay = generalSettings?.payments || {};
+    return updateGeneralSettings({
+      payments: {
+        ...currentPay,
+        upiId: upiId !== undefined ? upiId.trim() : (currentPay.upiId || ''),
+        upiName: upiName !== undefined ? upiName.trim() : (currentPay.upiName || generalSettings?.identity?.storeName || 'Salbeau MakeUpStore'),
+        upiQrCodeUrl: upiQrCodeUrl !== undefined ? upiQrCodeUrl : (currentPay.upiQrCodeUrl || ''),
+        updatedAt: new Date().toISOString()
+      }
+    });
   };
 
   const addBranch = async (branchData) => {
@@ -6263,12 +6602,25 @@ export const AdminProvider = ({ children }) => {
       try {
         await client.from('orders').update({
           shipments: updatedShipments,
+          payment_status: 'paid',
+          internal_status: 'paid',
+          verification_status: 'VERIFIED',
           updated_at: nowIso
         }).eq('id', orderId);
       } catch (e) { }
 
       // 3. Update local state
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, shipments: updatedShipments } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? {
+        ...o,
+        shipments: updatedShipments,
+        paymentStatus: 'paid',
+        payment_status: 'paid',
+        internalStatus: 'paid',
+        internal_status: 'paid',
+        verificationStatus: 'VERIFIED',
+        verification_status: 'VERIFIED',
+        updated_at: nowIso
+      } : o));
       setUpiVerifications(prev => [
         {
           id: id || ('upi_' + orderId),
@@ -6347,12 +6699,25 @@ export const AdminProvider = ({ children }) => {
       try {
         await client.from('orders').update({
           shipments: updatedShipments,
+          payment_status: 'rejected',
+          internal_status: 'rejected',
+          verification_status: 'REJECTED',
           updated_at: nowIso
         }).eq('id', orderId);
       } catch (e) { }
 
       // 3. Update local state
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, shipments: updatedShipments } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? {
+        ...o,
+        shipments: updatedShipments,
+        paymentStatus: 'rejected',
+        payment_status: 'rejected',
+        internalStatus: 'rejected',
+        internal_status: 'rejected',
+        verificationStatus: 'REJECTED',
+        verification_status: 'REJECTED',
+        updated_at: nowIso
+      } : o));
       setUpiVerifications(prev => [
         {
           id: id || ('upi_' + orderId),
@@ -6482,6 +6847,7 @@ export const AdminProvider = ({ children }) => {
         products,
         categories,
         orders,
+        setOrders,
         users,
         abandonedCarts,
         cancelFeeSettings,
@@ -6600,6 +6966,7 @@ export const AdminProvider = ({ children }) => {
         DEFAULT_HOME_BANNERS,
         generalSettings,
         updateGeneralSettings,
+        quickUpdateUpiQr,
         DEFAULT_GENERAL_SETTINGS,
         branches,
         addBranch,

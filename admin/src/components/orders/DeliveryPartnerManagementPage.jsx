@@ -24,7 +24,11 @@ import {
   Calendar,
   X,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  QrCode,
+  Upload,
+  CreditCard,
+  Check
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 import { supabase, supabaseAdmin } from '../../config/supabase';
@@ -37,7 +41,11 @@ export default function DeliveryPartnerManagementPage() {
     setOrders,
     setEmployees,
     assignOrderToEmployee,
-    currentAuthUser
+    currentAuthUser,
+    generalSettings,
+    updateGeneralSettings,
+    quickUpdateUpiQr,
+    uploadImage
   } = useAdmin();
 
   const [activeSubTab, setActiveSubTab] = useState('live_deliveries'); // 'live_deliveries' | 'partners_roster'
@@ -45,6 +53,57 @@ export default function DeliveryPartnerManagementPage() {
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'ongoing' | 'delivered' | 'pending'
   const [paymentFilter, setPaymentFilter] = useState('all'); // 'all' | 'cash' | 'upi'
   const [selectedBranch, setSelectedBranch] = useState('all');
+
+  // Live Store UPI & Rider Payment Credentials Modal
+  const [isUpiQrModalOpen, setIsUpiQrModalOpen] = useState(false);
+  const [upiForm, setUpiForm] = useState({
+    upiId: '',
+    upiName: ''
+  });
+  const [isSavingUpiQr, setIsSavingUpiQr] = useState(false);
+  const [upiQrSaveSuccess, setUpiQrSaveSuccess] = useState(false);
+
+  const openUpiQrModal = () => {
+    setUpiForm({
+      upiId: generalSettings?.payments?.upiId || '',
+      upiName: generalSettings?.payments?.upiName || generalSettings?.identity?.storeName || 'Salbeau MakeUpStore'
+    });
+    setUpiQrSaveSuccess(false);
+    setIsUpiQrModalOpen(true);
+  };
+
+  const handleSaveUpiQr = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!upiForm.upiId.trim()) {
+      alert('Official UPI ID (VPA) is required.');
+      return;
+    }
+    setIsSavingUpiQr(true);
+    try {
+      if (typeof quickUpdateUpiQr === 'function') {
+        await quickUpdateUpiQr({
+          upiId: upiForm.upiId,
+          upiName: upiForm.upiName
+        });
+      } else if (typeof updateGeneralSettings === 'function') {
+        await updateGeneralSettings({
+          payments: {
+            ...(generalSettings?.payments || {}),
+            upiId: upiForm.upiId.trim(),
+            upiName: upiForm.upiName.trim(),
+            updatedAt: new Date().toISOString()
+          }
+        });
+      }
+      setUpiQrSaveSuccess(true);
+      setTimeout(() => setUpiQrSaveSuccess(false), 3500);
+    } catch (err) {
+      console.error('Failed to update UPI settings:', err);
+      alert('Error saving UPI configuration: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsSavingUpiQr(false);
+    }
+  };
 
   // Add Partner Modal
   const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
@@ -303,7 +362,7 @@ export default function DeliveryPartnerManagementPage() {
           enabled: true,
           logo: JSON.stringify(nextList)
         });
-      } catch (_) {}
+      } catch (_) { }
 
       setShowAddPartnerModal(false);
       setNewPartner({
@@ -346,8 +405,19 @@ export default function DeliveryPartnerManagementPage() {
           </div>
         </div>
 
-        {/* Action Button: Add Delivery Partner */}
+        {/* Action Button: Add Delivery Partner & Rider UPI QR */}
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={openUpiQrModal}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 transition-colors shadow-2xs cursor-pointer font-bold text-xs"
+            title="Configure Rider UPI ID & Live Merchant QR Code (Instant Real-time Sync to Rider App)"
+          >
+            <CreditCard size={15} className="text-purple-700" />
+            <span>Rider Store UPI</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          </button>
+
           <button
             onClick={() => setShowAddPartnerModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-[#D81B60] hover:bg-[#a63965] text-white rounded-xl font-bold text-xs shadow-md shadow-pink-200 transition-all cursor-pointer"
@@ -396,13 +466,20 @@ export default function DeliveryPartnerManagementPage() {
           <div className="text-[11px] text-amber-700 font-semibold mt-0.5">Cash received by staff</div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-purple-200/80 bg-purple-50/20 shadow-2xs">
+        <div
+          onClick={openUpiQrModal}
+          className="bg-white p-4 rounded-2xl border border-purple-200/80 bg-purple-50/20 shadow-2xs cursor-pointer hover:border-purple-400 transition-all group"
+          title="Click to view & edit Store UPI ID"
+        >
           <div className="flex items-center justify-between text-purple-600 mb-1">
-            <span className="text-[11px] font-black uppercase tracking-wider text-purple-800">UPI Payments</span>
-            <Smartphone size={18} className="text-purple-600" />
+            <span className="text-[11px] font-black uppercase tracking-wider text-purple-800">Store UPI Payments</span>
+            <CreditCard size={18} className="text-purple-600 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-2xl font-black text-purple-900">₹{metrics.totalUpiCollected.toLocaleString('en-IN')}</div>
-          <div className="text-[11px] text-purple-700 font-semibold mt-0.5">QR Code Scanned payments</div>
+          <div className="text-[11px] text-purple-700 font-semibold mt-0.5 flex items-center justify-between">
+            <span>Direct UPI payments</span>
+            <span className="text-[10px] text-purple-600 font-bold underline">Edit UPI →</span>
+          </div>
         </div>
       </div>
 
@@ -410,11 +487,10 @@ export default function DeliveryPartnerManagementPage() {
       <div className="flex items-center gap-2 border-b border-gray-200 mb-5">
         <button
           onClick={() => setActiveSubTab('live_deliveries')}
-          className={`px-4 py-2.5 text-xs font-black border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-            activeSubTab === 'live_deliveries'
-              ? 'border-[#D81B60] text-[#D81B60]'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
+          className={`px-4 py-2.5 text-xs font-black border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeSubTab === 'live_deliveries'
+            ? 'border-[#D81B60] text-[#D81B60]'
+            : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
         >
           <Truck size={15} />
           <span>Live Deliveries Tracking ({filteredDeliveries.length})</span>
@@ -422,11 +498,10 @@ export default function DeliveryPartnerManagementPage() {
 
         <button
           onClick={() => setActiveSubTab('partners_roster')}
-          className={`px-4 py-2.5 text-xs font-black border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-            activeSubTab === 'partners_roster'
-              ? 'border-[#D81B60] text-[#D81B60]'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
+          className={`px-4 py-2.5 text-xs font-black border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeSubTab === 'partners_roster'
+            ? 'border-[#D81B60] text-[#D81B60]'
+            : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
         >
           <Bike size={15} />
           <span>Delivery Partners Roster & Credentials ({deliveryPartners.length})</span>
@@ -518,9 +593,8 @@ export default function DeliveryPartnerManagementPage() {
                         <td className="py-3.5 px-4 align-top">
                           <div className="font-extrabold text-[#D81B60]">#{order.id}</div>
                           <div className="flex items-center gap-1.5 mt-1">
-                            <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-black uppercase ${
-                              isB2B ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-pink-100 text-[#D81B60] border border-pink-200'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-black uppercase ${isB2B ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-pink-100 text-[#D81B60] border border-pink-200'
+                              }`}>
                               {isB2B ? (order.userRole || 'B2B Trade') : 'B2C Retail'}
                             </span>
                           </div>
@@ -614,9 +688,8 @@ export default function DeliveryPartnerManagementPage() {
                         <td className="py-3.5 px-4 align-top">
                           <div className="font-black text-gray-900 text-sm">₹{amount.toLocaleString('en-IN')}</div>
                           <div className="mt-1 flex items-center gap-1.5">
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
-                              payMethod === 'upi' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-800'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${payMethod === 'upi' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-800'
+                              }`}>
                               {payMethod === 'upi' ? 'UPI / QR Code' : 'Cash (COD)'}
                             </span>
                           </div>
@@ -682,9 +755,8 @@ export default function DeliveryPartnerManagementPage() {
                   </div>
 
                   {/* Status Toggle */}
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                    isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'
-                  }`}>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'
+                    }`}>
                     {isActive ? 'Active' : 'Deactivated'}
                   </span>
                 </div>
@@ -718,11 +790,10 @@ export default function DeliveryPartnerManagementPage() {
                 {/* Toggle Status Button */}
                 <button
                   onClick={() => handleTogglePartnerStatus(partner)}
-                  className={`w-full mt-2 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
-                    isActive
-                      ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
-                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                  }`}
+                  className={`w-full mt-2 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${isActive
+                    ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                    }`}
                 >
                   {isActive ? <UserX size={14} /> : <UserCheck size={14} />}
                   <span>{isActive ? 'Deactivate Partner Account' : 'Reactivate Partner Account'}</span>
@@ -787,7 +858,7 @@ export default function DeliveryPartnerManagementPage() {
                   required
                   value={newPartner.phone}
                   onChange={e => setNewPartner({ ...newPartner, phone: e.target.value })}
-                  placeholder="e.g. 9876543210"
+                  placeholder="Enter 10-digit mobile number"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
@@ -831,6 +902,139 @@ export default function DeliveryPartnerManagementPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── LIVE RIDER STORE UPI CREDENTIALS MANAGEMENT MODAL ───────────── */}
+      {isUpiQrModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-purple-200 max-w-xl w-full overflow-hidden shadow-2xl relative flex flex-col max-h-[92vh]">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-purple-100 flex items-center justify-between bg-gradient-to-r from-purple-50 via-pink-50/30 to-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold shadow-xs">
+                  <CreditCard size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 tracking-tight">
+                    Rider Store UPI Credentials
+                  </h3>
+                  <p className="text-[11px] text-purple-700 font-medium">
+                    Changes reflect immediately in the Delivery Partner (Rider) App
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsUpiQrModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 cursor-pointer transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-5">
+              {upiQrSaveSuccess && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-emerald-800 text-xs font-bold animate-fade-in">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  <span>✓ Successfully updated! Official Store UPI ID is now live in the Rider App.</span>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">
+                    Official UPI Payee / Merchant Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={upiForm.upiName}
+                    onChange={(e) => setUpiForm(prev => ({ ...prev, upiName: e.target.value }))}
+                    placeholder="e.g. Salbeau MakeUpStore or SALBEAU ENTERPRISES"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-900 outline-none focus:border-purple-600 shadow-2xs"
+                  />
+                  <span className="text-[10.5px] text-gray-500 font-medium mt-1 block">
+                    Payee name displayed to customers in Google Pay, PhonePe, Paytm, and shown to delivery riders.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">
+                    Official Store UPI ID (VPA) *
+                  </label>
+                  <input
+                    type="text"
+                    value={upiForm.upiId}
+                    onChange={(e) => setUpiForm(prev => ({ ...prev, upiId: e.target.value.trim() }))}
+                    placeholder="Enter store UPI ID (e.g. merchant@upi)"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-mono font-bold text-purple-900 outline-none focus:border-purple-600 shadow-2xs"
+                  />
+                  <span className="text-[10.5px] text-gray-500 font-medium mt-1 block">
+                    VPA address where customer payments are deposited directly via UPI transfer.
+                  </span>
+                </div>
+
+                {/* Rider App Preview Card */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 to-pink-50/40 border border-purple-200/80 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-black uppercase text-purple-900 tracking-wider flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Live Rider App Display Preview
+                    </span>
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                      Direct VPA Active
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-xl border border-purple-100 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10.5px] font-bold text-gray-500">STORE UPI ID (VPA)</div>
+                      <div className="text-sm font-black font-mono text-purple-950 mt-0.5">
+                        {upiForm.upiId || 'Not Configured'}
+                      </div>
+                      <div className="text-[11px] font-semibold text-gray-600 mt-0.5">
+                        {upiForm.upiName || 'Salbeau MakeUpStore'}
+                      </div>
+                    </div>
+                    <div className="px-3 py-1.5 bg-purple-100 text-purple-800 rounded-lg text-xs font-bold">
+                      Copy Button
+                    </div>
+                  </div>
+
+                  <p className="text-[10.5px] text-purple-800/80 leading-relaxed font-medium">
+                    💡 Customers can copy or enter this UPI ID in any payment app (GPay, PhonePe, Paytm) to make payment, and the delivery rider captures the 12-digit bank UTR reference number.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3.5 border-t border-purple-100 bg-gray-50/80 flex items-center justify-between gap-3">
+              <span className="text-[11px] text-gray-500 font-medium">
+                Instant database upsert to <code className="bg-purple-100 text-purple-800 px-1 py-0.5 rounded font-mono">salbeau_store_settings</code>
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsUpiQrModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingUpiQr}
+                  onClick={handleSaveUpiQr}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                >
+                  <Check size={14} strokeWidth={3} />
+                  <span>{isSavingUpiQr ? 'Saving & Syncing...' : 'Save & Push to Rider App'}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

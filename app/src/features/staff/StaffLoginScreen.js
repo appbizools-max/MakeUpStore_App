@@ -135,7 +135,7 @@ export const StaffLoginScreen = () => {
               }}
               autoCapitalize="none"
               className="flex-1 text-sm font-bold text-[#3A2430] p-0"
-              placeholder="e.g. EMP-DEL-01 or 9876543210"
+              placeholder="e.g. EMP-DEL-01 or 10-digit mobile"
               placeholderTextColor="#8C7078"
             />
             {identifier.trim().length >= 3 && (

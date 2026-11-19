@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft,
-  Sliders,
+  SlidersHorizontal,
   ShieldCheck,
   CheckCircle2,
   AlertCircle,

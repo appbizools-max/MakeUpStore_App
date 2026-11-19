@@ -1208,7 +1208,13 @@ export const BulkProductEntryModal = ({
 
         if (cancelled || !data?.logo) return;
 
-        const parsed = JSON.parse(data.logo);
+        let parsed = null;
+        try {
+          parsed = JSON.parse(data.logo);
+        } catch (e) {
+          console.warn('Failed to parse hierarchy JSON:', e);
+          return;
+        }
         if (!parsed || typeof parsed !== 'object') return;
 
         // 1. Build category id-to-name lookup
@@ -5315,18 +5321,40 @@ export const BulkProductEntryModal = ({
                                     </div>
 
                                     <div
-                                      onDragOver={(e) => e.preventDefault()}
+                                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                       onDrop={(e) => {
                                         e.preventDefault();
-                                        handleUploadImages(row._id, e.dataTransfer.files);
+                                        e.stopPropagation();
+                                        if (e.dataTransfer?.files?.length > 0) {
+                                          handleUploadImages(row._id, e.dataTransfer.files);
+                                        }
                                       }}
-                                      className="border border-dashed border-slate-300 hover:border-indigo-500 bg-white rounded-xl p-3 text-center cursor-pointer transition-colors"
+                                      onPaste={(e) => {
+                                        const clipboardData = e.clipboardData;
+                                        if (!clipboardData) return;
+                                        const items = clipboardData.items;
+                                        if (items) {
+                                          const pastedFiles = [];
+                                          for (let i = 0; i < items.length; i++) {
+                                            if (items[i].type.indexOf('image') !== -1) {
+                                              const file = items[i].getAsFile();
+                                              if (file) pastedFiles.push(file);
+                                            }
+                                          }
+                                          if (pastedFiles.length > 0) {
+                                            e.preventDefault();
+                                            handleUploadImages(row._id, pastedFiles);
+                                          }
+                                        }
+                                      }}
+                                      tabIndex={0}
+                                      className="border border-dashed border-slate-300 hover:border-[#D81B60] bg-white rounded-xl p-3 text-center cursor-pointer transition-colors outline-none"
                                       onClick={() => {
                                         const input = document.getElementById(`file_uploader_${row._id}`);
                                         if (input) input.click();
                                       }}
                                     >
-                                      <p className="text-[11px] text-slate-500 font-medium">Drag images here or</p>
+                                      <p className="text-[11px] text-slate-500 font-medium">Drag, Paste (Ctrl+V) or</p>
                                       <span className="inline-block mt-1 px-2.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg transition-colors">
                                         Browse
                                       </span>
@@ -5703,18 +5731,40 @@ export const BulkProductEntryModal = ({
                                   </div>
 
                                   <div
-                                    onDragOver={(e) => e.preventDefault()}
+                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                     onDrop={(e) => {
                                       e.preventDefault();
-                                      handleUploadImages(row._id, e.dataTransfer.files);
+                                      e.stopPropagation();
+                                      if (e.dataTransfer?.files?.length > 0) {
+                                        handleUploadImages(row._id, e.dataTransfer.files);
+                                      }
                                     }}
-                                    className="border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-white rounded-xl p-4 text-center cursor-pointer transition-colors"
+                                    onPaste={(e) => {
+                                      const clipboardData = e.clipboardData;
+                                      if (!clipboardData) return;
+                                      const items = clipboardData.items;
+                                      if (items) {
+                                        const pastedFiles = [];
+                                        for (let i = 0; i < items.length; i++) {
+                                          if (items[i].type.indexOf('image') !== -1) {
+                                            const file = items[i].getAsFile();
+                                            if (file) pastedFiles.push(file);
+                                          }
+                                        }
+                                        if (pastedFiles.length > 0) {
+                                          e.preventDefault();
+                                          handleUploadImages(row._id, pastedFiles);
+                                        }
+                                      }
+                                    }}
+                                    tabIndex={0}
+                                    className="border-2 border-dashed border-slate-300 hover:border-[#D81B60] bg-white rounded-xl p-4 text-center cursor-pointer transition-colors outline-none"
                                     onClick={() => {
                                       const input = document.getElementById(`file_uploader_${row._id}`);
                                       if (input) input.click();
                                     }}
                                   >
-                                    <p className="text-xs text-slate-600 font-medium">Drag & drop product photos here, or click to browse</p>
+                                    <p className="text-xs text-slate-600 font-medium">Drag & drop or Paste (Ctrl+V) photos here, or click to browse</p>
                                     <input
                                       id={`file_uploader_${row._id}`}
                                       type="file"

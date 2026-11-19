@@ -7,7 +7,8 @@ import {
   Image,
   Dimensions,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  BackHandler
 } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
@@ -123,23 +124,42 @@ export const CategoryScreen = () => {
       const categoryName = typeof selectedCategory === 'string' ? selectedCategory : selectedCategory?.name;
       const matched = displayCategories.find(c => c.name.toLowerCase() === (categoryName || '').toLowerCase());
       if (matched) {
-        setActiveCategory(matched);
+        const config = findCategoryConfig(matched.name) || {};
+        const fullCategory = { ...matched, ...config };
+        setActiveCategory(fullCategory);
         if (selectedSubcategory) {
           const subName = typeof selectedSubcategory === 'string' ? selectedSubcategory : selectedSubcategory?.name;
           setActiveSubcategory({ name: subName });
           setNavLevel(3); // Level 3: ProductListingView for subcategory!
         } else {
           setActiveSubcategory(null);
-          setNavLevel(2);
+          setNavLevel(2); // Level 2: Subcategories view of this selected category
         }
         setOpenedFromHome(true);
       }
-    } else if (displayCategories.length > 0 && !activeCategory) {
-      setActiveCategory(displayCategories[0]);
-      setNavLevel(2);
+    } else {
+      // When selectedCategory is null (tapped from bottom navigation bar):
+      // Stay on Level 1 (Full Categories list: "Shop by Categories")
+      setActiveCategory(null);
+      setActiveSubcategory(null);
+      setActiveLeafCategory(null);
+      setNavLevel(1);
       setOpenedFromHome(false);
     }
   }, [selectedCategory, selectedSubcategory, displayCategories]);
+
+  // ── HARDWARE BACK BUTTON NAVIGATION ─────────────────────────────
+  useEffect(() => {
+    const onBackPress = () => {
+      if (navLevel > 1) {
+        handleBack();
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [navLevel, activeCategory, activeSubcategory]);
 
   // ── NAVIGATION HANDLERS ─────────────────────────────────────────
   const handleSelectCategory = (cat) => {
@@ -181,6 +201,14 @@ export const CategoryScreen = () => {
     if (navLevel === 3 || navLevel === 4) {
       if (setSelectedSubcategory) setSelectedSubcategory(null);
       setNavLevel(2);
+    } else if (navLevel === 2) {
+      // Return from Subcategories (Level 2) back to Categories List (Level 1)
+      if (setSelectedCategory) setSelectedCategory(null);
+      if (setSelectedSubcategory) setSelectedSubcategory(null);
+      setActiveCategory(null);
+      setActiveSubcategory(null);
+      setActiveLeafCategory(null);
+      setNavLevel(1);
     } else {
       if (setSelectedCategory) setSelectedCategory(null);
       if (setSelectedSubcategory) setSelectedSubcategory(null);

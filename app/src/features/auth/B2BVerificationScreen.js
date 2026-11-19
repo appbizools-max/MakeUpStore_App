@@ -555,7 +555,7 @@ export const B2BVerificationScreen = () => {
               value={mobile}
               onChangeText={setMobile}
               keyboardType="phone-pad"
-              placeholder="+91 98765 43210"
+              placeholder="Enter 10-digit mobile number"
               placeholderTextColor="#A8929A"
               className={`bg-white border rounded-xl px-3.5 py-2.5 text-xs text-[#3A2430] font-medium ${formErrors.mobile ? 'border-red-500' : 'border-stone-300'}`}
             />
@@ -859,7 +859,7 @@ export const B2BVerificationScreen = () => {
               value={gstin}
               onChangeText={setGstin}
               autoCapitalize="characters"
-              placeholder="e.g. 37AAAAA0000A1Z5"
+              placeholder="Enter 15-digit GSTIN (e.g. 22AAAAA0000A1Z5)"
               placeholderTextColor="#A8929A"
               className="bg-white border border-stone-300 rounded-xl px-3.5 py-2.5 text-xs text-[#3A2430] font-mono"
             />
@@ -1056,7 +1056,7 @@ export const B2BVerificationScreen = () => {
                 value={uploadDocUrl}
                 onChangeText={setUploadDocUrl}
                 autoCapitalize="none"
-                placeholder="https://... (or leave blank to use sample copy)"
+                placeholder="Enter document image URL (https://...)"
                 placeholderTextColor="#A8929A"
                 className="bg-white border border-stone-300 rounded-xl px-3.5 py-2.5 text-xs text-[#3A2430] font-medium"
               />

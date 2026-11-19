@@ -246,14 +246,154 @@ export default function ProductImageGalleryManager({
       setGeneralError('Please enter a valid HTTP/HTTPS image URL.');
       return;
     }
+    handleApplyDirectUrl(trimmed);
+    setPastedUrl('');
+    setUrlModalOpen(false);
+  };
+
+  const handleApplyDirectUrl = (targetUrl) => {
+    const trimmed = (targetUrl || '').trim();
+    if (!trimmed || (!trimmed.startsWith('http') && !trimmed.startsWith('data:image'))) {
+      setGeneralError('Please provide a valid image URL.');
+      return;
+    }
     const combined = [...normalizedImages];
     if (!combined.includes(trimmed)) combined.push(trimmed);
     const newPrimary = combined[0] || '';
     if (typeof onChangeImages === 'function') {
       onChangeImages(combined, newPrimary);
     }
-    setPastedUrl('');
-    setUrlModalOpen(false);
+  };
+
+  // Drag & Drop handlers for general packshots (supports files, dragged web images, and URLs)
+  const handleDropGeneral = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingGeneral(false);
+    if (disabled) return;
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleUploadGeneralFiles(e.dataTransfer.files);
+      return;
+    }
+
+    // Dragged image from another web page or Google Images
+    const html = e.dataTransfer?.getData('text/html');
+    if (html) {
+      const match = html.match(/src=["'](.*?)["']/);
+      if (match && match[1]) {
+        handleApplyDirectUrl(match[1]);
+        return;
+      }
+    }
+
+    const textUrl = e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain');
+    if (textUrl && (textUrl.startsWith('http') || textUrl.startsWith('data:image'))) {
+      handleApplyDirectUrl(textUrl.trim());
+    }
+  };
+
+  // Clipboard Paste handler (Ctrl + V) for general packshots
+  const handlePasteGeneral = async (e) => {
+    if (disabled) return;
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    // 1. Image files / screenshots in clipboard
+    const items = clipboardData.items;
+    if (items) {
+      const pastedFiles = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) pastedFiles.push(file);
+        }
+      }
+      if (pastedFiles.length > 0) {
+        e.preventDefault();
+        await handleUploadGeneralFiles(pastedFiles);
+        return;
+      }
+    }
+
+    // 2. Direct URL text in clipboard
+    const text = clipboardData.getData('text');
+    if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image'))) {
+      e.preventDefault();
+      handleApplyDirectUrl(text.trim());
+    }
+  };
+
+  const handleApplyVariantDirectUrl = (variantId, targetUrl) => {
+    const trimmed = (targetUrl || '').trim();
+    if (!trimmed) return;
+    const updatedVariants = variants.map(v => {
+      if (v.id !== variantId) return v;
+      const currentImgs = Array.isArray(v.images) ? [...v.images] : (v.image ? [v.image] : []);
+      if (!currentImgs.includes(trimmed)) currentImgs.push(trimmed);
+      return {
+        ...v,
+        image: currentImgs[0] || trimmed,
+        images: currentImgs
+      };
+    });
+    if (typeof onChangeVariants === 'function') {
+      onChangeVariants(updatedVariants);
+    }
+  };
+
+  const handleDropVariant = async (variantId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setVariantDragTarget(null);
+    if (disabled) return;
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleUploadVariantFiles(variantId, e.dataTransfer.files);
+      return;
+    }
+
+    const html = e.dataTransfer?.getData('text/html');
+    if (html) {
+      const match = html.match(/src=["'](.*?)["']/);
+      if (match && match[1]) {
+        handleApplyVariantDirectUrl(variantId, match[1]);
+        return;
+      }
+    }
+
+    const textUrl = e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain');
+    if (textUrl && (textUrl.startsWith('http') || textUrl.startsWith('data:image'))) {
+      handleApplyVariantDirectUrl(variantId, textUrl.trim());
+    }
+  };
+
+  const handlePasteVariant = async (variantId, e) => {
+    if (disabled) return;
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    const items = clipboardData.items;
+    if (items) {
+      const pastedFiles = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) pastedFiles.push(file);
+        }
+      }
+      if (pastedFiles.length > 0) {
+        e.preventDefault();
+        await handleUploadVariantFiles(variantId, pastedFiles);
+        return;
+      }
+    }
+
+    const text = clipboardData.getData('text');
+    if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image'))) {
+      e.preventDefault();
+      handleApplyVariantDirectUrl(variantId, text.trim());
+    }
   };
 
   const handleGoogleImagesSearch = () => {
@@ -619,25 +759,20 @@ export default function ProductImageGalleryManager({
               e.stopPropagation();
               setIsDraggingGeneral(false);
             }}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDraggingGeneral(false);
-              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                handleUploadGeneralFiles(e.dataTransfer.files);
-              }
-            }}
+            onDrop={handleDropGeneral}
+            onPaste={handlePasteGeneral}
+            tabIndex={0}
             onClick={() => {
               if (!disabled && generalFileInputRef.current) {
                 generalFileInputRef.current.click();
               }
             }}
-            className={`w-32 h-32 aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 p-2 text-center transition-all cursor-pointer shrink-0 ${
+            className={`w-32 h-32 aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 p-2 text-center transition-all cursor-pointer shrink-0 outline-none select-none ${
               isDraggingGeneral
-                ? 'border-[#D81B60] bg-pink-100/70 scale-[1.02]'
+                ? 'border-[#D81B60] bg-pink-100/70 scale-[1.02] ring-2 ring-pink-300'
                 : 'border-pink-200/90 hover:border-[#D81B60] bg-pink-50/40 hover:bg-pink-50/80 text-[#D81B60]'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title="Drop packshots here or click to browse device"
+            title="Drop packshots, Paste (Ctrl+V), or click to browse"
           >
             {uploadingGeneral ? (
               <Loader2 size={22} className="animate-spin text-[#D81B60]" />
@@ -648,10 +783,10 @@ export default function ProductImageGalleryManager({
             )}
             <div className="leading-tight">
               <span className="text-[11px] font-bold block text-gray-800">
-                {uploadingGeneral ? 'Uploading...' : '+ Add Packshot'}
+                {uploadingGeneral ? 'Uploading...' : isDraggingGeneral ? 'Drop Image' : '+ Add Packshot'}
               </span>
-              <span className="text-[9.5px] text-gray-400 font-medium block mt-0.5">
-                Drag & drop or browse
+              <span className="text-[9px] text-gray-400 font-medium block mt-0.5">
+                Drop, Paste (Ctrl+V)
               </span>
             </div>
           </div>
@@ -890,25 +1025,20 @@ export default function ProductImageGalleryManager({
                             e.stopPropagation();
                             setVariantDragTarget(null);
                           }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setVariantDragTarget(null);
-                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                              handleUploadVariantFiles(v.id, e.dataTransfer.files);
-                            }
-                          }}
+                          onDrop={(e) => handleDropVariant(v.id, e)}
+                          onPaste={(e) => handlePasteVariant(v.id, e)}
+                          tabIndex={0}
                           onClick={() => {
                             if (!disabled && variantFileInputRefs.current[v.id]) {
                               variantFileInputRefs.current[v.id].click();
                             }
                           }}
-                          className={`w-24 h-24 aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 p-2 text-center transition-all cursor-pointer shrink-0 ${
+                          className={`w-24 h-24 aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 p-2 text-center transition-all cursor-pointer shrink-0 outline-none select-none ${
                             isDragOverThis
-                              ? 'border-purple-500 bg-purple-100/70 scale-[1.02]'
+                              ? 'border-purple-500 bg-purple-100/70 scale-[1.02] ring-2 ring-purple-300'
                               : 'border-pink-200 hover:border-purple-500 bg-pink-50/30 hover:bg-purple-50/50 text-purple-600'
                           } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          title={`Upload packshot for ${variantTitle}`}
+                          title={`Drop image or Paste (Ctrl+V) for ${variantTitle}`}
                         >
                           {isUploadingThis ? (
                             <Loader2 size={18} className="animate-spin text-purple-600" />
@@ -918,7 +1048,10 @@ export default function ProductImageGalleryManager({
                             </div>
                           )}
                           <span className="text-[10px] font-bold text-gray-700 block leading-tight">
-                            {isUploadingThis ? 'Uploading...' : '+ Variant Pic'}
+                            {isUploadingThis ? 'Uploading...' : isDragOverThis ? 'Drop Pic' : '+ Variant Pic'}
+                          </span>
+                          <span className="text-[8.5px] text-gray-400 block leading-tight">
+                            Drop or Paste
                           </span>
                         </div>
                       </div>

@@ -20,6 +20,7 @@ ADD COLUMN IF NOT EXISTS payment_collected_by TEXT,
 ADD COLUMN IF NOT EXISTS payment_proof TEXT,
 ADD COLUMN IF NOT EXISTS upi_ref TEXT,
 ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'PENDING',
+ADD COLUMN IF NOT EXISTS internal_status TEXT DEFAULT 'pending',
 ADD COLUMN IF NOT EXISTS delivery_instructions TEXT;
 
 -- 2. Performance and filtering indexes for orders

@@ -99,9 +99,9 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
                 val map = Arguments.createMap()
                 var hasData = false
                 for (key in bundle!!.keySet()) {
-                    val value = bundle.get(key)
+                    val value = bundle.getString(key) ?: @Suppress("DEPRECATION") bundle.get(key)?.toString()
                     if (value != null) {
-                        map.putString(key, value.toString())
+                        map.putString(key, value)
                         hasData = true
                     }
                 }

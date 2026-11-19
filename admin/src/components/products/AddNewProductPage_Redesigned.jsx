@@ -23,7 +23,7 @@ import {
   BadgePercent,
   Percent,
   Sparkles,
-  Sliders,
+  SlidersHorizontal,
   ChevronDown,
   ChevronUp,
   Boxes,
@@ -2318,7 +2318,7 @@ export default function AddNewProductPage({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-pink-100/70">
                 <div className="flex items-start gap-3">
                   <div className="w-7 h-7 rounded-full bg-[#E11D48] text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                    <Sliders size={14} />
+                    <SlidersHorizontal size={14} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -2376,7 +2376,7 @@ export default function AddNewProductPage({
                         : 'bg-white hover:bg-pink-100 text-[#E11D48] border-pink-200'
                       }`}
                   >
-                    <Sliders size={13} />
+                    <SlidersHorizontal size={13} />
                     <span>{isAttributesExpanded ? 'Hide Attributes' : 'Attributes'}</span>
                     {isAttributesExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </button>
@@ -2387,7 +2387,7 @@ export default function AddNewProductPage({
                 <div className="pt-2 animate-fade-in">
                   {allProductAttributes.length === 0 ? (
                     <div className="text-center py-6 border border-dashed border-pink-200 rounded-2xl bg-white">
-                      <Sliders size={22} className="mx-auto text-pink-300 mb-1.5" />
+                      <SlidersHorizontal size={22} className="mx-auto text-pink-300 mb-1.5" />
                       <p className="text-xs font-bold text-gray-700">No attributes assigned yet</p>
                       <p className="text-[11px] text-gray-400 mt-0.5">
                         Select an attribute from "+ Add Attribute from Master" above to add it to this product.

@@ -244,7 +244,7 @@ export const CustomerUpiPaymentStatusScreen = () => {
               <View className="flex-row items-center justify-between py-1 border-b border-stone-200/60">
                 <Text className="text-xs font-bold text-stone-500">Payment Method</Text>
                 <View className="flex-row items-center gap-1">
-                  <Ionicons name="qr-code-outline" size={14} color="#7C3AED" />
+                  <Ionicons name="card-outline" size={14} color="#7C3AED" />
                   <Text className="text-xs font-black text-purple-900">UPI</Text>
                 </View>
               </View>
@@ -332,27 +332,28 @@ export const CustomerUpiPaymentStatusScreen = () => {
               </View>
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-bold text-stone-500">Payment Mode</Text>
-                <Text className="text-xs font-bold text-purple-900">UPI / QR Code</Text>
+                <Text className="text-xs font-bold text-purple-900">UPI Transfer</Text>
               </View>
 
-              {/* Live QR Code Display for Customer */}
-              <View className="pt-2 border-t border-stone-200 items-center">
-                <View className="p-2.5 bg-white rounded-xl border border-purple-200 mb-2">
-                  <Image
-                    source={{
-                      uri: storeSettings?.payments?.upiQrCodeUrl ||
-                        `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-                          `upi://pay?pa=${storeSettings?.payments?.upiId || 'salbeau.store@okaxis'}&pn=Salbeau%20Store&am=${verifiedAmount}&cu=INR`
-                        )}`
-                    }}
-                    style={{ width: 140, height: 140 }}
-                    resizeMode="contain"
-                  />
+              {/* Store Official UPI ID Display */}
+              <View className="pt-3 border-t border-stone-200">
+                <View className="p-3 bg-purple-50 rounded-xl border border-purple-200 mb-2">
+                  <View className="flex-row items-center justify-between mb-1.5">
+                    <Text className="text-[11px] font-bold text-stone-500">Official UPI ID (VPA):</Text>
+                    <Text className="text-xs font-mono font-black text-purple-900 select-all">
+                      {storeSettings?.payments?.upiId || 'Contact Store for UPI ID'}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-[11px] font-bold text-stone-500">Payee Name:</Text>
+                    <Text className="text-xs font-bold text-purple-950">
+                      {storeSettings?.payments?.upiName || storeSettings?.payments?.merchantName || storeSettings?.storeName || 'Salbeau Store'}
+                    </Text>
+                  </View>
                 </View>
-                <Text className="text-[11px] font-bold text-stone-600">
-                  Pay to: <Text className="font-mono text-purple-800 font-black">{storeSettings?.payments?.upiId || 'salbeau.store@okaxis'}</Text>
+                <Text className="text-[10px] text-stone-500 text-center">
+                  Open your UPI app (GPay, PhonePe, Paytm, BHIM) and transfer to this Store UPI ID.
                 </Text>
-                <Text className="text-[10px] text-stone-500 mt-0.5">Show receipt to delivery partner upon arrival</Text>
               </View>
             </View>
 

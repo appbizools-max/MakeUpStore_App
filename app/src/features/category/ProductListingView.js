@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -55,6 +55,11 @@ export const ProductListingView = ({
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedPriceRange, setSelectedPriceRange] = useState('all');
   const [selectedDiscount, setSelectedDiscount] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(24);
+
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [category, subcategory, leafCategory, searchQuery, selectedBrand, selectedBrands, selectedPriceRange, selectedDiscount, selectedSort]);
 
   // Cart quantity map (Purplle-style keyed by cartKey)
   const cartQuantityMap = useMemo(() => {
@@ -334,6 +339,7 @@ export const ProductListingView = ({
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        removeClippedSubviews={Platform.OS === 'android'}
         contentContainerStyle={{
           paddingHorizontal: 14,
           paddingTop: 12,
@@ -370,19 +376,22 @@ export const ProductListingView = ({
           </View>
         ) : (
           <View className="flex-row flex-wrap justify-between gap-y-3">
-            {filteredProducts.map((product) => (
+            {filteredProducts.slice(0, visibleCount).map((product) => (
               <PurplleProductCard
                 key={product.id}
                 product={product}
                 cardWidth={CARD_WIDTH}
                 userRole={userRole}
                 getRolePrice={getRolePrice}
+                cart={cart}
                 cartQuantityMap={cartQuantityMap}
                 addToCart={addToCart}
                 updateCartQuantity={updateCartQuantity}
                 removeFromCart={removeFromCart}
                 isFavorite={isFavorite}
                 toggleFavorite={toggleFavorite}
+                rememberSelectedShade={rememberSelectedShade}
+                setSelectedShade={setSelectedShade}
                 onPressProduct={(prod, shade) => {
                   if (setSelectedShade && shade) setSelectedShade(shade);
                   if (rememberSelectedShade && (prod?.id || prod?.parentProductId)) {
@@ -392,6 +401,32 @@ export const ProductListingView = ({
                 }}
               />
             ))}
+          </View>
+        )}
+
+        {filteredProducts.length > visibleCount && (
+          <View className="mt-5 mb-2 items-center">
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setVisibleCount(prev => prev + 24)}
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderColor: '#D81B60',
+                borderWidth: 1.5,
+                borderRadius: 9999,
+                paddingVertical: 10,
+                paddingHorizontal: 24,
+                shadowColor: '#D81B60',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <Text style={{ color: '#D81B60', fontWeight: '800', fontSize: 12 }}>
+                Load More Products ({Math.min(visibleCount, filteredProducts.length)} of {filteredProducts.length})
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>

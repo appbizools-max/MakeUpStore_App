@@ -86,16 +86,32 @@ export const SearchScreen = () => {
     toggleFavorite,
     openShadeSheet,
     globalSearchQuery,
-    setGlobalSearchQuery
+    setGlobalSearchQuery,
+    selectedBrand,
+    setSelectedBrand
   } = useApp();
 
   const [query, setQuery] = useState(globalSearchQuery || '');
+  const [debouncedQuery, setDebouncedQuery] = useState(globalSearchQuery || '');
+
+  // 150ms debounce prevents keystroke lag and JS thread choking while typing fast
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [query]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
   const [selectedBrands, setSelectedBrands] = useState([]); // Multi-select brands
   const [selectedPriceRange, setSelectedPriceRange] = useState('all'); // 'all' | 'u500' | '500_1000' | '1000_2000' | 'a2000'
   const [selectedDiscount, setSelectedDiscount] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(24);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [debouncedQuery, selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, selectedDiscount]);
 
   const [brandFilterSearch, setBrandFilterSearch] = useState('');
   const [isRecentExpanded, setIsRecentExpanded] = useState(false);
@@ -173,6 +189,23 @@ export const SearchScreen = () => {
       if (setGlobalSearchQuery) setGlobalSearchQuery('');
     }
   }, [globalSearchQuery, addRecentSearch, setGlobalSearchQuery]);
+
+  // Pre-filter when navigating from Shop by Brand with a specific brand
+  useEffect(() => {
+    if (selectedBrand) {
+      const bName = typeof selectedBrand === 'string'
+        ? selectedBrand
+        : (selectedBrand.name || selectedBrand.brand || '');
+      if (bName) {
+        setSelectedBrands([bName]);
+        setQuery('');
+        setSelectedCategory('All');
+        setSelectedSubcategory('All');
+        addRecentSearch(bName);
+      }
+      if (setSelectedBrand) setSelectedBrand(null);
+    }
+  }, [selectedBrand, setSelectedBrand, addRecentSearch]);
 
   const cartQuantityMap = useMemo(() => {
     return getCartQuantityMap(cart);
@@ -297,9 +330,9 @@ export const SearchScreen = () => {
     };
   }, [query, displayBrands, categories, subcategories, activeProducts]);
 
-  // Primary Filtered Results
+  // Primary Filtered Results (Debounced for silky smooth 60fps typing)
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
 
     return (activeProducts || []).filter(p => {
       // Query search
@@ -331,10 +364,16 @@ export const SearchScreen = () => {
         if (!pSub.includes(sSub) && !sSub.includes(pSub)) return false;
       }
 
-      // Brand filter (Multi-select)
+      // Brand filter (Multi-select) with Accent & Case Insensitive Matching
       if (selectedBrands.length > 0) {
         const pBrand = (p.brandName || p.brand || '').toLowerCase().trim();
-        const isMatch = selectedBrands.some(b => b.toLowerCase().trim() === pBrand);
+        const isMatch = selectedBrands.some(b => {
+          const target = (b || '').toLowerCase().trim();
+          if (pBrand === target) return true;
+          const cleanP = pBrand.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+          const cleanT = target.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+          return cleanP === cleanT || cleanP.includes(cleanT) || cleanT.includes(cleanP);
+        });
         if (!isMatch) return false;
       }
 
@@ -357,7 +396,7 @@ export const SearchScreen = () => {
 
       return true;
     });
-  }, [activeProducts, query, selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, selectedDiscount, userRole, getRolePrice]);
+  }, [activeProducts, debouncedQuery, selectedCategory, selectedSubcategory, selectedBrands, selectedPriceRange, selectedDiscount, userRole, getRolePrice]);
 
   // Customer Search Analytics Tracking
   useEffect(() => {
@@ -927,6 +966,7 @@ export const SearchScreen = () => {
       {/* ── SCROLLABLE SCREEN BODY ───────────────────────────────────── */}
       <ScrollView
         keyboardShouldPersistTaps="handled"
+        removeClippedSubviews={Platform.OS === 'android'}
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 14,
@@ -1245,14 +1285,16 @@ export const SearchScreen = () => {
                 </View>
               )
             ) : (
-              <View className="flex-row flex-wrap justify-between gap-y-3">
-                {results.map((p) => (
+              <>
+                <View className="flex-row flex-wrap justify-between gap-y-3">
+                {results.slice(0, visibleCount).map((p) => (
                   <PurplleProductCard
                     key={p.id}
                     product={p}
                     cardWidth="48.5%"
                     userRole={userRole}
                     getRolePrice={getRolePrice}
+                    cart={cart}
                     cartQuantityMap={cartQuantityMap}
                     addToCart={addToCart}
                     updateCartQuantity={updateCartQuantity}
@@ -1260,6 +1302,8 @@ export const SearchScreen = () => {
                     isFavorite={isFavorite}
                     toggleFavorite={toggleFavorite}
                     onOpenShadeSheet={openShadeSheet}
+                    rememberSelectedShade={rememberSelectedShade}
+                    setSelectedShade={setSelectedShade}
                     onPressProduct={(prod, shade) => {
                       setSelectedProduct(prod);
                       if (setSelectedShade && shade) setSelectedShade(shade);
@@ -1271,9 +1315,36 @@ export const SearchScreen = () => {
                   />
                 ))}
               </View>
-            )}
-          </View>
-        )}
+
+              {results.length > visibleCount && (
+                <View className="mt-6 mb-2 items-center">
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setVisibleCount(prev => prev + 24)}
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderColor: '#D81B60',
+                      borderWidth: 1.5,
+                      borderRadius: 9999,
+                      paddingVertical: 10,
+                      paddingHorizontal: 24,
+                      shadowColor: '#D81B60',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.08,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    }}
+                  >
+                    <Text style={{ color: '#D81B60', fontWeight: '800', fontSize: 12 }}>
+                      Load More Products ({Math.min(visibleCount, results.length)} of {results.length})
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      )}
       </ScrollView>
 
       {/* ── 8. PREMIUM FILTER BOTTOM SHEET ───────────────────────────── */}

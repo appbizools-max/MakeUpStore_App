@@ -248,7 +248,7 @@ const mapOrderFromDb = (o) => {
     } else if (Array.isArray(o.shipments) && o.shipments.length > 0 && typeof o.shipments[0] === 'object') {
       shipmentsMeta = o.shipments[0];
     } else if (typeof o.shipments === 'string') {
-      try { shipmentsMeta = JSON.parse(o.shipments); } catch {}
+      try { shipmentsMeta = JSON.parse(o.shipments); } catch { }
     }
   }
 
@@ -256,7 +256,7 @@ const mapOrderFromDb = (o) => {
   const shipPayStatus = String(shipmentsMeta.paymentStatus || '').toLowerCase().trim();
   const rawPayStatus = (o.payment_status || shipPayStatus || o.internal_status || '').toLowerCase().trim();
   const rawVerifStatus = String(o.verification_status || shipmentsMeta.verificationStatus || '').toUpperCase().trim();
-  const isPaid = ['paid', 'completed'].includes(rawPayStatus) || ['paid', 'completed'].includes(shipPayStatus) || rawVerifStatus === 'VERIFIED';
+  const isPaid = ['paid', 'completed', 'collected', 'cash_collected'].includes(rawPayStatus) || ['paid', 'completed', 'collected', 'cash_collected'].includes(shipPayStatus) || rawVerifStatus === 'VERIFIED';
   const paymentStatus = isPaid ? 'paid' : (rawPayStatus === 'partially_paid' ? 'partially_paid' : 'pending');
   const paymentMethod = (o.payment_method || shipmentsMeta.paymentMethod || 'cash').toLowerCase().trim();
 
@@ -322,14 +322,14 @@ const getCachedData = (key, fallback) => {
       const parsed = JSON.parse(memorySaved);
       if (parsed !== undefined && parsed !== null) return parsed;
     }
-  } catch (e) {}
+  } catch (e) { }
   return fallback;
 };
 
 const setCachedData = (key, val) => {
   try {
     storage.setItem(key, JSON.stringify(val));
-  } catch (e) {}
+  } catch (e) { }
 };
 
 export const EMPTY_USER_PROFILE = {
@@ -373,7 +373,7 @@ const getInitialAuthSession = () => {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { }
   return null;
 };
 
@@ -442,8 +442,8 @@ export const DEFAULT_STORE_SETTINGS = {
     storeName: 'Salbeau',
     tagline: 'Luxury Beauty & Salon Cosmetics Store',
     contactEmail: 'contact@salbeau.com',
-    supportPhone: '+91 98765 43210',
-    hqAddress: 'Salbeau Headquarters, VIP Road, Visakhapatnam, AP - 530003',
+    supportPhone: '',
+    hqAddress: 'The Makeup Store, Vishakapatnam',
     currencySymbol: '₹'
   },
   delivery: {
@@ -464,7 +464,9 @@ export const DEFAULT_STORE_SETTINGS = {
   payments: {
     allowCod: true,
     allowUpi: true,
-    upiId: 'salbeau.store@okaxis',
+    upiId: '',
+    upiName: 'Salbeau MakeUpStore',
+    upiQrCodeUrl: '',
     maxCodLimit: 5000,
   },
   operations: {
@@ -530,14 +532,36 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   const setCurrentScreen = useCallback((newScr) => {
+    if (!newScr) return;
+
     _setCurrentScreen(prev => {
       if (prev !== newScr && prev !== 'splash') {
         setPreviousScreen(prev);
       }
       return newScr;
     });
+
     setNavigationHistory(prev => {
       if (prev[prev.length - 1] === newScr) return prev;
+
+      // 1. Reset root to 'home' when Home tab is selected
+      if (newScr === 'home') {
+        return ['home'];
+      }
+
+      // 2. Primary root tabs: keep Home as base so back returns to Home
+      const rootTabs = ['category', 'search', 'orders', 'profile', 'wishlist'];
+      if (rootTabs.includes(newScr)) {
+        return ['home', newScr];
+      }
+
+      // 3. Prevent circular stacks: if navigating to a screen already in stack, trim back to it
+      const existingIdx = prev.lastIndexOf(newScr);
+      if (existingIdx !== -1) {
+        return prev.slice(0, existingIdx + 1);
+      }
+
+      // 4. Detail / Child screens (product, cart, checkout, order_details, etc.) push onto stack
       return [...prev, newScr];
     });
   }, []);
@@ -563,9 +587,43 @@ export const AppProvider = ({ children }) => {
           };
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return DEFAULT_STORE_SETTINGS;
   });
+
+  const fetchStoreSettings = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('brands')
+        .select('id, logo, updated_at')
+        .eq('id', 'salbeau_store_settings')
+        .maybeSingle();
+
+      if (data?.logo) {
+        try {
+          const parsed = JSON.parse(data.logo);
+          if (parsed && typeof parsed === 'object') {
+            setStoreSettings(prev => ({
+              ...prev,
+              ...parsed,
+              identity: { ...prev.identity, ...(parsed.identity || {}) },
+              delivery: { ...prev.delivery, ...(parsed.delivery || {}) },
+              payments: { ...prev.payments, ...(parsed.payments || {}) },
+              operations: { ...prev.operations, ...(parsed.operations || {}) },
+              policies: { ...prev.policies, ...(parsed.policies || {}) },
+            }));
+            try {
+              storage.setItem('salbeau_store_settings_cache', JSON.stringify(parsed));
+            } catch (_) { }
+            return parsed;
+          }
+        } catch (_) { }
+      }
+    } catch (e) {
+      console.warn('Error fetching store settings:', e);
+    }
+    return null;
+  }, []);
 
   const getDeliveryFee = useCallback((amount = 0, distanceKm = 5) => {
     return calculateDeliveryCharge({
@@ -587,7 +645,7 @@ export const AppProvider = ({ children }) => {
                 ...data.settings
               }));
             }
-          } catch (_) {}
+          } catch (_) { }
         }
       };
       window.addEventListener('storage', handleStorageSync);
@@ -595,7 +653,7 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
-    const [userRole, setUserRole] = useState(() => {
+  const [userRole, setUserRole] = useState(() => {
     return initialSession?.role || initialSession?.profile?.role || 'general';
   });
   const [selectedBranch, setSelectedBranch] = useState('');
@@ -609,7 +667,7 @@ export const AppProvider = ({ children }) => {
           if (clean.length > 0) return clean;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return DEFAULT_HOME_BANNERS;
   });
 
@@ -623,7 +681,7 @@ export const AppProvider = ({ children }) => {
           if (clean.length > 0) return clean;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return [];
   });
 
@@ -720,7 +778,7 @@ export const AppProvider = ({ children }) => {
                 setProducts(prev => (prev.length === 0 ? parsedProds : prev));
                 setIsCatalogLoading(false);
               }
-            } catch (_) {}
+            } catch (_) { }
           }
           if (savedCats) {
             try {
@@ -728,7 +786,7 @@ export const AppProvider = ({ children }) => {
               if (Array.isArray(parsedCats) && parsedCats.length > 0) {
                 setRawCategories(parsedCats);
               }
-            } catch (_) {}
+            } catch (_) { }
           }
           if (savedBrands) {
             try {
@@ -736,7 +794,7 @@ export const AppProvider = ({ children }) => {
               if (Array.isArray(parsedBrands) && parsedBrands.length > 0) {
                 setBrands(prev => (prev.length === 0 ? parsedBrands : prev));
               }
-            } catch (_) {}
+            } catch (_) { }
           }
           if (savedSubs) {
             try {
@@ -744,7 +802,7 @@ export const AppProvider = ({ children }) => {
               if (Array.isArray(parsedSubs) && parsedSubs.length > 0) {
                 setSubcategories(prev => (prev.length === 0 ? parsedSubs : prev));
               }
-            } catch (_) {}
+            } catch (_) { }
           }
 
           let restored = false;
@@ -759,7 +817,7 @@ export const AppProvider = ({ children }) => {
                 _setCurrentScreen('home');
                 restored = true;
               }
-            } catch (_) {}
+            } catch (_) { }
           }
 
           if (!restored && savedProfile) {
@@ -771,7 +829,7 @@ export const AppProvider = ({ children }) => {
                 _setCurrentScreen('home');
                 restored = true;
               }
-            } catch (_) {}
+            } catch (_) { }
           }
 
           if (!restored) {
@@ -909,7 +967,7 @@ export const AppProvider = ({ children }) => {
 
   // Persist cart to storage � survives app restarts and background kills
   useEffect(() => {
-    try { setCachedData('salbeau_cache_cart', cart); } catch (_) {}
+    try { setCachedData('salbeau_cache_cart', cart); } catch (_) { }
   }, [cart]);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -924,7 +982,7 @@ export const AppProvider = ({ children }) => {
     try {
       const saved = getCachedData('salbeau_cache_cart', null);
       if (Array.isArray(saved) && saved.length > 0) return saved;
-    } catch (_) {}
+    } catch (_) { }
     return [];
   });
   const [favorites, setFavorites] = useState([]);
@@ -985,34 +1043,8 @@ export const AppProvider = ({ children }) => {
 
     const fetchPromise = (async () => {
       try {
-                // Fetch Store Settings from brands table
-        supabase
-          .from('brands')
-          .select('id, logo')
-          .eq('id', 'salbeau_store_settings')
-          .maybeSingle()
-          .then(({ data }) => {
-            if (data?.logo) {
-              try {
-                const parsed = JSON.parse(data.logo);
-                if (parsed && typeof parsed === 'object') {
-                  setStoreSettings(prev => ({
-                    ...prev,
-                    ...parsed,
-                    identity: { ...prev.identity, ...(parsed.identity || {}) },
-                    delivery: { ...prev.delivery, ...(parsed.delivery || {}) },
-                    payments: { ...prev.payments, ...(parsed.payments || {}) },
-                    operations: { ...prev.operations, ...(parsed.operations || {}) },
-                    policies: { ...prev.policies, ...(parsed.policies || {}) },
-                  }));
-                  try {
-                    storage.setItem('salbeau_store_settings_cache', JSON.stringify(parsed));
-                  } catch (_) {}
-                }
-              } catch (_) {}
-            }
-          })
-          .catch(() => {});
+        // Fetch Store Settings from brands table (low-latency sync)
+        fetchStoreSettings();
 
         // Ultra-low latency banner sync: updates banners in milliseconds without waiting for products or orders
         supabase
@@ -1028,10 +1060,10 @@ export const AppProvider = ({ children }) => {
                   setHomeBanners(parsed);
                   setCachedData('salbeau_home_banners', parsed);
                 }
-              } catch (_) {}
+              } catch (_) { }
             }
           })
-          .catch(() => {});
+          .catch(() => { });
 
         // Check cached sales counts with a 15-minute TTL to prevent high-frequency orders table thrashing under 10,000 CCU
         let cachedSales = null;
@@ -1043,19 +1075,26 @@ export const AppProvider = ({ children }) => {
               cachedSales = parsed.data;
             }
           }
-        } catch (_) {}
+        } catch (_) { }
 
         const fetchOrdersPromise = cachedSales
           ? Promise.resolve({ data: null, isCached: true })
           : supabase.from('orders').select('id, items, status').order('date', { ascending: false }).limit(200);
 
-        const [brandsRes, brandConfigsRes, productsRes, categoriesRes, subcategoriesRes, storeOrdersRes] = await Promise.all([
-          supabase.from('brands').select('id, name, enabled, logo, created_at, category, sort_order, updated_at').not('id', 'like', 'app_%').not('id', 'like', 'salbeau_%'),
-          supabase.from('brands').select('id, logo, name').or('id.like.app_%,id.like.salbeau_%'),
-          supabase.from('products').select('*').order('created_at', { ascending: false }),
-          supabase.from('categories').select('*').order('sort_order', { ascending: true }),
-          supabase.from('subcategories').select('*').order('sort_order', { ascending: true }),
-          fetchOrdersPromise
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Catalog fetch timeout')), 10000)
+        );
+
+        const [brandsRes, brandConfigsRes, productsRes, categoriesRes, subcategoriesRes, storeOrdersRes] = await Promise.race([
+          Promise.all([
+            supabase.from('brands').select('id, name, enabled, logo, created_at, category, sort_order, updated_at').not('id', 'like', 'app_%').not('id', 'like', 'salbeau_%'),
+            supabase.from('brands').select('id, logo, name').or('id.like.app_%,id.like.salbeau_%'),
+            supabase.from('products').select('*').order('created_at', { ascending: false }),
+            supabase.from('categories').select('*').order('sort_order', { ascending: true }),
+            supabase.from('subcategories').select('*').order('sort_order', { ascending: true }),
+            fetchOrdersPromise
+          ]),
+          timeoutPromise
         ]);
 
         if (cachedSales) {
@@ -1076,210 +1115,210 @@ export const AppProvider = ({ children }) => {
           setProductSalesCounts(salesMap);
           try {
             storage.setItem('salbeau_sales_counts_cache', JSON.stringify({ ts: Date.now(), data: salesMap }));
-          } catch (_) {}
+          } catch (_) { }
         }
 
-      let hierarchyCategories = [];
-      let parsedHier = null;
+        let hierarchyCategories = [];
+        let parsedHier = null;
 
-      const configsData = Array.isArray(brandConfigsRes?.data) ? brandConfigsRes.data : [];
+        const configsData = Array.isArray(brandConfigsRes?.data) ? brandConfigsRes.data : [];
 
-      if (configsData.length > 0) {
-        // Pricing Rules (global role discounts & quantity tiers)
-        const pricingRow = configsData.find(b => b.id === 'app_pricing_discount_config');
-        if (pricingRow && pricingRow.logo) {
-          try {
-            const parsedPricing = JSON.parse(pricingRow.logo);
-            if (parsedPricing && typeof parsedPricing === 'object') {
-              setPricingRules(parsedPricing);
-              setCachedData('salbeau_pricing_rules', parsedPricing);
-            }
-          } catch (e) {}
-        }
-
-        const visibilityRow = configsData.find(b => b.id === 'app_home_section_visibility');
-        if (visibilityRow && visibilityRow.logo) {
-          try {
-            const parsedVisibility = JSON.parse(visibilityRow.logo);
-            if (parsedVisibility && typeof parsedVisibility === 'object') {
-              setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
-              setCachedData('salbeau_home_section_visibility', parsedVisibility);
-            }
-          } catch (e) { }
-        }
-
-        const recRow = configsData.find(b => b.id === 'app_recommendation_config');
-        if (recRow && recRow.logo) {
-          try {
-            const parsedRec = JSON.parse(recRow.logo);
-            if (parsedRec && typeof parsedRec === 'object') {
-              setRecommendationConfig(prev => ({ ...prev, ...parsedRec }));
-              setCachedData('salbeau_recommendation_config', parsedRec);
-            }
-          } catch (e) { }
-        }
-
-        const centralRow = configsData.find(b => b.id === 'app_central_banners_master');
-        if (centralRow && centralRow.logo) {
-          try {
-            const parsedCentral = JSON.parse(centralRow.logo);
-            if (Array.isArray(parsedCentral)) {
-              setAllBanners(parsedCentral);
-              setCachedData('salbeau_central_banners', parsedCentral);
-              const homeFromCentral = parsedCentral.filter(b => b.bannerType === 'home' || !b.bannerType);
-              if (homeFromCentral.length > 0) {
-                setHomeBanners(homeFromCentral);
-                setCachedData('salbeau_home_banners', homeFromCentral);
+        if (configsData.length > 0) {
+          // Pricing Rules (global role discounts & quantity tiers)
+          const pricingRow = configsData.find(b => b.id === 'app_pricing_discount_config');
+          if (pricingRow && pricingRow.logo) {
+            try {
+              const parsedPricing = JSON.parse(pricingRow.logo);
+              if (parsedPricing && typeof parsedPricing === 'object') {
+                setPricingRules(parsedPricing);
+                setCachedData('salbeau_pricing_rules', parsedPricing);
               }
-            }
-          } catch (e) { }
+            } catch (e) { }
+          }
+
+          const visibilityRow = configsData.find(b => b.id === 'app_home_section_visibility');
+          if (visibilityRow && visibilityRow.logo) {
+            try {
+              const parsedVisibility = JSON.parse(visibilityRow.logo);
+              if (parsedVisibility && typeof parsedVisibility === 'object') {
+                setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
+                setCachedData('salbeau_home_section_visibility', parsedVisibility);
+              }
+            } catch (e) { }
+          }
+
+          const recRow = configsData.find(b => b.id === 'app_recommendation_config');
+          if (recRow && recRow.logo) {
+            try {
+              const parsedRec = JSON.parse(recRow.logo);
+              if (parsedRec && typeof parsedRec === 'object') {
+                setRecommendationConfig(prev => ({ ...prev, ...parsedRec }));
+                setCachedData('salbeau_recommendation_config', parsedRec);
+              }
+            } catch (e) { }
+          }
+
+          const centralRow = configsData.find(b => b.id === 'app_central_banners_master');
+          if (centralRow && centralRow.logo) {
+            try {
+              const parsedCentral = JSON.parse(centralRow.logo);
+              if (Array.isArray(parsedCentral)) {
+                setAllBanners(parsedCentral);
+                setCachedData('salbeau_central_banners', parsedCentral);
+                const homeFromCentral = parsedCentral.filter(b => b.bannerType === 'home' || !b.bannerType);
+                if (homeFromCentral.length > 0) {
+                  setHomeBanners(homeFromCentral);
+                  setCachedData('salbeau_home_banners', homeFromCentral);
+                }
+              }
+            } catch (e) { }
+          }
+
+          const bannersRow = configsData.find(b => b.id === 'app_home_banners');
+          if (bannersRow && bannersRow.logo) {
+            try {
+              const parsedBanners = JSON.parse(bannersRow.logo);
+              if (Array.isArray(parsedBanners)) {
+                setHomeBanners(parsedBanners);
+                setCachedData('salbeau_home_banners', parsedBanners);
+              }
+            } catch (e) { }
+          }
         }
 
-        const bannersRow = configsData.find(b => b.id === 'app_home_banners');
-        if (bannersRow && bannersRow.logo) {
-          try {
-            const parsedBanners = JSON.parse(bannersRow.logo);
-            if (Array.isArray(parsedBanners)) {
-              setHomeBanners(parsedBanners);
-              setCachedData('salbeau_home_banners', parsedBanners);
-            }
-          } catch (e) { }
-        }
-      }
+        if (brandsRes?.data && Array.isArray(brandsRes.data) && brandsRes.data.length > 0) {
+          const rawBrandsList = brandsRes.data;
+          const mappedBrands = rawBrandsList
+            .filter(b => {
+              const idStr = String(b.id || '');
+              return !idStr.startsWith('app_') && !idStr.startsWith('salbeau_') && b.category !== 'SystemConfig' && b.category !== 'System Config';
+            })
+            .map(b => ({
+              id: b.id,
+              name: b.name,
+              category: b.category || '',
+              categories: b.category ? [b.category] : [],
+              enabled: b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0 && b.status !== 'hidden' && b.status !== 'disabled',
+              logo: b.logo,
+              sort_order: Number(b.sort_order ?? b.sortOrder ?? 99999)
+            }))
+            .sort((a, b) => ((Number(a.sort_order) || 99999) - (Number(b.sort_order) || 99999)) || (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
 
-      if (brandsRes?.data && Array.isArray(brandsRes.data) && brandsRes.data.length > 0) {
-        const rawBrandsList = brandsRes.data;
-        const mappedBrands = rawBrandsList
-          .filter(b => {
-            const idStr = String(b.id || '');
-            return !idStr.startsWith('app_') && !idStr.startsWith('salbeau_') && b.category !== 'SystemConfig' && b.category !== 'System Config';
-          })
-          .map(b => ({
-            id: b.id,
-            name: b.name,
-            category: b.category || '',
-            categories: b.category ? [b.category] : [],
-            enabled: b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0 && b.status !== 'hidden' && b.status !== 'disabled',
-            logo: b.logo,
-            sort_order: Number(b.sort_order ?? b.sortOrder ?? 99999)
-          }))
-          .sort((a, b) => ((Number(a.sort_order) || 99999) - (Number(b.sort_order) || 99999)) || (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
-
-        setBrands(mappedBrands);
-        setCachedData('salbeau_cache_brands', mappedBrands);
-      }
-
-      if (configsData.length > 0) {
-        // Live Category & Subcategory Master Hierarchy Sync
-        const hierRow = configsData.find(b => b.id === 'salbeau_category_subcategory_hierarchy');
-        if (hierRow && hierRow.logo) {
-          try {
-            parsedHier = JSON.parse(hierRow.logo);
-            if (parsedHier) {
-              setLiveCategoryHierarchy(parsedHier);
-              if (Array.isArray(parsedHier.categories)) {
-                hierarchyCategories = parsedHier.categories.map(mapCategoryFromDb);
-              }
-              if (Array.isArray(parsedHier.subcategories)) {
-                setSubcategories(parsedHier.subcategories);
-                setCachedData('salbeau_cache_subcategories', parsedHier.subcategories);
-              }
-              if (Array.isArray(parsedHier.leafCategories)) {
-                setLeafCategories(parsedHier.leafCategories);
-                setCachedData('salbeau_cache_leaf_categories', parsedHier.leafCategories);
-              }
-            }
-          } catch (e) {}
+          setBrands(mappedBrands);
+          setCachedData('salbeau_cache_brands', mappedBrands);
         }
 
-        // Merge subcategories from subcategories table if present
-        if (subcategoriesRes && subcategoriesRes.data && subcategoriesRes.data.length > 0) {
-          const dbSubs = subcategoriesRes.data.map(s => ({
-            id: s.id,
-            categoryId: s.category_id || s.categoryId,
-            name: s.name,
-            image: s.image,
-            tagline: s.tagline || '',
-            sort_order: Number(s.sort_order || 1),
-            enabled: s.enabled !== false && s.enabled !== 'false' && s.enabled !== 0,
-            leafCategories: []
-          }));
+        if (configsData.length > 0) {
+          // Live Category & Subcategory Master Hierarchy Sync
+          const hierRow = configsData.find(b => b.id === 'salbeau_category_subcategory_hierarchy');
+          if (hierRow && hierRow.logo) {
+            try {
+              parsedHier = JSON.parse(hierRow.logo);
+              if (parsedHier) {
+                setLiveCategoryHierarchy(parsedHier);
+                if (Array.isArray(parsedHier.categories)) {
+                  hierarchyCategories = parsedHier.categories.map(mapCategoryFromDb);
+                }
+                if (Array.isArray(parsedHier.subcategories)) {
+                  setSubcategories(parsedHier.subcategories);
+                  setCachedData('salbeau_cache_subcategories', parsedHier.subcategories);
+                }
+                if (Array.isArray(parsedHier.leafCategories)) {
+                  setLeafCategories(parsedHier.leafCategories);
+                  setCachedData('salbeau_cache_leaf_categories', parsedHier.leafCategories);
+                }
+              }
+            } catch (e) { }
+          }
 
-          const hierSubs = (parsedHier && Array.isArray(parsedHier.subcategories)) ? parsedHier.subcategories : [];
-          const hierLeaves = (parsedHier && Array.isArray(parsedHier.leafCategories)) ? parsedHier.leafCategories : [];
-          const mergedSubs = dbSubs.map(ds => {
-            const hSub = hierSubs.find(hs => hs.id === ds.id || (hs.name && ds.name && hs.name.toLowerCase() === ds.name.toLowerCase()));
-            let leaves = (hSub && Array.isArray(hSub.leafCategories) && hSub.leafCategories.length > 0) ? hSub.leafCategories : [];
-            if (leaves.length === 0 && hierLeaves.length > 0) {
-              const dsId = (ds.id || '').toLowerCase();
-              const dsName = (ds.name || '').toLowerCase();
-              leaves = hierLeaves.filter(l => {
-                const lSubId = (l.subcategoryId || l.subcategory_id || '').toLowerCase();
-                const lSubName = (l.subcategoryName || l.subcategory_name || '').toLowerCase();
-                return (dsId && lSubId === dsId) || (dsName && (lSubName === dsName || lSubId === dsName));
-              });
-            }
+          // Merge subcategories from subcategories table if present
+          if (subcategoriesRes && subcategoriesRes.data && subcategoriesRes.data.length > 0) {
+            const dbSubs = subcategoriesRes.data.map(s => ({
+              id: s.id,
+              categoryId: s.category_id || s.categoryId,
+              name: s.name,
+              image: s.image,
+              tagline: s.tagline || '',
+              sort_order: Number(s.sort_order || 1),
+              enabled: s.enabled !== false && s.enabled !== 'false' && s.enabled !== 0,
+              leafCategories: []
+            }));
+
+            const hierSubs = (parsedHier && Array.isArray(parsedHier.subcategories)) ? parsedHier.subcategories : [];
+            const hierLeaves = (parsedHier && Array.isArray(parsedHier.leafCategories)) ? parsedHier.leafCategories : [];
+            const mergedSubs = dbSubs.map(ds => {
+              const hSub = hierSubs.find(hs => hs.id === ds.id || (hs.name && ds.name && hs.name.toLowerCase() === ds.name.toLowerCase()));
+              let leaves = (hSub && Array.isArray(hSub.leafCategories) && hSub.leafCategories.length > 0) ? hSub.leafCategories : [];
+              if (leaves.length === 0 && hierLeaves.length > 0) {
+                const dsId = (ds.id || '').toLowerCase();
+                const dsName = (ds.name || '').toLowerCase();
+                leaves = hierLeaves.filter(l => {
+                  const lSubId = (l.subcategoryId || l.subcategory_id || '').toLowerCase();
+                  const lSubName = (l.subcategoryName || l.subcategory_name || '').toLowerCase();
+                  return (dsId && lSubId === dsId) || (dsName && (lSubName === dsName || lSubId === dsName));
+                });
+              }
+              return {
+                ...ds,
+                image: ds.image || hSub?.image || '',
+                leafCategories: leaves
+              };
+            });
+            mergedSubs.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
+            setSubcategories(mergedSubs);
+            setCachedData('salbeau_cache_subcategories', mergedSubs);
+          }
+
+          const catConfigRow = configsData.find(b => b.id === 'app_category_order_config');
+          if (catConfigRow && catConfigRow.logo && (!categoriesRes.data || categoriesRes.data.length === 0)) {
+            try {
+              const parsedCatList = JSON.parse(catConfigRow.logo);
+              if (Array.isArray(parsedCatList) && parsedCatList.length > 0) {
+                hierarchyCategories = parsedCatList.map(mapCategoryFromDb);
+              }
+            } catch (e) { }
+          }
+        }
+
+        // Merge categories from DB table (Ground Truth) and hierarchy config
+        let dbCats = (categoriesRes && categoriesRes.data && categoriesRes.data.length > 0) ? categoriesRes.data.map(mapCategoryFromDb) : [];
+        let finalCategories = [];
+
+        if (dbCats.length > 0) {
+          // Ground truth: Only active categories present in the database
+          finalCategories = dbCats.map(dc => {
+            const hMatch = hierarchyCategories.find(hc => hc.id === dc.id || (hc.name && dc.name && hc.name.toLowerCase() === dc.name.toLowerCase()));
             return {
-              ...ds,
-              image: ds.image || hSub?.image || '',
-              leafCategories: leaves
+              ...dc,
+              image: dc.image || hMatch?.image || ''
             };
           });
-          mergedSubs.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
-          setSubcategories(mergedSubs);
-          setCachedData('salbeau_cache_subcategories', mergedSubs);
+        } else if (hierarchyCategories.length > 0) {
+          finalCategories = hierarchyCategories;
+        } else {
+          finalCategories = (MAIN_CATEGORIES || []).map(mapCategoryFromDb);
         }
 
-        const catConfigRow = configsData.find(b => b.id === 'app_category_order_config');
-        if (catConfigRow && catConfigRow.logo && (!categoriesRes.data || categoriesRes.data.length === 0)) {
-          try {
-            const parsedCatList = JSON.parse(catConfigRow.logo);
-            if (Array.isArray(parsedCatList) && parsedCatList.length > 0) {
-              hierarchyCategories = parsedCatList.map(mapCategoryFromDb);
-            }
-          } catch (e) {}
+        finalCategories.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
+        setRawCategories(finalCategories);
+        setCachedData('salbeau_cache_categories', finalCategories);
+
+        if (productsRes.data) {
+          const mappedProducts = productsRes.data.map(mapProductFromDb).filter(Boolean);
+          mappedProducts.sort((a, b) => (Number(a.sort_order ?? a.display_order ?? a.priority) || 99999) - (Number(b.sort_order ?? b.display_order ?? b.priority) || 99999));
+          setProducts(mappedProducts);
+          setCachedData('salbeau_cache_products', mappedProducts);
+        } else {
+          setProducts([]);
+          setCachedData('salbeau_cache_products', []);
         }
+        setIsCatalogLoading(false);
+      } catch (err) {
+        console.warn('Supabase catalog fetch error:', err);
+        setIsCatalogLoading(false);
+      } finally {
+        inFlightCatalogFetchRef.current = null;
       }
-
-      // Merge categories from DB table (Ground Truth) and hierarchy config
-      let dbCats = (categoriesRes && categoriesRes.data && categoriesRes.data.length > 0) ? categoriesRes.data.map(mapCategoryFromDb) : [];
-      let finalCategories = [];
-
-      if (dbCats.length > 0) {
-        // Ground truth: Only active categories present in the database
-        finalCategories = dbCats.map(dc => {
-          const hMatch = hierarchyCategories.find(hc => hc.id === dc.id || (hc.name && dc.name && hc.name.toLowerCase() === dc.name.toLowerCase()));
-          return {
-            ...dc,
-            image: dc.image || hMatch?.image || ''
-          };
-        });
-      } else if (hierarchyCategories.length > 0) {
-        finalCategories = hierarchyCategories;
-      } else {
-        finalCategories = (MAIN_CATEGORIES || []).map(mapCategoryFromDb);
-      }
-
-      finalCategories.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
-      setRawCategories(finalCategories);
-      setCachedData('salbeau_cache_categories', finalCategories);
-
-      if (productsRes.data) {
-        const mappedProducts = productsRes.data.map(mapProductFromDb).filter(Boolean);
-        mappedProducts.sort((a, b) => (Number(a.sort_order ?? a.display_order ?? a.priority) || 99999) - (Number(b.sort_order ?? b.display_order ?? b.priority) || 99999));
-        setProducts(mappedProducts);
-        setCachedData('salbeau_cache_products', mappedProducts);
-      } else {
-        setProducts([]);
-        setCachedData('salbeau_cache_products', []);
-      }
-      setIsCatalogLoading(false);
-    } catch (err) {
-      console.warn('Supabase catalog fetch error:', err);
-      setIsCatalogLoading(false);
-    } finally {
-      inFlightCatalogFetchRef.current = null;
-    }
     })();
 
     inFlightCatalogFetchRef.current = fetchPromise;
@@ -1337,7 +1376,7 @@ export const AppProvider = ({ children }) => {
                   orderId: String(updatedOrder.id),
                   status: String(updatedOrder.status),
                   screen: 'order_details'
-                }).catch(() => {});
+                }).catch(() => { });
               }
               copy[idx] = updatedOrder;
               setCachedData('salbeau_cache_orders', copy);
@@ -1429,7 +1468,7 @@ export const AppProvider = ({ children }) => {
                 screen: String(notif.data?.screen || (notif.data?.orderId ? 'order_details' : 'home')),
                 id: String(notif.id || '')
               }
-            ).catch(() => {});
+            ).catch(() => { });
           }
         } else if (payload.eventType === 'UPDATE') {
           setNotifications(prev => prev.map(n => n.id === notif.id ? notif : n));
@@ -1442,24 +1481,30 @@ export const AppProvider = ({ children }) => {
       // 3. BRANDS & APP CONFIGS
       .on('postgres_changes', { event: '*', schema: 'public', table: 'brands' }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-          if (payload.new && payload.new.id === 'salbeau_store_settings' && payload.new.logo) {
-            try {
-              const parsedSettings = JSON.parse(payload.new.logo);
-              if (parsedSettings && typeof parsedSettings === 'object') {
-                setStoreSettings(prev => ({
-                  ...prev,
-                  ...parsedSettings,
-                  identity: { ...prev.identity, ...(parsedSettings.identity || {}) },
-                  delivery: { ...prev.delivery, ...(parsedSettings.delivery || {}) },
-                  payments: { ...prev.payments, ...(parsedSettings.payments || {}) },
-                  operations: { ...prev.operations, ...(parsedSettings.operations || {}) },
-                  policies: { ...prev.policies, ...(parsedSettings.policies || {}) },
-                }));
-                try {
-                  storage.setItem('salbeau_store_settings_cache', JSON.stringify(parsedSettings));
-                } catch (_) {}
+          if (payload.new && payload.new.id === 'salbeau_store_settings') {
+            if (payload.new.logo) {
+              try {
+                const parsedSettings = JSON.parse(payload.new.logo);
+                if (parsedSettings && typeof parsedSettings === 'object') {
+                  setStoreSettings(prev => ({
+                    ...prev,
+                    ...parsedSettings,
+                    identity: { ...prev.identity, ...(parsedSettings.identity || {}) },
+                    delivery: { ...prev.delivery, ...(parsedSettings.delivery || {}) },
+                    payments: { ...prev.payments, ...(parsedSettings.payments || {}) },
+                    operations: { ...prev.operations, ...(parsedSettings.operations || {}) },
+                    policies: { ...prev.policies, ...(parsedSettings.policies || {}) },
+                  }));
+                  try {
+                    storage.setItem('salbeau_store_settings_cache', JSON.stringify(parsedSettings));
+                  } catch (_) { }
+                }
+              } catch (e) {
+                fetchStoreSettings();
               }
-            } catch (e) {}
+            } else {
+              fetchStoreSettings();
+            }
             return;
           }
           if (payload.new && payload.new.id === 'app_pricing_discount_config' && payload.new.logo) {
@@ -1468,7 +1513,7 @@ export const AppProvider = ({ children }) => {
               if (parsedPricing && typeof parsedPricing === 'object') {
                 setPricingRules(parsedPricing);
               }
-            } catch (e) {}
+            } catch (e) { }
             return;
           }
           if (payload.new && payload.new.id === 'app_category_order_config' && payload.new.logo) {
@@ -1477,7 +1522,7 @@ export const AppProvider = ({ children }) => {
               if (Array.isArray(parsedCatList)) {
                 setRawCategories(parsedCatList.map(mapCategoryFromDb));
               }
-            } catch (e) {}
+            } catch (e) { }
             return;
           }
           if (payload.new && payload.new.id === 'salbeau_category_subcategory_hierarchy' && payload.new.logo) {
@@ -1495,7 +1540,7 @@ export const AppProvider = ({ children }) => {
                   setLeafCategories(parsedHier.leafCategories);
                 }
               }
-            } catch (e) {}
+            } catch (e) { }
             return;
           }
           if (payload.new && payload.new.id === 'app_home_section_visibility' && payload.new.logo) {
@@ -1504,7 +1549,7 @@ export const AppProvider = ({ children }) => {
               if (parsedVisibility && typeof parsedVisibility === 'object') {
                 setHomeSectionVisibility(prev => ({ ...prev, ...parsedVisibility }));
               }
-            } catch (e) {}
+            } catch (e) { }
             return;
           }
           if (payload.new && payload.new.id === 'app_recommendation_config' && payload.new.logo) {
@@ -1513,7 +1558,7 @@ export const AppProvider = ({ children }) => {
               if (parsedRec && typeof parsedRec === 'object') {
                 setRecommendationConfig(prev => ({ ...prev, ...parsedRec }));
               }
-            } catch (e) {}
+            } catch (e) { }
             return;
           }
           if (payload.new && payload.new.id === 'app_central_banners_master' && payload.new.logo) {
@@ -1521,12 +1566,12 @@ export const AppProvider = ({ children }) => {
               const parsedCentral = JSON.parse(payload.new.logo);
               if (Array.isArray(parsedCentral)) {
                 setAllBanners(parsedCentral);
-                storage.setItem('salbeau_central_banners', JSON.stringify(parsedCentral)).catch(() => {});
+                storage.setItem('salbeau_central_banners', JSON.stringify(parsedCentral)).catch(() => { });
                 const homeFromCentral = parsedCentral.filter(b => b.bannerType === 'home' || !b.bannerType);
                 setHomeBanners(homeFromCentral);
-                storage.setItem('salbeau_home_banners', JSON.stringify(homeFromCentral)).catch(() => {});
+                storage.setItem('salbeau_home_banners', JSON.stringify(homeFromCentral)).catch(() => { });
               }
-            } catch (e) {}
+            } catch (e) { }
             return;
           }
 
@@ -1535,9 +1580,9 @@ export const AppProvider = ({ children }) => {
               const parsedBanners = JSON.parse(payload.new.logo);
               if (Array.isArray(parsedBanners)) {
                 setHomeBanners(parsedBanners);
-                storage.setItem('salbeau_home_banners', JSON.stringify(parsedBanners)).catch(() => {});
+                storage.setItem('salbeau_home_banners', JSON.stringify(parsedBanners)).catch(() => { });
               }
-            } catch (e) {}
+            } catch (e) { }
             return;
           }
 
@@ -1574,7 +1619,7 @@ export const AppProvider = ({ children }) => {
               updatedList = [...prev, updatedBrand];
             }
             const sorted = updatedList.sort((a, b) => ((Number(a.sort_order) || 99999) - (Number(b.sort_order) || 99999)) || (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true }));
-            storage.setItem('salbeau_cache_brands', JSON.stringify(sorted)).catch(() => {});
+            storage.setItem('salbeau_cache_brands', JSON.stringify(sorted)).catch(() => { });
             return sorted;
           });
         } else if (payload.eventType === 'DELETE') {
@@ -1582,7 +1627,7 @@ export const AppProvider = ({ children }) => {
           if (deletedId) {
             setBrands(prev => {
               const remaining = prev.filter(b => b.id !== deletedId);
-              storage.setItem('salbeau_cache_brands', JSON.stringify(remaining)).catch(() => {});
+              storage.setItem('salbeau_cache_brands', JSON.stringify(remaining)).catch(() => { });
               return remaining;
             });
             setSelectedBrand(prev => (prev && prev.id === deletedId ? null : prev));
@@ -1811,7 +1856,7 @@ export const AppProvider = ({ children }) => {
       }
       try {
         supabase.removeChannel(channel);
-      } catch (_) {}
+      } catch (_) { }
     };
   }, [fetchCatalog]);
 
@@ -1926,7 +1971,7 @@ export const AppProvider = ({ children }) => {
     }
   }, [userProfile?.phone, userProfile?.id]);
 
-  const dismissOrderStatusNotification = useCallback(() => {}, []);
+  const dismissOrderStatusNotification = useCallback(() => { }, []);
 
   // Handle System Tray Notification Clicks & Deep-Linking (Cold & Warm)
   // Protected: Unauthenticated users are redirected to login and protected order details are hidden
@@ -1941,7 +1986,7 @@ export const AppProvider = ({ children }) => {
       setPendingNotificationDeepLink(data);
       try {
         storage.setItem('salbeau_pending_deep_link', JSON.stringify(data));
-      } catch (_) {}
+      } catch (_) { }
       setSelectedOrderIdForDetails(null);
       setCurrentScreen('login');
       return;
@@ -1983,14 +2028,14 @@ export const AppProvider = ({ children }) => {
       try {
         const saved = await storage.getItem('salbeau_pending_deep_link');
         if (saved) deepLink = JSON.parse(saved);
-      } catch (_) {}
+      } catch (_) { }
     }
     if (!deepLink) return false;
 
     setPendingNotificationDeepLink(null);
     try {
       await storage.removeItem('salbeau_pending_deep_link');
-    } catch (_) {}
+    } catch (_) { }
 
     const orderId = deepLink.orderId || deepLink.order_id || deepLink.orderNumber;
     const targetScreen = deepLink.screen || deepLink.targetScreen;
@@ -2029,7 +2074,7 @@ export const AppProvider = ({ children }) => {
     fetchNotifications();
     const cleanPhone = (userProfile?.phone || '').trim();
     const cleanId = (userProfile?.id || '').trim();
-    
+
     // Request FCM token & Android 13+ runtime permission
     requestFCMToken(cleanId, cleanPhone);
 
@@ -2042,7 +2087,7 @@ export const AppProvider = ({ children }) => {
         console.log('[System Tray Cold Launch]:', initial);
         handleSystemNotificationTap(initial);
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     // 2. Warm Launch: Listen for system notification clicks while app is open / backgrounded
     const unsubTap = setupNotificationTapListener((tapPayload) => {
@@ -2057,7 +2102,7 @@ export const AppProvider = ({ children }) => {
         ...(pushData.data || {}),
         orderId: pushData.data?.orderId,
         screen: pushData.data?.screen || (pushData.data?.orderId ? 'order_details' : 'home')
-      }).catch(() => {});
+      }).catch(() => { });
     });
 
     return () => {
@@ -2077,7 +2122,7 @@ export const AppProvider = ({ children }) => {
     const role = (profile.role || userRoleRef.current || 'general').toLowerCase();
 
     // Ensure FCM token registration on login
-    requestFCMToken(profile.id, cleanPhone).catch(() => {});
+    requestFCMToken(profile.id, cleanPhone).catch(() => { });
 
     // 1. Personalized title & greeting tailored to customer role/persona
     let title = `Welcome to Salbeau, ${name}! ✨`;
@@ -2102,7 +2147,7 @@ export const AppProvider = ({ children }) => {
       type: 'welcome',
       eventType: 'login_welcome',
       screen: 'home'
-    }).catch(() => {});
+    }).catch(() => { });
 
     // 3. Persistent Notification Center item in local state
     const newNotifItem = {
@@ -2146,7 +2191,7 @@ export const AppProvider = ({ children }) => {
         try {
           const raw = await storage.getItem(AUTH_SESSION_KEY);
           if (raw) session = JSON.parse(raw);
-        } catch (_) {}
+        } catch (_) { }
       }
       if (!session || !session.phone) return;
 
@@ -2515,7 +2560,7 @@ export const AppProvider = ({ children }) => {
               isProfileComplete: true
             });
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       return {
@@ -2569,7 +2614,7 @@ export const AppProvider = ({ children }) => {
     try {
       await storage.setItem(AUTH_SESSION_KEY, JSON.stringify(sessionData));
       await storage.setItem('salbeau_user_profile', JSON.stringify(fullProfile));
-    } catch (_) {}
+    } catch (_) { }
 
     if (triggerLoginWelcomeNotification) {
       triggerLoginWelcomeNotification(fullProfile);
@@ -2836,7 +2881,7 @@ export const AppProvider = ({ children }) => {
         setUserProfile(updatedProfile);
         try {
           await storage.setItem('salbeau_user_profile', JSON.stringify(updatedProfile));
-        } catch (_) {}
+        } catch (_) { }
         return res;
       }
       throw new Error('Failed to submit verification');
@@ -2956,7 +3001,7 @@ export const AppProvider = ({ children }) => {
         item_count: 0,
         updated_at: new Date().toISOString()
       }).eq('id', `cart_${userId}`).eq('status', 'abandoned');
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Task 4: Real-time Abandoned Cart Sync to Supabase
@@ -3056,9 +3101,22 @@ export const AppProvider = ({ children }) => {
   }, [cart, userRole, userProfile]);
 
   // Task 1: Generate Order ID in exact DDMMYYYY-CC-OOOOO format with IST server/database time
-  const placeOrder = async ({ deliveryType, address, branch, notes, deliveryInstructions }) => {
+  const placeOrder = async ({
+    deliveryType,
+    address,
+    branch,
+    notes,
+    deliveryInstructions,
+    paymentMethod = 'upi',
+    deliveryFee = 0,
+    deliveryBreakdown = null
+  }) => {
     const now = new Date();
     const finalInstructions = (deliveryInstructions || notes || '').trim();
+    const cleanPayMethod = String(paymentMethod || 'upi').toLowerCase().trim();
+    const cleanPayStatus = cleanPayMethod === 'upi' ? 'pending_verification' : 'pending';
+    const computedDeliveryFee = Number(deliveryFee) || 0;
+    const finalTotalAmount = Number(cartSubtotal) + computedDeliveryFee;
 
     const newOrderId = await generateSalbeauOrderId({
       customerPhone: userProfile.phone,
@@ -3087,7 +3145,11 @@ export const AppProvider = ({ children }) => {
       deliveryType: deliveryType || 'delivery',
       deliveryAddress: address || userProfile.address || '',
       deliveryInstructions: finalInstructions,
-      totalAmount: cartSubtotal,
+      totalAmount: finalTotalAmount,
+      deliveryFee: computedDeliveryFee,
+      deliveryBreakdown,
+      paymentMethod: cleanPayMethod,
+      paymentStatus: cleanPayStatus,
       status: 'placed',
       rejectionReason: '',
       placedAt: now.toLocaleString(),
@@ -3115,6 +3177,8 @@ export const AppProvider = ({ children }) => {
         delivery_address: formattedOrder.deliveryAddress,
         delivery_instructions: finalInstructions,
         total_amount: formattedOrder.totalAmount,
+        payment_method: cleanPayMethod,
+        payment_status: cleanPayStatus,
         status: 'placed',
         placed_at: formattedOrder.placedAt,
         date: formattedOrder.date,
@@ -3124,7 +3188,7 @@ export const AppProvider = ({ children }) => {
       const { error: insErr } = await supabase.from('orders').insert(orderPayload);
       if (insErr) {
         // Fallback for legacy DB schema before migration is applied
-        const { delivery_instructions, ...fallbackOrder } = orderPayload;
+        const { delivery_instructions, payment_method, payment_status, ...fallbackOrder } = orderPayload;
         const { error: fallbackErr } = await supabase.from('orders').insert(fallbackOrder);
         if (fallbackErr) {
           console.error('Error writing order to Supabase:', fallbackErr);
@@ -3162,7 +3226,7 @@ export const AppProvider = ({ children }) => {
       'Order Placed Successfully! 🎉',
       `Your makeup order #${newOrderId} for ₹${Number(formattedOrder.totalAmount || 0).toLocaleString('en-IN')} has been placed. We are preparing your beauty essentials!`,
       { orderId: newOrderId, screen: 'order_details', eventType: 'order_placed' }
-    ).catch(() => {});
+    ).catch(() => { });
 
     // Save notification to backend database for auditing & delivery logs
     try {
@@ -3177,7 +3241,7 @@ export const AppProvider = ({ children }) => {
         is_read: false,
         created_at: now.toISOString()
       }]);
-    } catch (_) {}
+    } catch (_) { }
 
     return formattedOrder;
   };
@@ -3199,7 +3263,7 @@ export const AppProvider = ({ children }) => {
       if (dbOrder && dbOrder.date) {
         orderDateMs = new Date(dbOrder.date).getTime();
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const elapsedMs = Date.now() - orderDateMs;
     const isWithin60MinWindow = !isNaN(orderDateMs) && elapsedMs <= 60 * 60 * 1000;
@@ -3258,7 +3322,7 @@ export const AppProvider = ({ children }) => {
       if (dbOrder && dbOrder.date) {
         orderDateMs = new Date(dbOrder.date).getTime();
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const elapsedMs = Date.now() - orderDateMs;
     const isWithin60MinWindow = !isNaN(orderDateMs) && elapsedMs <= 60 * 60 * 1000;
@@ -3283,7 +3347,7 @@ export const AppProvider = ({ children }) => {
         'Order Cancelled',
         `Your makeup order #${String(orderId).slice(-6)} has been cancelled.`,
         { orderId, screen: 'orders', eventType: 'cancelled' }
-      ).catch(() => {});
+      ).catch(() => { });
     } catch (e) {
       console.warn('Error cancelling order in Supabase:', e);
       return { success: false, reason: e.message || 'Database error while cancelling order' };
@@ -3303,7 +3367,7 @@ export const AppProvider = ({ children }) => {
       if (dbOrder && dbOrder.date) {
         orderDateMs = new Date(dbOrder.date).getTime();
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const elapsedMs = Date.now() - orderDateMs;
     if (isNaN(orderDateMs) || elapsedMs > 60 * 60 * 1000) {
@@ -3366,122 +3430,222 @@ export const AppProvider = ({ children }) => {
     setCurrentScreen(targetScreen);
   }, [userProfile?.isProfileComplete, userProfile?.verificationStatus, userRole]);
 
-  const contextValue = {
-        currentUpiOrder,
-        setCurrentUpiOrder,
-        currentScreen,
-        previousScreen,
-        navigationHistory,
-        navigateTo,
-        goBack,
-        resolvePostLoginDeepLink,
-        setCurrentScreen: setProtectedScreen,
-        userRole,
-        setUserRole,
-        userProfile,
-        setUserProfile,
-        addresses,
-        setAddresses,
-        addAddress,
-        updateAddress,
-        deleteAddress,
-        setDefaultAddress,
-        brands,
-        activeBrands,
-        categories,
-        subcategories,
-        leafCategories,
-        products,
-        activeProducts,
-        selectedBranch,
-        setSelectedBranch,
-        selectedProduct,
-        setSelectedProduct,
-        selectedShade,
-        setSelectedShade,
-        selectedCategory,
-        setSelectedCategory,
-        selectedSubcategory,
-        setSelectedSubcategory,
-        selectedBrand,
-        setSelectedBrand,
-        searchQuery,
-        setSearchQuery,
-        globalSearchQuery,
-        setGlobalSearchQuery,
-        cart,
-        addToCart,
-        updateCartQuantity,
-        removeFromCart,
-        clearCart,
-        cartSubtotal,
-        favorites,
-        isFavorite,
-        toggleFavorite,
-        removeFromFavorites,
-        clearFavorites,
-        orders,
-        placeOrder,
-        requestCancelOrder,
-        executeCancelOrder,
-        editOrder,
-        reorderOrderItems,
-        cancelSpecificOrderItem,
-        showCancelWarningModal,
-        setShowCancelWarningModal,
-        pendingCancelOrderId,
-        getRolePrice,
-        getApplicableTier,
-        isB2BVerified,
-        effectivePricingRole,
-        userVerificationRecord,
-        isVerificationSubmitting,
-        submitUserB2BVerification,
-        loadUserB2BVerification,
-        pricingRules,
-        setPricingRules,
-        homeSectionVisibility,
-        recommendationConfig,
-        setRecommendationConfig,
-        prefetchUserProfile,
-        checkUserExistingProfile,
-        lookupUserAccountsByPhone,
-        loginWithAccount,
-        setVerifiedPhoneForRegistration,
-        saveUserProfile,
-        staffProfile,
-        setStaffProfile,
-        refreshCatalog: fetchCatalog,
-        logout,
-        isRestoringSession,
-        isCatalogLoading,
-        productSalesCounts,
-        homeBanners,
-        activeBanners,
-        allBanners,
-        getCategoryBanner,
-        getSubcategoryBanner,
-        setHomeBanners,
-        notifications,
-        unreadNotificationsCount,
-        orderStatusNotification,
-        setOrderStatusNotification,
-        dismissOrderStatusNotification,
-        triggerLoginWelcomeNotification,
-        markNotificationAsRead,
-        markAllNotificationsAsRead,
-        fetchNotifications,
-        refreshNotifications: fetchNotifications,
-        selectedOrderIdForDetails,
-        setSelectedOrderIdForDetails,
-        fetchUserOrders,
-        refreshOrders: fetchUserOrders,
-        shadeSheetState,
-        openShadeSheet,
-        closeShadeSheet,
-        rememberSelectedShade,
-
-  };
+  const contextValue = useMemo(() => ({
+    currentUpiOrder,
+    setCurrentUpiOrder,
+    currentScreen,
+    previousScreen,
+    navigationHistory,
+    navigateTo,
+    goBack,
+    resolvePostLoginDeepLink,
+    setCurrentScreen: setProtectedScreen,
+    userRole,
+    setUserRole,
+    userProfile,
+    setUserProfile,
+    addresses,
+    setAddresses,
+    addAddress,
+    updateAddress,
+    deleteAddress,
+    setDefaultAddress,
+    brands,
+    activeBrands,
+    categories,
+    subcategories,
+    leafCategories,
+    products,
+    activeProducts,
+    selectedBranch,
+    setSelectedBranch,
+    selectedProduct,
+    setSelectedProduct,
+    selectedShade,
+    setSelectedShade,
+    selectedCategory,
+    setSelectedCategory,
+    selectedSubcategory,
+    setSelectedSubcategory,
+    selectedBrand,
+    setSelectedBrand,
+    searchQuery,
+    setSearchQuery,
+    globalSearchQuery,
+    setGlobalSearchQuery,
+    cart,
+    addToCart,
+    updateCartQuantity,
+    removeFromCart,
+    clearCart,
+    cartSubtotal,
+    favorites,
+    isFavorite,
+    toggleFavorite,
+    removeFromFavorites,
+    clearFavorites,
+    orders,
+    placeOrder,
+    requestCancelOrder,
+    executeCancelOrder,
+    editOrder,
+    reorderOrderItems,
+    cancelSpecificOrderItem,
+    showCancelWarningModal,
+    setShowCancelWarningModal,
+    pendingCancelOrderId,
+    getRolePrice,
+    getApplicableTier,
+    isB2BVerified,
+    effectivePricingRole,
+    userVerificationRecord,
+    isVerificationSubmitting,
+    submitUserB2BVerification,
+    loadUserB2BVerification,
+    pricingRules,
+    setPricingRules,
+    homeSectionVisibility,
+    recommendationConfig,
+    setRecommendationConfig,
+    prefetchUserProfile,
+    checkUserExistingProfile,
+    lookupUserAccountsByPhone,
+    loginWithAccount,
+    setVerifiedPhoneForRegistration,
+    saveUserProfile,
+    staffProfile,
+    setStaffProfile,
+    refreshCatalog: fetchCatalog,
+    logout,
+    isRestoringSession,
+    isCatalogLoading,
+    productSalesCounts,
+    homeBanners,
+    activeBanners,
+    allBanners,
+    getCategoryBanner,
+    getSubcategoryBanner,
+    setHomeBanners,
+    notifications,
+    unreadNotificationsCount,
+    orderStatusNotification,
+    setOrderStatusNotification,
+    dismissOrderStatusNotification,
+    triggerLoginWelcomeNotification,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    fetchNotifications,
+    refreshNotifications: fetchNotifications,
+    selectedOrderIdForDetails,
+    setSelectedOrderIdForDetails,
+    fetchUserOrders,
+    refreshOrders: fetchUserOrders,
+    shadeSheetState,
+    openShadeSheet,
+    closeShadeSheet,
+    rememberSelectedShade,
+    storeSettings,
+    setStoreSettings,
+    refreshStoreSettings: fetchStoreSettings,
+    getDeliveryFee,
+  }), [
+    currentUpiOrder,
+    currentScreen,
+    previousScreen,
+    navigationHistory,
+    navigateTo,
+    goBack,
+    resolvePostLoginDeepLink,
+    setProtectedScreen,
+    userRole,
+    userProfile,
+    addresses,
+    addAddress,
+    updateAddress,
+    deleteAddress,
+    setDefaultAddress,
+    brands,
+    activeBrands,
+    categories,
+    subcategories,
+    leafCategories,
+    products,
+    activeProducts,
+    selectedBranch,
+    selectedProduct,
+    selectedShade,
+    selectedCategory,
+    selectedSubcategory,
+    selectedBrand,
+    searchQuery,
+    globalSearchQuery,
+    cart,
+    addToCart,
+    updateCartQuantity,
+    removeFromCart,
+    clearCart,
+    cartSubtotal,
+    favorites,
+    isFavorite,
+    toggleFavorite,
+    removeFromFavorites,
+    clearFavorites,
+    orders,
+    placeOrder,
+    requestCancelOrder,
+    executeCancelOrder,
+    editOrder,
+    reorderOrderItems,
+    cancelSpecificOrderItem,
+    showCancelWarningModal,
+    pendingCancelOrderId,
+    getRolePrice,
+    getApplicableTier,
+    isB2BVerified,
+    effectivePricingRole,
+    userVerificationRecord,
+    isVerificationSubmitting,
+    submitUserB2BVerification,
+    loadUserB2BVerification,
+    pricingRules,
+    homeSectionVisibility,
+    recommendationConfig,
+    prefetchUserProfile,
+    checkUserExistingProfile,
+    lookupUserAccountsByPhone,
+    loginWithAccount,
+    setVerifiedPhoneForRegistration,
+    saveUserProfile,
+    staffProfile,
+    fetchCatalog,
+    logout,
+    isRestoringSession,
+    isCatalogLoading,
+    productSalesCounts,
+    homeBanners,
+    activeBanners,
+    allBanners,
+    getCategoryBanner,
+    getSubcategoryBanner,
+    setHomeBanners,
+    notifications,
+    unreadNotificationsCount,
+    orderStatusNotification,
+    dismissOrderStatusNotification,
+    triggerLoginWelcomeNotification,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    fetchNotifications,
+    selectedOrderIdForDetails,
+    fetchUserOrders,
+    shadeSheetState,
+    openShadeSheet,
+    closeShadeSheet,
+    rememberSelectedShade,
+    storeSettings,
+    fetchStoreSettings,
+    getDeliveryFee,
+  ]);
 
 
 

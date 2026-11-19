@@ -268,7 +268,7 @@ export default function EditEmployeePage({ employeeId, onNavigate }) {
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9]/g, '') })}
-                placeholder="9876543210"
+                placeholder="Enter 10-digit mobile number"
                 className="w-full p-3.5 pl-10 rounded-xl border border-gray-200 text-xs font-semibold text-gray-900 focus:border-[#D81B60] outline-none shadow-2xs"
               />
               <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />

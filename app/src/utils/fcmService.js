@@ -10,7 +10,7 @@
  * - Lock-screen / background notification reception with deep linking payloads
  */
 
-import { Platform, NativeModules, DeviceEventEmitter } from 'react-native';
+import { Platform, NativeModules, DeviceEventEmitter, PermissionsAndroid, InteractionManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
 
@@ -53,6 +53,43 @@ let lastTokenRequestTime = 0;
 let cachedActiveToken = null;
 
 /**
+ * Safely requests Android 13+ (API 33+) POST_NOTIFICATIONS runtime permission.
+ * Defers request until Activity is attached to prevent
+ * "Tried to use permissions API while not attached to an Activity" warnings.
+ */
+export async function requestNotificationPermission(retryCount = 0) {
+  if (Platform.OS !== 'android' || Platform.Version < 33) return true;
+  try {
+    const hasPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+    if (hasPermission) return true;
+
+    // Ensure Activity has finished mounting before presenting dialog
+    await new Promise(resolve => {
+      if (InteractionManager && typeof InteractionManager.runAfterInteractions === 'function') {
+        InteractionManager.runAfterInteractions(resolve);
+      } else {
+        setTimeout(resolve, 800);
+      }
+    });
+
+    const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS, {
+      title: 'Salbeau Notifications',
+      message: 'Allow Salbeau to send you live order tracking, delivery updates, and beauty alerts.',
+      buttonPositive: 'Allow',
+      buttonNegative: 'Not Now'
+    });
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  } catch (err) {
+    if (err && err.message && err.message.includes('not attached to an Activity') && retryCount < 2) {
+      // Retry after Activity is attached
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      return requestNotificationPermission(retryCount + 1);
+    }
+    return false;
+  }
+}
+
+/**
  * Requests notification permission and retrieves device FCM Token.
  * Supports Native Android (via SalbeauFCM NativeModule) and Web.
  * Persists token to storage and syncs with Supabase public.users table.
@@ -70,23 +107,9 @@ export async function requestFCMToken(userId = null, phone = null) {
   lastTokenRequestTime = now;
 
   try {
-    // 0. Android 13+ (API 33+) Runtime Notification Permission Prompt
+    // 0. Non-blocking Android 13+ Notification Permission Prompt (runs after Activity attaches)
     if (Platform.OS === 'android' && Platform.Version >= 33) {
-      try {
-        const { PermissionsAndroid } = require('react-native');
-        const hasPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-        if (!hasPermission) {
-          const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS, {
-            title: 'Salbeau Notifications',
-            message: 'Allow Salbeau to send you live order tracking, delivery updates, and beauty alerts.',
-            buttonPositive: 'Allow',
-            buttonNegative: 'Not Now'
-          });
-          console.log('[FCM Native] Android 13+ POST_NOTIFICATIONS result:', granted);
-        }
-      } catch (permErr) {
-        console.warn('[FCM Native] POST_NOTIFICATIONS request note:', permErr.message);
-      }
+      requestNotificationPermission().catch(() => {});
     }
 
     // 1. Native Android FCM Execution

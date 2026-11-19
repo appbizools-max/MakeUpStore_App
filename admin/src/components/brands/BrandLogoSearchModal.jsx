@@ -77,24 +77,24 @@ export default function BrandLogoSearchModal({
         // Fallback Beauty Brand Logo Provider Adapter
         // Uses high-quality verified logo catalog sources and clean brand CDN endpoints
         const cleanName = q.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const mockResults = [
+        const brandCdnResults = [
           {
             id: 'fb_1',
             url: `https://logo.clearbit.com/${cleanName}.com`,
             thumbnail: `https://logo.clearbit.com/${cleanName}.com`,
-            title: `${q} Official Brand Logo`,
-            source: 'Clearbit Brand CDN'
+            title: `${q} Brand Logo (.com)`,
+            source: 'Brand CDN (.com)'
           },
           {
             id: 'fb_2',
             url: `https://logo.clearbit.com/${cleanName}.in`,
             thumbnail: `https://logo.clearbit.com/${cleanName}.in`,
-            title: `${q} India Portal Logo`,
-            source: 'Brand CDN India'
+            title: `${q} Brand Logo (.in)`,
+            source: 'Brand CDN (.in)'
           }
         ];
 
-        setResults(mockResults);
+        setResults(brandCdnResults);
       }
     } catch (err) {
       console.warn('Image search error:', err);

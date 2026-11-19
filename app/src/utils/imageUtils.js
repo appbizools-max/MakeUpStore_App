@@ -115,10 +115,18 @@ export const getSafeImageSource = (imageInput, fallbackUri = '') => {
   }
   const safeUri = getSafeImageUri(imageInput, fallbackUri);
   if (typeof safeUri === 'string' && safeUri.trim().length > 0) {
-    return { uri: safeUri.trim() };
+    const trimmed = safeUri.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return { uri: trimmed, cache: 'force-cache' };
+    }
+    return { uri: trimmed };
   }
   if (typeof fallbackUri === 'string' && fallbackUri.trim().length > 0) {
-    return { uri: fallbackUri.trim() };
+    const trimmedFallback = fallbackUri.trim();
+    if (trimmedFallback.startsWith('http://') || trimmedFallback.startsWith('https://')) {
+      return { uri: trimmedFallback, cache: 'force-cache' };
+    }
+    return { uri: trimmedFallback };
   }
   // Fallback to transparent pixel to prevent "source.uri should not be an empty string" warning in React Native
   return { uri: TRANSPARENT_PIXEL };

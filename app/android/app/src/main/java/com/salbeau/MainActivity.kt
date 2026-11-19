@@ -48,9 +48,9 @@ class MainActivity : ReactActivity() {
       if (bundle != null) {
           val map = mutableMapOf<String, String>()
           for (key in bundle.keySet()) {
-              val v = bundle.get(key)
+              val v = bundle.getString(key) ?: @Suppress("DEPRECATION") bundle.get(key)?.toString()
               if (v != null) {
-                  map[key] = v.toString()
+                  map[key] = v
               }
           }
           SalbeauFCMModule.sendNotificationTapped(map)

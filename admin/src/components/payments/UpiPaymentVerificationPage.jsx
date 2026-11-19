@@ -94,34 +94,68 @@ export default function UpiPaymentVerificationPage() {
       });
     });
 
-    // 2. Scan orders where shipments contain upiVerification proof
+    // 2. Scan orders where payment is UPI or shipments contain UPI / UTR collection
     (orders || []).forEach(o => {
-      const ship = o.shipments || {};
-      const upi = ship.upiVerification;
-      if (upi && (upi.proofUrl || upi.payment_proof_url)) {
+      const ship = (o.shipments && typeof o.shipments === 'object' && !Array.isArray(o.shipments)) ? o.shipments : {};
+      const upi = (ship.upiVerification && typeof ship.upiVerification === 'object') ? ship.upiVerification : {};
+
+      const isUpi = 
+        String(o.payment_method || o.paymentMethod || '').toLowerCase() === 'upi' ||
+        String(ship.paymentMethod || ship.payment_method || '').toLowerCase() === 'upi' ||
+        Boolean(ship.upiUtr) ||
+        Boolean(o.upi_ref) ||
+        Boolean(o.upiUtr) ||
+        Boolean(upi.utr || upi.upiTransactionId || upi.proofUrl || upi.payment_proof_url) ||
+        Boolean(o.payment_proof || ship.paymentProofUrl || o.paymentProofUrl);
+
+      if (isUpi) {
         const key = upi.id || `upi_${o.id}`;
         if (!listMap.has(key)) {
+          const rawStatus = String(
+            upi.verificationStatus ||
+            ship.verificationStatus ||
+            ship.paymentStatus ||
+            o.verification_status ||
+            o.verificationStatus ||
+            o.payment_status ||
+            o.paymentStatus ||
+            'PENDING_VERIFICATION'
+          ).toUpperCase().trim();
+
+          const normalizedStatus = (rawStatus === 'PENDING' || rawStatus === 'PENDING_VERIFICATION' || rawStatus === 'PENDING_PROOF' || rawStatus === 'UNPAID')
+            ? 'PENDING_VERIFICATION'
+            : (rawStatus === 'VERIFIED' || rawStatus === 'PAID' || rawStatus === 'COMPLETED')
+            ? 'VERIFIED'
+            : (rawStatus === 'REJECTED' || rawStatus === 'FAILED')
+            ? 'REJECTED'
+            : rawStatus;
+
+          const utr = ship.upiUtr || o.upi_ref || o.upiUtr || upi.upiTransactionId || upi.utr || 'N/A';
+          const proofUrl = upi.proofUrl || upi.payment_proof_url || ship.paymentProofUrl || o.payment_proof || o.paymentProofUrl || '';
+
           listMap.set(key, {
             id: key,
             orderId: o.id,
             customerId: o.user_id || o.userId,
             customerName: o.user_name || o.userName || 'Customer',
-            deliveryPartnerId: o.assignedEmployeeId || ship.assignedEmployeeId,
-            deliveryPartnerName: o.assignedEmployeeName || ship.assignedEmployeeName || 'Delivery Partner',
+            customerPhone: o.phone || '',
+            deliveryPartnerId: o.assigned_employee_id || o.assignedEmployeeId || ship.assignedEmployeeId || ship.collectedById,
+            deliveryPartnerName: o.assigned_employee_name || o.assignedEmployeeName || ship.assignedEmployeeName || ship.collectedBy || 'Store Direct / Customer UPI',
+            deliveryPartnerPhone: ship.deliveryPartnerPhone || '',
             branchId: o.branch,
             branchName: o.branch || 'Main Branch',
             expectedAmount: Number(o.total_amount || o.totalAmount || upi.expectedAmount || 0),
-            reportedAmount: Number(upi.reportedAmount || upi.amount || o.total_amount || 0),
-            upiTransactionId: upi.upiTransactionId || upi.utr || 'N/A',
-            paymentProofUrl: upi.proofUrl || upi.payment_proof_url,
-            submissionDate: upi.submissionDate || upi.submittedAt || o.placed_at || o.created_at,
-            verificationStatus: (upi.verificationStatus || ship.paymentStatus || 'PENDING_VERIFICATION').toUpperCase(),
-            verifiedBy: upi.verifiedBy,
-            verifiedByName: upi.verifiedByName,
-            verifiedAt: upi.verifiedAt,
+            reportedAmount: Number(ship.paymentAmount || upi.reportedAmount || upi.amount || o.total_amount || o.totalAmount || 0),
+            upiTransactionId: utr,
+            paymentProofUrl: proofUrl,
+            submissionDate: ship.collectedAt || ship.deliveredAt || upi.submissionDate || upi.submittedAt || o.placed_at || o.placedAt || o.created_at || o.date,
+            verificationStatus: normalizedStatus,
+            verifiedBy: upi.verifiedBy || ship.verifiedBy,
+            verifiedByName: upi.verifiedByName || ship.verifiedByName,
+            verifiedAt: upi.verifiedAt || ship.verifiedAt,
             previousStatus: upi.previousStatus,
             rejectionReason: upi.rejectionReason || ship.paymentRejectionReason,
-            notes: upi.notes
+            notes: upi.notes || ship.deliveryNotes
           });
         }
       }
@@ -145,7 +179,9 @@ export default function UpiPaymentVerificationPage() {
       // Status
       const matchStatus =
         statusFilter === 'all' ||
-        rec.verificationStatus === statusFilter;
+        (statusFilter === 'PENDING_VERIFICATION'
+          ? (rec.verificationStatus === 'PENDING_VERIFICATION' || rec.verificationStatus === 'PENDING')
+          : rec.verificationStatus === statusFilter);
 
       // Branch
       const matchBranch =
@@ -161,7 +197,7 @@ export default function UpiPaymentVerificationPage() {
     return {
       all: allVerificationRecords.length,
       pending: allVerificationRecords.filter(r => r.verificationStatus === 'PENDING_VERIFICATION' || r.verificationStatus === 'PENDING').length,
-      verified: allVerificationRecords.filter(r => r.verificationStatus === 'VERIFIED').length,
+      verified: allVerificationRecords.filter(r => r.verificationStatus === 'VERIFIED' || r.verificationStatus === 'PAID').length,
       rejected: allVerificationRecords.filter(r => r.verificationStatus === 'REJECTED').length
     };
   }, [allVerificationRecords]);

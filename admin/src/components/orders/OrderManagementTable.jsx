@@ -33,7 +33,10 @@ import {
   AlertCircle,
   Layers,
   Wand2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  QrCode,
+  Upload,
+  CreditCard
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import FulfillmentStatusSelector from './FulfillmentStatusSelector';
@@ -100,6 +103,61 @@ export const OrderManagementTable = ({
   const [viewingProof, setViewingProof] = useState(null);
   const adminCtx = useAdmin() || {};
   const verifyUpiPayment = adminCtx.verifyUpiPayment;
+  const generalSettings = adminCtx.generalSettings;
+  const updateGeneralSettings = adminCtx.updateGeneralSettings;
+  const quickUpdateUpiQr = adminCtx.quickUpdateUpiQr;
+
+  // Live Store UPI & Rider Payment QR Code Management Modal
+  // Live Store UPI & Rider Payment Credentials Modal
+  const [isUpiQrModalOpen, setIsUpiQrModalOpen] = useState(false);
+  const [upiForm, setUpiForm] = useState({
+    upiId: '',
+    upiName: ''
+  });
+  const [isSavingUpiQr, setIsSavingUpiQr] = useState(false);
+  const [upiQrSaveSuccess, setUpiQrSaveSuccess] = useState(false);
+
+  const openUpiQrModal = () => {
+    setUpiForm({
+      upiId: generalSettings?.payments?.upiId || '',
+      upiName: generalSettings?.payments?.upiName || generalSettings?.identity?.storeName || 'Salbeau MakeUpStore'
+    });
+    setUpiQrSaveSuccess(false);
+    setIsUpiQrModalOpen(true);
+  };
+
+  const handleSaveUpiQr = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!upiForm.upiId.trim()) {
+      alert('Official UPI ID (VPA) is required.');
+      return;
+    }
+    setIsSavingUpiQr(true);
+    try {
+      if (typeof quickUpdateUpiQr === 'function') {
+        await quickUpdateUpiQr({
+          upiId: upiForm.upiId,
+          upiName: upiForm.upiName
+        });
+      } else if (typeof updateGeneralSettings === 'function') {
+        await updateGeneralSettings({
+          payments: {
+            ...(generalSettings?.payments || {}),
+            upiId: upiForm.upiId.trim(),
+            upiName: upiForm.upiName.trim(),
+            updatedAt: new Date().toISOString()
+          }
+        });
+      }
+      setUpiQrSaveSuccess(true);
+      setTimeout(() => setUpiQrSaveSuccess(false), 3500);
+    } catch (err) {
+      console.error('Failed to update UPI settings:', err);
+      alert('Error saving UPI configuration: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsSavingUpiQr(false);
+    }
+  };
 
   // Cash Confirmation Modal state
   const [cashModalOrder, setCashModalOrder] = useState(null);
@@ -432,6 +490,7 @@ export const OrderManagementTable = ({
       );
       setCashModalOrder(null);
       setCashNote('');
+      if (typeof onRefresh === 'function') onRefresh();
     } catch (e) {
       console.error('Error confirming cash payment:', e);
     } finally {
@@ -452,6 +511,7 @@ export const OrderManagementTable = ({
       );
       setQrModalOrder(null);
       setQrUtrNumber('');
+      if (typeof onRefresh === 'function') onRefresh();
     } catch (e) {
       console.error('Error verifying QR payment:', e);
     } finally {
@@ -476,6 +536,18 @@ export const OrderManagementTable = ({
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[11px] font-bold text-emerald-700">Live Sync (Real-time)</span>
           </div>
+
+          {/* Quick Store UPI & Rider Payment Credentials Button */}
+          <button
+            type="button"
+            onClick={openUpiQrModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100/90 text-purple-900 transition-colors shadow-2xs cursor-pointer font-bold text-xs"
+            title="Manage Official Store UPI ID & Payee Name (Real-Time Sync to Delivery Rider App)"
+          >
+            <CreditCard size={14} className="text-purple-700" />
+            <span>Rider Store UPI</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+          </button>
 
           {/* Refresh Button */}
           <button
@@ -818,8 +890,12 @@ export const OrderManagementTable = ({
                   const displayedItems = isExpanded ? items : items.slice(0, 2);
                   const hasMoreItems = items.length > 2;
 
-                  const isPaid = (o.paymentStatus || '').toLowerCase() === 'paid';
-                  const isQrMethod = (o.paymentMethod || '').toLowerCase() === 'qr';
+                  const shipMeta = (typeof o.shipments === 'object' && o.shipments) ? o.shipments : {};
+                  const rawPaySt = String(o.payment_status || o.paymentStatus || shipMeta.paymentStatus || o.internalStatus || o.internal_status || '').toLowerCase().trim();
+                  const verifSt = String(o.verification_status || o.verificationStatus || shipMeta.verificationStatus || '').toUpperCase().trim();
+                  const itemSt = (Array.isArray(items) ? items.find(i => i?.paymentStatus)?.paymentStatus : '') || '';
+                  const isPaid = ['paid', 'completed'].includes(rawPaySt) || ['paid', 'completed'].includes(String(shipMeta.paymentStatus || '').toLowerCase()) || verifSt === 'VERIFIED' || itemSt.toLowerCase() === 'paid';
+                  const isQrMethod = (o.paymentMethod || o.payment_method || shipMeta.paymentMethod || '').toLowerCase() === 'qr';
                   const isSelected = selectedOrderIds.includes(o.id);
 
                   return (
@@ -1514,6 +1590,139 @@ export const OrderManagementTable = ({
                 <Trash2 size={14} />
                 <span>{isDeleting ? 'Deleting...' : `Confirm Delete (${deleteConfirmModal.orderIds.length})`}</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── LIVE RIDER STORE UPI CREDENTIALS MANAGEMENT MODAL ───────────── */}
+      {isUpiQrModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-purple-200 max-w-xl w-full overflow-hidden shadow-2xl relative flex flex-col max-h-[92vh]">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-purple-100 flex items-center justify-between bg-gradient-to-r from-purple-50 via-pink-50/30 to-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold shadow-xs">
+                  <CreditCard size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 tracking-tight">
+                    Rider Store UPI Credentials
+                  </h3>
+                  <p className="text-[11px] text-purple-700 font-medium">
+                    Changes reflect immediately in the Delivery Partner (Rider) App
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsUpiQrModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 cursor-pointer transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-5">
+              {upiQrSaveSuccess && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-emerald-800 text-xs font-bold animate-fade-in">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  <span>✓ Successfully updated! Official Store UPI ID is now live in the Rider App.</span>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">
+                    Official UPI Payee / Merchant Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={upiForm.upiName}
+                    onChange={(e) => setUpiForm(prev => ({ ...prev, upiName: e.target.value }))}
+                    placeholder="e.g. Salbeau MakeUpStore or SALBEAU ENTERPRISES"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-900 outline-none focus:border-purple-600 shadow-2xs"
+                  />
+                  <span className="text-[10.5px] text-gray-500 font-medium mt-1 block">
+                    Payee name displayed to customers in Google Pay, PhonePe, Paytm, and shown to delivery riders.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">
+                    Official Store UPI ID (VPA) *
+                  </label>
+                  <input
+                    type="text"
+                    value={upiForm.upiId}
+                    onChange={(e) => setUpiForm(prev => ({ ...prev, upiId: e.target.value.trim() }))}
+                    placeholder="Enter store UPI ID (e.g. merchant@upi)"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs font-mono font-bold text-purple-900 outline-none focus:border-purple-600 shadow-2xs"
+                  />
+                  <span className="text-[10.5px] text-gray-500 font-medium mt-1 block">
+                    VPA address where customer payments are deposited directly via UPI transfer.
+                  </span>
+                </div>
+
+                {/* Rider App Preview Card */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 to-pink-50/40 border border-purple-200/80 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-black uppercase text-purple-900 tracking-wider flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Live Rider App Display Preview
+                    </span>
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                      Direct VPA Active
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-xl border border-purple-100 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10.5px] font-bold text-gray-500">STORE UPI ID (VPA)</div>
+                      <div className="text-sm font-black font-mono text-purple-950 mt-0.5">
+                        {upiForm.upiId || 'Not Configured'}
+                      </div>
+                      <div className="text-[11px] font-semibold text-gray-600 mt-0.5">
+                        {upiForm.upiName || 'Salbeau MakeUpStore'}
+                      </div>
+                    </div>
+                    <div className="px-3 py-1.5 bg-purple-100 text-purple-800 rounded-lg text-xs font-bold">
+                      Copy Button
+                    </div>
+                  </div>
+
+                  <p className="text-[10.5px] text-purple-800/80 leading-relaxed font-medium">
+                    💡 Customers can copy or enter this UPI ID in any payment app (GPay, PhonePe, Paytm) to make payment, and the delivery rider captures the 12-digit bank UTR reference number.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3.5 border-t border-purple-100 bg-gray-50/80 flex items-center justify-between gap-3">
+              <span className="text-[11px] text-gray-500 font-medium">
+                Instant database upsert to <code className="bg-purple-100 text-purple-800 px-1 py-0.5 rounded font-mono">salbeau_store_settings</code>
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsUpiQrModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingUpiQr}
+                  onClick={handleSaveUpiQr}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                >
+                  <Check size={14} strokeWidth={3} />
+                  <span>{isSavingUpiQr ? 'Saving & Syncing...' : 'Save & Push to Rider App'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

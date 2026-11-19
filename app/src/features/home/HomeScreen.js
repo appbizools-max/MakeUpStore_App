@@ -525,6 +525,8 @@ export const HomeScreen = () => {
     subcategories = [],
     brands = [],
     activeBrands = [],
+    selectedBrand,
+    setSelectedBrand,
     favorites = [],
     isFavorite,
     toggleFavorite,
@@ -979,12 +981,31 @@ export const HomeScreen = () => {
     }).slice(0, 10);
   }, [activeProducts, productSalesCounts]);
 
-  // 3. All Brands for continuous auto-scrolling
+  // 3. All Brands for continuous auto-scrolling (Driven dynamically by DB and catalog)
   const allBrandsList = useMemo(() => {
-    const list = activeBrands && activeBrands.length > 0 ? activeBrands : brands.filter(b => b.enabled !== false);
+    let list = activeBrands && activeBrands.length > 0 ? activeBrands : (brands || []).filter(b => b && b.enabled !== false);
+    
+    // Dynamic Fallback: if brands table is empty, extract real brands from active catalog products
+    if (!list || list.length === 0) {
+      const prodBrandMap = new Map();
+      (activeProducts || []).forEach(p => {
+        const bName = (p.brandName || p.brand || '').trim();
+        if (bName && !prodBrandMap.has(bName.toLowerCase())) {
+          prodBrandMap.set(bName.toLowerCase(), {
+            id: `brand_${bName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+            name: bName,
+            logo: p.brandLogo || p.brand_logo || '',
+            enabled: true
+          });
+        }
+      });
+      list = Array.from(prodBrandMap.values());
+    }
+
     const seen = new Set();
     const unique = [];
     list.forEach(b => {
+      if (!b) return;
       const norm = (b.name || '').trim().toLowerCase();
       if (norm && !seen.has(norm) && !b.id?.startsWith('app_') && !b.id?.startsWith('salbeau_')) {
         seen.add(norm);
@@ -992,50 +1013,8 @@ export const HomeScreen = () => {
       }
     });
     return unique;
-  }, [activeBrands, brands]);
+  }, [activeBrands, brands, activeProducts]);
   const topBrandsList = allBrandsList;
-
-  // Continuous auto-scroller for Shop by Brand with pause-on-touch & gentle resume
-  const brandScrollRef = useRef(null);
-  const brandScrollPos = useRef(0);
-  const isBrandInteracting = useRef(false);
-  const resumeTimerRef = useRef(null);
-
-  const pauseBrandScroll = useCallback(() => {
-    isBrandInteracting.current = true;
-    if (resumeTimerRef.current) {
-      clearTimeout(resumeTimerRef.current);
-    }
-  }, []);
-
-  const resumeBrandScroll = useCallback((delay = 1800) => {
-    if (resumeTimerRef.current) {
-      clearTimeout(resumeTimerRef.current);
-    }
-    resumeTimerRef.current = setTimeout(() => {
-      isBrandInteracting.current = false;
-    }, delay);
-  }, []);
-
-  useEffect(() => {
-    if (!allBrandsList || allBrandsList.length <= 1) return;
-    const itemWidth = 120; // approximate brand button width + gap
-    const totalLoopWidth = allBrandsList.length * itemWidth;
-
-    const interval = setInterval(() => {
-      if (isBrandInteracting.current || !brandScrollRef.current) return;
-      brandScrollPos.current += 1.2;
-      if (brandScrollPos.current >= totalLoopWidth) {
-        brandScrollPos.current = 0;
-      }
-      brandScrollRef.current.scrollTo({ x: brandScrollPos.current, animated: false });
-    }, 35);
-
-    return () => {
-      clearInterval(interval);
-      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    };
-  }, [allBrandsList]);
 
   // 4. New Arrivals & Recent Products (Driven dynamically by Admin Panel selection & priority)
   const newArrivals = useMemo(() => {
@@ -1185,6 +1164,8 @@ export const HomeScreen = () => {
         contentContainerStyle={{ paddingTop: 10, paddingBottom: totalCartQuantity > 0 ? 150 : 90 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        removeClippedSubviews={Platform.OS === 'android'}
+        scrollEventThrottle={16}
         className="bg-white"
         refreshControl={
           <RefreshControl
@@ -1616,15 +1597,20 @@ export const HomeScreen = () => {
         )}
 
         {/* ========================================================================= */}
-        {/* 6. SHOP BY BRAND — PREMIUM PINK CONTINUOUS SCROLLING                      */}
+        {/* 6. SHOP BY BRAND — PREMIUM CONTINUOUS SCROLLING (NYKAA/MYNTRA STYLE)      */}
         {/* ========================================================================= */}
         <ContinuousBrandScroller
           brands={topBrandsList}
-          onSelectBrand={(brandName) => {
-            if (setGlobalSearchQuery) setGlobalSearchQuery(brandName);
+          onSelectBrand={(brand) => {
+            if (setSelectedBrand) setSelectedBrand(brand);
+            if (setGlobalSearchQuery) setGlobalSearchQuery('');
             setCurrentScreen('search');
           }}
-          onViewAll={() => setCurrentScreen('search')}
+          onViewAll={() => {
+            if (setSelectedBrand) setSelectedBrand(null);
+            if (setGlobalSearchQuery) setGlobalSearchQuery('');
+            setCurrentScreen('search');
+          }}
         />
 
         {/* ========================================================================= */}
@@ -1703,6 +1689,7 @@ export const HomeScreen = () => {
                     product={product}
                     userRole={userRole}
                     getRolePrice={getRolePrice}
+                    cart={cart}
                     cartQuantityMap={cartQuantityMap}
                     addToCart={addToCart}
                     updateCartQuantity={updateCartQuantity}
@@ -1711,6 +1698,8 @@ export const HomeScreen = () => {
                     toggleFavorite={toggleFavorite}
                     onPressProduct={handleProductSelect}
                     onOpenShadeSheet={openShadeSheet}
+                    rememberSelectedShade={rememberSelectedShade}
+                    setSelectedShade={setSelectedShade}
                   />
                 </View>
               ))}
@@ -1736,6 +1725,7 @@ export const HomeScreen = () => {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              removeClippedSubviews={Platform.OS === 'android'}
               contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 4 }}
             >
               {bestSellers.slice(0, 10).map((product) => (
@@ -1745,6 +1735,7 @@ export const HomeScreen = () => {
                     cardWidth={165}
                     userRole={userRole}
                     getRolePrice={getRolePrice}
+                    cart={cart}
                     cartQuantityMap={cartQuantityMap}
                     addToCart={addToCart}
                     updateCartQuantity={updateCartQuantity}
@@ -1753,6 +1744,8 @@ export const HomeScreen = () => {
                     toggleFavorite={toggleFavorite}
                     onPressProduct={handleProductSelect}
                     onOpenShadeSheet={openShadeSheet}
+                    rememberSelectedShade={rememberSelectedShade}
+                    setSelectedShade={setSelectedShade}
                   />
                 </View>
               ))}
@@ -1778,6 +1771,7 @@ export const HomeScreen = () => {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              removeClippedSubviews={Platform.OS === 'android'}
               contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 4 }}
             >
               {newArrivals.slice(0, 10).map((product) => (
@@ -1787,6 +1781,7 @@ export const HomeScreen = () => {
                     cardWidth={165}
                     userRole={userRole}
                     getRolePrice={getRolePrice}
+                    cart={cart}
                     cartQuantityMap={cartQuantityMap}
                     addToCart={addToCart}
                     updateCartQuantity={updateCartQuantity}
@@ -1795,6 +1790,8 @@ export const HomeScreen = () => {
                     toggleFavorite={toggleFavorite}
                     onPressProduct={handleProductSelect}
                     onOpenShadeSheet={openShadeSheet}
+                    rememberSelectedShade={rememberSelectedShade}
+                    setSelectedShade={setSelectedShade}
                   />
                 </View>
               ))}
@@ -1825,6 +1822,7 @@ export const HomeScreen = () => {
                     product={product}
                     userRole={userRole}
                     getRolePrice={getRolePrice}
+                    cart={cart}
                     cartQuantityMap={cartQuantityMap}
                     addToCart={addToCart}
                     updateCartQuantity={updateCartQuantity}
@@ -1833,6 +1831,8 @@ export const HomeScreen = () => {
                     toggleFavorite={toggleFavorite}
                     onPressProduct={handleProductSelect}
                     onOpenShadeSheet={openShadeSheet}
+                    rememberSelectedShade={rememberSelectedShade}
+                    setSelectedShade={setSelectedShade}
                   />
                 </View>
               ))}

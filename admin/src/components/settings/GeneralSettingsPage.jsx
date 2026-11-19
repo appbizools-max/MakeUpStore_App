@@ -12,11 +12,9 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
-  QrCode,
   Sparkles,
   Percent,
   Check,
-  Upload,
   Navigation,
   MapPin,
   Gift,
@@ -24,11 +22,6 @@ import {
   Info,
   Calculator
 } from 'lucide-react';
-import ImageField from '../media/ImageField';
-import PaymentSecurityGateModal from '../security/PaymentSecurityGateModal';
-import Security2FASettingsPage from '../security/Security2FASettingsPage';
-import { isPaymentSessionValid } from '../../utils/totpSecurityEngine';
-import { Lock, ShieldCheck } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 import { calculateDeliveryCharge, DELIVERY_MODELS, DEFAULT_DELIVERY_CONFIG } from '../../utils/deliveryChargeCalculator';
 
@@ -36,9 +29,9 @@ export const DEFAULT_GENERAL_SETTINGS = {
   storeName: 'Salbeau MakeUpStore',
   tagline: 'Luxury Beauty & Salon Cosmetics Store',
   supportEmail: 'contact@salbeau.com',
-  supportPhone: '+91 98765 43210',
-  headquartersAddress: 'VIP Road, C-Block, Visakhapatnam, Andhra Pradesh - 530003',
-  gstin: '37AAAAA0000A1Z5',
+  supportPhone: '',
+  headquartersAddress: 'The Makeup Store, Vishakapatnam',
+  gstin: '',
   currency: '₹',
   delivery: {
     pricingModel: 'default_free', // 'default_free' | 'always_free' | 'per_km' | 'order_value' | 'fixed'
@@ -58,7 +51,8 @@ export const DEFAULT_GENERAL_SETTINGS = {
     estimatedTimeText: 'Same Day / 24-48 Hours'
   },
   payments: {
-    upiId: 'salbeau.store@okaxis',
+    upiId: '',
+    upiName: 'Salbeau MakeUpStore',
     upiQrCodeUrl: '',
     acceptUpi: true,
     acceptCod: true,
@@ -86,19 +80,7 @@ export default function GeneralSettingsPage() {
     currentAuthUser,
   } = adminContext;
 
-  const [activeTab, setActiveTab] = useState('store_info'); // 'store_info' | 'delivery' | 'payments' | 'broadcast' | 'policies' | 'security_2fa'
-  const [isUploadingQr, setIsUploadingQr] = useState(false);
-  const [is2FAGateOpen, setIs2FAGateOpen] = useState(false);
-
-  const handleTabSelect = (tabKey) => {
-    if (tabKey === 'payments') {
-      if (!isPaymentSessionValid(currentAuthUser?.email)) {
-        setIs2FAGateOpen(true);
-        return;
-      }
-    }
-    setActiveTab(tabKey);
-  };
+  const [activeTab, setActiveTab] = useState('store_info'); // 'store_info' | 'delivery' | 'payments' | 'broadcast' | 'policies'
 
   const normalizeSettings = (raw) => {
     if (!raw || typeof raw !== 'object') return DEFAULT_GENERAL_SETTINGS;
@@ -135,6 +117,8 @@ export default function GeneralSettingsPage() {
         ...DEFAULT_GENERAL_SETTINGS.payments,
         ...(raw.payments || {}),
         upiId: raw.payments?.upiId || DEFAULT_GENERAL_SETTINGS.payments.upiId,
+        upiName: raw.payments?.upiName || raw.payments?.merchantName || DEFAULT_GENERAL_SETTINGS.payments.upiName,
+        upiQrCodeUrl: raw.payments?.upiQrCodeUrl || '',
         acceptUpi: raw.payments?.acceptUpi ?? raw.payments?.allowUpi ?? DEFAULT_GENERAL_SETTINGS.payments.acceptUpi,
         acceptCod: raw.payments?.acceptCod ?? raw.payments?.allowCod ?? DEFAULT_GENERAL_SETTINGS.payments.acceptCod,
         maxCodAmount: raw.payments?.maxCodAmount ?? raw.payments?.maxCodLimit ?? DEFAULT_GENERAL_SETTINGS.payments.maxCodAmount,
@@ -192,38 +176,6 @@ export default function GeneralSettingsPage() {
     setSaveError('');
   };
 
-  const handleDirectQrUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setIsUploadingQr(true);
-      setSaveError('');
-      if (typeof uploadImage === 'function') {
-        const url = await uploadImage(file, 'payment-proofs', 'store_merchant_upi_qr', 'PRODUCT');
-        if (url) {
-          handleNestedChange('payments', 'upiQrCodeUrl', url);
-          return;
-        }
-      }
-      // Direct local file reader fallback if needed
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        handleNestedChange('payments', 'upiQrCodeUrl', event.target.result);
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.warn('Direct QR upload storage warning:', err);
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        handleNestedChange('payments', 'upiQrCodeUrl', event.target.result);
-      };
-      reader.readAsDataURL(file);
-    } finally {
-      setIsUploadingQr(false);
-      if (e.target) e.target.value = '';
-    }
-  };
-
   const handleSave = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     setIsSaving(true);
@@ -233,6 +185,13 @@ export default function GeneralSettingsPage() {
     try {
       const payload = {
         ...formData,
+        storeName: formData?.storeName,
+        tagline: formData?.tagline,
+        supportEmail: formData?.supportEmail,
+        supportPhone: formData?.supportPhone,
+        headquartersAddress: formData?.headquartersAddress,
+        gstin: formData?.gstin,
+        currency: formData?.currency,
         identity: {
           storeName: formData?.storeName,
           tagline: formData?.tagline,
@@ -241,6 +200,7 @@ export default function GeneralSettingsPage() {
           hqAddress: formData?.headquartersAddress,
           gstin: formData?.gstin,
           currencySymbol: formData?.currency,
+          currencyCode: 'INR'
         },
         delivery: {
           ...formData?.delivery,
@@ -266,9 +226,11 @@ export default function GeneralSettingsPage() {
           ...formData?.payments,
           allowCod: Boolean(formData?.payments?.acceptCod),
           allowUpi: Boolean(formData?.payments?.acceptUpi),
-          upiId: formData?.payments?.upiId,
-          upiQrCodeUrl: formData?.payments?.upiQrCodeUrl,
+          upiId: formData?.payments?.upiId?.trim() || '',
+          upiName: formData?.payments?.upiName?.trim() || formData?.storeName || 'Salbeau MakeUpStore',
+          upiQrCodeUrl: formData?.payments?.upiQrCodeUrl || '',
           maxCodLimit: Number(formData?.payments?.maxCodAmount),
+          updatedAt: new Date().toISOString(),
         },
         operations: {
           isAcceptingOrders: Boolean(formData?.storeOpen),
@@ -286,7 +248,10 @@ export default function GeneralSettingsPage() {
       };
 
       if (typeof updateGeneralSettings === 'function') {
-        await updateGeneralSettings(payload);
+        const res = await updateGeneralSettings(payload);
+        if (res?.data) {
+          setFormData(normalizeSettings(res.data));
+        }
       }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -297,11 +262,22 @@ export default function GeneralSettingsPage() {
     }
   };
 
-  const handleResetToDefault = () => {
+  const handleResetToDefault = async () => {
     if (window.confirm('Reset all store settings to default Salbeau configurations?')) {
-      setFormData(DEFAULT_GENERAL_SETTINGS);
-      setSaveSuccess(false);
-      setSaveError('');
+      setIsSaving(true);
+      try {
+        if (typeof updateGeneralSettings === 'function') {
+          await updateGeneralSettings(DEFAULT_GENERAL_SETTINGS);
+        }
+        setFormData(DEFAULT_GENERAL_SETTINGS);
+        setSaveSuccess(true);
+        setSaveError('');
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } catch (err) {
+        setSaveError(err.message || 'Failed to reset settings to default.');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -376,11 +352,10 @@ export default function GeneralSettingsPage() {
         <button
           type="button"
           onClick={() => setActiveTab('store_info')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'store_info'
-              ? 'bg-[#D81B60] text-white shadow-sm'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'store_info'
+            ? 'bg-[#D81B60] text-white shadow-sm'
+            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
         >
           <Store size={15} />
           <span>Store Identity</span>
@@ -389,11 +364,10 @@ export default function GeneralSettingsPage() {
         <button
           type="button"
           onClick={() => setActiveTab('delivery')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'delivery'
-              ? 'bg-[#D81B60] text-white shadow-sm'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'delivery'
+            ? 'bg-[#D81B60] text-white shadow-sm'
+            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
         >
           <Truck size={15} />
           <span>Delivery Rates & Rules</span>
@@ -401,42 +375,23 @@ export default function GeneralSettingsPage() {
 
         <button
           type="button"
-          onClick={() => handleTabSelect('payments')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'payments'
-              ? 'bg-[#D81B60] text-white shadow-sm'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
+          onClick={() => setActiveTab('payments')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'payments'
+            ? 'bg-[#D81B60] text-white shadow-sm'
+            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
         >
           <CreditCard size={15} />
           <span>Payments & UPI Gateway</span>
-          <span className="px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-900 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
-            <Lock size={9} />
-            <span>2FA</span>
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('security_2fa')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'security_2fa'
-              ? 'bg-[#D81B60] text-white shadow-sm'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
-        >
-          <ShieldCheck size={15} />
-          <span>Security & 2FA</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('broadcast')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'broadcast'
-              ? 'bg-[#D81B60] text-white shadow-sm'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'broadcast'
+            ? 'bg-[#D81B60] text-white shadow-sm'
+            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
         >
           <Bell size={15} />
           <span>Store Status & Announcements</span>
@@ -448,11 +403,10 @@ export default function GeneralSettingsPage() {
         <button
           type="button"
           onClick={() => setActiveTab('policies')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'policies'
-              ? 'bg-[#D81B60] text-white shadow-sm'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === 'policies'
+            ? 'bg-[#D81B60] text-white shadow-sm'
+            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
         >
           <ShieldAlert size={15} />
           <span>Policies & Cancellations</span>
@@ -511,7 +465,7 @@ export default function GeneralSettingsPage() {
                   type="text"
                   value={currentData?.supportPhone || ''}
                   onChange={e => handleChange('supportPhone', e.target.value)}
-                  placeholder="+91 98765 43210"
+                  placeholder="Enter store helpline (e.g. +91 80197 94556)"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
@@ -533,7 +487,7 @@ export default function GeneralSettingsPage() {
                   type="text"
                   value={currentData?.gstin || ''}
                   onChange={e => handleChange('gstin', e.target.value.toUpperCase())}
-                  placeholder="37AAAAA0000A1Z5"
+                  placeholder="Enter GSTIN Number (Optional)"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-mono font-bold text-gray-800 outline-none focus:border-[#D81B60]"
                 />
               </div>
@@ -589,11 +543,10 @@ export default function GeneralSettingsPage() {
                       }
                     }));
                   }}
-                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                    (currentData?.delivery?.pricingModel === 'default_free' || (!currentData?.delivery?.pricingModel && currentData?.delivery?.isDefaultFree))
-                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${(currentData?.delivery?.pricingModel === 'default_free' || (!currentData?.delivery?.pricingModel && currentData?.delivery?.isDefaultFree))
+                    ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="w-7 h-7 rounded-xl bg-pink-100 text-[#D81B60] flex items-center justify-center font-bold">
@@ -624,11 +577,10 @@ export default function GeneralSettingsPage() {
                       }
                     }));
                   }}
-                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                    (currentData?.delivery?.pricingModel === 'always_free' || currentData?.delivery?.isFreeDeliveryAll)
-                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${(currentData?.delivery?.pricingModel === 'always_free' || currentData?.delivery?.isFreeDeliveryAll)
+                    ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
@@ -659,11 +611,10 @@ export default function GeneralSettingsPage() {
                       }
                     }));
                   }}
-                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                    currentData?.delivery?.pricingModel === 'per_km'
-                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${currentData?.delivery?.pricingModel === 'per_km'
+                    ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="w-7 h-7 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
@@ -694,11 +645,10 @@ export default function GeneralSettingsPage() {
                       }
                     }));
                   }}
-                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                    currentData?.delivery?.pricingModel === 'order_value'
-                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${currentData?.delivery?.pricingModel === 'order_value'
+                    ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="w-7 h-7 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
@@ -729,11 +679,10 @@ export default function GeneralSettingsPage() {
                       }
                     }));
                   }}
-                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                    currentData?.delivery?.pricingModel === 'fixed'
-                      ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${currentData?.delivery?.pricingModel === 'fixed'
+                    ? 'border-[#D81B60] bg-pink-50/50 shadow-sm shadow-pink-100'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="w-7 h-7 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
@@ -985,18 +934,18 @@ export default function GeneralSettingsPage() {
                 currentData?.delivery?.pricingModel === 'default_free' ||
                 currentData?.delivery?.isFreeDeliveryAll ||
                 (!currentData?.delivery?.pricingModel && currentData?.delivery?.isDefaultFree)) && (
-                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3 text-emerald-800">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-                    <CheckCircle2 size={20} className="text-emerald-600" />
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3 text-emerald-800">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                      <CheckCircle2 size={20} className="text-emerald-600" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black">Zero Delivery Fees Active</h4>
+                      <p className="text-[11px] text-emerald-700 mt-0.5">
+                        All customers enjoy 100% complimentary Free Delivery on every order. No shipping charges will be added at checkout.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-black">Zero Delivery Fees Active</h4>
-                    <p className="text-[11px] text-emerald-700 mt-0.5">
-                      All customers enjoy 100% complimentary Free Delivery on every order. No shipping charges will be added at checkout.
-                    </p>
-                  </div>
-                </div>
-              )}
+                )}
             </div>
 
             {/* ── Interactive Live Customer Checkout Bill Simulator ── */}
@@ -1147,30 +1096,8 @@ export default function GeneralSettingsPage() {
           </div>
         )}
 
-        {/* 3. PAYMENTS & UPI GATEWAY TAB (2FA PROTECTED) */}
-        {activeTab === 'payments' && !isPaymentSessionValid(currentAuthUser?.email) && (
-          <div className="py-12 px-6 text-center max-w-md mx-auto space-y-4 animate-fade-in">
-            <div className="w-16 h-16 rounded-3xl bg-purple-50 text-purple-700 border border-purple-200 mx-auto flex items-center justify-center shadow-sm">
-              <Lock size={32} />
-            </div>
-            <div>
-              <h2 className="text-base font-black text-gray-900">Payment & UPI Gateway Locked</h2>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                Enterprise Two-Factor Authentication (2FA) is required to view or configure store UPI credentials, merchant QR codes, and payment options.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIs2FAGateOpen(true)}
-              className="w-full py-3 bg-gradient-to-r from-purple-700 to-[#D81B60] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <ShieldCheck size={16} />
-              <span>Verify Password & Authenticator Code</span>
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'payments' && isPaymentSessionValid(currentAuthUser?.email) && (
+        {/* 3. PAYMENTS & UPI GATEWAY TAB */}
+        {activeTab === 'payments' && (
           <div className="space-y-6 max-w-3xl">
             <div>
               <h2 className="text-base font-black text-gray-900">Payment Modes & UPI Gateway</h2>
@@ -1179,121 +1106,47 @@ export default function GeneralSettingsPage() {
               </p>
             </div>
 
-            {/* UPI Gateway & Live QR Code Management Card */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-50/70 via-pink-50/40 to-white border border-purple-200/90 shadow-sm space-y-5">
+            {/* UPI Gateway & Official VPA Management Card */}
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-50/70 via-pink-50/40 to-white border border-purple-200/90 shadow-sm space-y-5">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold shadow-sm">
-                  <QrCode size={20} />
+                  <CreditCard size={20} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-purple-950">Store UPI VPA Address & QR Code</h3>
+                  <h3 className="text-sm font-black text-purple-950">Store Official UPI ID (VPA)</h3>
                   <p className="text-[11px] text-purple-700/80 font-medium">
-                    Displayed directly to delivery partners and customers for instant doorstep UPI payment collection.
+                    Displayed directly to delivery partners and customers for direct UPI payment transfers.
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                {/* Left Column: Form inputs */}
-                <div className="lg:col-span-7 space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-purple-950 mb-1">Official UPI ID (VPA) *</label>
-                    <input
-                      type="text"
-                      value={currentData?.payments?.upiId || ''}
-                      onChange={e => handleNestedChange('payments', 'upiId', e.target.value.trim())}
-                      placeholder="e.g. salbeau.store@okaxis"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-purple-200 text-xs font-mono font-bold text-purple-900 outline-none focus:border-purple-600 shadow-2xs"
-                    />
-                    <span className="text-[10px] text-purple-700 font-medium mt-1 block">
-                      Customers and delivery partner apps transfer funds to this VPA address.
-                    </span>
-                  </div>
-
-                  {/* Upload Custom Merchant QR Standee / Image */}
-                  <div className="p-4 rounded-xl bg-white/90 border border-purple-200/80 shadow-2xs space-y-3">
-                    <ImageField
-                      label="Store Merchant UPI QR Code"
-                      sublabel="Upload official Bank / Google Pay / PhonePe / Paytm Merchant QR sticker or standee"
-                      value={currentData?.payments?.upiQrCodeUrl || ''}
-                      onChange={url => handleNestedChange('payments', 'upiQrCodeUrl', url)}
-                      folder="payment-proofs"
-                      filenamePrefix="store_merchant_upi_qr"
-                      entityName={currentData?.storeName || 'Store UPI QR'}
-                      aspectRatio="upi_qr"
-                      localOnly={true}
-                    />
-
-                    {/* Direct Quick Device File Upload Shortcut */}
-                    <div className="pt-2 border-t border-purple-100 flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-[11px] text-purple-900 font-bold flex items-center gap-1.5">
-                        <Upload size={13} className="text-purple-600 shrink-0" />
-                        <span>Direct Device Upload:</span>
-                      </div>
-                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 text-xs font-bold cursor-pointer transition-all shadow-2xs">
-                        <Upload size={12} className={isUploadingQr ? 'animate-bounce' : ''} />
-                        <span>{isUploadingQr ? 'Processing...' : 'Browse from Device'}</span>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          className="hidden"
-                          disabled={isUploadingQr}
-                          onChange={handleDirectQrUpload}
-                        />
-                      </label>
-                    </div>
-
-                    <span className="text-[10px] text-gray-500 font-medium block leading-relaxed">
-                      💡 <strong>Only local device upload is enabled.</strong> Select a high-res image from your device storage or drag & drop. If left empty, an automated dynamic UPI QR is generated on the fly.
-                    </span>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-purple-950 mb-1">Official UPI Payee / Merchant Name *</label>
+                  <input
+                    type="text"
+                    value={currentData?.payments?.upiName || ''}
+                    onChange={e => handleNestedChange('payments', 'upiName', e.target.value)}
+                    placeholder="e.g. Salbeau MakeUpStore or SALBEAU ENTERPRISES"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-purple-200 text-xs font-bold text-purple-900 outline-none focus:border-purple-600 shadow-2xs"
+                  />
+                  <span className="text-[10px] text-purple-700 font-medium mt-1 block">
+                    Payee name displayed to customers in payment apps (GPay, PhonePe, Paytm, BHIM) and shown to delivery riders.
+                  </span>
                 </div>
 
-                {/* Right Column: Live Delivery Partner QR Code Card Preview */}
-                <div className="lg:col-span-5 bg-white rounded-2xl p-4 border border-purple-200 shadow-xs flex flex-col items-center text-center">
-                  <div className="flex items-center gap-1.5 mb-2.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                    <span className="text-[11px] font-black text-purple-900 uppercase tracking-wider">
-                      Delivery Partner Live QR Preview
-                    </span>
-                  </div>
-
-                  <div className="p-3 bg-purple-50/60 rounded-2xl border border-purple-100 mb-3 shadow-inner">
-                    <img
-                      src={
-                        currentData?.payments?.upiQrCodeUrl ||
-                        `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(
-                          `upi://pay?pa=${currentData?.payments?.upiId || 'salbeau.store@okaxis'}&pn=${encodeURIComponent(
-                            currentData?.storeName || 'Salbeau MakeUpStore'
-                          )}&cu=INR`
-                        )}`
-                      }
-                      alt="Store UPI QR Code Preview"
-                      className="w-44 h-44 object-contain rounded-xl bg-white p-1"
-                    />
-                  </div>
-
-                  <div className="space-y-1 w-full">
-                    <div className="text-xs font-black text-gray-900">
-                      {currentData?.storeName || 'Salbeau MakeUpStore'}
-                    </div>
-                    <div className="inline-block px-3 py-1 bg-purple-100 text-purple-900 rounded-full text-[11px] font-mono font-black">
-                      {currentData?.payments?.upiId || 'salbeau.store@okaxis'}
-                    </div>
-                    <div className="text-[10px] text-emerald-700 font-bold pt-1 flex items-center justify-center gap-1">
-                      <CheckCircle2 size={12} className="text-emerald-600" />
-                      <span>{currentData?.payments?.upiQrCodeUrl ? 'Custom Merchant QR Active' : 'Dynamic UPI QR Active'}</span>
-                    </div>
-                    {currentData?.payments?.upiQrCodeUrl && (
-                      <button
-                        type="button"
-                        onClick={() => handleNestedChange('payments', 'upiQrCodeUrl', '')}
-                        className="text-[10px] text-rose-600 hover:text-rose-800 font-bold hover:underline cursor-pointer pt-0.5"
-                      >
-                        Remove Custom QR & Use Dynamic VPA
-                      </button>
-                    )}
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-purple-950 mb-1">Official UPI ID (VPA) *</label>
+                  <input
+                    type="text"
+                    value={currentData?.payments?.upiId || ''}
+                    onChange={e => handleNestedChange('payments', 'upiId', e.target.value.trim())}
+                    placeholder="Enter store UPI ID (e.g. merchant@upi)"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-purple-200 text-xs font-mono font-bold text-purple-900 outline-none focus:border-purple-600 shadow-2xs"
+                  />
+                  <span className="text-[10px] text-purple-700 font-medium mt-1 block">
+                    Customers and delivery riders transfer funds directly to this VPA address.
+                  </span>
                 </div>
               </div>
             </div>
@@ -1303,7 +1156,7 @@ export default function GeneralSettingsPage() {
               <label className="flex items-center justify-between p-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
-                    <QrCode size={18} />
+                    <CreditCard size={18} />
                   </div>
                   <div>
                     <span className="text-xs font-black text-gray-900 block">Allow UPI & Online Payments</span>
@@ -1369,9 +1222,8 @@ export default function GeneralSettingsPage() {
             </div>
 
             {/* Store Open / Closed Toggle */}
-            <div className={`p-5 rounded-2xl border transition-all ${
-              currentData?.storeOpen !== false ? 'bg-emerald-50/50 border-emerald-200' : 'bg-amber-50/60 border-amber-300'
-            }`}>
+            <div className={`p-5 rounded-2xl border transition-all ${currentData?.storeOpen !== false ? 'bg-emerald-50/50 border-emerald-200' : 'bg-amber-50/60 border-amber-300'
+              }`}>
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-black text-gray-900">Accepting Customer Orders</h3>
@@ -1430,14 +1282,6 @@ export default function GeneralSettingsPage() {
               )}
             </div>
           </div>
-        )}
-
-        {/* 6. SECURITY & 2FA TAB */}
-        {activeTab === 'security_2fa' && (
-          <Security2FASettingsPage
-            currentAuthUser={currentAuthUser}
-            onBackToSettings={() => setActiveTab('store_info')}
-          />
         )}
 
         {/* 5. POLICIES & CANCELLATIONS TAB */}
@@ -1513,22 +1357,6 @@ export default function GeneralSettingsPage() {
           </div>
         )}
       </div>
-
-      {/* ── TWO-FACTOR AUTHENTICATION SECURITY GATE MODAL ── */}
-      <PaymentSecurityGateModal
-        isOpen={is2FAGateOpen}
-        onClose={() => setIs2FAGateOpen(false)}
-        currentAuthUser={currentAuthUser}
-        onSuccess={() => {
-          setIs2FAGateOpen(false);
-          setActiveTab('payments');
-        }}
-        onNavigateToSetup2FA={() => {
-          setIs2FAGateOpen(false);
-          setActiveTab('security_2fa');
-        }}
-        targetSectionName="Payment Modes & UPI Gateway"
-      />
     </div>
   );
 }

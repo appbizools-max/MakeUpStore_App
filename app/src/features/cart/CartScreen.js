@@ -20,7 +20,8 @@ export const CartScreen = () => {
     recommendationConfig,
     setSelectedProduct,
     getDeliveryFee,
-    storeSettings
+    storeSettings,
+    goBack
   } = useApp();
 
 
@@ -129,11 +130,24 @@ export const CartScreen = () => {
   return (
     <View className="flex-1 bg-white">
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 110 }} className="bg-white">
-        {/* Header Title & Clear All Button */}
+        {/* Header Title with Back Button & Clear All Button */}
         <View className="flex-row items-center justify-between mb-4 mt-1">
-          <Text className="text-2xl font-black text-[#3A2430]">
-            My Cart ({totalItemCount})
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity
+              onPress={() => {
+                if (typeof goBack === 'function') goBack();
+                else setCurrentScreen('home');
+              }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              className="w-9 h-9 rounded-full bg-white border border-[#F0E3EA] items-center justify-center shadow-2xs mr-1"
+            >
+              <Ionicons name="chevron-back" size={20} color="#D81B60" />
+            </TouchableOpacity>
+            <Text className="text-2xl font-black text-[#3A2430]">
+              My Cart ({totalItemCount})
+            </Text>
+          </View>
           <TouchableOpacity
             onPress={handleClearAll}
             className="flex-row items-center gap-1.5 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-full"

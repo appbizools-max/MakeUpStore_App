@@ -15,7 +15,7 @@ import {
   Key,
   Eye,
   Edit,
-  Sliders,
+  SlidersHorizontal,
   Activity,
   ArrowRight,
   Sparkles,
@@ -376,7 +376,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white text-black hover:bg-[#FDF2F8] border border-[#FCE4EC] font-bold text-[11px] transition-colors"
                           title="Click to configure granular permissions"
                         >
-                          <Sliders size={12} />
+                          <SlidersHorizontal size={12} />
                           <span>{permModules.length} Modules</span>
                         </button>
                       </td>
@@ -408,7 +408,7 @@ export default function AllEmployeesPage({ onNavigate }) {
                             className="p-1.5 rounded-lg text-gray-500 hover:text-[#D81B60] hover:bg-[#FFF5F8] transition-colors"
                             title="Configure Permissions"
                           >
-                            <Sliders size={15} />
+                            <SlidersHorizontal size={15} />
                           </button>
 
                           <button

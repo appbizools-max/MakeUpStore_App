@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AdminProvider, useAdmin } from './context/AdminContext';
 import { AdminErrorBoundary } from './components/common/ErrorBoundary';
+import LandingPage from './components/public/LandingPage';
+import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
+import ExpenseManager from './components/analytics/ExpenseManager';
+import ReportsManager from './components/analytics/ReportsManager';
+import GeneralDashboardSettings from './components/dashboard/GeneralDashboardSettings';
+import NetworkStatusBanner from './components/common/NetworkStatusBanner';
 import {
   LayoutGrid,
   ShoppingBag,
@@ -33,6 +39,7 @@ import {
   Image as ImageIcon,
   X,
   LogOut,
+  SlidersHorizontal,
   FileText,
   MapPin,
   Truck,
@@ -126,7 +133,6 @@ const DeliveryPartnerManagementPage = lazyWithRetry(() => import('./components/o
 const BranchManagementPage = lazyWithRetry(() => import('./components/settings/BranchManagementPage'));
 const GeneralSettingsPage = lazyWithRetry(() => import('./components/settings/GeneralSettingsPage'));
 const UpiPaymentVerificationPage = lazyWithRetry(() => import('./components/payments/UpiPaymentVerificationPage'));
-const Security2FASettingsPage = lazyWithRetry(() => import('./components/security/Security2FASettingsPage'));
 
 const PageLoadingFallback = () => (
   <div className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center animate-fade-in">
@@ -308,25 +314,64 @@ const AdminDashboard = () => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [loginCredentials, setLoginCredentials] = useState({ email: '', password: '' });
 
+  // URL-based route detection: /admin vs /staff vs /employee vs / (landing page)
+  const getInitialAuthView = () => {
+    if (typeof window !== 'undefined') {
+      const path = (window.location.pathname || '').toLowerCase();
+      const hash = (window.location.hash || '').toLowerCase();
+      if (path === '/staff' || path.startsWith('/staff') || path === '/employee' || path.startsWith('/employee') || hash === '#staff' || hash === '#employee') {
+        return 'staff';
+      }
+      if (path === '/admin' || path.startsWith('/admin') || hash === '#admin' || hash === '#login') {
+        return 'admin';
+      }
+    }
+    return 'landing';
+  };
+
+  const [authView, setAuthView] = useState(getInitialAuthView);
+  const [staffLoginCredentials, setStaffLoginCredentials] = useState({ identifier: '', password: '' });
+  const [staffLoginLoading, setStaffLoginLoading] = useState(false);
+  const [staffLoginError, setStaffLoginError] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handleRouteChange = () => {
+        setAuthView(getInitialAuthView());
+      };
+      window.addEventListener('hashchange', handleRouteChange);
+      window.addEventListener('popstate', handleRouteChange);
+      return () => {
+        window.removeEventListener('hashchange', handleRouteChange);
+        window.removeEventListener('popstate', handleRouteChange);
+      };
+    }
+  }, []);
+
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase().replace(/^#\/?/, '');
       let routeParam = '';
-      const matchAdmin = pathname.match(/^\/admin\/(.+)/);
-      if (matchAdmin) {
-        routeParam = matchAdmin[1].replace(/\/$/, '');
+      const matchRoute = pathname.match(/^\/(?:admin|employee|staff)\/(.+)/);
+      if (matchRoute) {
+        routeParam = matchRoute[1].replace(/\/$/, '');
       } else {
         const matchDirect = pathname.match(/^\/([a-z0-9_\/-]+)/);
-        if (matchDirect && matchDirect[1] !== 'admin') {
+        if (matchDirect && matchDirect[1] !== 'admin' && matchDirect[1] !== 'employee' && matchDirect[1] !== 'staff') {
           routeParam = matchDirect[1].replace(/\/$/, '');
         } else {
           routeParam = hash;
         }
       }
+      if (routeParam === 'dashboard_visibility') {
+        return 'dashboard';
+      }
       const validTabs = [
         'dashboard',
-        'dashboard_visibility',
+        'analytics',
+        'expenses',
+        'reports',
         'home_banners',
         'categories',
         'order_updated',
@@ -418,7 +463,9 @@ const AdminDashboard = () => {
     }
     setActiveTab(tabId);
     if (typeof window !== 'undefined' && window.history && window.history.pushState) {
-      window.history.pushState({ tab: tabId }, '', `/admin/${tabId}`);
+      const isEmployee = currentAuthUser?.role === 'employee';
+      const prefix = isEmployee ? '/employee' : '/admin';
+      window.history.pushState({ tab: tabId }, '', `${prefix}/${tabId}`);
     }
   };
 
@@ -430,27 +477,54 @@ const AdminDashboard = () => {
     return () => window.removeEventListener('salbeau:navigate-tab', handleNavEvent);
   }, [currentAuthUser]);
 
-  // Automatic Role-Based Access Enforcer: Redirects employees away from unpermitted tabs
+  // Automatic Role-Based Access & URL Prefix Enforcer:
+  // If employee: ensures URL is /employee/${tab} and user is strictly on an authorized tab
+  // If admin: ensures URL is /admin/${tab}
   useEffect(() => {
-    if (isAuthenticated && currentAuthUser && currentAuthUser.role === 'employee') {
-      if (!canAccessTab(activeTab, currentAuthUser)) {
-        const allowedTab = getFirstAccessibleTab(currentAuthUser);
-        if (allowedTab && allowedTab !== activeTab) {
-          setActiveTab(allowedTab);
-          if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-            window.history.replaceState({ tab: allowedTab }, '', `/admin/${allowedTab}`);
+    if (isAuthenticated && currentAuthUser) {
+      const isEmployee = currentAuthUser.role === 'employee';
+      const expectedPrefix = isEmployee ? '/employee' : '/admin';
+
+      if (isEmployee) {
+        if (!canAccessTab(activeTab, currentAuthUser)) {
+          const allowedTab = getFirstAccessibleTab(currentAuthUser);
+          if (allowedTab && allowedTab !== activeTab) {
+            setActiveTab(allowedTab);
+            if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+              window.history.replaceState({ tab: allowedTab }, '', `${expectedPrefix}/${allowedTab}`);
+            }
+            return;
           }
+        }
+      }
+
+      // Synchronize URL prefix if mismatched (e.g. employee loaded on /admin/products)
+      if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+        const currentPath = (window.location.pathname || '').toLowerCase();
+        if (isEmployee && currentPath.startsWith('/admin/')) {
+          const newPath = currentPath.replace(/^\/admin/, '/employee');
+          window.history.replaceState({ tab: activeTab }, '', newPath);
+        } else if (!isEmployee && currentPath.startsWith('/employee/')) {
+          const newPath = currentPath.replace(/^\/employee/, '/admin');
+          window.history.replaceState({ tab: activeTab }, '', newPath);
+        } else if (isEmployee && (currentPath === '/admin' || currentPath === '/employee' || currentPath === '/staff')) {
+          window.history.replaceState({ tab: activeTab }, '', `${expectedPrefix}/${activeTab}`);
+        } else if (!isEmployee && (currentPath === '/admin' || currentPath === '/employee' || currentPath === '/staff')) {
+          window.history.replaceState({ tab: activeTab }, '', `${expectedPrefix}/${activeTab}`);
         }
       }
     }
   }, [isAuthenticated, currentAuthUser, activeTab]);
 
-  // When unauthenticated, ensure browser URL bar is cleanly at '/'
+  // When unauthenticated, ensure browser URL bar is cleanly preserved for /admin, /staff, or /employee, and '/' for landing
   useEffect(() => {
     if (!isAuthenticated) {
-      if (typeof window !== 'undefined' && window.location.pathname !== '/' && window.location.pathname !== '') {
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState(null, '', '/');
+      if (typeof window !== 'undefined') {
+        const path = (window.location.pathname || '').toLowerCase();
+        if (path !== '/' && !path.startsWith('/admin') && !path.startsWith('/staff') && !path.startsWith('/employee')) {
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', '/');
+          }
         }
       }
     }
@@ -462,20 +536,26 @@ const AdminDashboard = () => {
         const pathname = window.location.pathname.toLowerCase();
         const hash = window.location.hash.toLowerCase().replace(/^#\/?/, '');
         let routeParam = '';
-        const matchAdmin = pathname.match(/^\/admin\/(.+)/);
-        if (matchAdmin) {
-          routeParam = matchAdmin[1].replace(/\/$/, '');
+        const matchRoute = pathname.match(/^\/(?:admin|employee|staff)\/(.+)/);
+        if (matchRoute) {
+          routeParam = matchRoute[1].replace(/\/$/, '');
         } else {
           const matchDirect = pathname.match(/^\/([a-z0-9_\/-]+)/);
-          if (matchDirect && matchDirect[1] !== 'admin') {
+          if (matchDirect && matchDirect[1] !== 'admin' && matchDirect[1] !== 'employee' && matchDirect[1] !== 'staff') {
             routeParam = matchDirect[1].replace(/\/$/, '');
           } else {
             routeParam = hash;
           }
         }
+        if (routeParam === 'dashboard_visibility') {
+          setActiveTab('dashboard');
+          return;
+        }
         const validTabs = [
           'dashboard',
-          'dashboard_visibility',
+          'analytics',
+          'expenses',
+          'reports',
           'home_banners',
           'categories',
           'order_updated',
@@ -590,7 +670,6 @@ const AdminDashboard = () => {
   const isItemActive = useCallback((itemId) => {
     if (!itemId) return false;
     if (itemId === 'dashboard') return activeTab === 'dashboard';
-    if (itemId === 'dashboard_visibility') return activeTab === 'dashboard_visibility';
     if (itemId === 'products') return activeTab === 'products' || activeTab === 'products/new';
     if (itemId === 'products/bulk') return activeTab === 'products/bulk';
     if (itemId === 'users') return activeTab === 'user' || activeTab.startsWith('users') || activeTab.startsWith('user/');
@@ -614,9 +693,19 @@ const AdminDashboard = () => {
           icon: LayoutGrid,
         },
         {
-          id: 'dashboard_visibility',
-          label: 'Dashboard Visibility',
-          icon: Eye,
+          id: 'analytics',
+          label: 'Analytics Dashboard',
+          icon: TrendingUp,
+        },
+        {
+          id: 'expenses',
+          label: 'Expense Manager',
+          icon: DollarSign,
+        },
+        {
+          id: 'reports',
+          label: 'Reports & Exports',
+          icon: FileText,
         },
       ]
     },
@@ -813,9 +902,9 @@ const AdminDashboard = () => {
       title: 'SYSTEM',
       items: [
         {
-          id: 'dashboard_visibility',
-          label: 'Settings',
-          icon: Eye,
+          id: 'settings',
+          label: 'General Settings',
+          icon: SlidersHorizontal,
         },
         {
           id: 'logout',
@@ -850,7 +939,7 @@ const AdminDashboard = () => {
     return navSections.map(sec => {
       const filteredItems = sec.items.filter(item => {
         if (item.id === 'dashboard') return perms.dashboard?.enabled !== false;
-        if (item.id === 'dashboard_visibility' || item.id === 'settings') return hasModuleAccess(perms, 'settings');
+        if (item.id === 'settings') return hasModuleAccess(perms, 'settings');
         if (item.id === 'home_banners') return hasModuleAccess(perms, 'settings') || currentAuthUser?.role === 'admin';
         if (item.id === 'categories') return hasModuleAccess(perms, 'categories');
         if (item.id === 'add_brand') return hasModuleAccess(perms, 'brands');
@@ -2812,8 +2901,139 @@ const AdminDashboard = () => {
   const paginatedProducts = filteredProducts.slice(productStartIndex, productStartIndex + productRecordsPerPage);
 
   if (!isAuthenticated) {
+    if (authView === 'landing') {
+      return <LandingPage />;
+    }
+
+    if (authView === 'staff') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-white via-[#FAF5FF] to-white flex items-center justify-center p-4 font-sans antialiased relative">
+          {/* Top Back to Website Action */}
+          <button
+            type="button"
+            onClick={() => {
+              setAuthView('landing');
+              if (typeof window !== 'undefined' && window.history && window.history.pushState) {
+                window.history.pushState({}, '', '/');
+              }
+            }}
+            className="absolute top-6 left-6 px-4 py-2 rounded-xl bg-white/95 hover:bg-white border border-purple-200 text-purple-900 hover:text-[#D81B60] text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+          >
+            <span>← Back to Website</span>
+          </button>
+
+          <div className="bg-white/95 backdrop-blur-md p-8 rounded-3xl border border-purple-100 shadow-2xl w-full max-w-md animate-fade-in text-center">
+            <div className="flex justify-center mb-3">
+              <img
+                src="/Logo.png"
+                alt="Salbeau"
+                className="h-14 w-auto object-contain select-none"
+              />
+            </div>
+            <div className="inline-block px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-[10px] font-black uppercase tracking-wider mb-2 border border-purple-200">
+              Staff & Operations Portal
+            </div>
+            <p className="text-xs font-bold text-gray-500 mb-6">
+              Authorized Store Personnel, Packing Team & Delivery Riders
+            </p>
+
+            {staffLoginError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-left flex items-start gap-2">
+                <AlertCircle size={15} className="text-rose-600 shrink-0 mt-0.5" />
+                <span>{staffLoginError}</span>
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setStaffLoginLoading(true);
+                setStaffLoginError(null);
+                try {
+                  const trimmedId = (staffLoginCredentials.identifier || '').trim();
+                  const res = await loginUser(trimmedId, staffLoginCredentials.password);
+                  if (res?.success) {
+                    setIsAuthenticated(true);
+                    const targetTab = getFirstAccessibleTab(res.user);
+                    setActiveTab(targetTab);
+                    if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+                      const prefix = res.user?.role === 'employee' ? '/employee' : '/admin';
+                      window.history.replaceState({ tab: targetTab }, '', `${prefix}/${targetTab}`);
+                    }
+                  }
+                } catch (err) {
+                  setStaffLoginError(err.message || 'Staff login failed. Please verify credentials or contact administrator.');
+                } finally {
+                  setStaffLoginLoading(false);
+                }
+              }}
+              className="space-y-4 text-left text-xs"
+            >
+              <div>
+                <label className="block text-gray-800 font-bold mb-1.5">Employee ID, Staff Email or Phone</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. EMP001, staff@clobeau.com, or mobile"
+                  value={staffLoginCredentials.identifier}
+                  onChange={(e) => setStaffLoginCredentials({ ...staffLoginCredentials, identifier: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-purple-100 outline-none focus:border-purple-600 bg-white font-medium shadow-2xs text-gray-900 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-800 font-bold mb-1.5">Password / Security PIN</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={staffLoginCredentials.password}
+                  onChange={(e) => setStaffLoginCredentials({ ...staffLoginCredentials, password: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-purple-100 outline-none focus:border-purple-600 bg-white font-medium shadow-2xs text-gray-900 text-xs"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={staffLoginLoading}
+                className="w-full bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-purple-900 text-white py-3.5 rounded-xl font-bold text-xs shadow-md transition-all active:scale-[0.99] cursor-pointer mt-2 flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {staffLoginLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Verifying Staff Credentials...</span>
+                  </>
+                ) : (
+                  <span>Sign In to Staff Console</span>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-6 pt-4 border-t border-purple-100 text-[11px] text-gray-400 font-medium">
+              Internal Operations Console • Salbeau Beauty Ltd.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Default: authView === 'admin'
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-[#F8FAFC] to-white flex items-center justify-center p-4 font-sans antialiased">
+      <div className="min-h-screen bg-gradient-to-br from-white via-[#F8FAFC] to-white flex items-center justify-center p-4 font-sans antialiased relative">
+        {/* Top Back to Website Action */}
+        <button
+          type="button"
+          onClick={() => {
+            setAuthView('landing');
+            if (typeof window !== 'undefined' && window.history && window.history.pushState) {
+              window.history.pushState({}, '', '/');
+            }
+          }}
+          className="absolute top-6 left-6 px-4 py-2 rounded-xl bg-white/95 hover:bg-white border border-pink-200 text-gray-700 hover:text-[#D81B60] text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+        >
+          <span>← Back to Website</span>
+        </button>
+
         <div className="bg-white/90 backdrop-blur-md p-8 rounded-3xl border border-pink-100 shadow-2xl w-full max-w-md animate-fade-in text-center">
           <div className="flex justify-center mb-3">
             <img
@@ -2845,7 +3065,8 @@ const AdminDashboard = () => {
                   const targetTab = getFirstAccessibleTab(res.user);
                   setActiveTab(targetTab);
                   if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-                    window.history.replaceState({ tab: targetTab }, '', `/admin/${targetTab}`);
+                    const prefix = res.user?.role === 'employee' ? '/employee' : '/admin';
+                    window.history.replaceState({ tab: targetTab }, '', `${prefix}/${targetTab}`);
                   }
                 }
               } catch (err) {
@@ -2861,7 +3082,7 @@ const AdminDashboard = () => {
               <input
                 type="email"
                 required
-                placeholder="admin@salbeau.com or employee@salbeau.com"
+                placeholder="admin@clobeau.com"
                 value={loginCredentials.email}
                 onChange={(e) => setLoginCredentials({ ...loginCredentials, email: e.target.value })}
                 className="w-full p-3 rounded-xl border border-pink-100/90 outline-none focus:border-[#D81B60] bg-white font-medium shadow-2xs text-gray-900 text-xs"
@@ -2903,7 +3124,7 @@ const AdminDashboard = () => {
     );
   }
 
-  const handleStatusSelectChange = (orderId, newStatus) => {
+    const handleStatusSelectChange = (orderId, newStatus) => {
     if (newStatus === 'rejected') {
       setRejectionTargetOrderId(orderId);
       setIsRejectionModalOpen(true);
@@ -3052,7 +3273,9 @@ const AdminDashboard = () => {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
                   {activeTab === 'dashboard' && 'Dashboard Overview'}
-                  {activeTab === 'dashboard_visibility' && 'Dashboard Visibility & Section Access'}
+                  {activeTab === 'analytics' && 'Business Analytics & Financial Dashboard'}
+                  {activeTab === 'expenses' && 'Business Expense Management'}
+                  {activeTab === 'reports' && 'Business Intelligence Reports & Exports'}
                   {activeTab === 'home_banners' && 'Home Screen Banners Manager'}
                   {activeTab === 'categories' && 'Category & Subcategory Image Manager'}
                   {activeTab === 'order_updated' && 'Order Management'}
@@ -3072,7 +3295,6 @@ const AdminDashboard = () => {
                   )}
                   {activeTab === 'settings' && 'General Settings — Store Identity, Rates & Rules'}
                   {activeTab === 'branches' && 'Branch Management — Store Locations'}
-                  {activeTab === 'security_2fa' && 'Security & Two-Factor Authentication (2FA) — Gateway Protection'}
                   {activeTab === 'upi_verification' && 'UPI Payment Verification — Delivery Reconciliation'}
                   {activeTab === 'quick_panel' && 'Quick Panel — Command Center'}
                   {activeTab === 'cancel_fee' && 'Cancel Fee Policy'}
@@ -3159,7 +3381,7 @@ const AdminDashboard = () => {
 
         <React.Suspense fallback={<PageLoadingFallback />}>
           {/* Permission Guard for Employees */}
-          {currentAuthUser?.role === 'employee' && !canAccessTab(activeTab, currentAuthUser) && (
+          {currentAuthUser?.role === 'employee' && !canAccessTab(activeTab, currentAuthUser) ? (
             <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-pink-100 shadow-2xs max-w-lg mx-auto mt-6 animate-fade-in">
               <div className="w-16 h-16 rounded-2xl bg-rose-50 text-[#D81B60] flex items-center justify-center mx-auto mb-4 border border-rose-100">
                 <ShieldAlert size={32} />
@@ -3176,11 +3398,49 @@ const AdminDashboard = () => {
                 Go to My Authorized Section
               </button>
             </div>
+          ) : (
+            <>
+
+          {/* BUSINESS INTELLIGENCE ANALYTICS DASHBOARD */}
+          {activeTab === 'analytics' && canAccessTab('analytics', currentAuthUser) && (
+            <AnalyticsDashboard
+              orders={orders}
+              products={products}
+              users={users}
+              onNavigateTab={(tab) => {
+                setActiveTab(tab);
+                if (typeof window !== 'undefined' && window.history && window.history.pushState) {
+                  window.history.pushState({ tab }, '', `/admin/${tab}`);
+                }
+              }}
+            />
+          )}
+
+          {/* EXPENSE MANAGER */}
+          {activeTab === 'expenses' && canAccessTab('expenses', currentAuthUser) && (
+            <ExpenseManager
+              currentAuthUser={currentAuthUser}
+              onExpenseUpdated={() => {
+                if (refreshData) refreshData();
+              }}
+            />
+          )}
+
+          {/* REPORTS & EXPORTS MANAGER */}
+          {activeTab === 'reports' && canAccessTab('reports', currentAuthUser) && (
+            <ReportsManager
+              orders={orders}
+              products={products}
+              users={users}
+            />
           )}
 
           {/* 1. EXECUTIVE DASHBOARD PAGE */}
           {activeTab === 'dashboard' && canAccessTab('dashboard', currentAuthUser) && (
             <div className="space-y-6 animate-fade-in">
+              {/* General Store Operations & Live Controls (Not in BI Analytics) */}
+              <GeneralDashboardSettings onToast={(t) => setDashboardToast(t)} />
+
               {/* Error Alert Banner (if Supabase fetch fails) */}
               {fetchError && (
                 <div className="bg-rose-50 border border-rose-200/80 rounded-2xl p-4 flex items-center justify-between text-rose-800 text-xs shadow-2xs">
@@ -3497,8 +3757,8 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* 1b. DASHBOARD VISIBILITY PAGE */}
-          {activeTab === 'dashboard_visibility' && (
+          {/* 1b. DASHBOARD VISIBILITY PAGE (DEPRECATED - MIGRATED TO DASHBOARD SETTINGS) */}
+          {activeTab === 'dashboard_visibility_deprecated' && (
             <div className="space-y-6 animate-fade-in">
               {/* Header / Info Banner */}
               <div className="bg-gradient-to-r from-white via-rose-50 to-white p-6 rounded-2xl border border-pink-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -3951,16 +4211,6 @@ const AdminDashboard = () => {
           {activeTab === 'upi_verification' && (
             <React.Suspense fallback={<PageLoadingFallback />}>
               <UpiPaymentVerificationPage />
-            </React.Suspense>
-          )}
-
-          {/* SECURITY & 2FA MODULE */}
-          {activeTab === 'security_2fa' && (
-            <React.Suspense fallback={<PageLoadingFallback />}>
-              <Security2FASettingsPage
-                currentAuthUser={currentAuthUser}
-                onBackToSettings={() => navigateToTab('settings')}
-              />
             </React.Suspense>
           )}
 
@@ -5677,7 +5927,24 @@ const AdminDashboard = () => {
             const resolvedOrdersCount = Array.isArray(orders) ? orders.length : 0;
             const resolvedBranchesCount = Array.isArray(branches) ? branches.length : 0;
             const resolvedEmployeesCount = Array.isArray(employees) ? employees.length : 0;
-            const resolvedUpiPendingCount = (upiVerifications || []).filter(u => u.verification_status === 'PENDING_VERIFICATION').length;
+            const resolvedUpiPendingCount = (orders || []).filter(o => {
+              const ship = (o.shipments && typeof o.shipments === 'object' && !Array.isArray(o.shipments)) ? o.shipments : {};
+              const isUpi = 
+                String(o.payment_method || o.paymentMethod || '').toLowerCase() === 'upi' ||
+                String(ship.paymentMethod || ship.payment_method || '').toLowerCase() === 'upi' ||
+                Boolean(ship.upiUtr) ||
+                Boolean(o.upi_ref) ||
+                Boolean(ship.upiVerification);
+              if (!isUpi) return false;
+              const st = String(
+                ship.verificationStatus ||
+                ship.paymentStatus ||
+                o.verification_status ||
+                o.payment_status ||
+                ''
+              ).toUpperCase();
+              return st === 'PENDING_VERIFICATION' || st === 'PENDING' || st === 'UNPAID';
+            }).length;
             const liveDeliveriesCount = (orders || []).filter(o => o.status === 'out_for_delivery').length;
 
             return (
@@ -6170,11 +6437,11 @@ const AdminDashboard = () => {
                         <ChevronRight size={13} className="text-gray-400" />
                       </button>
                       <button
-                        onClick={() => navigateToTab('dashboard_visibility')}
+                        onClick={() => navigateToTab('dashboard')}
                         className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-pink-50 hover:text-[#D81B60] text-gray-700 font-bold transition-all text-left cursor-pointer border border-transparent hover:border-pink-200"
                       >
-                        <span>Dashboard Visibility</span>
-                        <Eye size={13} className="text-[#D81B60]" />
+                        <span>Store Operations Controls</span>
+                        <SlidersHorizontal size={13} className="text-[#D81B60]" />
                       </button>
                     </div>
                   </div>
@@ -7028,6 +7295,7 @@ const AdminDashboard = () => {
                       await logoutUser();
                       setIsLogoutModalOpen(false);
                       setIsAuthenticated(false);
+                      setAuthView('landing');
                       setLoginCredentials({ email: '', password: '' });
                       setActiveTab('dashboard');
                       if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
@@ -8359,6 +8627,8 @@ const AdminDashboard = () => {
               </div>
             );
           })()}
+            </>
+          )}
         </React.Suspense>
 
         {/* Floating Success Toast for Status Updates */}
@@ -8385,6 +8655,7 @@ export default function App() {
   return (
     <AdminErrorBoundary>
       <AdminProvider>
+        <NetworkStatusBanner />
         <AdminDashboard />
       </AdminProvider>
     </AdminErrorBoundary>

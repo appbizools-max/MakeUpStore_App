@@ -12,7 +12,8 @@ import {
   Alert,
   Modal,
   TextInput,
-  Image
+  Image,
+  Clipboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
@@ -29,7 +30,7 @@ import {
 import { optimizeImage } from '../../utils/imageOptimizer';
 
 export const DeliveryPartnerDashboard = () => {
-  const { staffProfile, setStaffProfile, setCurrentScreen, storeSettings } = useApp();
+  const { staffProfile, setStaffProfile, setCurrentScreen, storeSettings, refreshStoreSettings } = useApp();
 
   const [activeTab, setActiveTab] = useState('assigned'); // 'assigned' | 'pending' | 'ongoing' | 'completed'
   const [ordersData, setOrdersData] = useState({ assigned: [], pending: [], ongoing: [], completed: [], all: [] });
@@ -43,6 +44,7 @@ export const DeliveryPartnerDashboard = () => {
   const [cashAmount, setCashAmount] = useState('');
   const [upiUtr, setUpiUtr] = useState('');
   const [deliveryNote, setDeliveryNote] = useState('');
+  const [isSyncingSettings, setIsSyncingSettings] = useState(false);
   // Dedicated UPI Payment Proof Verification Modal State
   const [upiModalOrder, setUpiModalOrder] = useState(null);
   const [upiReportedAmount, setUpiReportedAmount] = useState('');
@@ -76,6 +78,9 @@ export const DeliveryPartnerDashboard = () => {
 
   useEffect(() => {
     loadOrders(true);
+    if (typeof refreshStoreSettings === 'function') {
+      refreshStoreSettings();
+    }
 
     // Instant real-time listener on orders table
     const channel = supabase
@@ -85,20 +90,37 @@ export const DeliveryPartnerDashboard = () => {
       })
       .subscribe();
 
+    // Instant real-time listener on store settings / UPI QR code updates
+    const settingsChannel = supabase
+      .channel(`staff-settings-realtime-${Date.now()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'brands', filter: 'id=eq.salbeau_store_settings' }, () => {
+        if (typeof refreshStoreSettings === 'function') {
+          refreshStoreSettings();
+        }
+      })
+      .subscribe();
+
     // Periodic real-time poll fallback every 25 seconds
     const interval = setInterval(() => {
       loadOrders(false);
+      if (typeof refreshStoreSettings === 'function') {
+        refreshStoreSettings();
+      }
     }, 25000);
 
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(settingsChannel);
       clearInterval(interval);
     };
-  }, [loadOrders, staffProfile?.id]);
+  }, [loadOrders, refreshStoreSettings, staffProfile?.id]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
     loadOrders(false);
+    if (typeof refreshStoreSettings === 'function') {
+      refreshStoreSettings();
+    }
   };
 
   // Staff Logout
@@ -251,7 +273,7 @@ export const DeliveryPartnerDashboard = () => {
     }
   };
 
-    // Action 2: Open Modal to Mark Delivered & Collect Payment (Cash COD or UPI)
+  // Action 2: Open Modal to Mark Delivered & Collect Payment (Cash COD or UPI)
   const handleOpenDeliverModal = (order) => {
     setDeliveryModalOrder(order);
     const amount = Number(order.total_amount || order.total || 0);
@@ -260,6 +282,11 @@ export const DeliveryPartnerDashboard = () => {
     setUpiUtr('');
     setDeliveryNote('');
     setIsPaymentConfirmedByStaff(true);
+    setCustomQrFailed(false);
+    setQrMode('auto');
+    if (typeof refreshStoreSettings === 'function') {
+      refreshStoreSettings();
+    }
   };
 
   // Action 3: Confirm Delivery & Payment Collection in Database
@@ -336,14 +363,8 @@ export const DeliveryPartnerDashboard = () => {
 
   const currentTabOrders = ordersData[activeTab] || [];
   const modalOrderAmount = deliveryModalOrder ? Number(deliveryModalOrder.total_amount || deliveryModalOrder.total || 0) : 0;
-  const storeUpiId = storeSettings?.payments?.upiId || 'salbeau.store@okaxis';
-  const storeName = storeSettings?.storeName || storeSettings?.identity?.storeName || 'Salbeau MakeUpStore';
-  const customMerchantQrUrl = storeSettings?.payments?.upiQrCodeUrl;
-  const upiPayString = deliveryModalOrder
-    ? `upi://pay?pa=${encodeURIComponent(storeUpiId)}&pn=${encodeURIComponent(storeName)}&am=${modalOrderAmount}&cu=INR&tn=Order%20${deliveryModalOrder.id}`
-    : `upi://pay?pa=${encodeURIComponent(storeUpiId)}&pn=${encodeURIComponent(storeName)}&cu=INR`;
-  const dynamicQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiPayString)}`;
-  const displayQrImageUrl = customMerchantQrUrl || dynamicQrImageUrl;
+  const storeUpiId = storeSettings?.payments?.upiId || '';
+  const storeUpiName = storeSettings?.payments?.upiName || storeSettings?.payments?.merchantName || storeSettings?.storeName || storeSettings?.identity?.storeName || 'Salbeau MakeUpStore';
 
   return (
     <View className="flex-1 bg-stone-50">
@@ -424,11 +445,10 @@ export const DeliveryPartnerDashboard = () => {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveTab('assigned')}
-            className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${
-              activeTab === 'assigned'
-                ? 'bg-[#D81B60] border-[#D81B60]'
-                : 'bg-stone-100 border-stone-200'
-            }`}
+            className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${activeTab === 'assigned'
+              ? 'bg-[#D81B60] border-[#D81B60]'
+              : 'bg-stone-100 border-stone-200'
+              }`}
           >
             <Ionicons
               name="clipboard-outline"
@@ -450,11 +470,10 @@ export const DeliveryPartnerDashboard = () => {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveTab('pending')}
-            className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${
-              activeTab === 'pending'
-                ? 'bg-[#D81B60] border-[#D81B60]'
-                : 'bg-stone-100 border-stone-200'
-            }`}
+            className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${activeTab === 'pending'
+              ? 'bg-[#D81B60] border-[#D81B60]'
+              : 'bg-stone-100 border-stone-200'
+              }`}
           >
             <Ionicons
               name="time-outline"
@@ -476,11 +495,10 @@ export const DeliveryPartnerDashboard = () => {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveTab('ongoing')}
-            className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${
-              activeTab === 'ongoing'
-                ? 'bg-[#D81B60] border-[#D81B60]'
-                : 'bg-stone-100 border-stone-200'
-            }`}
+            className={`flex-row items-center px-4 py-2 rounded-full mr-2 border ${activeTab === 'ongoing'
+              ? 'bg-[#D81B60] border-[#D81B60]'
+              : 'bg-stone-100 border-stone-200'
+              }`}
           >
             <Ionicons
               name="bicycle"
@@ -502,11 +520,10 @@ export const DeliveryPartnerDashboard = () => {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveTab('completed')}
-            className={`flex-row items-center px-4 py-2 rounded-full mr-3 border ${
-              activeTab === 'completed'
-                ? 'bg-[#D81B60] border-[#D81B60]'
-                : 'bg-stone-100 border-stone-200'
-            }`}
+            className={`flex-row items-center px-4 py-2 rounded-full mr-3 border ${activeTab === 'completed'
+              ? 'bg-[#D81B60] border-[#D81B60]'
+              : 'bg-stone-100 border-stone-200'
+              }`}
           >
             <Ionicons
               name="checkmark-done"
@@ -544,10 +561,10 @@ export const DeliveryPartnerDashboard = () => {
                   activeTab === 'assigned'
                     ? 'clipboard-outline'
                     : activeTab === 'pending'
-                    ? 'time-outline'
-                    : activeTab === 'ongoing'
-                    ? 'bicycle-outline'
-                    : 'checkmark-circle-outline'
+                      ? 'time-outline'
+                      : activeTab === 'ongoing'
+                        ? 'bicycle-outline'
+                        : 'checkmark-circle-outline'
                 }
                 size={32}
                 color="#D81B60"
@@ -560,10 +577,10 @@ export const DeliveryPartnerDashboard = () => {
               {activeTab === 'assigned'
                 ? 'No packages currently assigned for dispatch at your store.'
                 : activeTab === 'pending'
-                ? 'No pending orders waiting for pickup.'
-                : activeTab === 'ongoing'
-                ? 'You do not have any active out-for-delivery packages right now.'
-                : 'Completed orders for this shift will appear here.'}
+                  ? 'No pending orders waiting for pickup.'
+                  : activeTab === 'ongoing'
+                    ? 'You do not have any active out-for-delivery packages right now.'
+                    : 'Completed orders for this shift will appear here.'}
             </Text>
           </View>
         ) : (
@@ -602,39 +619,37 @@ export const DeliveryPartnerDashboard = () => {
 
                   {/* Status Badge */}
                   <View
-                    className={`px-2.5 py-1 rounded-full flex-row items-center gap-1 ${
-                      activeTab === 'completed'
-                        ? 'bg-emerald-50 border border-emerald-200'
-                        : activeTab === 'ongoing'
+                    className={`px-2.5 py-1 rounded-full flex-row items-center gap-1 ${activeTab === 'completed'
+                      ? 'bg-emerald-50 border border-emerald-200'
+                      : activeTab === 'ongoing'
                         ? 'bg-blue-50 border border-blue-200'
                         : 'bg-amber-50 border border-amber-200'
-                    }`}
+                      }`}
                   >
                     <Ionicons
                       name={
                         activeTab === 'completed'
                           ? 'checkmark-circle'
                           : activeTab === 'ongoing'
-                          ? 'bicycle'
-                          : 'time'
+                            ? 'bicycle'
+                            : 'time'
                       }
                       size={12}
                       color={
                         activeTab === 'completed'
                           ? '#059669'
                           : activeTab === 'ongoing'
-                          ? '#2563EB'
-                          : '#D97706'
+                            ? '#2563EB'
+                            : '#D97706'
                       }
                     />
                     <Text
-                      className={`text-[10.5px] font-black uppercase ${
-                        activeTab === 'completed'
-                          ? 'text-emerald-700'
-                          : activeTab === 'ongoing'
+                      className={`text-[10.5px] font-black uppercase ${activeTab === 'completed'
+                        ? 'text-emerald-700'
+                        : activeTab === 'ongoing'
                           ? 'text-blue-700'
                           : 'text-amber-700'
-                      }`}
+                        }`}
                     >
                       {(order.status || 'placed').replace(/_/g, ' ')}
                     </Text>
@@ -711,7 +726,7 @@ export const DeliveryPartnerDashboard = () => {
                       <Text className="text-xs font-medium text-stone-500 mr-2">Payment:</Text>
                       <View className={`px-2 py-0.5 rounded-md ${paidMethod === 'upi' ? 'bg-purple-100' : 'bg-amber-100'}`}>
                         <Text className={`text-[10px] font-black uppercase ${paidMethod === 'upi' ? 'text-purple-800' : 'text-amber-800'}`}>
-                          {paidMethod === 'upi' ? 'UPI / QR Code' : 'Cash (COD)'}
+                          {paidMethod === 'upi' ? 'UPI Transfer' : 'Cash (COD)'}
                         </Text>
                       </View>
                     </View>
@@ -1041,11 +1056,10 @@ export const DeliveryPartnerDashboard = () => {
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => setPaymentMode('cash')}
-                      className={`flex-1 py-3 px-3 rounded-2xl border flex-row items-center justify-center ${
-                        paymentMode === 'cash'
-                          ? 'bg-amber-50 border-amber-500 shadow-2xs'
-                          : 'bg-white border-stone-200'
-                      }`}
+                      className={`flex-1 py-3 px-3 rounded-2xl border flex-row items-center justify-center ${paymentMode === 'cash'
+                        ? 'bg-amber-50 border-amber-500 shadow-2xs'
+                        : 'bg-white border-stone-200'
+                        }`}
                     >
                       <Ionicons
                         name="cash-outline"
@@ -1062,65 +1076,111 @@ export const DeliveryPartnerDashboard = () => {
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => setPaymentMode('upi')}
-                      className={`flex-1 py-3 px-3 rounded-2xl border flex-row items-center justify-center ${
-                        paymentMode === 'upi'
-                          ? 'bg-purple-50 border-purple-500 shadow-2xs'
-                          : 'bg-white border-stone-200'
-                      }`}
+                      className={`flex-1 py-3 px-3 rounded-2xl border flex-row items-center justify-center ${paymentMode === 'upi'
+                        ? 'bg-purple-50 border-purple-500 shadow-2xs'
+                        : 'bg-white border-stone-200'
+                        }`}
                     >
                       <Ionicons
-                        name="qr-code-outline"
+                        name="card-outline"
                         size={18}
                         color={paymentMode === 'upi' ? '#7E22CE' : '#8C7078'}
                         style={{ marginRight: 6 }}
                       />
                       <Text className={`text-xs font-black ${paymentMode === 'upi' ? 'text-purple-900' : 'text-[#553846]'}`}>
-                        UPI QR Code
+                        UPI Transfer
                       </Text>
                     </TouchableOpacity>
                   </View>
 
-                  {/* ── UPI PAYMENT SECTION (DYNAMIC QR CODE RENDERER) ── */}
+                  {/* ── UPI PAYMENT SECTION (OFFICIAL UPI ID ONLY) ── */}
                   {paymentMode === 'upi' && (
-                    <View className="mb-4 bg-purple-50/70 border border-purple-200 p-4 rounded-2xl items-center">
-                      <View className="flex-row items-center gap-1.5 mb-2">
-                        <Ionicons name="sparkles" size={14} color="#7E22CE" />
-                        <Text className="text-xs font-black text-purple-900 uppercase tracking-wider">
-                          Scan to Pay via Any UPI App
-                        </Text>
+                    <View className="mb-4 bg-purple-50/70 border border-purple-200 p-4 rounded-2xl">
+                      <View className="flex-row items-center justify-between w-full mb-2.5">
+                        <View className="flex-row items-center gap-1.5">
+                          <Ionicons name="card" size={15} color="#7E22CE" />
+                          <Text className="text-xs font-black text-purple-950 uppercase tracking-wider">
+                            Direct UPI Transfer (No QR)
+                          </Text>
+                        </View>
+
+                        {/* Instant Settings Refresh Button */}
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={async () => {
+                            setIsSyncingSettings(true);
+                            if (typeof refreshStoreSettings === 'function') {
+                              await refreshStoreSettings();
+                            }
+                            setIsSyncingSettings(false);
+                          }}
+                          className="flex-row items-center gap-1 px-2 py-1 bg-white border border-purple-200 rounded-lg shadow-2xs"
+                        >
+                          <Ionicons
+                            name="sync"
+                            size={12}
+                            color="#7E22CE"
+                          />
+                          <Text className="text-[10px] font-bold text-purple-800">
+                            {isSyncingSettings ? 'Syncing...' : 'Sync UPI'}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
-                      <Text className="text-[11px] text-purple-700 text-center mb-3">
-                        Ask customer to scan using Google Pay, PhonePe, Paytm, BHIM, or Banking UPI.
+
+                      <Text className="text-[11px] text-purple-700 mb-3 leading-relaxed">
+                        Customer opens Google Pay, PhonePe, Paytm, or BHIM and transfers to the Official Store UPI ID below.
                       </Text>
 
-                      {/* Rendered Live QR Code Image */}
-                      <View className="p-3 bg-white rounded-2xl border border-purple-200 shadow-sm mb-3">
-                        <Image
-                          source={{ uri: displayQrImageUrl }}
-                          style={{ width: 190, height: 190 }}
-                          resizeMode="contain"
-                        />
-                      </View>
+                      {/* Store UPI Details Box (Name, VPA with Copy Button, Amount) */}
+                      <View className="bg-white p-3.5 rounded-2xl border border-purple-200 mb-3 w-full shadow-2xs space-y-2.5">
+                        <View className="flex-row items-center justify-between pb-2 border-b border-purple-100">
+                          <Text className="text-[11px] font-bold text-stone-500">Payee Name:</Text>
+                          <Text className="text-[12px] font-black text-purple-950 flex-1 text-right ml-2" numberOfLines={1}>
+                            {storeUpiName}
+                          </Text>
+                        </View>
 
-                      {/* Store UPI Details */}
-                      <View className="bg-white px-3.5 py-1.5 rounded-full border border-purple-200 mb-2 flex-row items-center gap-1">
-                        <Text className="text-[11px] font-bold text-stone-600">UPI ID: </Text>
-                        <Text className="text-[11px] font-black text-purple-900">{storeUpiId}</Text>
-                      </View>
+                        <View className="flex-row items-center justify-between pb-2 border-b border-purple-100">
+                          <Text className="text-[11px] font-bold text-stone-500">Official UPI ID:</Text>
+                          <View className="flex-row items-center gap-2">
+                            <Text className="text-[12px] font-mono font-black text-purple-900 select-all">
+                              {storeUpiId || 'Not Configured'}
+                            </Text>
+                            {Boolean(storeUpiId) && (
+                              <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => {
+                                  if (Clipboard && typeof Clipboard.setString === 'function') {
+                                    Clipboard.setString(storeUpiId);
+                                  }
+                                  Alert.alert('UPI ID Copied', `Copied "${storeUpiId}" to clipboard.`);
+                                }}
+                                className="px-2 py-1 bg-purple-100 rounded-lg flex-row items-center gap-1 border border-purple-200"
+                              >
+                                <Ionicons name="copy-outline" size={11} color="#7E22CE" />
+                                <Text className="text-[10px] font-extrabold text-purple-900">Copy</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
 
-                      <Text className="text-[10px] font-bold text-emerald-700 mb-3">
-                        ✓ {customMerchantQrUrl ? 'Official Store Merchant QR' : 'Dynamic Order QR Code'}
-                      </Text>
+                        <View className="flex-row items-center justify-between pt-0.5">
+                          <Text className="text-[11px] font-bold text-stone-500">Exact Amount:</Text>
+                          <Text className="text-[14px] font-black text-emerald-700">
+                            ₹{modalOrderAmount.toLocaleString('en-IN')}
+                          </Text>
+                        </View>
+                      </View>
 
                       {/* UPI UTR / Transaction Reference Input */}
-                      <View className="w-full mt-1">
+                      <View className="w-full">
                         <Text className="text-xs font-bold text-purple-950 mb-1 ml-1">
                           UPI Reference / UTR Number (12 Digits) *
                         </Text>
                         <TextInput
                           value={upiUtr}
                           onChangeText={setUpiUtr}
-                          placeholder="e.g. 412356789012"
+                          placeholder="Enter 12-digit UPI UTR from customer app"
                           placeholderTextColor="#A8929A"
                           keyboardType="number-pad"
                           maxLength={16}
