@@ -7,17 +7,19 @@ export const SplashScreen = () => {
 
   useEffect(() => {
     if (!isRestoringSession) {
-      if (userProfile?.isProfileComplete) {
+      const isCustomerLoggedIn = Boolean(userProfile?.phone && (userProfile?.isProfileComplete || userProfile?.name));
+      if (isCustomerLoggedIn) {
         setCurrentScreen('home');
       } else {
         setCurrentScreen('login');
       }
     }
-  }, [isRestoringSession, userProfile?.isProfileComplete, setCurrentScreen]);
+  }, [isRestoringSession, userProfile?.phone, userProfile?.isProfileComplete, userProfile?.name, setCurrentScreen]);
 
   const handleProceed = () => {
     if (!isRestoringSession) {
-      if (userProfile?.isProfileComplete) {
+      const isCustomerLoggedIn = Boolean(userProfile?.phone && (userProfile?.isProfileComplete || userProfile?.name));
+      if (isCustomerLoggedIn) {
         setCurrentScreen('home');
       } else {
         setCurrentScreen('login');

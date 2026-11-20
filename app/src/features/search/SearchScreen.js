@@ -22,6 +22,7 @@ import { PremiumFilterBottomSheet } from '../../components/PremiumFilterBottomSh
 import { getCartKey, getSafeProductShadesList, getCartQuantityMap } from '../../utils/cartKeyUtils';
 import { cleanProductDisplayName } from '../../utils/productDisplayNameUtils';
 import { getBrandThemeColor } from '../home/HomeScreen';
+import { BrandCircle } from '../home/components/ContinuousBrandScroller';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -715,23 +716,30 @@ export const SearchScreen = () => {
                           width: 36,
                           height: 36,
                           borderRadius: 18,
-                          backgroundColor: getBrandThemeColor(item.brand),
+                          backgroundColor: '#FFF5F8',
+                          borderWidth: 1.5,
+                          borderColor: '#F080A5',
+                          padding: 2.5,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          overflow: 'hidden',
                         }}
                       >
-                        {item.logo ? (
-                          <Image
-                            source={getSafeImageSource(item.logo)}
-                            style={{ width: 22, height: 22, borderRadius: 11 }}
-                            resizeMode="contain"
-                          />
-                        ) : (
-                          <Text className="text-white text-xs font-black">
-                            {(item.title || 'B').slice(0, 1).toUpperCase()}
+                        <View
+                          style={{
+                            flex: 1,
+                            width: '100%',
+                            height: '100%',
+                            borderRadius: 15,
+                            borderWidth: 1.2,
+                            borderColor: '#FFFFFF',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text style={{ color: '#000000', fontSize: 10, fontWeight: '700' }}>
+                            {(item.title || 'B').slice(0, 2).toUpperCase()}
                           </Text>
-                        )}
+                        </View>
                       </View>
                     ) : (
                       <View className="w-9 h-9 rounded-xl bg-[#ECFDF5] border border-emerald-100 items-center justify-center">
@@ -1126,70 +1134,60 @@ export const SearchScreen = () => {
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={{ paddingVertical: 2 }}
+                  contentContainerStyle={{ paddingVertical: 4, paddingHorizontal: 2 }}
                 >
                   {displayBrands.length > 0
                     ? displayBrands.slice(0, 20).map((brand) => {
+                      const brandName = (brand?.name || (typeof brand === 'string' ? brand : '')).trim();
                       const isSelected = selectedBrands.some(
-                        b => (b || '').toLowerCase() === (brand.name || '').toLowerCase()
+                        b => (b || '').toLowerCase() === brandName.toLowerCase()
                       );
+
                       return (
-                        <TouchableOpacity
-                          key={brand.id || brand.name}
-                          activeOpacity={0.8}
-                          onPress={() => {
+                        <BrandCircle
+                          key={brand.id || brandName}
+                          brand={brand}
+                          isSelected={isSelected}
+                          onSelectBrand={() => {
                             setSelectedBrands(prev =>
-                              prev.some(b => (b || '').toLowerCase() === (brand.name || '').toLowerCase())
-                                ? prev.filter(b => (b || '').toLowerCase() !== (brand.name || '').toLowerCase())
-                                : [...prev, brand.name]
+                              prev.some(b => (b || '').toLowerCase() === brandName.toLowerCase())
+                                ? prev.filter(b => (b || '').toLowerCase() !== brandName.toLowerCase())
+                                : [...prev, brandName]
                             );
-                            if (!isSelected) addRecentSearch(brand.name);
+                            if (!isSelected) addRecentSearch(brandName);
                           }}
-                          style={{
-                            minWidth: 108,
-                            height: 42,
-                            paddingHorizontal: 14,
-                            marginRight: 10,
-                            backgroundColor: isSelected ? '#FFF0F5' : '#FFFFFF',
-                            borderColor: isSelected ? '#D81B60' : '#F0E3EA',
-                            borderWidth: 1.5,
-                            borderRadius: 14,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            shadowColor: '#D81B60',
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.05,
-                            shadowRadius: 3,
-                            elevation: 1.5,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: isSelected ? '#D81B60' : '#3A2430',
-                              fontSize: 11.5,
-                              fontWeight: isSelected ? '800' : '700',
-                              textAlign: 'center',
-                            }}
-                            numberOfLines={1}
-                          >
-                            {brand.name}
-                          </Text>
-                        </TouchableOpacity>
+                        />
                       );
                     })
                     : [1, 2, 3, 4, 5].map((k) => (
                       <View
                         key={`sk_br_${k}`}
                         style={{
-                          minWidth: 108,
-                          height: 42,
-                          marginRight: 10,
-                          backgroundColor: '#F9F5F7',
-                          borderColor: '#F0E3EA',
-                          borderWidth: 1,
-                          borderRadius: 14,
+                          height: 48,
+                          paddingHorizontal: 20,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexDirection: 'row',
                         }}
-                      />
+                      >
+                        <View
+                          style={{
+                            width: 70,
+                            height: 14,
+                            borderRadius: 4,
+                            backgroundColor: '#F3F4F6',
+                          }}
+                        />
+                        <View
+                          style={{
+                            width: 1,
+                            height: 16,
+                            backgroundColor: '#E5E7EB',
+                            marginLeft: 20,
+                            opacity: 0.8,
+                          }}
+                        />
+                      </View>
                     ))}
                 </ScrollView>
               </View>

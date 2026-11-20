@@ -56,7 +56,7 @@ import { getBeautyShadeName } from '../common/HexColorPicker';
 import { getDefaultQuantityTiers } from '../../utils/quantityTiersUtils';
 import { getSafeActiveVariants } from '../../utils/productSearchEngine';
 import { useAdmin } from '../../context/AdminContext';
-import { hasActionPermission } from '../../utils/permissionEngine';
+import { hasActionPermission, isEmployeeUser } from '../../utils/permissionEngine';
 
 /**
  * ProductsCatalogMatrix - Premium Beauty-Commerce Admin Catalog Table
@@ -138,11 +138,11 @@ export default function ProductsCatalogMatrix({
   const [activeImagePreview, setActiveImagePreview] = useState(null);
   const adminCtx = useAdmin();
   const currentAuthUser = adminCtx?.currentAuthUser;
-  const isEmployee = currentAuthUser?.role === 'employee';
-  const canAddProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'add', currentAuthUser?.role);
-  const canEditProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'edit', currentAuthUser?.role);
-  const canDeleteProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'delete', currentAuthUser?.role);
-  const canPublishProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'publish', currentAuthUser?.role);
+  const isEmployee = isEmployeeUser(currentAuthUser);
+  const canAddProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'add', currentAuthUser);
+  const canEditProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'edit', currentAuthUser);
+  const canDeleteProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'delete', currentAuthUser);
+  const canPublishProduct = !isEmployee || hasActionPermission(currentAuthUser?.permissions, 'products', 'publish', currentAuthUser);
 
   // Multi-Product Selection & Bulk Actions State
   const [selectedProductIds, setSelectedProductIds] = useState(new Set());
@@ -197,6 +197,11 @@ export default function ProductsCatalogMatrix({
 
   // Section flag toggling for individual products
   const handleToggleSectionFlag = async (product, flagName) => {
+    if (!canEditProduct) {
+      setBulkToastMessage('Permission Denied: Editing product featured sections requires Edit Product permission.');
+      setTimeout(() => setBulkToastMessage(null), 3500);
+      return;
+    }
     const nextVal = !product[flagName];
     const updateFn = updateProduct || adminCtx?.updateProduct;
     if (typeof updateFn === 'function') {
@@ -204,7 +209,7 @@ export default function ProductsCatalogMatrix({
         await updateFn(product.id, { [flagName]: nextVal });
         const label = flagName === 'isBestSeller' ? 'Best Seller'
           : flagName === 'isRecentProduct' ? 'Recent Product'
-          : 'Top Recommendation';
+            : 'Top Recommendation';
         setBulkToastMessage(`Product ${nextVal ? 'marked as' : 'removed from'} ${label}!`);
         setTimeout(() => setBulkToastMessage(null), 3000);
       } catch (err) {
@@ -215,6 +220,11 @@ export default function ProductsCatalogMatrix({
 
   // Bulk set section flag for selected products
   const handleBulkSetSection = async (flagName, value) => {
+    if (!canEditProduct) {
+      setBulkToastMessage('Permission Denied: Editing product featured sections requires Edit Product permission.');
+      setTimeout(() => setBulkToastMessage(null), 3500);
+      return;
+    }
     const updateFn = updateProduct || adminCtx?.updateProduct;
     if (typeof updateFn !== 'function') return;
     const ids = Array.from(selectedProductIds);
@@ -224,7 +234,7 @@ export default function ProductsCatalogMatrix({
       }
       const label = flagName === 'isBestSeller' ? 'Best Seller'
         : flagName === 'isRecentProduct' ? 'Recent Product'
-        : 'Top Recommendation';
+          : 'Top Recommendation';
       setBulkToastMessage(`${ids.length} products ${value ? 'marked as' : 'removed from'} ${label}!`);
       setTimeout(() => setBulkToastMessage(null), 3500);
     } catch (err) {
@@ -260,8 +270,8 @@ export default function ProductsCatalogMatrix({
     if (typeof orderFn === 'function') {
       const sectionKey = activeSectionFilter === 'bestsellers' ? 'bestseller'
         : activeSectionFilter === 'recent' ? 'recent'
-        : activeSectionFilter === 'recommendations' ? 'recommendation'
-        : 'general';
+          : activeSectionFilter === 'recommendations' ? 'recommendation'
+            : 'general';
       await orderFn(items, sectionKey);
       setBulkToastMessage(`Order updated and synchronized with User App!`);
       setTimeout(() => setBulkToastMessage(null), 3500);
@@ -281,8 +291,8 @@ export default function ProductsCatalogMatrix({
     if (typeof orderFn === 'function') {
       const sectionKey = activeSectionFilter === 'bestsellers' ? 'bestseller'
         : activeSectionFilter === 'recent' ? 'recent'
-        : activeSectionFilter === 'recommendations' ? 'recommendation'
-        : 'general';
+          : activeSectionFilter === 'recommendations' ? 'recommendation'
+            : 'general';
       await orderFn(items, sectionKey);
       setBulkToastMessage(`Order swapped and synchronized with User App!`);
       setTimeout(() => setBulkToastMessage(null), 3500);
@@ -318,7 +328,7 @@ export default function ProductsCatalogMatrix({
           if (/^https?:\/\//i.test(decoded)) {
             return { type: 'url', url: decoded };
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // 2b. Extract from <img> src attribute
@@ -330,7 +340,7 @@ export default function ProductsCatalogMatrix({
             const parsed = new URL(src);
             const actual = parsed.searchParams.get('imgurl');
             if (actual) src = decodeURIComponent(actual);
-          } catch (_) {}
+          } catch (_) { }
         }
         if (src.startsWith('//')) src = 'https:' + src;
         if (/^https?:\/\//i.test(src) || src.startsWith('data:image/')) {
@@ -355,7 +365,7 @@ export default function ProductsCatalogMatrix({
             const parsed = new URL(clean);
             const actual = parsed.searchParams.get('imgurl');
             if (actual) clean = decodeURIComponent(actual);
-          } catch (_) {}
+          } catch (_) { }
         }
         return { type: 'url', url: clean };
       }
@@ -370,7 +380,7 @@ export default function ProductsCatalogMatrix({
           const parsed = new URL(clean);
           const actual = parsed.searchParams.get('imgurl');
           if (actual) clean = decodeURIComponent(actual);
-        } catch (_) {}
+        } catch (_) { }
       }
       if (/^https?:\/\//i.test(clean) || clean.startsWith('data:image/')) {
         return { type: 'url', url: clean };
@@ -397,7 +407,7 @@ export default function ProductsCatalogMatrix({
       if (editingShadeProductId) {
         const updateFn = updateProduct || adminCtx?.updateProduct;
         if (typeof updateFn === 'function') {
-          updateFn(editingShadeProductId, { shades: next }).catch(() => {});
+          updateFn(editingShadeProductId, { shades: next }).catch(() => { });
         }
       }
       return next;
@@ -434,7 +444,7 @@ export default function ProductsCatalogMatrix({
           reader.readAsDataURL(file);
         });
         if (dataUrl) handleApplyImageUrlToVariant(dataUrl, sIdx);
-      } catch (_) {}
+      } catch (_) { }
     } finally {
       setUploadingVariantIdx(null);
     }
@@ -725,11 +735,10 @@ export default function ProductsCatalogMatrix({
                 setCatalogViewMode('all');
                 setProductCurrentPage(1);
               }}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                catalogViewMode === 'all'
-                  ? 'bg-white text-[#D81B60] shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${catalogViewMode === 'all'
+                ? 'bg-white text-[#D81B60] shadow-xs'
+                : 'text-gray-500 hover:text-gray-900'
+                }`}
               title="View parent product families and standalone items"
             >
               Product Families
@@ -740,11 +749,10 @@ export default function ProductsCatalogMatrix({
                 setCatalogViewMode('variants');
                 setProductCurrentPage(1);
               }}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                catalogViewMode === 'variants'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${catalogViewMode === 'variants'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
+                : 'text-gray-500 hover:text-gray-900'
+                }`}
               title="View all individual sellable child variants + families without DB record duplication"
             >
               <Layers size={12} />
@@ -893,11 +901,10 @@ export default function ProductsCatalogMatrix({
           <button
             type="button"
             onClick={() => setActiveSectionFilter('all')}
-            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeSectionFilter === 'all'
-                ? 'bg-[#D81B60] text-white shadow-2xs'
-                : 'bg-white text-gray-700 hover:bg-pink-50 border border-pink-100'
-            }`}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${activeSectionFilter === 'all'
+              ? 'bg-[#D81B60] text-white shadow-2xs'
+              : 'bg-white text-gray-700 hover:bg-pink-50 border border-pink-100'
+              }`}
           >
             <Boxes size={13} />
             <span>All Products</span>
@@ -907,49 +914,43 @@ export default function ProductsCatalogMatrix({
           <button
             type="button"
             onClick={() => setActiveSectionFilter('bestsellers')}
-            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeSectionFilter === 'bestsellers'
-                ? 'bg-amber-500 text-white shadow-2xs font-extrabold'
-                : 'bg-white text-amber-800 hover:bg-amber-50 border border-amber-200'
-            }`}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${activeSectionFilter === 'bestsellers'
+              ? 'bg-amber-500 text-white shadow-2xs font-extrabold'
+              : 'bg-white text-amber-800 hover:bg-amber-50 border border-amber-200'
+              }`}
           >
             <Flame size={13} className={activeSectionFilter === 'bestsellers' ? 'text-white fill-white' : 'text-amber-500 fill-amber-500'} />
             <span>Best Sellers</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-              activeSectionFilter === 'bestsellers' ? 'bg-black/20 text-white' : 'bg-amber-100 text-amber-900'
-            }`}>{bestsellersCount}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${activeSectionFilter === 'bestsellers' ? 'bg-black/20 text-white' : 'bg-amber-100 text-amber-900'
+              }`}>{bestsellersCount}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveSectionFilter('recent')}
-            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeSectionFilter === 'recent'
-                ? 'bg-cyan-600 text-white shadow-2xs font-extrabold'
-                : 'bg-white text-cyan-800 hover:bg-cyan-50 border border-cyan-200'
-            }`}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${activeSectionFilter === 'recent'
+              ? 'bg-cyan-600 text-white shadow-2xs font-extrabold'
+              : 'bg-white text-cyan-800 hover:bg-cyan-50 border border-cyan-200'
+              }`}
           >
             <Sparkles size={13} className={activeSectionFilter === 'recent' ? 'text-white' : 'text-cyan-600'} />
             <span>Recent Products</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-              activeSectionFilter === 'recent' ? 'bg-black/20 text-white' : 'bg-cyan-100 text-cyan-900'
-            }`}>{recentCount}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${activeSectionFilter === 'recent' ? 'bg-black/20 text-white' : 'bg-cyan-100 text-cyan-900'
+              }`}>{recentCount}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveSectionFilter('recommendations')}
-            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeSectionFilter === 'recommendations'
-                ? 'bg-purple-600 text-white shadow-2xs font-extrabold'
-                : 'bg-white text-purple-800 hover:bg-purple-50 border border-purple-200'
-            }`}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${activeSectionFilter === 'recommendations'
+              ? 'bg-purple-600 text-white shadow-2xs font-extrabold'
+              : 'bg-white text-purple-800 hover:bg-purple-50 border border-purple-200'
+              }`}
           >
             <Star size={13} className={activeSectionFilter === 'recommendations' ? 'text-white fill-white' : 'text-purple-600 fill-purple-600'} />
             <span>Top Recommendations</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-              activeSectionFilter === 'recommendations' ? 'bg-black/20 text-white' : 'bg-purple-100 text-purple-900'
-            }`}>{recCount}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${activeSectionFilter === 'recommendations' ? 'bg-black/20 text-white' : 'bg-purple-100 text-purple-900'
+              }`}>{recCount}</span>
           </button>
         </div>
 
@@ -1138,149 +1139,146 @@ export default function ProductsCatalogMatrix({
                     </div>
                   </div>
 
-                <div className="flex gap-3">
-                  <div
-                    onClick={() => pImage && setActiveImagePreview(pImage)}
-                    className="w-16 h-16 rounded-xl bg-white border border-pink-100 shrink-0 overflow-hidden flex items-center justify-center cursor-pointer"
-                  >
-                    {pImage ? (
-                      <img src={pImage} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Package size={24} className="text-pink-300" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {p.brandName && (
-                        <span className="px-2 py-0.5 rounded-full bg-pink-100 text-[#D81B60] text-[9.5px] font-extrabold uppercase">
-                          {p.brandName}
-                        </span>
-                      )}
-                      {p.category && (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[9.5px] font-semibold">
-                          {p.category}
-                        </span>
-                      )}
-                      {variantsList.length > 0 && (
-                        <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[9.5px] font-bold">
-                          {variantsList.length} shades
-                        </span>
+                  <div className="flex gap-3">
+                    <div
+                      onClick={() => pImage && setActiveImagePreview(pImage)}
+                      className="w-16 h-16 rounded-xl bg-white border border-pink-100 shrink-0 overflow-hidden flex items-center justify-center cursor-pointer"
+                    >
+                      {pImage ? (
+                        <img src={pImage} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package size={24} className="text-pink-300" />
                       )}
                     </div>
-                    <h4 className="font-bold text-xs text-gray-900 mt-1 line-clamp-2 leading-tight">
-                      {p.name}
-                    </h4>
-                    {p.barcode && (
-                      <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono mt-0.5">
-                        <Barcode size={10} />
-                        <span>{p.barcode}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {p.brandName && (
+                          <span className="px-2 py-0.5 rounded-full bg-pink-100 text-[#D81B60] text-[9.5px] font-extrabold uppercase">
+                            {p.brandName}
+                          </span>
+                        )}
+                        {p.category && (
+                          <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[9.5px] font-semibold">
+                            {p.category}
+                          </span>
+                        )}
+                        {variantsList.length > 0 && (
+                          <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[9.5px] font-bold">
+                            {variantsList.length} shades
+                          </span>
+                        )}
                       </div>
-                    )}
+                      <h4 className="font-bold text-xs text-gray-900 mt-1 line-clamp-2 leading-tight">
+                        {p.name}
+                      </h4>
+                      {p.barcode && (
+                        <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono mt-0.5">
+                          <Barcode size={10} />
+                          <span>{p.barcode}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Promotional Section Toggles */}
-                <div className="flex items-center gap-1.5 flex-wrap bg-gray-50/70 p-2 rounded-xl border border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => handleToggleSectionFlag(p, 'isBestSeller')}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
-                      p.isBestSeller
+                  {/* Promotional Section Toggles */}
+                  <div className="flex items-center gap-1.5 flex-wrap bg-gray-50/70 p-2 rounded-xl border border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSectionFlag(p, 'isBestSeller')}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${p.isBestSeller
                         ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs font-extrabold'
                         : 'bg-white text-gray-500 border-gray-200'
-                    }`}
-                  >
-                    <Flame size={11} className={p.isBestSeller ? "text-amber-600 fill-amber-500" : "text-gray-400"} />
-                    <span>Best Seller</span>
-                  </button>
+                        }`}
+                    >
+                      <Flame size={11} className={p.isBestSeller ? "text-amber-600 fill-amber-500" : "text-gray-400"} />
+                      <span>Best Seller</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleToggleSectionFlag(p, 'isRecentProduct')}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
-                      p.isRecentProduct
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSectionFlag(p, 'isRecentProduct')}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${p.isRecentProduct
                         ? 'bg-cyan-100 text-cyan-900 border-cyan-300 shadow-2xs font-extrabold'
                         : 'bg-white text-gray-500 border-gray-200'
-                    }`}
-                  >
-                    <Sparkles size={11} className={p.isRecentProduct ? "text-cyan-600" : "text-gray-400"} />
-                    <span>Recent</span>
-                  </button>
+                        }`}
+                    >
+                      <Sparkles size={11} className={p.isRecentProduct ? "text-cyan-600" : "text-gray-400"} />
+                      <span>Recent</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleToggleSectionFlag(p, 'isTopRecommendation')}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
-                      p.isTopRecommendation
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSectionFlag(p, 'isTopRecommendation')}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${p.isTopRecommendation
                         ? 'bg-purple-100 text-purple-900 border-purple-300 shadow-2xs font-extrabold'
                         : 'bg-white text-gray-500 border-gray-200'
-                    }`}
-                  >
-                    <Star size={11} className={p.isTopRecommendation ? "text-purple-600 fill-purple-600" : "text-gray-400"} />
-                    <span>Top Rec</span>
-                  </button>
-                </div>
+                        }`}
+                    >
+                      <Star size={11} className={p.isTopRecommendation ? "text-purple-600 fill-purple-600" : "text-gray-400"} />
+                      <span>Top Rec</span>
+                    </button>
+                  </div>
 
-                {/* 4-Tier Role Pricing Grid */}
-                <div className="grid grid-cols-2 gap-2 bg-white p-2.5 rounded-xl border border-pink-100/60 text-xs">
-                  <div>
-                    <span className="text-[10px] text-gray-500 block">MRP</span>
-                    <span className="font-bold text-gray-800">₹{p.mrp || 0}</span>
+                  {/* 4-Tier Role Pricing Grid */}
+                  <div className="grid grid-cols-2 gap-2 bg-white p-2.5 rounded-xl border border-pink-100/60 text-xs">
+                    <div>
+                      <span className="text-[10px] text-gray-500 block">MRP</span>
+                      <span className="font-bold text-gray-800">₹{p.mrp || 0}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-500 block">General User</span>
+                      <span className="font-bold text-gray-900">₹{p.generalPrice ?? p.mrp ?? 0}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[#D81B60] font-semibold block">Salon Owner (30%)</span>
+                      <span className="font-extrabold text-[#D81B60]">₹{p.salonPrice ?? p.mrp ?? 0}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-purple-700 font-semibold block">Makeup Artist (35%)</span>
+                      <span className="font-extrabold text-purple-700">₹{p.artistPrice ?? p.mrp ?? 0}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-gray-500 block">General User</span>
-                    <span className="font-bold text-gray-900">₹{p.generalPrice ?? p.mrp ?? 0}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-[#D81B60] font-semibold block">Salon Owner (30%)</span>
-                    <span className="font-extrabold text-[#D81B60]">₹{p.salonPrice ?? p.mrp ?? 0}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-purple-700 font-semibold block">Makeup Artist (35%)</span>
-                    <span className="font-extrabold text-purple-700">₹{p.artistPrice ?? p.mrp ?? 0}</span>
-                  </div>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDetailModalProduct(p)}
-                    className="flex-1 py-1.5 px-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Eye size={12} /> View
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof handleOpenEditProduct === 'function') {
-                        handleOpenEditProduct(p);
-                      } else if (typeof handleStartEditProduct === 'function') {
-                        handleStartEditProduct(p);
-                      }
-                    }}
-                    className="flex-1 py-1.5 px-2 bg-white hover:bg-pink-100 text-[#D81B60] font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 border border-pink-200 cursor-pointer"
-                  >
-                    <Edit size={12} /> Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof handleOpenShadePricing === 'function') {
-                        handleOpenShadePricing(p);
-                      } else if (typeof handleStartEditProduct === 'function') {
-                        handleStartEditProduct(p);
-                      }
-                    }}
-                    className="flex-1 py-1.5 px-2 bg-[#D81B60] hover:bg-[#9E2D5B] text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <DollarSign size={12} /> Prices
-                  </button>
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDetailModalProduct(p)}
+                      className="flex-1 py-1.5 px-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Eye size={12} /> View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof handleOpenEditProduct === 'function') {
+                          handleOpenEditProduct(p);
+                        } else if (typeof handleStartEditProduct === 'function') {
+                          handleStartEditProduct(p);
+                        }
+                      }}
+                      className="flex-1 py-1.5 px-2 bg-white hover:bg-pink-100 text-[#D81B60] font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 border border-pink-200 cursor-pointer"
+                    >
+                      <Edit size={12} /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof handleOpenShadePricing === 'function') {
+                          handleOpenShadePricing(p);
+                        } else if (typeof handleStartEditProduct === 'function') {
+                          handleStartEditProduct(p);
+                        }
+                      }}
+                      className="flex-1 py-1.5 px-2 bg-[#D81B60] hover:bg-[#9E2D5B] text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <DollarSign size={12} /> Prices
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </React.Fragment>
-          );
-        })
+              </React.Fragment>
+            );
+          })
         )}
       </div>
 
@@ -1426,21 +1424,20 @@ export default function ProductsCatalogMatrix({
                       onDragEnter={() => handleProductDragEnter(index)}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => handleProductDrop(index)}
-                      className={`transition-colors border-b border-pink-100/50 ${
-                        draggedProductIndex === index
-                          ? 'opacity-40 bg-pink-100/60'
-                          : dragOverProductIndex === index
-                            ? 'bg-pink-100/40 border-t-2 border-[#D81B60]'
-                            : selectedProductIds.has(p.id)
-                              ? 'bg-pink-50/80 border-pink-200'
-                              : isExpandedDetails
+                      className={`transition-colors border-b border-pink-100/50 ${draggedProductIndex === index
+                        ? 'opacity-40 bg-pink-100/60'
+                        : dragOverProductIndex === index
+                          ? 'bg-pink-100/40 border-t-2 border-[#D81B60]'
+                          : selectedProductIds.has(p.id)
+                            ? 'bg-pink-50/80 border-pink-200'
+                            : isExpandedDetails
                               ? 'bg-white'
                               : editingTiersProductId === p.id
-                              ? 'bg-amber-50/40'
-                              : index % 2 === 1
-                              ? 'bg-white hover:bg-[#FFF2F5]'
-                              : 'bg-white hover:bg-[#FFF2F5]/60'
-                      }`}
+                                ? 'bg-amber-50/40'
+                                : index % 2 === 1
+                                  ? 'bg-white hover:bg-[#FFF2F5]'
+                                  : 'bg-white hover:bg-[#FFF2F5]/60'
+                        }`}
                     >
                       {/* Checkbox Column */}
                       <td className="py-2.5 px-3 text-center shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1518,11 +1515,10 @@ export default function ProductsCatalogMatrix({
                             await handleProductThumbnailPaste(e, p);
                           }}
                           tabIndex={0}
-                          className={`relative w-10 h-10 rounded-xl overflow-hidden bg-white border flex items-center justify-center mx-auto shadow-2xs group cursor-pointer transition-all outline-hidden ${
-                            dragOverProductThumbId === p.id
-                              ? 'border-2 border-dashed border-[#D81B60] bg-pink-100/80 scale-110 shadow-md ring-2 ring-[#D81B60]/40'
-                              : 'border-pink-100 hover:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]'
-                          }`}
+                          className={`relative w-10 h-10 rounded-xl overflow-hidden bg-white border flex items-center justify-center mx-auto shadow-2xs group cursor-pointer transition-all outline-hidden ${dragOverProductThumbId === p.id
+                            ? 'border-2 border-dashed border-[#D81B60] bg-pink-100/80 scale-110 shadow-md ring-2 ring-[#D81B60]/40'
+                            : 'border-pink-100 hover:border-[#D81B60] focus:ring-2 focus:ring-[#D81B60]'
+                            }`}
                           title={pImage ? "Click to view full image, or Drop / Paste (Ctrl+V) new image here" : "Drop image file, drag from Google, or focus & Paste (Ctrl+V) to set product photo"}
                         >
                           {dragOverProductThumbId === p.id ? (
@@ -1582,18 +1578,16 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => toggleExpandProduct(p.id)}
-                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold border transition-all cursor-pointer ${
-                                    isExpandedVariants
-                                      ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-2xs'
-                                      : 'bg-white text-[#D81B60] border-pink-200 hover:bg-pink-100'
-                                  }`}
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold border transition-all cursor-pointer ${isExpandedVariants
+                                    ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-2xs'
+                                    : 'bg-white text-[#D81B60] border-pink-200 hover:bg-pink-100'
+                                    }`}
                                   title={isExpandedVariants ? 'Collapse variants' : 'Expand all child variants'}
                                 >
                                   <ChevronDown
                                     size={10}
-                                    className={`transform transition-transform duration-200 ${
-                                      isExpandedVariants ? 'rotate-180' : ''
-                                    }`}
+                                    className={`transform transition-transform duration-200 ${isExpandedVariants ? 'rotate-180' : ''
+                                      }`}
                                   />
                                   <span>
                                     {variantsList.length} {variantsList.length === 1 ? 'Variant' : 'Variants'}
@@ -1610,11 +1604,10 @@ export default function ProductsCatalogMatrix({
                             <button
                               type="button"
                               onClick={() => toggleProductDetails(p.id)}
-                              className={`p-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                                isExpandedDetails
-                                  ? 'bg-[#D81B60] text-white shadow-2xs'
-                                  : 'text-gray-400 hover:text-[#D81B60] hover:bg-pink-50'
-                              }`}
+                              className={`p-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${isExpandedDetails
+                                ? 'bg-[#D81B60] text-white shadow-2xs'
+                                : 'text-gray-400 hover:text-[#D81B60] hover:bg-pink-50'
+                                }`}
                               title={isExpandedDetails ? 'Hide details' : 'Show all details'}
                             >
                               {isExpandedDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -1646,13 +1639,12 @@ export default function ProductsCatalogMatrix({
                                       });
                                     }
                                   }}
-                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold text-[8.5px] uppercase border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${
-                                    isProdActive
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
-                                      : p.status === 'draft'
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold text-[8.5px] uppercase border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${isProdActive
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                    : p.status === 'draft'
                                       ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
                                       : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                                  }`}
+                                    }`}
                                   title={`Click to ${isProdActive ? 'Deactivate (Hide from customer catalog)' : 'Activate (Publish in customer catalog)'}`}
                                 >
                                   <span className={`w-1.5 h-1.5 rounded-full ${isProdActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
@@ -1705,11 +1697,10 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => handleToggleProductShadesPanel(p)}
-                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all border cursor-pointer ${
-                                    editingShadeProductId === p.id
-                                      ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-2xs'
-                                      : 'bg-white text-[#D81B60] border-pink-200 hover:bg-pink-100'
-                                  }`}
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all border cursor-pointer ${editingShadeProductId === p.id
+                                    ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-2xs'
+                                    : 'bg-white text-[#D81B60] border-pink-200 hover:bg-pink-100'
+                                    }`}
                                   title="Manage shade variants and role prices"
                                 >
                                   <Palette
@@ -1721,9 +1712,8 @@ export default function ProductsCatalogMatrix({
                                   </span>
                                   <ChevronDown
                                     size={9}
-                                    className={`transform transition-transform ${
-                                      editingShadeProductId === p.id ? 'rotate-180' : ''
-                                    }`}
+                                    className={`transform transition-transform ${editingShadeProductId === p.id ? 'rotate-180' : ''
+                                      }`}
                                   />
                                 </button>
                               );
@@ -1740,11 +1730,10 @@ export default function ProductsCatalogMatrix({
                                 <button
                                   type="button"
                                   onClick={() => handleToggleProductTiersPanel(p)}
-                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all border cursor-pointer ${
-                                    editingTiersProductId === p.id
-                                      ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-2xs'
-                                      : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
-                                  }`}
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all border cursor-pointer ${editingTiersProductId === p.id
+                                    ? 'bg-[#D81B60] text-white border-[#D81B60] shadow-2xs'
+                                    : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+                                    }`}
                                   title="Configure per-product quantity discount tiers"
                                 >
                                   <BadgePercent
@@ -1756,9 +1745,8 @@ export default function ProductsCatalogMatrix({
                                   </span>
                                   <ChevronDown
                                     size={9}
-                                    className={`transform transition-transform ${
-                                      editingTiersProductId === p.id ? 'rotate-180' : ''
-                                    }`}
+                                    className={`transform transition-transform ${editingTiersProductId === p.id ? 'rotate-180' : ''
+                                      }`}
                                   />
                                 </button>
                               );
@@ -1795,13 +1783,14 @@ export default function ProductsCatalogMatrix({
                         <div className="inline-flex items-center gap-1 flex-wrap justify-center">
                           <button
                             type="button"
+                            disabled={!canEditProduct}
                             onClick={() => handleToggleSectionFlag(p, 'isBestSeller')}
-                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
-                              p.isBestSeller
+                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-all flex items-center gap-1 border ${!canEditProduct ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                              } ${p.isBestSeller
                                 ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs font-black scale-105'
                                 : 'bg-white text-gray-400 border-gray-200 hover:border-amber-300 hover:text-amber-700'
-                            }`}
-                            title={p.isBestSeller ? "Best Seller Active (Click to remove)" : "Click to mark as Best Seller"}
+                              }`}
+                            title={!canEditProduct ? "Read-only: requires Edit Product permission from Administrator" : p.isBestSeller ? "Best Seller Active (Click to remove)" : "Click to mark as Best Seller"}
                           >
                             <Flame size={10} className={p.isBestSeller ? "text-amber-600 fill-amber-500" : "text-gray-300"} />
                             <span>Best Seller</span>
@@ -1809,13 +1798,14 @@ export default function ProductsCatalogMatrix({
 
                           <button
                             type="button"
+                            disabled={!canEditProduct}
                             onClick={() => handleToggleSectionFlag(p, 'isRecentProduct')}
-                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
-                              p.isRecentProduct
+                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-all flex items-center gap-1 border ${!canEditProduct ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                              } ${p.isRecentProduct
                                 ? 'bg-cyan-100 text-cyan-900 border-cyan-300 shadow-2xs font-black scale-105'
                                 : 'bg-white text-gray-400 border-gray-200 hover:border-cyan-300 hover:text-cyan-700'
-                            }`}
-                            title={p.isRecentProduct ? "Recent Product Active (Click to remove)" : "Click to mark as Recent"}
+                              }`}
+                            title={!canEditProduct ? "Read-only: requires Edit Product permission from Administrator" : p.isRecentProduct ? "Recent Product Active (Click to remove)" : "Click to mark as Recent"}
                           >
                             <Sparkles size={10} className={p.isRecentProduct ? "text-cyan-600" : "text-gray-300"} />
                             <span>Recent</span>
@@ -1823,13 +1813,14 @@ export default function ProductsCatalogMatrix({
 
                           <button
                             type="button"
+                            disabled={!canEditProduct}
                             onClick={() => handleToggleSectionFlag(p, 'isTopRecommendation')}
-                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-all flex items-center gap-1 cursor-pointer border ${
-                              p.isTopRecommendation
+                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-all flex items-center gap-1 border ${!canEditProduct ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                              } ${p.isTopRecommendation
                                 ? 'bg-purple-100 text-purple-900 border-purple-300 shadow-2xs font-black scale-105'
                                 : 'bg-white text-gray-400 border-gray-200 hover:border-purple-300 hover:text-purple-700'
-                            }`}
-                            title={p.isTopRecommendation ? "Top Recommendation Active (Click to remove)" : "Click to mark as Top Rec"}
+                              }`}
+                            title={!canEditProduct ? "Read-only: requires Edit Product permission from Administrator" : p.isTopRecommendation ? "Top Recommendation Active (Click to remove)" : "Click to mark as Top Rec"}
                           >
                             <Star size={10} className={p.isTopRecommendation ? "text-purple-600 fill-purple-600" : "text-gray-300"} />
                             <span>Top Rec</span>
@@ -2007,8 +1998,8 @@ export default function ProductsCatalogMatrix({
                             <span className="font-extrabold text-indigo-700 bg-indigo-50/70 px-1.5 py-0.5 rounded-lg border border-indigo-200 inline-block min-w-[50px] text-right shadow-2xs text-[11px]">
                               ₹
                               {p.beauticianPrice !== undefined &&
-                              p.beauticianPrice !== null &&
-                              p.beauticianPrice !== ''
+                                p.beauticianPrice !== null &&
+                                p.beauticianPrice !== ''
                                 ? p.beauticianPrice
                                 : p.mrp ?? 0}
                             </span>
@@ -2290,8 +2281,8 @@ export default function ProductsCatalogMatrix({
                             : (v.artist_price ?? p.artistPrice ?? vSalon);
                         const vBeautician =
                           v.beauticianPrice !== undefined &&
-                          v.beauticianPrice !== null &&
-                          v.beauticianPrice !== ''
+                            v.beauticianPrice !== null &&
+                            v.beauticianPrice !== ''
                             ? Number(v.beauticianPrice)
                             : (v.beautician_price ?? p.beauticianPrice ?? vSalon);
 
@@ -2604,11 +2595,10 @@ export default function ProductsCatalogMatrix({
                                   type="button"
                                   onClick={() => handleSaveProductShades(p.id)}
                                   disabled={isSavingShades}
-                                  className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all ${
-                                    shadesSaveSuccess
-                                      ? 'bg-emerald-600 text-white'
-                                      : 'bg-[#D81B60] hover:bg-[#9E2D5B] text-white cursor-pointer active:scale-95'
-                                  }`}
+                                  className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all ${shadesSaveSuccess
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-[#D81B60] hover:bg-[#9E2D5B] text-white cursor-pointer active:scale-95'
+                                    }`}
                                 >
                                   {shadesSaveSuccess ? (
                                     <>
@@ -2684,7 +2674,7 @@ export default function ProductsCatalogMatrix({
                                       const isColor = Boolean(
                                         shade.hexColor &&
                                         ((shade.attributes && Object.keys(shade.attributes).some(k => /shade|color|colour/i.test(k))) ||
-                                         /makeup|lipstick|lip|nail|foundation/i.test(p.category || ''))
+                                          /makeup|lipstick|lip|nail|foundation/i.test(p.category || ''))
                                       );
 
                                       return (
@@ -2712,11 +2702,10 @@ export default function ProductsCatalogMatrix({
                                             setDragOverVariantIdx(null);
                                             await handleVariantImageDrop(e, sIdx, shade, p);
                                           }}
-                                          className={`transition-colors relative ${
-                                            dragOverVariantIdx === sIdx
-                                              ? 'bg-pink-100/70 ring-2 ring-inset ring-[#D81B60]'
-                                              : 'hover:bg-[#FFF5F8]/40'
-                                          }`}
+                                          className={`transition-colors relative ${dragOverVariantIdx === sIdx
+                                            ? 'bg-pink-100/70 ring-2 ring-inset ring-[#D81B60]'
+                                            : 'hover:bg-[#FFF5F8]/40'
+                                            }`}
                                         >
                                           <td className="py-3 px-3">
                                             <div className="flex items-center gap-2">
@@ -2748,11 +2737,10 @@ export default function ProductsCatalogMatrix({
                                           </td>
                                           <td className="py-3 px-3">
                                             <div
-                                              className={`relative flex items-center gap-2.5 p-2 rounded-2xl transition-all border ${
-                                                dragOverVariantIdx === sIdx
-                                                  ? 'border-2 border-dashed border-[#D81B60] bg-[#FFF2F5] shadow-md ring-2 ring-[#D81B60]/30 scale-[1.02]'
-                                                  : 'border-transparent hover:border-pink-200 hover:bg-pink-50/30'
-                                              }`}
+                                              className={`relative flex items-center gap-2.5 p-2 rounded-2xl transition-all border ${dragOverVariantIdx === sIdx
+                                                ? 'border-2 border-dashed border-[#D81B60] bg-[#FFF2F5] shadow-md ring-2 ring-[#D81B60]/30 scale-[1.02]'
+                                                : 'border-transparent hover:border-pink-200 hover:bg-pink-50/30'
+                                                }`}
                                               onDragOver={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
@@ -2801,11 +2789,10 @@ export default function ProductsCatalogMatrix({
                                                     prefix: `var_${shade.sku || shade.id || Date.now()}`
                                                   });
                                                 }}
-                                                className={`relative w-11 h-11 rounded-xl border overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group/vimg cursor-pointer transition-all ${
-                                                  (shade.image || shade.imageUrl || (shade.images && shade.images[0]))
-                                                    ? 'border-pink-200 bg-white hover:border-[#D81B60]'
-                                                    : 'border-dashed border-pink-300 bg-pink-50/60 hover:bg-pink-100/60'
-                                                }`}
+                                                className={`relative w-11 h-11 rounded-xl border overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group/vimg cursor-pointer transition-all ${(shade.image || shade.imageUrl || (shade.images && shade.images[0]))
+                                                  ? 'border-pink-200 bg-white hover:border-[#D81B60]'
+                                                  : 'border-dashed border-pink-300 bg-pink-50/60 hover:bg-pink-100/60'
+                                                  }`}
                                                 title="Click to open image manager modal (or drag & drop image here)"
                                               >
                                                 {uploadingVariantIdx === sIdx ? (
@@ -2912,11 +2899,10 @@ export default function ProductsCatalogMatrix({
                                           <td className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-indigo-700">₹{shadeBeautician}</td>
                                           <td className="py-3 px-3 text-center">
                                             <span
-                                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                                tiersCount > 0
-                                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                                  : 'bg-gray-100 text-gray-500'
-                                              }`}
+                                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${tiersCount > 0
+                                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                                : 'bg-gray-100 text-gray-500'
+                                                }`}
                                             >
                                               <BadgePercent size={10} />
                                               <span>{tiersCount} Tiers</span>
@@ -2969,30 +2955,30 @@ export default function ProductsCatalogMatrix({
                                 /makeup|lipstick|lip|nail|eyeshadow|blush|foundation/i.test(p.category || '') ||
                                 productShadesLocal.some(s => s.attributes && Object.keys(s.attributes).some(k => /shade|color|colour/i.test(k)))
                               ) && (
-                                <div className="flex items-center gap-1.5">
-                                  <input
-                                    type="color"
-                                    value={shadeFormDraft.hexColor}
-                                    onChange={(e) => {
-                                      const hex = e.target.value;
-                                      const autoName = getBeautyShadeName ? getBeautyShadeName(hex) : '';
-                                      setShadeFormDraft((prev) => ({
-                                        ...prev,
-                                        hexColor: hex,
-                                        name: autoName || prev.name
-                                      }));
-                                    }}
-                                    className="w-8 h-8 rounded-xl border border-pink-200 cursor-pointer p-0.5"
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="#HEX"
-                                    value={shadeFormDraft.hexColor}
-                                    onChange={(e) => setShadeFormDraft((prev) => ({ ...prev, hexColor: e.target.value }))}
-                                    className="w-20 p-2 rounded-xl border border-pink-200 bg-white font-mono text-[10px] font-bold text-gray-700 outline-none"
-                                  />
-                                </div>
-                              )}
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="color"
+                                      value={shadeFormDraft.hexColor}
+                                      onChange={(e) => {
+                                        const hex = e.target.value;
+                                        const autoName = getBeautyShadeName ? getBeautyShadeName(hex) : '';
+                                        setShadeFormDraft((prev) => ({
+                                          ...prev,
+                                          hexColor: hex,
+                                          name: autoName || prev.name
+                                        }));
+                                      }}
+                                      className="w-8 h-8 rounded-xl border border-pink-200 cursor-pointer p-0.5"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="#HEX"
+                                      value={shadeFormDraft.hexColor}
+                                      onChange={(e) => setShadeFormDraft((prev) => ({ ...prev, hexColor: e.target.value }))}
+                                      className="w-20 p-2 rounded-xl border border-pink-200 bg-white font-mono text-[10px] font-bold text-gray-700 outline-none"
+                                    />
+                                  </div>
+                                )}
                               <input
                                 type="number"
                                 placeholder="MRP (₹)"
@@ -3094,11 +3080,10 @@ export default function ProductsCatalogMatrix({
           <button
             onClick={() => setProductCurrentPage((p) => Math.max(1, p - 1))}
             disabled={productCurrentPage <= 1}
-            className={`p-2 rounded-xl border flex items-center justify-center transition-all ${
-              productCurrentPage <= 1
-                ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
-            }`}
+            className={`p-2 rounded-xl border flex items-center justify-center transition-all ${productCurrentPage <= 1
+              ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
+              : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
+              }`}
             title="Previous Page"
             aria-label="Previous Page"
           >
@@ -3121,11 +3106,10 @@ export default function ProductsCatalogMatrix({
                   {showEllipsis && <span className="px-1 text-gray-400">...</span>}
                   <button
                     onClick={() => setProductCurrentPage(page)}
-                    className={`min-w-[32px] h-8 px-2 rounded-xl font-bold text-xs transition-all ${
-                      effectiveProductPage === page
-                        ? 'bg-[#D81B60] text-white shadow-xs'
-                        : 'bg-white border border-pink-200 text-gray-700 hover:bg-pink-50 cursor-pointer shadow-2xs'
-                    }`}
+                    className={`min-w-[32px] h-8 px-2 rounded-xl font-bold text-xs transition-all ${effectiveProductPage === page
+                      ? 'bg-[#D81B60] text-white shadow-xs'
+                      : 'bg-white border border-pink-200 text-gray-700 hover:bg-pink-50 cursor-pointer shadow-2xs'
+                      }`}
                   >
                     {page}
                   </button>
@@ -3136,11 +3120,10 @@ export default function ProductsCatalogMatrix({
           <button
             onClick={() => setProductCurrentPage((p) => Math.min(totalProductPages, p + 1))}
             disabled={productCurrentPage >= totalProductPages}
-            className={`p-2 rounded-xl border flex items-center justify-center transition-all ${
-              productCurrentPage >= totalProductPages
-                ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
-            }`}
+            className={`p-2 rounded-xl border flex items-center justify-center transition-all ${productCurrentPage >= totalProductPages
+              ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
+              : 'border-pink-200 text-[#D81B60] bg-white hover:bg-pink-50 cursor-pointer shadow-2xs'
+              }`}
             title="Next Page"
             aria-label="Next Page"
           >
@@ -3210,11 +3193,10 @@ export default function ProductsCatalogMatrix({
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveDetailTab(tab.id)}
-                    className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all flex items-center gap-1.5 border-b-2 whitespace-nowrap cursor-pointer ${
-                      isActive
-                        ? 'border-[#D81B60] text-[#D81B60] bg-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
+                    className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all flex items-center gap-1.5 border-b-2 whitespace-nowrap cursor-pointer ${isActive
+                      ? 'border-[#D81B60] text-[#D81B60] bg-white'
+                      : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                      }`}
                   >
                     <Icon size={14} />
                     <span>{tab.label}</span>

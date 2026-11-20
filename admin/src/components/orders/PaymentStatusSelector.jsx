@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, CreditCard, DollarSign } from 'lucide-react';
+import { ChevronDown, Check, DollarSign } from 'lucide-react';
 
 export const PAYMENT_STATUS_OPTIONS = [
   {
@@ -86,9 +86,8 @@ export default function PaymentStatusSelector({ order, onUpdatePaymentStatus, on
         type="button"
         disabled={disabled || isUpdating}
         onClick={() => setIsOpen(!isOpen)}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer shadow-2xs ${currentOption.badgeClass} ${
-          disabled ? 'opacity-60 cursor-not-allowed' : ''
-        }`}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer shadow-2xs ${currentOption.badgeClass} ${disabled ? 'opacity-60 cursor-not-allowed' : ''
+          }`}
         title="Click to update payment status"
       >
         <span className={`w-1.5 h-1.5 rounded-full ${currentOption.dotColor} shrink-0`}></span>
@@ -110,9 +109,8 @@ export default function PaymentStatusSelector({ order, onUpdatePaymentStatus, on
                   key={opt.id}
                   type="button"
                   onClick={() => handleSelect(opt.id)}
-                  className={`w-full text-left px-3 py-2 flex items-start gap-2.5 hover:bg-pink-50/60 transition-colors cursor-pointer ${
-                    isSelected ? 'bg-pink-50/80 font-bold text-[#D81B60]' : 'text-gray-700 font-medium'
-                  }`}
+                  className={`w-full text-left px-3 py-2 flex items-start gap-2.5 hover:bg-pink-50/60 transition-colors cursor-pointer ${isSelected ? 'bg-pink-50/80 font-bold text-[#D81B60]' : 'text-gray-700 font-medium'
+                    }`}
                 >
                   <span className={`w-2 h-2 rounded-full ${opt.dotColor} mt-1 shrink-0`}></span>
                   <div className="flex-1 min-w-0">

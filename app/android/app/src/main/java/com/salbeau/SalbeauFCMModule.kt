@@ -20,6 +20,10 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
     companion object {
         const val MODULE_NAME = "SalbeauFCM"
         private const val TAG = "SalbeauFCMModule"
+        const val CHANNEL_ID = "salbeau_notifications"
+        const val CHANNEL_NAME = "Salbeau Orders & Alerts"
+        const val PREFS_NAME = "salbeau_fcm_prefs"
+        const val KEY_FCM_TOKEN = "fcm_token"
         var activeReactContext: ReactApplicationContext? = null
 
         fun sendTokenRefresh(token: String) {
@@ -80,11 +84,27 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
                 Log.w(TAG, "Failed to emit onNotificationTapped: ${e.message}")
             }
         }
+        fun createNotificationChannel(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = android.app.NotificationChannel(
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Order fulfillment, B2B verification, and exclusive store alerts"
+                    enableLights(true)
+                    enableVibration(true)
+                    setShowBadge(true)
+                }
+                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                notificationManager.createNotificationChannel(channel)
+            }
+        }
     }
 
     init {
         activeReactContext = reactContext
-        SalbeauFirebaseMessagingService.createNotificationChannel(reactContext)
+        createNotificationChannel(reactContext)
     }
 
     override fun getName(): String = MODULE_NAME
@@ -129,20 +149,20 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
 
                     // Save locally in prefs
                     val prefs = reactContext.getSharedPreferences(
-                        SalbeauFirebaseMessagingService.PREFS_NAME,
+                        PREFS_NAME,
                         Context.MODE_PRIVATE
                     )
-                    prefs.edit().putString(SalbeauFirebaseMessagingService.KEY_FCM_TOKEN, token).apply()
+                    prefs.edit().putString(KEY_FCM_TOKEN, token).apply()
 
                     promise.resolve(token)
                 } else {
                     Log.w(TAG, "FCM token fetch failed: ${task.exception?.message}")
                     // Fallback to cached token
                     val prefs = reactContext.getSharedPreferences(
-                        SalbeauFirebaseMessagingService.PREFS_NAME,
+                        PREFS_NAME,
                         Context.MODE_PRIVATE
                     )
-                    val cachedToken = prefs.getString(SalbeauFirebaseMessagingService.KEY_FCM_TOKEN, null)
+                    val cachedToken = prefs.getString(KEY_FCM_TOKEN, null)
                     if (cachedToken != null) {
                         promise.resolve(cachedToken)
                     } else {
@@ -159,7 +179,7 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun displayNotification(title: String, body: String, data: ReadableMap?, promise: Promise) {
         try {
-            SalbeauFirebaseMessagingService.createNotificationChannel(reactContext)
+            createNotificationChannel(reactContext)
 
             val intent = Intent(reactContext, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -188,7 +208,7 @@ class SalbeauFCMModule(private val reactContext: ReactApplicationContext) :
                 pendingIntentFlag
             )
 
-            val builder = NotificationCompat.Builder(reactContext, SalbeauFirebaseMessagingService.CHANNEL_ID)
+            val builder = NotificationCompat.Builder(reactContext, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(body)

@@ -694,21 +694,24 @@ export const HomeScreen = () => {
   }, [displayCategories]);
 
   const DEPARTMENT_TABS = useMemo(() => categoryNavTabs.map(t => t.label), [categoryNavTabs]);
-  const [activeDepartmentTab, setActiveDepartmentTab] = useState('Makeup');
+  const [activeDepartmentTab, setActiveDepartmentTab] = useState('All');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
   const isAllCategoryFilterSelected = selectedCategoryFilter === 'All';
+  const isCategoryMode = Boolean(activeDepartmentTab && activeDepartmentTab.toLowerCase() !== 'all');
 
   // Animated Values & Layout Measurements for Raised Curved Arch Indicator
   const departmentTabLayouts = useRef({}).current;
   const departmentTabsScrollRef = useRef(null);
-  const departmentIndicatorX = useRef(new Animated.Value(48)).current;
-  const departmentIndicatorWidth = useRef(new Animated.Value(76)).current;
+  const departmentIndicatorX = useRef(new Animated.Value(0)).current;
+  const departmentIndicatorWidth = useRef(new Animated.Value(72)).current;
   const departmentHasMeasured = useRef(false);
   const categoryCarouselFadeAnim = useRef(new Animated.Value(1)).current;
   const categoryCarouselScaleAnim = useRef(new Animated.Value(1)).current;
 
   // Active Subcategories list for the selected category (Face Makeup, Eye Makeup, Lip Makeup, etc.)
   const activeCategorySubcategories = useMemo(() => {
+    if (!isCategoryMode) return [];
+
     const activeTabObj = categoryNavTabs.find(
       t => t.label.toLowerCase() === activeDepartmentTab.toLowerCase() || t.name.toLowerCase() === activeDepartmentTab.toLowerCase()
     );
@@ -716,52 +719,60 @@ export const HomeScreen = () => {
       c => (c.name || '').toLowerCase() === (activeTabObj?.name || activeDepartmentTab).toLowerCase()
     ) || { name: activeDepartmentTab };
 
-    const subs = getSubcategoriesForCategory ? getSubcategoriesForCategory(targetCat) : [];
-    if (subs && subs.length > 0) {
-      return subs;
+    let subs = [];
+    if (Array.isArray(subcategories) && subcategories.length > 0) {
+      const nCatId = (targetCat.id || '').toLowerCase().trim();
+      const nCatName = (targetCat.name || '').toLowerCase().trim();
+      subs = subcategories.filter(s => {
+        if (s.enabled === false) return false;
+        const sCatId = (s.categoryId || s.category_id || '').toLowerCase().trim();
+        const sCatName = (s.categoryName || s.category_name || s.parentCategory || '').toLowerCase().trim();
+        return (nCatId && sCatId === nCatId) || (nCatName && (sCatId === nCatName || sCatName === nCatName));
+      });
+    }
+
+    if (!subs || subs.length === 0) {
+      subs = getSubcategoriesForCategory ? getSubcategoriesForCategory(targetCat) : [];
     }
 
     // High-fidelity fallback subcategories matching beauty store standards
-    const dLower = (activeDepartmentTab || '').toLowerCase();
-    if (dLower.includes('makeup')) {
-      return [
-        { id: 'sub_face', name: 'Face Makeup' },
-        { id: 'sub_eye', name: 'Eye Makeup' },
-        { id: 'sub_lip', name: 'Lip Makeup' },
-        { id: 'sub_cheeks', name: 'Cheeks' },
-        { id: 'sub_tools', name: 'Makeup Tools' },
-      ];
-    } else if (dLower.includes('skin')) {
-      return [
-        { id: 'sub_cleanser', name: 'Cleansers' },
-        { id: 'sub_serum', name: 'Serums & Essences' },
-        { id: 'sub_moisturizer', name: 'Moisturizers' },
-        { id: 'sub_sunscreen', name: 'Sunscreen' },
-        { id: 'sub_eye_care', name: 'Eye Creams' },
-      ];
-    } else if (dLower.includes('hair')) {
-      return [
-        { id: 'sub_shampoo', name: 'Shampoos' },
-        { id: 'sub_conditioner', name: 'Conditioners' },
-        { id: 'sub_hair_oil', name: 'Hair Oils' },
-        { id: 'sub_masks', name: 'Hair Masks' },
-        { id: 'sub_styling', name: 'Styling Serums' },
-      ];
+    if (!subs || subs.length === 0) {
+      const dLower = (activeDepartmentTab || '').toLowerCase();
+      if (dLower.includes('makeup')) {
+        subs = [
+          { id: 'sub_face', name: 'Face Makeup' },
+          { id: 'sub_eye', name: 'Eye Makeup' },
+          { id: 'sub_lip', name: 'Lip Makeup' },
+          { id: 'sub_cheeks', name: 'Cheeks' },
+          { id: 'sub_tools', name: 'Makeup Tools' },
+        ];
+      } else if (dLower.includes('skin')) {
+        subs = [
+          { id: 'sub_cleanser', name: 'Cleansers' },
+          { id: 'sub_serum', name: 'Serums & Essences' },
+          { id: 'sub_moisturizer', name: 'Moisturizers' },
+          { id: 'sub_sunscreen', name: 'Sunscreen' },
+          { id: 'sub_eye_care', name: 'Eye Creams' },
+        ];
+      } else if (dLower.includes('hair')) {
+        subs = [
+          { id: 'sub_shampoo', name: 'Shampoos' },
+          { id: 'sub_conditioner', name: 'Conditioners' },
+          { id: 'sub_hair_oil', name: 'Hair Oils' },
+          { id: 'sub_masks', name: 'Hair Masks' },
+          { id: 'sub_styling', name: 'Styling Serums' },
+        ];
+      }
     }
-    return [
-      { id: 'sub_all_1', name: 'Best Sellers' },
-      { id: 'sub_all_2', name: 'New Launches' },
-      { id: 'sub_all_3', name: 'Daily Essentials' },
-      { id: 'sub_all_4', name: 'Luxury Beauty' },
-    ];
-  }, [activeDepartmentTab, categoryNavTabs, displayCategories]);
+    return subs || [];
+  }, [isCategoryMode, activeDepartmentTab, categoryNavTabs, displayCategories, subcategories]);
 
   // Dynamic Product Filter based on Active Category Tab & Subcategory Selection
   const filteredCategoryProducts = useMemo(() => {
     let prods = activeProducts || [];
 
     // 1. Filter by Active Top Category Tab (if not 'All')
-    if (activeDepartmentTab && activeDepartmentTab.toLowerCase() !== 'all') {
+    if (isCategoryMode) {
       const activeTabObj = categoryNavTabs.find(
         t => t.label.toLowerCase() === activeDepartmentTab.toLowerCase() || t.name.toLowerCase() === activeDepartmentTab.toLowerCase()
       );
@@ -783,12 +794,13 @@ export const HomeScreen = () => {
         const pCat = (p.category || p.categoryName || '').toLowerCase().trim();
         const pSub = (p.subcategory || p.subCategory || '').toLowerCase().trim();
         const pCats = Array.isArray(p.categories) ? p.categories.map(c => String(c).toLowerCase().trim()) : [];
-        return pCat === filterLower || pCat.includes(filterLower) || filterLower.includes(pCat) || pSub.includes(filterLower) || pCats.includes(filterLower);
+        const combinedText = `${p.name || ''} ${pCat} ${pSub} ${p.description || ''}`.toLowerCase();
+        return pSub === filterLower || pSub.includes(filterLower) || filterLower.includes(pSub) || combinedText.includes(filterLower);
       });
     }
 
     return prods;
-  }, [activeProducts, activeDepartmentTab, categoryNavTabs, selectedCategoryFilter]);
+  }, [activeProducts, isCategoryMode, activeDepartmentTab, categoryNavTabs, selectedCategoryFilter]);
 
   // Tab Switching Handler with Spring Animation Physics & Soft Centering Scroll
   const handleDepartmentTabPress = useCallback((tab) => {
@@ -965,10 +977,11 @@ export const HomeScreen = () => {
     return getSubcategoriesForCategory(targetCat);
   }, [activeCategoryHome, displayCategories, subcategories]);
 
-  // 2. Trending Now Products
+  // 2. Trending Now Products (Dynamic: General when 'All', Category/Subcategory-specific when selected)
   const trendingProducts = useMemo(() => {
-    if (!activeProducts || activeProducts.length === 0) return [];
-    return [...activeProducts].sort((a, b) => {
+    const source = isCategoryMode ? filteredCategoryProducts : (activeProducts || []);
+    if (!source || source.length === 0) return [];
+    return [...source].sort((a, b) => {
       if (a.isTrending && !b.isTrending) return -1;
       if (!a.isTrending && b.isTrending) return 1;
       if (a.isTrending && b.isTrending) {
@@ -979,7 +992,7 @@ export const HomeScreen = () => {
       if (salesB !== salesA) return salesB - salesA;
       return Number(b.sort_order ?? 99999) - Number(a.sort_order ?? 99999);
     }).slice(0, 10);
-  }, [activeProducts, productSalesCounts]);
+  }, [isCategoryMode, filteredCategoryProducts, activeProducts, productSalesCounts]);
 
   // 3. All Brands for continuous auto-scrolling (Driven dynamically by DB and catalog)
   const allBrandsList = useMemo(() => {
@@ -1016,10 +1029,25 @@ export const HomeScreen = () => {
   }, [activeBrands, brands, activeProducts]);
   const topBrandsList = allBrandsList;
 
-  // 4. New Arrivals & Recent Products (Driven dynamically by Admin Panel selection & priority)
+  // Category-specific Brand list (brands with products in currently selected category/subcategory)
+  const categoryBrandsList = useMemo(() => {
+    if (!isCategoryMode) return topBrandsList;
+    const catProds = filteredCategoryProducts.length > 0 ? filteredCategoryProducts : [];
+    if (catProds.length === 0) return topBrandsList;
+    const catBrandNames = new Set();
+    catProds.forEach(p => {
+      const bName = (p.brandName || p.brand || '').trim().toLowerCase();
+      if (bName) catBrandNames.add(bName);
+    });
+    const matched = topBrandsList.filter(b => catBrandNames.has((b.name || '').trim().toLowerCase()));
+    return matched.length > 0 ? matched : topBrandsList;
+  }, [isCategoryMode, filteredCategoryProducts, topBrandsList]);
+
+  // 4. New Arrivals & Recent Products (Dynamic: General when 'All', Category/Subcategory-specific when selected)
   const newArrivals = useMemo(() => {
-    if (!activeProducts || activeProducts.length === 0) return [];
-    const markedRecent = activeProducts.filter(p => p.isRecentProduct === true);
+    const source = isCategoryMode ? filteredCategoryProducts : (activeProducts || []);
+    if (!source || source.length === 0) return [];
+    const markedRecent = source.filter(p => p.isRecentProduct === true);
     if (markedRecent.length > 0) {
       return [...markedRecent].sort((a, b) => {
         const prioA = Number(a.recentPriority ?? a.sort_order ?? 99999);
@@ -1030,7 +1058,7 @@ export const HomeScreen = () => {
         return timeB - timeA;
       }).slice(0, 15);
     }
-    return [...activeProducts]
+    return [...source]
       .filter(p => p.showInNewArrivals !== false)
       .sort((a, b) => {
         const timeA = new Date(a.publishedAt || a.created_at || 0).getTime();
@@ -1038,12 +1066,13 @@ export const HomeScreen = () => {
         return timeB - timeA;
       })
       .slice(0, 10);
-  }, [activeProducts]);
+  }, [isCategoryMode, filteredCategoryProducts, activeProducts]);
 
-  // 5. Best Sellers (Driven dynamically by Admin Panel selection & priority)
+  // 5. Best Sellers (Dynamic: General when 'All', Category/Subcategory-specific when selected)
   const bestSellers = useMemo(() => {
-    if (!activeProducts || activeProducts.length === 0) return [];
-    const markedBestSellers = activeProducts.filter(p => p.isBestSeller === true);
+    const source = isCategoryMode ? filteredCategoryProducts : (activeProducts || []);
+    if (!source || source.length === 0) return [];
+    const markedBestSellers = source.filter(p => p.isBestSeller === true);
     if (markedBestSellers.length > 0) {
       return [...markedBestSellers].sort((a, b) => {
         const prioA = Number(a.bestSellerPriority ?? a.sort_order ?? 99999);
@@ -1054,18 +1083,19 @@ export const HomeScreen = () => {
         return salesB - salesA;
       }).slice(0, 15);
     }
-    return [...activeProducts].sort((a, b) => {
+    return [...source].sort((a, b) => {
       const salesA = productSalesCounts[a.id] || 0;
       const salesB = productSalesCounts[b.id] || 0;
       if (salesB !== salesA) return salesB - salesA;
       return Number(a.sort_order ?? 99999) - Number(b.sort_order ?? 99999);
     }).slice(0, 10);
-  }, [activeProducts, productSalesCounts]);
+  }, [isCategoryMode, filteredCategoryProducts, activeProducts, productSalesCounts]);
 
-  // 5B. Top Recommendations (Driven dynamically by Admin Panel selection & priority)
+  // 5B. Top Recommendations (Dynamic: General when 'All', Category/Subcategory-specific when selected)
   const topRecommendations = useMemo(() => {
-    if (!activeProducts || activeProducts.length === 0) return [];
-    const markedRecs = activeProducts.filter(p => p.isTopRecommendation === true);
+    const source = isCategoryMode ? filteredCategoryProducts : (activeProducts || []);
+    if (!source || source.length === 0) return [];
+    const markedRecs = source.filter(p => p.isTopRecommendation === true);
     if (markedRecs.length > 0) {
       return [...markedRecs].sort((a, b) => {
         const prioA = Number(a.recommendationPriority ?? a.sort_order ?? 99999);
@@ -1073,10 +1103,10 @@ export const HomeScreen = () => {
         return prioA - prioB;
       }).slice(0, 15);
     }
-    const featured = activeProducts.filter(p => p.isFeatured || p.is_featured);
+    const featured = source.filter(p => p.isFeatured || p.is_featured);
     if (featured.length > 0) return featured.slice(0, 10);
-    return [...activeProducts].slice(0, 10);
-  }, [activeProducts]);
+    return [...source].slice(0, 10);
+  }, [isCategoryMode, filteredCategoryProducts, activeProducts]);
 
   // 6. Recently Viewed Products (User-specific tracking with persistence)
   const recentlyViewedProducts = useMemo(() => {
@@ -1280,17 +1310,7 @@ export const HomeScreen = () => {
               {/* Far-Left 'All' Option */}
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => {
-                  setActiveDepartmentTab('All');
-                  setSelectedCategoryFilter('All');
-                  const layout = departmentTabLayouts['All'];
-                  if (layout && typeof layout.x === 'number') {
-                    Animated.parallel([
-                      Animated.spring(departmentIndicatorX, { toValue: layout.x, friction: 8, tension: 65, useNativeDriver: false }),
-                      Animated.spring(departmentIndicatorWidth, { toValue: layout.width, friction: 8, tension: 65, useNativeDriver: false }),
-                    ]).start();
-                  }
-                }}
+                onPress={() => handleDepartmentTabPress('All')}
                 onLayout={(e) => {
                   const layout = e.nativeEvent.layout;
                   departmentTabLayouts['All'] = layout;
@@ -1301,19 +1321,47 @@ export const HomeScreen = () => {
                 }}
                 style={{
                   height: 90,
-                  paddingHorizontal: 16,
+                  width: 76,
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderBottomWidth: 2,
                   borderBottomColor: activeDepartmentTab === 'All' ? 'transparent' : '#D81B60',
                   zIndex: 5,
+                  paddingTop: 4,
+                  paddingBottom: 6,
                 }}
               >
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    borderWidth: 1.5,
+                    borderColor: activeDepartmentTab === 'All' ? '#D81B60' : '#E0A96D',
+                    backgroundColor: activeDepartmentTab === 'All' ? '#FFF0F5' : '#FFFFFF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 5,
+                    shadowColor: activeDepartmentTab === 'All' ? '#D81B60' : '#000000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: activeDepartmentTab === 'All' ? 0.22 : 0.06,
+                    shadowRadius: 3,
+                    elevation: 2,
+                  }}
+                >
+                  <Ionicons
+                    name="sparkles"
+                    size={22}
+                    color={activeDepartmentTab === 'All' ? '#D81B60' : '#4B5563'}
+                  />
+                </View>
                 <Text
                   style={{
-                    fontSize: 13,
+                    fontSize: 11,
                     fontWeight: activeDepartmentTab === 'All' ? '800' : '700',
                     color: activeDepartmentTab === 'All' ? '#D81B60' : '#111827',
+                    textAlign: 'center',
+                    letterSpacing: 0.2,
                   }}
                 >
                   All
@@ -1449,69 +1497,104 @@ export const HomeScreen = () => {
         </View>
 
         {/* ========================================================================= */}
-        {/* 4. SUB CATEGORIES SECTION (HORIZONTAL PILL CHIPS)                         */}
+        {/* 4. SUB CATEGORIES SECTION (DYNAMIC PILL CHIPS PER SELECTED CATEGORY)      */}
         {/* ========================================================================= */}
-        <View style={{ marginTop: 14, marginBottom: 12 }}>
-          {/* Sub Categories Section Header */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 }}>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>
-              {activeDepartmentTab.toLowerCase() !== 'all' ? `${activeDepartmentTab} Sub Categories` : 'Beauty Sub Categories'}
-            </Text>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('category')}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Horizontal Scroll of Sub Category Pill Chips */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {activeCategorySubcategories.map((sub, idx) => {
-              const isSelected = selectedCategoryFilter.toLowerCase() === (sub.name || '').toLowerCase();
-              return (
+        {isCategoryMode && activeCategorySubcategories.length > 0 && (
+          <View style={{ marginTop: 14, marginBottom: 12 }}>
+            {/* Sub Categories Section Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>
+                {selectedCategoryFilter !== 'All' ? `${selectedCategoryFilter}` : `${activeDepartmentTab} Subcategories`}
+              </Text>
+              {selectedCategoryFilter !== 'All' && (
                 <TouchableOpacity
-                  key={`sub_chip_${sub.id || idx}`}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    const parentCatName = (activeDepartmentTab && activeDepartmentTab.toLowerCase() !== 'all')
-                      ? activeDepartmentTab
-                      : (sub.categoryName || (categories.find(c => c.id === sub.categoryId)?.name) || 'Makeup');
-                    if (setSelectedCategory) setSelectedCategory(parentCatName);
-                    if (setSelectedSubcategory) setSelectedSubcategory(sub.name);
-                    setCurrentScreen('category');
-                  }}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 7,
-                    borderRadius: 20,
-                    borderWidth: 1,
-                    borderColor: isSelected ? '#D81B60' : '#E5E7EB',
-                    backgroundColor: isSelected ? '#D81B60' : '#FFFFFF',
-                    marginRight: 8,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.04,
-                    shadowRadius: 2,
-                    elevation: 1,
-                  }}
+                  activeOpacity={0.7}
+                  onPress={() => setSelectedCategoryFilter('All')}
                 >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: '700',
-                      color: isSelected ? '#FFFFFF' : '#111827',
-                    }}
-                  >
-                    {sub.name}
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#D81B60' }}>
+                    Reset to All {activeDepartmentTab} ✕
                   </Text>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
+              )}
+            </View>
+
+            {/* Horizontal Scroll of Sub Category Pill Chips */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+            >
+              {/* "All [Category]" Chip to restore all products of the parent category */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setSelectedCategoryFilter('All')}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 7,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: selectedCategoryFilter === 'All' ? '#D81B60' : '#E5E7EB',
+                  backgroundColor: selectedCategoryFilter === 'All' ? '#D81B60' : '#FFFFFF',
+                  marginRight: 8,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.04,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: selectedCategoryFilter === 'All' ? '#FFFFFF' : '#111827',
+                  }}
+                >
+                  All {activeDepartmentTab}
+                </Text>
+              </TouchableOpacity>
+
+              {activeCategorySubcategories.map((sub, idx) => {
+                const isSelected = selectedCategoryFilter.toLowerCase() === (sub.name || '').toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={`sub_chip_${sub.id || idx}`}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      // Dynamically filter on Home Screen — toggle selection
+                      setSelectedCategoryFilter(isSelected ? 'All' : sub.name);
+                    }}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 7,
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      borderColor: isSelected ? '#D81B60' : '#E5E7EB',
+                      backgroundColor: isSelected ? '#D81B60' : '#FFFFFF',
+                      marginRight: 8,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.04,
+                      shadowRadius: 2,
+                      elevation: 1,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: '700',
+                        color: isSelected ? '#FFFFFF' : '#111827',
+                      }}
+                    >
+                      {sub.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {/* ========================================================================= */}
         {/* 5. DYNAMIC FULL-WIDTH PROMOTIONAL BANNERS CAROUSEL (ADMIN PANEL DRIVEN)   */}
@@ -1600,7 +1683,7 @@ export const HomeScreen = () => {
         {/* 6. SHOP BY BRAND — PREMIUM CONTINUOUS SCROLLING (NYKAA/MYNTRA STYLE)      */}
         {/* ========================================================================= */}
         <ContinuousBrandScroller
-          brands={topBrandsList}
+          brands={categoryBrandsList}
           onSelectBrand={(brand) => {
             if (setSelectedBrand) setSelectedBrand(brand);
             if (setGlobalSearchQuery) setGlobalSearchQuery('');
@@ -1672,18 +1755,31 @@ export const HomeScreen = () => {
         {/* ========================================================================= */}
         {/* 8. TRENDING PRODUCTS (2-COLUMN GRID)                                      */}
         {/* ========================================================================= */}
-        {((filteredCategoryProducts.length > 0 ? filteredCategoryProducts : trendingProducts).length > 0) && (
+        {trendingProducts.length > 0 && (
           <View style={{ marginBottom: 24 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 }}>
-              <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Trending Products</Text>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('search')}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>
+                {isCategoryMode
+                  ? (selectedCategoryFilter !== 'All' ? `Trending in ${selectedCategoryFilter}` : `Trending in ${activeDepartmentTab}`)
+                  : 'Trending Products'}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  if (isCategoryMode) {
+                    if (setSelectedCategory) setSelectedCategory(activeDepartmentTab);
+                    if (setSelectedSubcategory) setSelectedSubcategory(selectedCategoryFilter !== 'All' ? selectedCategoryFilter : null);
+                  }
+                  setCurrentScreen('search');
+                }}
+              >
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
               </TouchableOpacity>
             </View>
 
             {/* 2-Column Standardized Product Cards Grid */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 }}>
-              {(filteredCategoryProducts.length > 0 ? filteredCategoryProducts : trendingProducts).slice(0, 8).map((product) => (
+              {trendingProducts.slice(0, 8).map((product) => (
                 <View key={`trend_grid_${product.id}`} style={{ width: '50%', padding: 6 }}>
                   <PurplleProductCard
                     product={product}
@@ -1715,9 +1811,22 @@ export const HomeScreen = () => {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Ionicons name="flame" size={18} color="#D81B60" />
-                <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Best Sellers</Text>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>
+                  {isCategoryMode
+                    ? (selectedCategoryFilter !== 'All' ? `Best Sellers in ${selectedCategoryFilter}` : `Best-Selling ${activeDepartmentTab}`)
+                    : 'Best Sellers'}
+                </Text>
               </View>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('search')}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  if (isCategoryMode) {
+                    if (setSelectedCategory) setSelectedCategory(activeDepartmentTab);
+                    if (setSelectedSubcategory) setSelectedSubcategory(selectedCategoryFilter !== 'All' ? selectedCategoryFilter : null);
+                  }
+                  setCurrentScreen('search');
+                }}
+              >
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
               </TouchableOpacity>
             </View>
@@ -1761,9 +1870,22 @@ export const HomeScreen = () => {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Ionicons name="sparkles" size={17} color="#D81B60" />
-                <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Recent Products</Text>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>
+                  {isCategoryMode
+                    ? (selectedCategoryFilter !== 'All' ? `Recent in ${selectedCategoryFilter}` : `Recent ${activeDepartmentTab}`)
+                    : 'Recent Products'}
+                </Text>
               </View>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('search')}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  if (isCategoryMode) {
+                    if (setSelectedCategory) setSelectedCategory(activeDepartmentTab);
+                    if (setSelectedSubcategory) setSelectedSubcategory(selectedCategoryFilter !== 'All' ? selectedCategoryFilter : null);
+                  }
+                  setCurrentScreen('search');
+                }}
+              >
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
               </TouchableOpacity>
             </View>
@@ -1807,9 +1929,22 @@ export const HomeScreen = () => {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Ionicons name="star" size={17} color="#D81B60" />
-                <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Recommended for You</Text>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>
+                  {isCategoryMode
+                    ? (selectedCategoryFilter !== 'All' ? `Recommended in ${selectedCategoryFilter}` : `Recommended for You in ${activeDepartmentTab}`)
+                    : 'Recommended for You'}
+                </Text>
               </View>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentScreen('search')}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  if (isCategoryMode) {
+                    if (setSelectedCategory) setSelectedCategory(activeDepartmentTab);
+                    if (setSelectedSubcategory) setSelectedSubcategory(selectedCategoryFilter !== 'All' ? selectedCategoryFilter : null);
+                  }
+                  setCurrentScreen('search');
+                }}
+              >
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#D81B60' }}>View All →</Text>
               </TouchableOpacity>
             </View>
@@ -1837,6 +1972,43 @@ export const HomeScreen = () => {
                 </View>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 8E. EMPTY STATE (WHEN CATEGORY / SUBCATEGORY HAS NO ACTIVE PRODUCTS)      */}
+        {/* ========================================================================= */}
+        {isCategoryMode && trendingProducts.length === 0 && bestSellers.length === 0 && newArrivals.length === 0 && topRecommendations.length === 0 && (
+          <View style={{ paddingVertical: 48, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: '#FFF0F5', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+              <Ionicons name="sparkles-outline" size={30} color="#D81B60" />
+            </View>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 6, textAlign: 'center' }}>
+              No products found in {selectedCategoryFilter !== 'All' ? selectedCategoryFilter : activeDepartmentTab}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 18, lineHeight: 18 }}>
+              We are updating our catalog with new {activeDepartmentTab} items.
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                if (selectedCategoryFilter !== 'All') {
+                  setSelectedCategoryFilter('All');
+                } else {
+                  handleDepartmentTabPress('All');
+                }
+              }}
+              style={{
+                backgroundColor: '#D81B60',
+                paddingHorizontal: 22,
+                paddingVertical: 10,
+                borderRadius: 24,
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>
+                {selectedCategoryFilter !== 'All' ? `Browse All ${activeDepartmentTab}` : 'Browse All Categories'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>

@@ -426,11 +426,45 @@ export function hasModuleAccess(permissions, moduleKey, userRole = null) {
 }
 
 /**
+ * Unified Employee User Check
+ * Robust identification across role, designation, and employee code.
+ */
+export function isEmployeeUser(user) {
+  if (!user) return false;
+  // If explicitly designated root admin, never employee
+  if (user.id === 'admin_root' || user.email === 'admin@salbeau.com') return false;
+
+  // Explicit employee code or flag
+  if (Boolean(user.employeeCode || user.employee_code || user.isEmployee)) return true;
+
+  const roleStr = String(user.role || '').toLowerCase().trim();
+  const desigStr = String(user.designation || '').toLowerCase().trim();
+  const rolePresetStr = String(user.rolePreset || '').toLowerCase().trim();
+
+  if (['employee', 'staff', 'operations', 'manager', 'associate', 'rider', 'partner'].includes(roleStr)) return true;
+  if (['employee', 'staff', 'operations', 'manager', 'associate', 'rider', 'partner'].includes(rolePresetStr)) return true;
+
+  // Check designation string
+  if (desigStr && !desigStr.includes('super admin') && !desigStr.includes('administrator') && !desigStr.includes('owner') && desigStr !== 'admin') {
+    return true;
+  }
+
+  return roleStr !== 'admin';
+}
+
+/**
  * Checks if the current user has a specific granular action permission
  * ADMIN always has access!
  */
-export function hasActionPermission(permissions, moduleKey, actionKey, userRole = 'admin') {
-  if (userRole === 'admin') return true;
+export function hasActionPermission(permissions, moduleKey, actionKey, userOrRole = 'employee') {
+  if (userOrRole && typeof userOrRole === 'object') {
+    if (!isEmployeeUser(userOrRole)) return true;
+    const mod = (userOrRole.permissions || {})[moduleKey];
+    if (!mod || !mod.enabled) return false;
+    return Boolean(mod.actions?.[actionKey]);
+  }
+  const roleStr = String(userOrRole || '').toLowerCase().trim();
+  if (roleStr === 'admin' || roleStr === 'super_admin' || roleStr === 'owner') return true;
   if (!permissions || typeof permissions !== 'object') return false;
   const mod = permissions[moduleKey];
   if (!mod || !mod.enabled) return false;
@@ -786,7 +820,7 @@ export function countPermissionsSummary(permissions) {
 export function canAccessTab(tabId, user) {
   if (!user) return false;
   // System administrator has unrestricted access to all modules and routes
-  if (user.role === 'admin' || user.id === 'admin_root') return true;
+  if (!isEmployeeUser(user)) return true;
 
   const perms = user.permissions || {};
 
@@ -877,7 +911,7 @@ export function canAccessTab(tabId, user) {
  */
 export function getFirstAccessibleTab(user) {
   if (!user) return 'dashboard';
-  if (user.role === 'admin' || user.id === 'admin_root') return 'dashboard';
+  if (!isEmployeeUser(user)) return 'dashboard';
 
   const candidateTabs = [
     'dashboard',

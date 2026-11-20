@@ -35,7 +35,7 @@ import {
   Truck,
   Bike
 } from 'lucide-react';
-import { canAccessTab } from '../../utils/permissionEngine';
+import { canAccessTab, isEmployeeUser } from '../../utils/permissionEngine';
 
 /**
  * Salbeau Luxury Theme Badge helper
@@ -480,7 +480,7 @@ export const AdminSidebar = ({
 
   // Role and Permission Filter — strictly permits only pages explicitly authorized by Administrator
   const filteredNavSections = useMemo(() => {
-    if (!currentAuthUser || currentAuthUser.role === 'admin' || currentAuthUser.id === 'admin_root') {
+    if (!currentAuthUser || !isEmployeeUser(currentAuthUser)) {
       return navSections;
     }
 
@@ -546,8 +546,12 @@ export const AdminSidebar = ({
                   alt="Salbeau"
                   className="h-7 w-auto object-contain select-none"
                 />
-                <span className="text-[10px] font-bold tracking-wider uppercase text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                  {currentAuthUser?.role === 'employee' ? (currentAuthUser.designation || 'Staff') : 'Admin'}
+                <span className={`text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md border ${
+                  isEmployeeUser(currentAuthUser)
+                    ? 'bg-purple-100 text-purple-800 border-purple-200'
+                    : 'bg-pink-100 text-[#D81B60] border-pink-200'
+                }`}>
+                  {isEmployeeUser(currentAuthUser) ? `EMPLOYEE • ${currentAuthUser?.employeeCode || currentAuthUser?.employee_code || currentAuthUser?.designation || 'Staff'}` : 'Admin'}
                 </span>
               </div>
             ) : (
@@ -733,7 +737,7 @@ export const AdminSidebar = ({
                   <span>Log Out</span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-medium tracking-tight">
-                  {currentAuthUser?.role === 'employee' ? 'Staff' : 'Admin'}
+                  {isEmployeeUser(currentAuthUser) ? (currentAuthUser?.employeeCode || 'Staff') : 'Admin'}
                 </span>
               </button>
             </div>
@@ -796,8 +800,12 @@ export const AdminSidebar = ({
                   alt="Salbeau"
                   className="h-7 w-auto object-contain"
                 />
-                <span className="text-[10px] font-bold uppercase text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                  {currentAuthUser?.role === 'employee' ? (currentAuthUser.designation || 'Staff') : 'Admin'}
+                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                  isEmployeeUser(currentAuthUser)
+                    ? 'bg-purple-100 text-purple-800 border-purple-200'
+                    : 'bg-pink-100 text-[#D81B60] border-pink-200'
+                }`}>
+                  {isEmployeeUser(currentAuthUser) ? `EMPLOYEE • ${currentAuthUser?.employeeCode || currentAuthUser?.employee_code || currentAuthUser?.designation || 'Staff'}` : 'Admin'}
                 </span>
               </div>
               <button
@@ -921,7 +929,7 @@ export const AdminSidebar = ({
                   <span>Log Out</span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-medium">
-                  {currentAuthUser?.role === 'employee' ? 'Staff' : 'Admin'}
+                  {isEmployeeUser(currentAuthUser) ? (currentAuthUser?.employeeCode || 'Staff') : 'Admin'}
                 </span>
               </button>
             </div>

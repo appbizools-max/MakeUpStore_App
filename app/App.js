@@ -88,8 +88,9 @@ const MainShell = () => {
       if (currentScreen === 'splash') return false;
 
       // Root screen double-tap exit check
+      const isCustomerLoggedIn = Boolean(userProfile?.phone && (userProfile?.isProfileComplete || userProfile?.name));
       const isRootScreen =
-        (currentScreen === 'home' && userProfile?.isProfileComplete) ||
+        (currentScreen === 'home' && isCustomerLoggedIn) ||
         currentScreen === 'login' ||
         currentScreen === 'delivery_dashboard';
 
@@ -130,7 +131,7 @@ const MainShell = () => {
         setCurrentScreen('home');
         return true;
       }
-      if (userProfile?.isProfileComplete) {
+      if (isCustomerLoggedIn) {
         setCurrentScreen('home');
         return true;
       }
@@ -138,7 +139,7 @@ const MainShell = () => {
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
-  }, [currentScreen, userProfile?.isProfileComplete, navigationHistory, goBack, setCurrentScreen]);
+  }, [currentScreen, userProfile?.phone, userProfile?.isProfileComplete, userProfile?.name, navigationHistory, goBack, setCurrentScreen]);
 
   // Persistent Tab Navigation: Keep visited primary tab screens alive in memory
   // This eliminates the 400-800ms unmount/remount freeze, making tab switching 0ms instantaneous.
@@ -208,11 +209,7 @@ const MainShell = () => {
 
   const renderScreen = () => {
     if (isRestoringSession) {
-      return (
-        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        </View>
-      );
+      return <SplashScreen />;
     }
 
     let screenComponent;

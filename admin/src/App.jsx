@@ -176,7 +176,7 @@ import {
   getTotalQuantityTiersCount
 } from './utils/quantityTiersUtils';
 import { getProductAttributeSuggestions } from './utils/attributeMasterData';
-import { canAccessTab, getFirstAccessibleTab } from './utils/permissionEngine';
+import { canAccessTab, getFirstAccessibleTab, isEmployeeUser } from './utils/permissionEngine';
 
 // Smart attribute placeholder helper for dynamic variant inputs
 const getDynamicAttributePlaceholder = (attrName) => {
@@ -456,14 +456,14 @@ const AdminDashboard = () => {
   };
 
   const navigateToTab = (tabId) => {
-    if (currentAuthUser && currentAuthUser.role === 'employee' && !canAccessTab(tabId, currentAuthUser)) {
+    const isEmployee = isEmployeeUser(currentAuthUser);
+    if (isEmployee && !canAccessTab(tabId, currentAuthUser)) {
       const allowed = getFirstAccessibleTab(currentAuthUser);
       setActiveTab(allowed);
       return;
     }
     setActiveTab(tabId);
     if (typeof window !== 'undefined' && window.history && window.history.pushState) {
-      const isEmployee = currentAuthUser?.role === 'employee';
       const prefix = isEmployee ? '/employee' : '/admin';
       window.history.pushState({ tab: tabId }, '', `${prefix}/${tabId}`);
     }
@@ -482,7 +482,7 @@ const AdminDashboard = () => {
   // If admin: ensures URL is /admin/${tab}
   useEffect(() => {
     if (isAuthenticated && currentAuthUser) {
-      const isEmployee = currentAuthUser.role === 'employee';
+      const isEmployee = isEmployeeUser(currentAuthUser);
       const expectedPrefix = isEmployee ? '/employee' : '/admin';
 
       if (isEmployee) {
@@ -3381,7 +3381,7 @@ const AdminDashboard = () => {
 
         <React.Suspense fallback={<PageLoadingFallback />}>
           {/* Permission Guard for Employees */}
-          {currentAuthUser?.role === 'employee' && !canAccessTab(activeTab, currentAuthUser) ? (
+          {isEmployeeUser(currentAuthUser) && !canAccessTab(activeTab, currentAuthUser) ? (
             <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-pink-100 shadow-2xs max-w-lg mx-auto mt-6 animate-fade-in">
               <div className="w-16 h-16 rounded-2xl bg-rose-50 text-[#D81B60] flex items-center justify-center mx-auto mb-4 border border-rose-100">
                 <ShieldAlert size={32} />

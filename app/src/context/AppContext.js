@@ -490,7 +490,7 @@ export const AppProvider = ({ children }) => {
     if (session && session.phone && session.isProfileComplete) {
       return 'home';
     }
-    return 'login';
+    return 'splash';
   });
   const [previousScreen, setPreviousScreen] = useState('home');
 
@@ -500,7 +500,7 @@ export const AppProvider = ({ children }) => {
     if (session && session.phone && session.isProfileComplete) {
       return ['home'];
     }
-    return ['login'];
+    return ['home'];
   });
 
   const navigateTo = useCallback((screen, { replace = false } = {}) => {
@@ -761,9 +761,83 @@ export const AppProvider = ({ children }) => {
     let isMounted = true;
     const restoreSession = async () => {
       try {
-        const [savedAuth, savedProfile, savedProds, savedCats, savedBrands, savedSubs] = await Promise.all([
+        // Step 1: Read critical authentication sessions immediately (< 5ms)
+        const [savedAuth, savedProfile, savedStaff] = await Promise.all([
           storage.getItem(AUTH_SESSION_KEY),
           storage.getItem('salbeau_user_profile'),
+          storage.getItem('salbeau_staff_session'),
+        ]);
+
+        if (isMounted) {
+          let restored = false;
+
+          // 1. Check Delivery Rider / Staff session first
+          if (savedStaff) {
+            try {
+              const parsedStaff = JSON.parse(savedStaff);
+              if (parsedStaff && (parsedStaff.id || parsedStaff.email || parsedStaff.employeeCode || parsedStaff.employee_code)) {
+                _setCurrentScreen('delivery_dashboard');
+                setNavigationHistory(['delivery_dashboard']);
+                restored = true;
+              }
+            } catch (_) { }
+          }
+
+          // 2. Check Customer Auth Session
+          if (!restored && savedAuth) {
+            try {
+              const parsed = JSON.parse(savedAuth);
+              const phone = parsed?.phone || parsed?.profile?.phone;
+              if (parsed && phone) {
+                const profileObj = parsed.profile || parsed;
+                const fullProfile = {
+                  ...profileObj,
+                  isProfileComplete: true
+                };
+                setUserProfile(fullProfile);
+                if (parsed.role || profileObj.role) setUserRole(parsed.role || profileObj.role);
+                if (parsed.addresses && Array.isArray(parsed.addresses)) setAddresses(parsed.addresses);
+                _setCurrentScreen('home');
+                setNavigationHistory(['home']);
+                restored = true;
+              }
+            } catch (_) { }
+          }
+
+          // 3. Fallback to saved user profile
+          if (!restored && savedProfile) {
+            try {
+              const parsedProf = JSON.parse(savedProfile);
+              if (parsedProf && parsedProf.phone) {
+                const fullProfile = {
+                  ...parsedProf,
+                  isProfileComplete: true
+                };
+                setUserProfile(fullProfile);
+                if (parsedProf.role) setUserRole(parsedProf.role);
+                _setCurrentScreen('home');
+                setNavigationHistory(['home']);
+                restored = true;
+              }
+            } catch (_) { }
+          }
+
+          if (!restored) {
+            _setCurrentScreen('login');
+            setNavigationHistory(['login']);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to restore auth session:', e);
+      } finally {
+        if (isMounted) {
+          setIsRestoringSession(false);
+        }
+      }
+
+      // Step 2: Hydrate catalog caches asynchronously in background without blocking UI
+      try {
+        const [savedProds, savedCats, savedBrands, savedSubs] = await Promise.all([
           storage.getItem('salbeau_cache_products'),
           storage.getItem('salbeau_cache_categories'),
           storage.getItem('salbeau_cache_brands'),
@@ -804,45 +878,8 @@ export const AppProvider = ({ children }) => {
               }
             } catch (_) { }
           }
-
-          let restored = false;
-          if (savedAuth) {
-            try {
-              const parsed = JSON.parse(savedAuth);
-              if (parsed && (parsed.isProfileComplete || parsed.profile?.isProfileComplete) && (parsed.phone || parsed.profile?.phone)) {
-                const profileObj = parsed.profile || parsed;
-                setUserProfile(profileObj);
-                if (parsed.role) setUserRole(parsed.role);
-                if (parsed.addresses && Array.isArray(parsed.addresses)) setAddresses(parsed.addresses);
-                _setCurrentScreen('home');
-                restored = true;
-              }
-            } catch (_) { }
-          }
-
-          if (!restored && savedProfile) {
-            try {
-              const parsedProf = JSON.parse(savedProfile);
-              if (parsedProf && parsedProf.phone && parsedProf.isProfileComplete) {
-                setUserProfile(parsedProf);
-                if (parsedProf.role) setUserRole(parsedProf.role);
-                _setCurrentScreen('home');
-                restored = true;
-              }
-            } catch (_) { }
-          }
-
-          if (!restored) {
-            _setCurrentScreen('login');
-          }
         }
-      } catch (e) {
-        console.warn('Failed to restore auth session:', e);
-      } finally {
-        if (isMounted) {
-          setIsRestoringSession(false);
-        }
-      }
+      } catch (_) { }
     };
     restoreSession();
     return () => { isMounted = false; };
@@ -851,25 +888,41 @@ export const AppProvider = ({ children }) => {
   // Manage background/foreground transitions: keep authenticated user locked on their screen
   const appStateRef = useRef(AppState.currentState);
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
+    const subscription = AppState.addEventListener('change', async nextAppState => {
       if (
         appStateRef.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
         // Returned to foreground: ensure authenticated user never drops into onboarding/login/otp
-        if (userProfile?.isProfileComplete) {
-          setCurrentScreen(prev => (prev === 'onboarding' || prev === 'login' || prev === 'otp') ? 'home' : prev);
+        const isStaff = userRole === 'delivery_rider' || Boolean(staffProfile?.id || staffProfile?.email);
+        if (isStaff) {
+          setCurrentScreen(prev => (prev === 'onboarding' || prev === 'login' || prev === 'otp' || prev === 'staff_login' || prev === 'splash') ? 'delivery_dashboard' : prev);
+          appStateRef.current = nextAppState;
+          return;
+        }
+
+        const hasPhone = Boolean(userProfile?.phone);
+        if (hasPhone) {
+          setCurrentScreen(prev => (prev === 'onboarding' || prev === 'login' || prev === 'otp' || prev === 'splash') ? 'home' : prev);
+        } else {
+          // Fallback check against storage in case app was resumed after low-memory state
+          try {
+            const raw = storage.getSync(AUTH_SESSION_KEY) || await storage.getItem(AUTH_SESSION_KEY);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed?.phone) {
+                setCurrentScreen(prev => (prev === 'onboarding' || prev === 'login' || prev === 'otp' || prev === 'splash') ? 'home' : prev);
+              }
+            }
+          } catch (_) { }
         }
       }
       appStateRef.current = nextAppState;
     });
+    return () => subscription.remove();
+  }, [userProfile?.phone, userRole, staffProfile?.id, staffProfile?.email]);
 
-    return () => {
-      subscription.remove();
-    };
-  }, [userProfile?.isProfileComplete]);
-
-  // Debounced session persist � 800ms prevents write storm on rapid renders
+  // Debounced session persist - 800ms prevents write storm on rapid renders
   useEffect(() => {
     if (!userProfile?.isProfileComplete || !userProfile?.phone) return;
     const _pt = setTimeout(() => {
@@ -965,7 +1018,7 @@ export const AppProvider = ({ children }) => {
     productsRef.current = products;
   }, [products]);
 
-  // Persist cart to storage � survives app restarts and background kills
+  // Persist cart to storage - survives app restarts and background kills
   useEffect(() => {
     try { setCachedData('salbeau_cache_cart', cart); } catch (_) { }
   }, [cart]);
@@ -1077,46 +1130,53 @@ export const AppProvider = ({ children }) => {
           }
         } catch (_) { }
 
-        const fetchOrdersPromise = cachedSales
-          ? Promise.resolve({ data: null, isCached: true })
-          : supabase.from('orders').select('id, items, status').order('date', { ascending: false }).limit(200);
+        // Fetch order sales count in the background without blocking catalog rendering
+        if (!cachedSales) {
+          supabase
+            .from('orders')
+            .select('id, items, status')
+            .order('date', { ascending: false })
+            .limit(200)
+            .then(storeOrdersRes => {
+              if (storeOrdersRes?.data) {
+                const salesMap = {};
+                for (const o of storeOrdersRes.data) {
+                  const st = (o.status || '').toLowerCase();
+                  if (['delivered', 'completed', 'placed', 'processing', 'confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery'].includes(st)) {
+                    for (const item of (o.items || [])) {
+                      const pid = item.product?.id || item.productId || item.id;
+                      if (pid) {
+                        salesMap[pid] = (salesMap[pid] || 0) + (Number(item.quantity) || 1);
+                      }
+                    }
+                  }
+                }
+                setProductSalesCounts(salesMap);
+                try {
+                  storage.setItem('salbeau_sales_counts_cache', JSON.stringify({ ts: Date.now(), data: salesMap }));
+                } catch (_) { }
+              }
+            })
+            .catch(() => { });
+        } else {
+          setProductSalesCounts(cachedSales);
+        }
 
+        // Resilient 25-second timeout for mobile networks & initial app cold starts
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Catalog fetch timeout')), 10000)
+          setTimeout(() => reject(new Error('Catalog fetch timeout')), 25000)
         );
 
-        const [brandsRes, brandConfigsRes, productsRes, categoriesRes, subcategoriesRes, storeOrdersRes] = await Promise.race([
+        const [brandsRes, brandConfigsRes, productsRes, categoriesRes, subcategoriesRes] = await Promise.race([
           Promise.all([
             supabase.from('brands').select('id, name, enabled, logo, created_at, category, sort_order, updated_at').not('id', 'like', 'app_%').not('id', 'like', 'salbeau_%'),
             supabase.from('brands').select('id, logo, name').or('id.like.app_%,id.like.salbeau_%'),
             supabase.from('products').select('*').order('created_at', { ascending: false }),
             supabase.from('categories').select('*').order('sort_order', { ascending: true }),
-            supabase.from('subcategories').select('*').order('sort_order', { ascending: true }),
-            fetchOrdersPromise
+            supabase.from('subcategories').select('*').order('sort_order', { ascending: true })
           ]),
           timeoutPromise
         ]);
-
-        if (cachedSales) {
-          setProductSalesCounts(cachedSales);
-        } else if (storeOrdersRes && storeOrdersRes.data) {
-          const salesMap = {};
-          for (const o of storeOrdersRes.data) {
-            const st = (o.status || '').toLowerCase();
-            if (['delivered', 'completed', 'placed', 'processing', 'confirmed', 'packing', 'ready_to_dispatch', 'out_for_delivery'].includes(st)) {
-              for (const item of (o.items || [])) {
-                const pid = item.product?.id || item.productId || item.id;
-                if (pid) {
-                  salesMap[pid] = (salesMap[pid] || 0) + (Number(item.quantity) || 1);
-                }
-              }
-            }
-          }
-          setProductSalesCounts(salesMap);
-          try {
-            storage.setItem('salbeau_sales_counts_cache', JSON.stringify({ ts: Date.now(), data: salesMap }));
-          } catch (_) { }
-        }
 
         let hierarchyCategories = [];
         let parsedHier = null;
@@ -1314,7 +1374,16 @@ export const AppProvider = ({ children }) => {
         }
         setIsCatalogLoading(false);
       } catch (err) {
-        console.warn('Supabase catalog fetch error:', err);
+        console.warn('Supabase catalog fetch error:', err.message || err);
+        // Resilient fallback: ensure cached catalog data is rendered so user never sees a blank screen
+        try {
+          const cachedProds = getCachedData('salbeau_cache_products', []);
+          const cachedCats = getCachedData('salbeau_cache_categories', []);
+          const cachedBrands = getCachedData('salbeau_cache_brands', []);
+          if (cachedProds && cachedProds.length > 0) setProducts(cachedProds);
+          if (cachedCats && cachedCats.length > 0) setRawCategories(cachedCats);
+          if (cachedBrands && cachedBrands.length > 0) setBrands(cachedBrands);
+        } catch (_) { }
         setIsCatalogLoading(false);
       } finally {
         inFlightCatalogFetchRef.current = null;
@@ -2196,14 +2265,35 @@ export const AppProvider = ({ children }) => {
       if (!session || !session.phone) return;
 
       const cleanDigits = session.phone.replace(/\D/g, '');
+      const last10Digits = cleanDigits.slice(-10);
       try {
-        const { data: dbUser } = await supabase
+        const candidateFilters = [
+          session.userId ? `id.eq.${session.userId}` : null,
+          `id.eq.u_${cleanDigits}`,
+          `phone.eq.${session.phone}`,
+          last10Digits ? `phone.ilike.%${last10Digits}%` : null
+        ].filter(Boolean).join(',');
+
+        const { data: dbUser, error } = await supabase
           .from('users')
           .select('*')
-          .or(`id.eq.u_${cleanDigits},phone.eq.${session.phone}`)
+          .or(candidateFilters)
+          .limit(1)
           .maybeSingle();
 
         if (!isMounted) return;
+
+        if (error) {
+          // Network issue, timeout or offline: preserve local session, do NOT logout
+          console.warn('Session verification network note:', error.message);
+          return;
+        }
+
+        if (!dbUser) {
+          // User was definitively removed from database: auto-clean local session
+          await logout();
+          return;
+        }
 
         if (dbUser && dbUser.name && dbUser.name.trim().length >= 2) {
           let meta = {};
@@ -3419,7 +3509,8 @@ export const AppProvider = ({ children }) => {
   };
 
   const setProtectedScreen = useCallback((targetScreen) => {
-    if (userProfile?.isProfileComplete && (targetScreen === 'splash' || targetScreen === 'onboarding' || targetScreen === 'login' || targetScreen === 'otp')) {
+    const isCustomerLoggedIn = Boolean(userProfile?.phone && (userProfile?.isProfileComplete || userProfile?.name));
+    if (isCustomerLoggedIn && (targetScreen === 'splash' || targetScreen === 'onboarding' || targetScreen === 'login' || targetScreen === 'otp')) {
       if (isB2BRole(userRole || userProfile?.role) && (!userProfile?.verificationStatus || userProfile?.verificationStatus === 'not_submitted')) {
         setCurrentScreen('b2b_verification');
         return;
@@ -3428,7 +3519,7 @@ export const AppProvider = ({ children }) => {
       return;
     }
     setCurrentScreen(targetScreen);
-  }, [userProfile?.isProfileComplete, userProfile?.verificationStatus, userRole]);
+  }, [userProfile?.phone, userProfile?.isProfileComplete, userProfile?.name, userProfile?.verificationStatus, userRole]);
 
   const contextValue = useMemo(() => ({
     currentUpiOrder,

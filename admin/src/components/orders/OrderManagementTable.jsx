@@ -36,8 +36,21 @@ import {
   Image as ImageIcon,
   QrCode,
   Upload,
-  CreditCard
+  CreditCard as LucideCreditCard
 } from 'lucide-react';
+
+// Resilient icon with SVG fallback to guarantee zero runtime reference errors
+const CreditCardIcon = (props) => {
+  if (typeof LucideCreditCard !== 'undefined' && LucideCreditCard) {
+    return <LucideCreditCard {...props} />;
+  }
+  return (
+    <svg width={props?.size || 16} height={props?.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props?.className}>
+      <rect width="20" height="14" x="2" y="5" rx="2" />
+      <line x1="2" x2="22" y1="10" y2="10" />
+    </svg>
+  );
+};
 import * as XLSX from 'xlsx';
 import FulfillmentStatusSelector from './FulfillmentStatusSelector';
 import { useAdmin } from '../../context/AdminContext';
@@ -544,7 +557,7 @@ export const OrderManagementTable = ({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100/90 text-purple-900 transition-colors shadow-2xs cursor-pointer font-bold text-xs"
             title="Manage Official Store UPI ID & Payee Name (Real-Time Sync to Delivery Rider App)"
           >
-            <CreditCard size={14} className="text-purple-700" />
+            <CreditCardIcon size={14} className="text-purple-700" />
             <span>Rider Store UPI</span>
             <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
           </button>
@@ -1603,7 +1616,7 @@ export const OrderManagementTable = ({
             <div className="px-6 py-4 border-b border-purple-100 flex items-center justify-between bg-gradient-to-r from-purple-50 via-pink-50/30 to-white">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold shadow-xs">
-                  <CreditCard size={18} />
+                  <CreditCardIcon size={18} />
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-gray-900 tracking-tight">

@@ -3,8 +3,16 @@ import { NativeModules, Platform } from 'react-native';
 // In-memory cache for ultra-fast synchronous access and persistent runtime session
 const memoryCache = new Map();
 
-// Helper to access native storage module directly if present, without importing
-// the wrapper package that throws when the native module is absent from the APK
+// Standard AsyncStorage instance from @react-native-async-storage/async-storage
+let asyncStorageInstance = null;
+try {
+  const mod = require('@react-native-async-storage/async-storage');
+  asyncStorageInstance = mod.default || mod;
+} catch (_) {
+  asyncStorageInstance = null;
+}
+
+// Helper to access native storage module directly if present
 function getRawNativeModule() {
   try {
     const nm = typeof NativeModules !== 'undefined' && NativeModules ? NativeModules : {};
@@ -83,17 +91,30 @@ loadFsFromFile().catch(() => {});
 
 export const storage = {
   async getItem(key) {
-    // 1. In-memory cache hit
+    // 1. In-memory cache hit (0ms)
     if (memoryCache.has(key)) {
       return memoryCache.get(key);
     }
 
-    // 2. Direct native module check (if linked natively)
+    // 2. Official @react-native-async-storage/async-storage (fast SQLite on Android/iOS)
+    if (asyncStorageInstance && typeof asyncStorageInstance.getItem === 'function') {
+      try {
+        const val = await asyncStorageInstance.getItem(key);
+        if (val !== null && val !== undefined) {
+          memoryCache.set(key, val);
+          return val;
+        }
+      } catch (_) {}
+    }
+
+    // 3. Direct native module check (fallback)
     const nativeMod = getRawNativeModule();
     if (nativeMod && typeof nativeMod.multiGet === 'function') {
       try {
         const val = await new Promise((resolve) => {
+          const timer = setTimeout(() => resolve(null), 500);
           nativeMod.multiGet([key], (errors, result) => {
+            clearTimeout(timer);
             if (!errors && result && result[0] && result[0][1] !== null && result[0][1] !== undefined) {
               resolve(result[0][1]);
             } else {
@@ -108,7 +129,7 @@ export const storage = {
       } catch (_) {}
     }
 
-    // 3. Web localStorage fallback
+    // 4. Web localStorage fallback
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
         const val = window.localStorage.getItem(key);
@@ -119,7 +140,7 @@ export const storage = {
       } catch (_) {}
     }
 
-    // 4. FileSystem fallback
+    // 5. FileSystem fallback
     await loadFsFromFile();
     return memoryCache.get(key) || null;
   },
@@ -128,35 +149,58 @@ export const storage = {
     const strVal = String(value);
     memoryCache.set(key, strVal);
 
-    // Direct native module write (if linked natively)
+    // 1. Official @react-native-async-storage/async-storage
+    if (asyncStorageInstance && typeof asyncStorageInstance.setItem === 'function') {
+      try {
+        await asyncStorageInstance.setItem(key, strVal);
+      } catch (_) {}
+    }
+
+    // 2. Direct native module write (fallback)
     const nativeMod = getRawNativeModule();
     if (nativeMod && typeof nativeMod.multiSet === 'function') {
       try {
         await new Promise((resolve) => {
-          nativeMod.multiSet([[key, strVal]], () => resolve());
+          const timer = setTimeout(() => resolve(), 500);
+          nativeMod.multiSet([[key, strVal]], () => {
+            clearTimeout(timer);
+            resolve();
+          });
         });
       } catch (_) {}
     }
 
-    // Web localStorage
+    // 3. Web localStorage
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
         window.localStorage.setItem(key, strVal);
       } catch (_) {}
     }
 
-    // FileSystem
-    syncFsToFile().catch(() => {});
+    // 4. FileSystem fallback (only if AsyncStorage not present)
+    if (!asyncStorageInstance) {
+      syncFsToFile().catch(() => {});
+    }
   },
 
   async removeItem(key) {
     memoryCache.delete(key);
 
+    if (asyncStorageInstance && typeof asyncStorageInstance.removeItem === 'function') {
+      try {
+        await asyncStorageInstance.removeItem(key);
+      } catch (_) {}
+    }
+
     const nativeMod = getRawNativeModule();
     if (nativeMod && typeof nativeMod.multiRemove === 'function') {
       try {
         await new Promise((resolve) => {
-          nativeMod.multiRemove([key], () => resolve());
+          const timer = setTimeout(() => resolve(), 500);
+          nativeMod.multiRemove([key], () => {
+            clearTimeout(timer);
+            resolve();
+          });
         });
       } catch (_) {}
     }
@@ -167,7 +211,9 @@ export const storage = {
       } catch (_) {}
     }
 
-    syncFsToFile().catch(() => {});
+    if (!asyncStorageInstance) {
+      syncFsToFile().catch(() => {});
+    }
   },
 
   getSync(key) {
