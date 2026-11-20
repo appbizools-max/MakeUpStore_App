@@ -319,10 +319,20 @@ const AdminDashboard = () => {
     if (typeof window !== 'undefined') {
       const path = (window.location.pathname || '').toLowerCase();
       const hash = (window.location.hash || '').toLowerCase();
-      if (path === '/staff' || path.startsWith('/staff') || path === '/employee' || path.startsWith('/employee') || hash === '#staff' || hash === '#employee') {
+      const search = (window.location.search || '').toLowerCase();
+      if (
+        path === '/staff' || path.startsWith('/staff') ||
+        path === '/employee' || path.startsWith('/employee') ||
+        hash === '#staff' || hash === '#employee' ||
+        search.includes('staff') || search.includes('employee')
+      ) {
         return 'staff';
       }
-      if (path === '/admin' || path.startsWith('/admin') || hash === '#admin' || hash === '#login') {
+      if (
+        path === '/admin' || path.startsWith('/admin') ||
+        hash === '#admin' || hash === '#login' ||
+        search.includes('admin') || search.includes('login')
+      ) {
         return 'admin';
       }
     }
@@ -2902,7 +2912,22 @@ const AdminDashboard = () => {
 
   if (!isAuthenticated) {
     if (authView === 'landing') {
-      return <LandingPage />;
+      return (
+        <LandingPage
+          onOpenAdmin={() => {
+            setAuthView('admin');
+            if (typeof window !== 'undefined' && window.location) {
+              window.location.hash = 'admin';
+            }
+          }}
+          onOpenStaff={() => {
+            setAuthView('staff');
+            if (typeof window !== 'undefined' && window.location) {
+              window.location.hash = 'staff';
+            }
+          }}
+        />
+      );
     }
 
     if (authView === 'staff') {

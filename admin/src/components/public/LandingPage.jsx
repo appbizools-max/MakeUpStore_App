@@ -27,8 +27,27 @@ import {
   QrCode
 } from 'lucide-react';
 
-export default function LandingPage() {
+export default function LandingPage({ onOpenAdmin, onOpenStaff }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleOpenAdmin = () => {
+    setMobileMenuOpen(false);
+    if (typeof onOpenAdmin === 'function') {
+      onOpenAdmin();
+    } else if (typeof window !== 'undefined') {
+      window.location.hash = 'admin';
+    }
+  };
+
+  const handleOpenStaff = () => {
+    setMobileMenuOpen(false);
+    if (typeof onOpenStaff === 'function') {
+      onOpenStaff();
+    } else if (typeof window !== 'undefined') {
+      window.location.hash = 'staff';
+    }
+  };
+
   const [contactForm, setContactForm] = useState({
     name: '',
     email: '',
@@ -159,15 +178,34 @@ export default function LandingPage() {
               </button>
             </nav>
 
-            {/* Header Right Actions: Download App Button */}
-            <div className="hidden md:flex items-center gap-3">
+            {/* Header Right Actions: Staff Portal, Admin Login & Download App */}
+            <div className="hidden md:flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleOpenStaff}
+                className="px-3.5 py-2 rounded-xl border border-purple-200 bg-purple-50/90 hover:bg-purple-100 text-purple-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                title="Store Staff & Delivery Portal"
+              >
+                <span>Staff Portal</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenAdmin}
+                className="px-3.5 py-2 rounded-xl border border-pink-200 bg-pink-50/90 hover:bg-pink-100 text-[#D81B60] text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                title="Store Administrator Console"
+              >
+                <Lock size={12} className="text-[#D81B60]" />
+                <span>Admin Login</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => scrollToSection('download')}
-                className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#c2185b] hover:to-[#D81B60] text-white text-xs font-black tracking-wide shadow-md shadow-pink-200 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#D81B60] to-[#E25586] hover:from-[#c2185b] hover:to-[#D81B60] text-white text-xs font-black tracking-wide shadow-md shadow-pink-200 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 ml-1"
               >
                 <Download size={13} strokeWidth={2.5} />
-                <span>Get Mobile App</span>
+                <span>Get App</span>
               </button>
             </div>
 
@@ -236,7 +274,24 @@ export default function LandingPage() {
               <ArrowRight size={14} className="text-gray-300" />
             </button>
 
-            <div className="pt-3 border-t border-pink-100">
+            <div className="pt-3 border-t border-pink-100 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenStaff}
+                  className="py-2.5 px-3 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <span>Staff Portal</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenAdmin}
+                  className="py-2.5 px-3 rounded-xl border border-pink-200 bg-pink-50 hover:bg-pink-100 text-[#D81B60] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Lock size={12} className="text-[#D81B60]" />
+                  <span>Admin Login</span>
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => scrollToSection('download')}
@@ -1064,6 +1119,17 @@ export default function LandingPage() {
                     Contact Us
                   </button>
                 </li>
+                <li className="pt-2 border-t border-white/10">
+                  <button type="button" onClick={handleOpenStaff} className="text-purple-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5">
+                    <span>Staff Portal</span>
+                  </button>
+                </li>
+                <li>
+                  <button type="button" onClick={handleOpenAdmin} className="text-pink-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5">
+                    <Lock size={11} className="text-pink-400" />
+                    <span>Admin Login</span>
+                  </button>
+                </li>
               </ul>
             </div>
 
@@ -1111,6 +1177,14 @@ export default function LandingPage() {
               © {new Date().getFullYear()} Salbeau Beauty Ltd. All rights reserved. Pure Order Based App by MakeUp Store.
             </div>
             <div className="flex items-center gap-4 text-[11px]">
+              <button type="button" onClick={handleOpenStaff} className="text-purple-400 hover:text-purple-300 font-semibold cursor-pointer">
+                Staff Portal
+              </button>
+              <span>•</span>
+              <button type="button" onClick={handleOpenAdmin} className="text-pink-400 hover:text-pink-300 font-semibold cursor-pointer">
+                Admin Console
+              </button>
+              <span>•</span>
               <span className="hover:text-gray-300 cursor-pointer">Security & Compliance</span>
               <span>•</span>
               <span className="hover:text-gray-300 cursor-pointer">GST Invoicing</span>
